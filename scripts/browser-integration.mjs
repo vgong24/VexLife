@@ -33,7 +33,10 @@ const baseReceipt = {
 function finish(receipt, exitCode) {
   fs.mkdirSync(path.dirname(receiptPath), { recursive: true });
   writeJson(receiptPath, receipt);
-  console.log(JSON.stringify(receipt, null, 2));
+  // Original image bytes remain in the artifact receipt, not a giant stdout log.
+  console.log(JSON.stringify(receipt, function(key, value) {
+    return key === 'data' && this.mimeType === 'image/png' && this.encoding === 'base64' ? undefined : value;
+  }, 2));
   process.exitCode = exitCode;
 }
 
@@ -42,9 +45,8 @@ function finish(receipt, exitCode) {
 // lib/screenshot-evidence.js at 0776ad1261ca5d11404b09d6fc1638bbce6e8b8f:
 // deterministic named states, settled assets, real controls, errors and overflow.
 // No Atlas selectors, page semantics, alternate server or production mock enter.
-async function runJournalProductProof(page, viewport, errors) {
-  const screenshots = [], checks = [];
-  const surfaceRef = 'surface.vexlife.living-journal';
+function createExperienceCapture(page, viewport, errors, {surfaceRef, rootSelector, prefix}) {
+  const screenshots = [];
   const assert = (condition, message) => { if (!condition) throw new Error(message); };
   // The accepted collector intentionally returns null for an unmaterialized
   // candidate object in a shallow CI merge checkout. Keep that gap explicit;
@@ -75,37 +77,48 @@ async function runJournalProductProof(page, viewport, errors) {
       }));
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     });
-    const observed = await page.evaluate(() => {
-      const app = globalThis.__VEXLIFE_APP__, root = document.querySelector('#view-living-journal');
+    const observed = await page.evaluate(({rootSelector}) => {
+      const app = globalThis.__VEXLIFE_APP__, root = document.querySelector(rootSelector);
       const visible = (element) => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden';
       return {
         locale: document.documentElement.lang || 'und',
         theme: document.documentElement.dataset.theme || 'default',
         activeSurface: app.uxProjectionShell.snapshot().activeSurfaceRef,
         projection: app.uxProjectionShell.snapshot().projection,
-        truthMode: root.dataset.dataMode,
-        truthClass: root.dataset.truthClass,
-        visibleActionLabels: Array.from(document.querySelectorAll('#evolutionActiveSurfaceHost button, #view-living-journal summary, #livingJournalTools button')).filter(visible).map((element) => (element.getAttribute('aria-label') || element.textContent).trim()),
+        truthMode: root.dataset.dataMode ?? 'CANONICAL_CONVERSATION_PROJECTION',
+        truthClass: root.dataset.truthClass ?? 'CANONICAL_CHANNEL_STATE',
+        contextOpen: root.querySelector('.conversation-evolution__context')?.open ?? null,
+        feedState: root.dataset.feedState ?? null,
+        visibleActionLabels: Array.from(document.querySelectorAll('#evolutionActiveSurfaceHost button, #evolutionActiveSurfaceHost summary, #livingJournalTools button')).filter(visible).map((element) => (element.getAttribute('aria-label') || element.textContent).trim()),
         selectedEntry: root.querySelector('[aria-current="true"]')?.dataset.pageRef ?? null,
         disclosureStates: Array.from(root.querySelectorAll('.living-journal-entry-detail'), (element) => ({ pageRef: element.closest('article').dataset.pageRef, open: element.open })),
         optionsOpen: !document.querySelector('#livingJournalTools').hidden,
         horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth, root.scrollWidth - root.clientWidth),
         actualViewport: { width: innerWidth, height: innerHeight }
       };
-    });
+    }, {rootSelector});
     assert(observed.activeSurface === surfaceRef && observed.projection === 'EVOLUTION_PROJECTION', 'P4R2 screenshot surface binding failed');
     assert(observed.actualViewport.width === viewport.width && observed.actualViewport.height === viewport.height, 'P4R2 screenshot viewport mismatch');
-    assert(observed.horizontalOverflow <= 1, 'P4R2 Journal horizontal overflow');
+    assert(observed.horizontalOverflow <= 1, 'P4R2 active experience horizontal overflow');
     const png = await page.screenshot({ type: 'png', animations: 'disabled' });
     assert(png.length <= 1500000 && screenshots.reduce((n, s) => n + s.bytes, 0) + png.length <= 6000000, 'P4R2 screenshot evidence size exceeded; no image was truncated');
     screenshots.push({
       ...binding, ...observed, state, inputProvenance,
-      filename: `journal-${state}-${observed.locale}-${observed.theme}-${viewport.width}.png`,
+      filename: `${prefix}-${state}-${observed.locale}-${observed.theme}-${viewport.width}.png`,
       consoleErrors: [...errors.consoleErrors], pageErrors: [...errors.pageErrors],
       mimeType: 'image/png', encoding: 'base64', bytes: png.length,
       sha256: createHash('sha256').update(png).digest('hex'), data: png.toString('base64')
     });
   };
+  return {binding, capture, screenshots};
+}
+
+async function runJournalProductProof(page, viewport, errors) {
+  const checks = [];
+  const assert = (condition, message) => { if (!condition) throw new Error(message); };
+  const {binding, capture, screenshots} = createExperienceCapture(page, viewport, errors, {
+    surfaceRef: 'surface.vexlife.living-journal', rootSelector: '#view-living-journal', prefix: 'journal'
+  });
   try {
     await page.evaluate(async () => {
       const app = globalThis.__VEXLIFE_APP__;
@@ -204,6 +217,93 @@ async function runJournalProductProof(page, viewport, errors) {
       await app.uxProjectionShell.closeEvolutionActiveSurface('P4R2_PROOF_COMPLETE');
       await app.uxProjectionShell.setProjection('REFERENCE_PROJECTION');
     }).catch(() => {});
+  }
+}
+
+async function runConversationProductProof(page, viewport, errors) {
+  const checks = [];
+  const assert = (condition, message) => { if (!condition) throw new Error(message); };
+  const {binding, capture, screenshots} = createExperienceCapture(page, viewport, errors, {
+    surfaceRef: 'surface.vexlife.conversation', rootSelector: '.conversation-evolution', prefix: 'conversation'
+  });
+  try {
+    const before = await page.evaluate(async () => {
+      const app = globalThis.__VEXLIFE_APP__;
+      const original = {frame: JSON.stringify(app.navigation.semanticFrame()), journey: JSON.stringify(app.navigation.fullJourney())};
+      const result = await app.uxProjectionShell.openEvolutionSurface('surface.vexlife.conversation');
+      if (result.state !== 'OPEN') throw new Error('P4R2 canonical Conversation did not open');
+      globalThis.__VEXLIFE_P4R2_CONVERSATION_INPUTS__ = [];
+      for (const type of ['click','keydown']) document.addEventListener(type, (event) => {
+        if (event.target.matches('.conversation-evolution__context>summary')) globalThis.__VEXLIFE_P4R2_CONVERSATION_INPUTS__.push({type,key:event.key??null,trusted:event.isTrusted});
+      }, {capture:true});
+      return original;
+    });
+    const root = page.locator('.conversation-evolution');
+    const input = root.locator('textarea');
+    const summary = root.locator('.conversation-evolution__context>summary');
+    const context = root.locator('.conversation-evolution__context');
+    assert(await root.getAttribute('data-presentation-mode') === 'CONTINUOUS_VEX_RELATIONSHIP', 'P4R2 default Conversation is not the direct relationship');
+    assert(await root.locator('.conversation-evolution__hero h2').innerText() === 'Vex', 'P4R2 relationship title is not Vex');
+    assert(!(await context.evaluate((element) => element.open)), 'P4R2 default context must be secondary and closed');
+    const empty = await root.getAttribute('data-feed-state') === 'EMPTY';
+    if (empty) assert(!(await root.locator('.conversation-evolution__feed').isVisible()), 'P4R2 empty feed still occupies an unexplained panel');
+    const metrics = await root.evaluate((element) => {
+      const input = element.querySelector('textarea'), send = element.querySelector('.conversation-evolution__send');
+      const a = element.getBoundingClientRect(), b = input.getBoundingClientRect();
+      return {fontSize:parseFloat(getComputedStyle(input).fontSize),sendHeight:send.getBoundingClientRect().height,composerInView:b.top>=a.top&&b.bottom<=a.bottom+1,scrollOwner:getComputedStyle(element).overflowY};
+    });
+    assert(metrics.fontSize >= 17 && metrics.sendHeight >= 48 && metrics.scrollOwner === 'auto', 'P4R2 Conversation readability/target contract failed');
+    if (empty) assert(metrics.composerInView, 'P4R2 empty Conversation does not put the composer in view');
+    checks.push({name:'relationship-and-composer-first-default',empty,...metrics});
+    await capture('default','CANONICAL_LOCAL_REFERENCE_STATE__NO_REAL_MODEL_TURN');
+    await summary.click();
+    assert(await context.evaluate((element) => element.open), 'P4R2 pointer did not open current context');
+    const canonicalContext = await page.evaluate(() => {
+      const app = globalThis.__VEXLIFE_APP__, text = document.querySelector('.conversation-evolution__context').textContent;
+      return [app.chat.currentProject().projectRef,app.chat.currentThread().threadRef,app.chat.currentChannel().channelRef].every((ref)=>text.includes(ref));
+    });
+    assert(canonicalContext, 'P4R2 context lost canonical project/thread/channel identity');
+    await capture('context-pointer','CANONICAL_LOCAL_REFERENCE_STATE__NO_REAL_MODEL_TURN');
+    await summary.press('Enter');
+    assert(!(await context.evaluate((element) => element.open)), 'P4R2 Enter did not close native context');
+    await input.focus();
+    let reached = false;
+    for (let count=0;count<24;count+=1) {
+      await page.keyboard.press('Tab');
+      if (await summary.evaluate((element)=>document.activeElement===element)) {reached=true;break;}
+    }
+    assert(reached,'P4R2 context is not keyboard reachable');
+    await page.keyboard.press('Space');
+    assert(await context.evaluate((element)=>element.open),'P4R2 Space did not open current context');
+    const focus = await summary.evaluate((element)=>({visible:element.matches(':focus-visible'),width:parseFloat(getComputedStyle(element).outlineWidth)}));
+    assert(focus.visible&&focus.width>=3,'P4R2 Conversation focus ring is not perceptible');
+    await capture('context-keyboard','CANONICAL_LOCAL_REFERENCE_STATE__NO_REAL_MODEL_TURN');
+    const inputs = await page.evaluate(()=>globalThis.__VEXLIFE_P4R2_CONVERSATION_INPUTS__);
+    assert(inputs.some((event)=>event.type==='click'&&event.trusted)&&inputs.some((event)=>event.key==='Enter'&&event.trusted)&&inputs.some((event)=>event.key===' '&&event.trusted),'P4R2 Conversation input provenance is incomplete');
+    checks.push({name:'pointer-tab-enter-space-context',canonicalContext,focus,events:inputs});
+    const initialDraft = await input.inputValue();
+    const draft = 'A deliberate local thought. 日本語 — not sent.';
+    await input.fill(draft);
+    await input.press('ArrowLeft');
+    const caret = await input.evaluate((element)=>[element.selectionStart,element.selectionEnd]);
+    await page.evaluate(()=>globalThis.__VEXLIFE_APP__.chat.renderMessages(true));
+    await page.waitForFunction((expected)=>{
+      const input=document.querySelector('.conversation-evolution__input');
+      return input===document.activeElement&&input.value===expected.draft&&input.selectionStart===expected.caret[0]&&input.selectionEnd===expected.caret[1]&&document.querySelector('.conversation-evolution__context').open;
+    },{draft,caret},{timeout:5000});
+    assert(await page.locator('#messageInput').inputValue()===draft,'P4R2 local draft diverged from canonical composer');
+    checks.push({name:'canonical-rerender-preserves-draft-focus-caret-and-context',state:'PASS',realTurnExecuted:false});
+    await input.fill(initialDraft);
+    await page.evaluate(async()=>globalThis.__VEXLIFE_APP__.uxProjectionShell.closeEvolutionActiveSurface('P4R2_CONVERSATION_PROOF_COMPLETE'));
+    const after = await page.evaluate(()=>({frame:JSON.stringify(globalThis.__VEXLIFE_APP__.navigation.semanticFrame()),journey:JSON.stringify(globalThis.__VEXLIFE_APP__.navigation.fullJourney())}));
+    assert(after.frame===before.frame&&after.journey===before.journey,'P4R2 presentation mutated Journey');
+    assert(errors.consoleErrors.length===0&&errors.pageErrors.length===0,'P4R2 Conversation browser errors');
+    assert(screenshots.length===3,'P4R2 Conversation screenshot matrix incomplete');
+    return {state:'PASS',...binding,checks,screenshots,realTurnExecuted:false};
+  } catch (error) {
+    return {state:'FAILED',...binding,checks,screenshots,error:error instanceof Error?error.message:String(error)};
+  } finally {
+    await page.evaluate(async()=>globalThis.__VEXLIFE_APP__.uxProjectionShell.closeEvolutionActiveSurface('P4R2_CONVERSATION_PROOF_FINALLY')).catch(()=>{});
   }
 }
 
@@ -380,7 +480,7 @@ if (playwright) {
           assert(matchMedia('(prefers-reduced-motion: reduce)').matches===reducedMotionValue,'Conversation motion media state mismatch');
           const feed=root.querySelector('.conversation-evolution__feed'),activeBeforeScroll=shellOpen.activeSurfaceRef;if(feed){feed.scrollTop=Math.max(0,feed.scrollHeight-feed.clientHeight);feed.dispatchEvent(new Event('scroll'));await delay(12);}
           root.scrollTop=Math.max(0,root.scrollHeight-root.clientHeight);root.dispatchEvent(new Event('scroll'));await delay(12);
-          const rootRect=root.getBoundingClientRect(),contextRect=contextInspector.getBoundingClientRect();
+          const rootRect=root.getBoundingClientRect(),contextRect=contextInspector.lastElementChild.getBoundingClientRect();
           assert(contextRect.bottom<=rootRect.bottom+1&&contextRect.top>=rootRect.top-1,'Conversation terminal context inspector is not reachable through the whole-surface scroll owner');
           assert(getComputedStyle(root).overflowY==='auto','Conversation root must own whole-surface terminal reachability');
           assert(app.uxProjectionShell.snapshot().activeSurfaceRef===activeBeforeScroll,'ordinary Conversation content scroll changed semantic surface');
@@ -393,10 +493,20 @@ if (playwright) {
           assert(app.uxProjectionShell.snapshot().activeSurfaceRef===null,'Reference structural update reactivated Conversation surface');
           return Object.freeze({state:'PASS',viewportClass:viewportClassValue,reducedMotion:reducedMotionValue,semanticOwnerRef:root.dataset.semanticOwnerRef,interactionOwnerRef:root.dataset.interactionOwnerRef,presentationMode:root.dataset.presentationMode,primaryTitle:root.querySelector('.conversation-evolution__hero h2')?.textContent??null,canonicalReady,projectedReady,channelKind:channel?.kind??null,channelRoleKey:channel?.roleKey??null,draftExercise,channelTargetHeight:channelRect?.height??0,sendTargetHeight:sendRect.height,wholeSurfaceScrollOwner:getComputedStyle(root).overflowY,contextReachable:true,postCloseBodyChildCount:body.childElementCount,journeyUnchanged:true,realCompanionTurnExecuted:false});
         },{viewportClassValue:viewportClass,reducedMotionValue:reducedMotion});
-        return{viewport,viewportClass,proof,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
+        const productPage=await browser.newPage({viewport});
+        let productExperience;
+        productPage.on('console',(message)=>{if(message.type()==='error')proofConsoleErrors.push(message.text());});
+        productPage.on('pageerror',(error)=>proofPageErrors.push(error.message));
+        try{
+          await productPage.emulateMedia({reducedMotion:reducedMotion?'reduce':'no-preference'});
+          await productPage.goto(serverUrl+'/reference/browser/?projection=evolution',{waitUntil:'networkidle',timeout:30000});
+          await productPage.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__),null,{timeout:30000});
+          productExperience=await runConversationProductProof(productPage,viewport,{consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors});
+        }finally{await productPage.close();}
+        return{viewport,viewportClass,proof,productExperience,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
       }finally{await proofPage.close();}
     };
-    const conversationDesktop=await runConversationEvolutionViewportProof({width:1440,height:900},'DESKTOP',false);
+    const conversationDesktop=await runConversationEvolutionViewportProof({width:1440,height:1000},'DESKTOP',false);
     const conversationCompact=await runConversationEvolutionViewportProof({width:390,height:844},'COMPACT',true);
     const viewportProofs = [journalDesktop, journalCompact, conversationDesktop, conversationCompact];
     const allConsoleErrors = [...consoleErrors, ...compactConsoleErrors, ...viewportProofs.flatMap((item) => item.consoleErrors)];
@@ -404,7 +514,7 @@ if (playwright) {
     const requiredProofs = [
       integration, livedDCompact, q2Compact, q2ViewportInverse, q5Compact, q5WorkspaceInverse,
       ...viewportProofs.map((item) => item.proof),
-      journalDesktop.productExperience, journalCompact.productExperience
+      ...viewportProofs.map((item) => item.productExperience)
     ];
     const state = requiredProofs.every((proof) => proof?.state === 'PASS') && allConsoleErrors.length === 0 && allPageErrors.length === 0 ? 'PASS' : 'FAILED';
     finish({

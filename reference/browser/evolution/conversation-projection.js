@@ -219,8 +219,23 @@ export function createConversationEvolutionAdapter(input) {
     const render = () => {
       const snapshot = projectConversationEvolutionState(binding);
       const continuousDirect = snapshot.channelKind === 'DIRECT';
+      // Only ephemeral presentation continuity crosses a same-channel render.
+      // Canonical messages, draft content and availability remain source-owned.
+      const previous = body.querySelector('.conversation-evolution');
+      const sameChannel = previous?.dataset.channelRef === snapshot.channelRef;
+      const active = sameChannel && previous.contains(document.activeElement) ? document.activeElement : null;
+      const priorInput = previous?.querySelector('.conversation-evolution__input');
+      const focusKey = active?.dataset.presentationFocusKey ?? null;
+      const selection = active === priorInput ? [priorInput.selectionStart, priorInput.selectionEnd, priorInput.selectionDirection] : null;
+      const contextOpen = sameChannel && previous.querySelector('.conversation-evolution__context')?.open;
+      const priorScroll = sameChannel ? previous.scrollTop : 0;
+      const followedEnd = sameChannel && previous.scrollHeight - previous.clientHeight - priorScroll < 24;
+      const messageCountChanged = sameChannel && Number(previous.dataset.messageCount) !== snapshot.messages.length;
       const root = el(document, 'section', 'conversation-evolution');
       root.dataset.surfaceRef = snapshot.surfaceRef;
+      root.dataset.channelRef = snapshot.channelRef;
+      root.dataset.messageCount = String(snapshot.messages.length);
+      root.dataset.feedState = snapshot.messages.length ? 'POPULATED' : 'EMPTY';
       root.dataset.semanticOwnerRef = snapshot.semanticOwnerRef;
       root.dataset.interactionOwnerRef = snapshot.interactionOwnerRef;
       root.dataset.oneSemanticState = 'true';
@@ -231,7 +246,7 @@ export function createConversationEvolutionAdapter(input) {
       title.append(
         el(document, 'span', 'conversation-evolution__eyebrow', binding.t('conversation.eyebrow')),
         el(document, 'h2', null, continuousDirect ? 'Vex' : snapshot.channelLabel),
-        el(document, 'p', null, binding.t('conversation.description'))
+        el(document, 'p', null, continuousDirect ? `${binding.t('context.visible-to')}: ${snapshot.audience.map((item) => presentationParticipantLabel(item, true)).join(' · ')}` : binding.t('conversation.description'))
       );
       const availability = el(document, 'div', 'conversation-evolution__availability');
       availability.dataset.availabilityState = snapshot.availability.state;
@@ -241,8 +256,8 @@ export function createConversationEvolutionAdapter(input) {
         el(document, 'strong', null, snapshot.availability.state),
         el(document, 'span', null, snapshot.availability.readyForRealTurn ? 'Real Companion turn available' : snapshot.availability.recoveryAvailable ? 'Recovery available · not READY' : 'No real Companion turn available')
       );
-      if (!continuousDirect || snapshot.channelRoleKey === 'companion') hero.append(title, availability);
-      else hero.append(title);
+      hero.append(title);
+      if (!continuousDirect) hero.append(availability);
       root.append(hero);
 
       const address = el(document, 'div', 'conversation-evolution__address');
@@ -253,11 +268,12 @@ export function createConversationEvolutionAdapter(input) {
       if (!continuousDirect) root.append(address);
 
       const channels = el(document, 'nav', 'conversation-evolution__channels');
-      channels.setAttribute('aria-label', 'Conversation channels');
+      channels.setAttribute('aria-label', binding.t('region.channels.label'));
       for (const candidate of snapshot.channels) {
         const button = el(document, 'button', 'conversation-evolution__channel', candidate.label);
         button.type = 'button';
         button.dataset.channelRef = candidate.channelRef;
+        button.dataset.presentationFocusKey = candidate.channelRef;
         button.setAttribute('aria-current', candidate.selected ? 'true' : 'false');
         button.addEventListener('click', () => {
           const source = binding.chat.channelsForThread().find((item) => item.channelRef === candidate.channelRef);
@@ -311,6 +327,7 @@ export function createConversationEvolutionAdapter(input) {
       const feed = el(document, 'div', 'conversation-evolution__feed');
       feed.setAttribute('role', 'log');
       feed.setAttribute('aria-live', 'polite');
+      feed.hidden = snapshot.messages.length === 0;
       for (const message of snapshot.messages) feed.append(renderMessage(document, message, { continuousDirect }));
       root.append(feed);
 
@@ -318,15 +335,21 @@ export function createConversationEvolutionAdapter(input) {
       composer.dataset.channelRef = snapshot.channelRef;
       composer.dataset.availabilityState = snapshot.availability.state;
       composer.dataset.draftState = snapshot.draft?.state ?? 'NONE';
-      const composerAddress = el(document, 'strong', 'conversation-evolution__composer-address', continuousDirect ? 'Vex' : snapshot.channelLabel);
+      const composerAddress = el(document, 'label', 'conversation-evolution__composer-address', continuousDirect ? 'Vex' : snapshot.channelLabel);
+      composerAddress.htmlFor = 'conversationEvolutionMessage';
       const textarea = el(document, 'textarea', 'conversation-evolution__input');
+      textarea.id = 'conversationEvolutionMessage';
+      textarea.dataset.presentationFocusKey = 'composer';
+      textarea.setAttribute('aria-describedby', 'conversationEvolutionHint');
       textarea.rows = 3;
       textarea.placeholder = binding.t('composer.placeholder');
       textarea.value = canonical.input.value;
       const footer = el(document, 'div', 'conversation-evolution__composer-footer');
       const hint = el(document, 'span', 'conversation-evolution__hint');
+      hint.id = 'conversationEvolutionHint';
       const send = el(document, 'button', 'conversation-evolution__send', binding.t('composer.send'));
       send.type = 'submit';
+      send.dataset.presentationFocusKey = 'send';
       const syncComposer = () => {
         const current = projectConversationEvolutionState(binding);
         const truth = composerTruth(current, canonical, textarea.value);
@@ -356,7 +379,11 @@ export function createConversationEvolutionAdapter(input) {
       root.append(composer);
 
       const context = el(document, 'details', 'conversation-evolution__context');
-      context.append(el(document, 'summary', null, binding.t('context.title')));
+      const contextSummary = el(document, 'summary', null, binding.t('context.title'));
+      contextSummary.dataset.presentationFocusKey = 'context';
+      context.append(contextSummary);
+      context.open = Boolean(contextOpen);
+      if (continuousDirect) context.append(availability);
       const facts = el(document, 'div', 'conversation-evolution__facts');
       appendFact(document, facts, binding.t('context.project'), `${snapshot.projectLabel} · ${snapshot.projectRef}`);
       appendFact(document, facts, binding.t('context.thread'), `${snapshot.threadLabel} · ${snapshot.threadRef}`);
@@ -374,8 +401,15 @@ export function createConversationEvolutionAdapter(input) {
       root.append(context);
 
       body.replaceChildren(root);
-      feed.scrollTop = feed.scrollHeight;
       syncComposer();
+      if (sameChannel) {
+        if (focusKey) {
+          const replacement = Array.from(root.querySelectorAll('[data-presentation-focus-key]')).find((node) => node.dataset.presentationFocusKey === focusKey);
+          replacement?.focus({ preventScroll: true });
+          if (selection && replacement === textarea) textarea.setSelectionRange(...selection);
+        }
+        root.scrollTop = messageCountChanged && followedEnd ? root.scrollHeight : priorScroll;
+      }
       return snapshot;
     };
 
@@ -408,6 +442,14 @@ export function createConversationEvolutionAdapter(input) {
             mountedHint.textContent = truth.hint;
             mountedSend.disabled = !truth.submitAvailable;
             mountedSend.setAttribute('aria-disabled', String(!truth.submitAvailable));
+            const availability = body.querySelector('.conversation-evolution__availability');
+            if (availability) {
+              availability.dataset.availabilityState = current.availability.state;
+              availability.dataset.readyForRealTurn = String(current.availability.readyForRealTurn);
+              availability.dataset.recoveryAvailable = String(current.availability.recoveryAvailable);
+              availability.querySelector('strong').textContent = current.availability.state;
+              availability.querySelector('span').textContent = current.availability.readyForRealTurn ? 'Real Companion turn available' : current.availability.recoveryAvailable ? 'Recovery available · not READY' : 'No real Companion turn available';
+            }
           }
         }
       });
