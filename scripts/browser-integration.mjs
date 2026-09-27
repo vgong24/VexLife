@@ -308,7 +308,18 @@ if (playwright) {
         await proofPage.goto(serverUrl+'/reference/browser/',{waitUntil:'networkidle',timeout:30000});
         await proofPage.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__),null,{timeout:30000});
         const proof=await proofPage.evaluate(async(viewportClassValue)=>{const {runLivingJournalProof}=await import('./integration/living-journal-suite.js');const assert=(condition,message)=>{if(!condition)throw new Error(message);};const delay=(ms)=>new Promise((resolve)=>setTimeout(resolve,ms));return runLivingJournalProof({app:globalThis.__VEXLIFE_APP__,helpers:{delay,assert},viewportClass:viewportClassValue});},viewportClass);
-        const productExperience=await runJournalProductProof(proofPage,viewport,{consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors});
+        // Structural proofs deliberately exercise resizing and presentation state.
+        // Product evidence must begin in a fresh browser context, not inherit
+        // their tiny-panel/drag fixtures or a prior synthetic interaction state.
+        const productPage=await browser.newPage({viewport});
+        let productExperience;
+        productPage.on('console',(message)=>{if(message.type()==='error')proofConsoleErrors.push(message.text());});
+        productPage.on('pageerror',(error)=>proofPageErrors.push(error.message));
+        try{
+          await productPage.goto(serverUrl+'/reference/browser/',{waitUntil:'networkidle',timeout:30000});
+          await productPage.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__),null,{timeout:30000});
+          productExperience=await runJournalProductProof(productPage,viewport,{consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors});
+        }finally{await productPage.close();}
         return{viewport,viewportClass,proof,productExperience,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
       }finally{await proofPage.close();}
     };

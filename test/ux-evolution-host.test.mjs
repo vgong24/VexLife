@@ -15,6 +15,7 @@ const scaffold=JSON.parse(fs.readFileSync(new URL('../blueprint/ux-evolution-she
 const compatHtml=fs.readFileSync(new URL('../reference/browser/evolution/index.html',import.meta.url),'utf8');
 const adapterSource=fs.readFileSync(new URL('../reference/browser/evolution/living-journal-projection.js',import.meta.url),'utf8');
 const adapterCss=fs.readFileSync(new URL('../reference/browser/evolution/living-journal.css',import.meta.url),'utf8');
+const journalCss=fs.readFileSync(new URL('../reference/browser/living-journal.css',import.meta.url),'utf8');
 
 function frame(contextProjection='chat'){
   return {
@@ -179,11 +180,27 @@ test('registration helper binds exactly one Journal adapter into the accepted sh
 });
 
 test('Evolution presentation keeps accessibility margin without owning shell chrome',()=>{
-  assert.match(adapterCss,/min-height:48px/);
+  // Shared cells own the controls and walkthrough; Evolution owns only the
+  // constraint host. Requiring duplicated declarations would defeat reuse.
+  assert.match(journalCss,/min-height:48px/);
+  assert.match(journalCss,/prefers-reduced-motion:reduce/);
   assert.match(adapterCss,/prefers-reduced-motion:reduce/);
-  assert.match(adapterCss,/living-journal-heading>div:first-child\{display:none\}/);
-  assert.match(adapterCss,/livingJournalWalkthrough\{position:static!important/);
+  assert.match(adapterCss,/\.living-journal-evolution-active-surface>\.living-journal-heading\s*\{display:none\}/);
+  assert.match(journalCss,/\.living-journal-walkthrough\s*\{\s*position:static!important/);
+  assert.match(journalCss,/outline:3px solid var\(--info\)/);
   assert.doesNotMatch(adapterCss,/html,body|#evolutionHost|\.evolution-shell-head/);
+  assert.doesNotMatch(adapterCss,/\.living-journal-entry(?:-header|-copy|-title|-preview|-detail)[\s{>]/,'Evolution must not redeclare the shared entry-cell design');
+});
+
+test('shared Journal cells use intrinsic reading rows and preserve summary-only authority',()=>{
+  assert.match(journalCss,/grid-auto-rows:max-content/);
+  assert.match(journalCss,/align-items:start/);
+  assert.match(journalCss,/font:400 17px\/1\.55 var\(--sans\)/);
+  assert.match(journalCss,/font:650 21px\/1\.4 var\(--sans\)/);
+  assert.match(journalCss,/\.living-journal-entry-detail:not\(\[open\]\)>.living-journal-entry-detail-body\s*\{display:none\}/);
+  assert.match(journalCss,/data-data-mode="MEMORY"/);
+  assert.match(journalCss,/data-data-mode="ARCHIVE"/);
+  assert.match(journalCss,/forced-colors:active/);
 });
 
 test('canonical app owns only the minimal registration and local projection hydration edge',()=>{
