@@ -71,7 +71,22 @@ async function runAndroidShapedCompactProof({ assert, delay }) {
 
     const heldButtons = [...compactDocument.querySelectorAll('#securityAccessHeldActions button')];
     assert(heldButtons.length === 8 && heldButtons.every((button) => button.disabled && button.getAttribute('aria-disabled') === 'true'), 'Security & Access compact held controls are not visibly disabled');
-    assert(heldButtons.every((button) => button.getBoundingClientRect().height >= 44), 'Security & Access compact held control fell below the 44px touch target');
+
+    let priorHeldHeights = null;
+    let stableHeldHeights = null;
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      await new Promise((resolve) => compactWindow.requestAnimationFrame(resolve));
+      compactDocument.documentElement.getBoundingClientRect();
+      const nextHeldHeights = heldButtons.map((button) => button.getBoundingClientRect().height);
+      const allAtLeast44 = nextHeldHeights.every((height) => height >= 44);
+      const stable = priorHeldHeights !== null && nextHeldHeights.every((height, index) => Math.abs(height - priorHeldHeights[index]) < 0.1);
+      if (allAtLeast44 && stable) {
+        stableHeldHeights = nextHeldHeights;
+        break;
+      }
+      priorHeldHeights = nextHeldHeights;
+    }
+    assert(stableHeldHeights?.every((height) => height >= 44), `Security & Access compact held control did not settle at or above the 44px touch target: ${JSON.stringify(priorHeldHeights)}`);
     const heldRows = [...compactDocument.querySelectorAll('.security-access-held-row')];
     assert(heldRows.length === 8 && heldRows.every((row) => compactWindow.getComputedStyle(row).gridTemplateColumns.split(/\s+/).filter(Boolean).length === 1), 'Security & Access compact held actions did not collapse to one column');
 
