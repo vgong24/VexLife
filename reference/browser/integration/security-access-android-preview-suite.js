@@ -68,6 +68,8 @@ async function runAndroidShapedCompactProof({ assert, delay }) {
     assert(compactDocument.activeElement === detailsToggle, 'Security & Access compact details control is not keyboard focusable');
     detailsToggle.click();
     await delay(10);
+    await new Promise((resolve) => compactWindow.requestAnimationFrame(() => compactWindow.requestAnimationFrame(resolve)));
+    compactDocument.documentElement.getBoundingClientRect();
 
     const heldButtons = [...compactDocument.querySelectorAll('#securityAccessHeldActions button')];
     assert(heldButtons.length === 8 && heldButtons.every((button) => button.disabled && button.getAttribute('aria-disabled') === 'true'), 'Security & Access compact held controls are not visibly disabled');
