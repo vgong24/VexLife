@@ -148,7 +148,7 @@ test('presentation makes feed/composer primary and context secondary with compac
   assert.match(css,/conversation-evolution__composer/);
   assert.match(css,/conversation-evolution__context/);
   assert.match(css,/conversation-evolution__security/);
-  assert.match(css,/min-height:44px/);
+  assert.match(css,/min-height:48px/);
   assert.match(css,/@media\(max-width:760px\)/);
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
   assert.doesNotMatch(css,/family-room/);
@@ -189,9 +189,10 @@ test('closed Conversation surface observer cannot remount an inactive renderer',
 });
 
 
-test('direct presentation collapses implementation-role chrome while preserving canonical context identities',()=>{
-  assert.match(source,/continuousDirect = snapshot\.channelKind === 'DIRECT'/);
-  assert.match(source,/continuousDirect \? 'Vex' : snapshot\.channelLabel/);
+test('only the direct Companion relationship collapses implementation-role chrome while preserving canonical addressing elsewhere',()=>{
+  assert.match(source,/relationshipDirect = snapshot\.channelKind === 'DIRECT' && snapshot\.channelRoleKey === 'companion'/);
+  assert.match(source,/relationshipDirect \? 'Vex' : snapshot\.channelLabel/);
+  assert.match(source,/EXPLICIT_DIRECT_ADDRESS/);
   assert.match(source,/participantValue\.actorRef\.startsWith\('role\.vex\.'\)/);
   assert.match(source,/snapshot\.projectLabel} · \$\{snapshot\.projectRef/);
   assert.match(source,/snapshot\.threadLabel} · \$\{snapshot\.threadRef/);
@@ -199,10 +200,26 @@ test('direct presentation collapses implementation-role chrome while preserving 
   assert.match(source,/conversation-evolution__context-routes/);
 });
 
-test('whole Conversation surface owns terminal reachability while feed remains an internal scroll scope',()=>{
+test('whole Conversation surface is the only scroll owner and an empty feed is not a blank panel',()=>{
   assert.match(css,/\.conversation-evolution\{[^}]*height:100%[^}]*overflow-y:auto/s);
-  assert.match(css,/conversation-evolution__feed\{[^}]*overflow:auto/s);
+  assert.match(css,/conversation-evolution__feed\{[^}]*overflow:visible/s);
   assert.match(css,/conversation-evolution__context-routes/);
+});
+
+test('presentation continuity stays ephemeral and delegates draft truth to the canonical composer',()=>{
+  assert.match(source,/feed.hidden = snapshot.messages.length === 0/);
+  assert.match(source,/previous\?\.dataset.channelRef === snapshot.channelRef/);
+  assert.match(source,/textarea.setSelectionRange/);
+  assert.match(source,/context.open = Boolean\(contextOpen\)/);
+  assert.match(source,/root.scrollTop = messageCountChanged && followedEnd/);
+  assert.match(source,/canonical.input.dispatchEvent/);
+  assert.match(source,/composerAddress.htmlFor = 'conversationEvolutionMessage'/);
+  assert.match(source,/binding.t\('context.visible-to'\)/);
+  assert.match(source,/relationshipAvailabilityRef/);
+  assert.match(source,/binding\.t\(relationshipAvailabilityRef\)/);
+  assert.match(css,/conversation-evolution__feed\[hidden\]\{display:none\}/);
+  assert.match(css,/font:400 17px\/1\.55/);
+  assert.match(css,/outline:3px solid var\(--info\)/);
 });
 
 // [VXG RealForever]
