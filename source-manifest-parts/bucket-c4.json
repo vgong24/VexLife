@@ -15,6 +15,12 @@
       "sha256": "89941e6f2705e91b2230190d265da3633c967f54346cc91ab473c17c8571cde7"
     },
     {
+      "path": "test/activated-model-runtime-binding.test.mjs",
+      "mode": "100644",
+      "bytes": 35636,
+      "sha256": "f3f95afe62a8c913a9df67c02e0a3554b82c67594b0af24ebbdef7cdb3cd4715"
+    },
+    {
       "path": "test/public-learning-navigation-continuity.test.mjs",
       "mode": "100644",
       "bytes": 10969,
