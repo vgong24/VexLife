@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/living-journal.css",
       "mode": "100644",
-      "bytes": 18589,
-      "sha256": "9e81139d81a74a70465155421944226ab3beb5402d519f4c522b1fdf941957a9"
+      "bytes": 18863,
+      "sha256": "32accec26a068ef34ac4600b572430148aba8fea53392efc1704ec729d9c3705"
     },
     {
       "path": "scripts/build-admission-status.mjs",

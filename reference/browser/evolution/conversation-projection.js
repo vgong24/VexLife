@@ -167,13 +167,18 @@ function appendFact(document, host, label, value) {
   host.append(row);
 }
 
-function renderMessage(document, message) {
+function presentationParticipantLabel(participantValue, continuousDirect) {
+  if (continuousDirect && typeof participantValue?.actorRef === 'string' && participantValue.actorRef.startsWith('role.vex.')) return 'Vex';
+  return participantValue?.label ?? '—';
+}
+
+function renderMessage(document, message, { continuousDirect = false } = {}) {
   const article = el(document, 'article', 'conversation-evolution__message');
   if (message.messageRef) article.dataset.messageRef = message.messageRef;
   article.dataset.truthClass = message.truthClass;
   const heading = el(document, 'div', 'conversation-evolution__message-heading');
   heading.append(
-    el(document, 'strong', null, `${message.speaker.label} → ${message.recipients.map((item) => item.label).join(', ') || '—'}`),
+    el(document, 'strong', null, continuousDirect ? presentationParticipantLabel(message.speaker, true) : `${message.speaker.label} → ${message.recipients.map((item) => item.label).join(', ') || '—'}`),
     el(document, 'span', null, message.sequence === null ? '' : `[${String(message.sequence).padStart(2, '0')}]`)
   );
   article.append(heading, el(document, 'p', 'conversation-evolution__message-body', message.content));
@@ -213,17 +218,19 @@ export function createConversationEvolutionAdapter(input) {
 
     const render = () => {
       const snapshot = projectConversationEvolutionState(binding);
+      const continuousDirect = snapshot.channelKind === 'DIRECT';
       const root = el(document, 'section', 'conversation-evolution');
       root.dataset.surfaceRef = snapshot.surfaceRef;
       root.dataset.semanticOwnerRef = snapshot.semanticOwnerRef;
       root.dataset.interactionOwnerRef = snapshot.interactionOwnerRef;
       root.dataset.oneSemanticState = 'true';
+      root.dataset.presentationMode = continuousDirect ? 'CONTINUOUS_VEX_RELATIONSHIP' : 'EXPLICIT_GROUP_AUDIENCE';
 
       const hero = el(document, 'header', 'conversation-evolution__hero');
       const title = el(document, 'div');
       title.append(
         el(document, 'span', 'conversation-evolution__eyebrow', binding.t('conversation.eyebrow')),
-        el(document, 'h2', null, snapshot.channelLabel),
+        el(document, 'h2', null, continuousDirect ? 'Vex' : snapshot.channelLabel),
         el(document, 'p', null, binding.t('conversation.description'))
       );
       const availability = el(document, 'div', 'conversation-evolution__availability');
@@ -234,7 +241,8 @@ export function createConversationEvolutionAdapter(input) {
         el(document, 'strong', null, snapshot.availability.state),
         el(document, 'span', null, snapshot.availability.readyForRealTurn ? 'Real Companion turn available' : snapshot.availability.recoveryAvailable ? 'Recovery available · not READY' : 'No real Companion turn available')
       );
-      hero.append(title, availability);
+      if (!continuousDirect || snapshot.channelRoleKey === 'companion') hero.append(title, availability);
+      else hero.append(title);
       root.append(hero);
 
       const address = el(document, 'div', 'conversation-evolution__address');
@@ -242,7 +250,7 @@ export function createConversationEvolutionAdapter(input) {
         el(document, 'strong', null, snapshot.audience.map((item) => item.label).join(' · ')),
         el(document, 'span', null, `${snapshot.channelKind} · ${snapshot.audience.length} present`)
       );
-      root.append(address);
+      if (!continuousDirect) root.append(address);
 
       const channels = el(document, 'nav', 'conversation-evolution__channels');
       channels.setAttribute('aria-label', 'Conversation channels');
@@ -259,7 +267,7 @@ export function createConversationEvolutionAdapter(input) {
         });
         channels.append(button);
       }
-      root.append(channels);
+      if (!continuousDirect) root.append(channels);
 
       if (snapshot.channelKind === 'GROUP') {
         const group = el(document, 'aside', 'conversation-evolution__group');
@@ -303,14 +311,14 @@ export function createConversationEvolutionAdapter(input) {
       const feed = el(document, 'div', 'conversation-evolution__feed');
       feed.setAttribute('role', 'log');
       feed.setAttribute('aria-live', 'polite');
-      for (const message of snapshot.messages) feed.append(renderMessage(document, message));
+      for (const message of snapshot.messages) feed.append(renderMessage(document, message, { continuousDirect }));
       root.append(feed);
 
       const composer = el(document, 'form', 'conversation-evolution__composer');
       composer.dataset.channelRef = snapshot.channelRef;
       composer.dataset.availabilityState = snapshot.availability.state;
       composer.dataset.draftState = snapshot.draft?.state ?? 'NONE';
-      const composerAddress = el(document, 'strong', 'conversation-evolution__composer-address', snapshot.channelLabel);
+      const composerAddress = el(document, 'strong', 'conversation-evolution__composer-address', continuousDirect ? 'Vex' : snapshot.channelLabel);
       const textarea = el(document, 'textarea', 'conversation-evolution__input');
       textarea.rows = 3;
       textarea.placeholder = binding.t('composer.placeholder');
@@ -350,14 +358,19 @@ export function createConversationEvolutionAdapter(input) {
       const context = el(document, 'details', 'conversation-evolution__context');
       context.append(el(document, 'summary', null, binding.t('context.title')));
       const facts = el(document, 'div', 'conversation-evolution__facts');
-      appendFact(document, facts, binding.t('context.project'), snapshot.projectLabel);
-      appendFact(document, facts, binding.t('context.thread'), snapshot.threadLabel);
-      appendFact(document, facts, binding.t('context.channel'), snapshot.channelLabel);
+      appendFact(document, facts, binding.t('context.project'), `${snapshot.projectLabel} · ${snapshot.projectRef}`);
+      appendFact(document, facts, binding.t('context.thread'), `${snapshot.threadLabel} · ${snapshot.threadRef}`);
+      appendFact(document, facts, binding.t('context.channel'), `${snapshot.channelLabel} · ${snapshot.channelRef}`);
       appendFact(document, facts, binding.t('context.visible-to'), snapshot.audience.map((item) => item.label).join(' · '));
       appendFact(document, facts, binding.t('health.model'), snapshot.availability.modelRefOrNull ?? 'Not source-bound');
       appendFact(document, facts, 'Generation', snapshot.availability.generationRefOrNull ?? 'Not source-bound');
       appendFact(document, facts, binding.t('context.current-source'), snapshot.selectedNodeRef ?? '—');
       context.append(facts);
+      if (continuousDirect) {
+        const routes = el(document, 'section', 'conversation-evolution__context-routes');
+        routes.append(el(document, 'strong', null, binding.t('region.channels.label')), channels);
+        context.append(routes);
+      }
       root.append(context);
 
       body.replaceChildren(root);
