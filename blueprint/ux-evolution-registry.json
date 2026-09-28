@@ -378,6 +378,42 @@
         "test.ux-evolution.living-journal-canonical-owner-reuse",
         "test.ux-evolution.living-journal-reference-fallback"
       ]
+    },
+    {
+      "semanticRef": "feature.vexlife.scoped-purpose-workspace",
+      "referenceProjectionRefs": [
+        "projection.purpose-workspace.planned"
+      ],
+      "evolutionProjectionRefs": [
+        "projection.purpose-workspace.evolution-active-surface"
+      ],
+      "disposition": "REDESIGN_PRESENTATION",
+      "migrationLifecycleState": "SHADOW_IMPLEMENTED",
+      "parityState": "PARTIAL",
+      "designLawRefs": [
+        "law.ux-evolution.one-semantic-state-owner",
+        "law.ux-evolution.one-active-renderer",
+        "law.ux-evolution.new-form-not-new-meaning"
+      ],
+      "findingRefs": [],
+      "semanticOwnerRefs": [
+        "module.vexlife.core.purpose-workspace"
+      ],
+      "sourceRefs": [
+        "blueprint/purpose-workspace-registry.json",
+        "blueprint/purpose-workspace/registration.json",
+        "blueprint/ux-evolution-shell-scaffold.json",
+        "reference/browser/app.js",
+        "reference/browser/evolution/purpose-workspace-projection.js",
+        "reference/browser/evolution/purpose-workspace.css"
+      ],
+      "cutoverDisposition": "NOT_PROPOSED",
+      "retirementDisposition": "NOT_ELIGIBLE",
+      "evidenceRefs": [
+        "test.ux-evolution.purpose-workspace-active-surface-contract",
+        "test.ux-evolution.purpose-workspace-source-owner-reuse",
+        "test.ux-evolution.purpose-workspace-no-reference-impersonation"
+      ]
     }
   ],
   "findingInputs": [
