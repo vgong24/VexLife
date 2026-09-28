@@ -8,7 +8,7 @@ const load=()=>JSON.parse(fs.readFileSync(new URL('../blueprint/ux-evolution-reg
 test('E0/LJ-01 validates against the canonical shell active-surface host with zero cutover',()=>{
   const r=validateUxEvolutionRegistry(load());
   assert.equal(r.state,'PASS',r.errors.join('\n'));
-  assert.equal(r.migrationRecordCount,7);
+  assert.equal(r.migrationRecordCount,8);
   assert.equal(r.findingCount,21);
   assert.equal(r.visualScenarioCount,11);
   assert.equal(r.supportingUxSurfaceCount,2);
@@ -21,6 +21,7 @@ test('migration accounting remains non-owner while Journal and Conversation have
   const records=load().migrationRecords;
   const journal=records.find(x=>x.semanticRef==='feature.vexlife.living-journal');
   const conversation=records.find(x=>x.semanticRef==='feature.vexlife.addressed-conversation');
+  const purposeWorkspace=records.find(x=>x.semanticRef==='feature.vexlife.scoped-purpose-workspace');
   assert.equal(journal.disposition,'REDESIGN_PRESENTATION');
   assert.equal(journal.migrationLifecycleState,'SHADOW_IMPLEMENTED');
   assert.equal(journal.parityState,'PARTIAL');
@@ -31,8 +32,15 @@ test('migration accounting remains non-owner while Journal and Conversation have
   assert.equal(conversation.parityState,'PARTIAL');
   assert.deepEqual(conversation.evolutionProjectionRefs,['projection.conversation.evolution-shadow']);
   assert.ok(conversation.semanticOwnerRefs.every(x=>!x.includes('ux-evolution')));
-  assert.deepEqual(load().projectionHost.migratedSemanticRefs,['feature.vexlife.living-journal','feature.vexlife.addressed-conversation']);
-  for(const record of records.filter(x=>x!==journal&&x!==conversation)){
+  assert.equal(purposeWorkspace.disposition,'REDESIGN_PRESENTATION');
+  assert.equal(purposeWorkspace.migrationLifecycleState,'SHADOW_IMPLEMENTED');
+  assert.equal(purposeWorkspace.parityState,'PARTIAL');
+  assert.deepEqual(purposeWorkspace.evolutionProjectionRefs,['projection.purpose-workspace.evolution-active-surface']);
+  assert.ok(purposeWorkspace.semanticOwnerRefs.every(x=>!x.includes('ux-evolution')));
+  assert.equal(purposeWorkspace.cutoverDisposition,'NOT_PROPOSED');
+  assert.equal(purposeWorkspace.retirementDisposition,'NOT_ELIGIBLE');
+  assert.deepEqual(load().projectionHost.migratedSemanticRefs,['feature.vexlife.living-journal','feature.vexlife.addressed-conversation','feature.vexlife.scoped-purpose-workspace']);
+  for(const record of records.filter(x=>x!==journal&&x!==conversation&&x!==purposeWorkspace)){
     assert.equal(record.disposition,'HELD');
     assert.equal(record.migrationLifecycleState,'SOURCE_MAPPED');
     assert.equal(record.evolutionProjectionRefs.length,0);
@@ -43,7 +51,7 @@ test('migration accounting remains non-owner while Journal and Conversation have
 test('coverage contains one bounded migration and no loss or cutover',()=>{
   const r=deriveProjectionCoverageReport(load());
   assert.equal(r.counts.HELD,5);
-  assert.equal(r.counts.SHADOW_MIGRATION,2);
+  assert.equal(r.counts.SHADOW_MIGRATION,3);
   assert.equal(r.counts.LOST,0);
   assert.equal(r.counts.NEW,0);
   assert.equal(r.counts.CUTOVER_OCCURRED,0);
