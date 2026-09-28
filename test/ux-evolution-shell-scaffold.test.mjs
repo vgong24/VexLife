@@ -180,7 +180,8 @@ test('shared presentation CSS exposes compact shell controls and reusable forwar
   assert.match(css,/\.e29-menu-row-availability\{/);
   assert.match(css,/prefers-reduced-motion:reduce\)\{\.e29-forward-layer,\.e29-forward-layer \*\{[^}]*transition:none!important/);
   assert.match(css,/#app\[data-ux-projection="EVOLUTION_PROJECTION"\]\[data-evolution-surface-active="true"\] #guideWindow\.e27-vex\{display:none\}/);
-  assert.match(css,/@media\(max-width:760px\)[\s\S]*\.uxe-active-surface-heading output\{[^}]*width:1px[^}]*clip:rect\(0 0 0 0\)[^}]*white-space:nowrap/);
+  assert.match(css,/@media\(max-width:760px\)[\s\S]*\.uxe-active-surface-host\{[^}]*inset-inline:0[^}]*inset-block-end:0[^}]*border-radius:0/);
+  assert.match(css,/@media\(max-width:760px\)[\s\S]*\.uxe-active-surface-heading output\{[^}]*width:1px[^}]*clip:rect\(0 0 0 0\)[^}]*clip-path:inset\(50%\)[^}]*white-space:nowrap/);
 });
 
 test('real loopback shared presentation proves desktop and compact focus, dismissal and constraints',async t=>{
@@ -211,14 +212,18 @@ test('real loopback shared presentation proves desktop and compact focus, dismis
       const available=bindAvailableSpaceContract({host,body:document.querySelector('#evolutionActiveSurfaceBody')}).snapshot();
       globalThis.__E29_TEST_CONTROLLER__=controller;
       const shellHeader=document.querySelector('.uxe-active-surface-heading').getBoundingClientRect();
+      const hostRect=host.getBoundingClientRect();
       const reference=document.querySelector('#evolutionReferenceFallback').getBoundingClientRect();
       const close=document.querySelector('#evolutionActiveSurfaceClose').getBoundingClientRect();
-      return {mode:controller.snapshot().mode,expectedMode:mode,closedGeometry,activeId:document.activeElement?.id,shellHeaderHeight:shellHeader.height,referenceWidth:reference.width,referenceHeight:reference.height,closeWidth:close.width,closeHeight:close.height,available,availabilityText:surface.querySelector('.e29-menu-row-availability')?.textContent};
+      return {mode:controller.snapshot().mode,expectedMode:mode,closedGeometry,activeId:document.activeElement?.id,shellHeaderHeight:shellHeader.height,hostBounds:{left:hostRect.left,right:hostRect.right,bottom:hostRect.bottom},referenceWidth:reference.width,referenceHeight:reference.height,closeWidth:close.width,closeHeight:close.height,available,availabilityText:surface.querySelector('.e29-menu-row-availability')?.textContent};
     },{mode:target.mode});
     assert.equal(initial.mode,initial.expectedMode);
     assert.deepEqual(initial.closedGeometry,{left:'',top:'',width:'',height:''},'hidden transient initialization must not persist fake geometry');
     assert.equal(initial.activeId,'e29-test-control');
     assert.ok(initial.shellHeaderHeight<=72,`shared shell header exceeded compact bound at ${target.viewport.width}px`);
+    if(target.viewport.width<=760){
+      assert.ok(Math.abs(initial.hostBounds.left)<=1&&Math.abs(initial.hostBounds.right-target.viewport.width)<=1&&Math.abs(initial.hostBounds.bottom-target.viewport.height)<=1,'compact active surface must fully occlude dormant framework gutters');
+    }
     assert.ok(initial.referenceWidth>=48&&initial.referenceHeight>=48,'Reference target fell below 48px');
     assert.ok(initial.closeWidth>=48&&initial.closeHeight>=48,'Close target fell below 48px');
     assert.ok(initial.available.inlineSize>0&&initial.available.blockSize>0,'active-surface available-space contract did not publish positive dimensions');
