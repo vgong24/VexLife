@@ -181,6 +181,20 @@ test('Purpose Workspace is a distinct Evolution-only projection over accepted so
 
   await page.getByRole('button',{name:'UNDERSTAND',exact:true}).click();
   assert.equal(await page.locator('.purpose-workspace-evolution__stage').count(),5);
+  const stageGeometry=await page.locator('.purpose-workspace-evolution__stage').evaluateAll((rows)=>rows.map((row)=>{
+    const [purpose,owner,evidence]=row.children;
+    return{
+      purposeText:purpose?.textContent??'',
+      purposeOverflow:(purpose?.scrollWidth??0)-(purpose?.clientWidth??0),
+      ownerOverflow:(owner?.scrollWidth??0)-(owner?.clientWidth??0),
+      evidenceOverflow:(evidence?.scrollWidth??0)-(evidence?.clientWidth??0)
+    };
+  }));
+  for(const geometry of stageGeometry){
+    assert.ok(geometry.purposeOverflow<=1,`Purpose Workspace stage label escaped its owning cell: ${geometry.purposeText}`);
+    assert.ok(geometry.ownerOverflow<=1,`Purpose Workspace stage owner escaped its owning cell: ${geometry.purposeText}`);
+    assert.ok(geometry.evidenceOverflow<=1,`Purpose Workspace stage evidence escaped its owning cell: ${geometry.purposeText}`);
+  }
   await page.getByRole('button',{name:'STEWARD',exact:true}).click();
   assert.equal(await page.locator('.purpose-workspace-evolution__steward-card').count(),4);
   const evolved=await page.evaluate(()=>globalThis.__VEXLIFE_APP__.purposeWorkspaceEvolution.snapshot());

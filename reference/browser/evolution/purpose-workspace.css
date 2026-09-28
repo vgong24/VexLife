@@ -19,7 +19,8 @@
 .purpose-workspace-evolution__detail h3{margin:0;font:650 21px/1.35 var(--sans)}
 .purpose-workspace-evolution__detail p{margin:0;max-width:72ch}
 .purpose-workspace-evolution__stages{display:grid;gap:0;margin:0;padding:0;list-style:none;border-top:1px solid var(--line)}
-.purpose-workspace-evolution__stage{display:grid;grid-template-columns:minmax(100px,.45fr) minmax(0,1fr) minmax(0,1fr);gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.purpose-workspace-evolution__stage{display:grid;grid-template-columns:minmax(220px,.65fr) minmax(0,1fr) minmax(0,1fr);gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.purpose-workspace-evolution__stage strong{min-width:0;overflow-wrap:anywhere}
 .purpose-workspace-evolution__steward-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .purpose-workspace-evolution__steward-card{display:grid;gap:6px;padding:16px;border:1px solid var(--line);border-radius:14px}
 .purpose-workspace-evolution__held{padding-inline-start:12px;border-inline-start:3px solid var(--warn);color:var(--muted)}
