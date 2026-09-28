@@ -168,6 +168,7 @@ test('Purpose Workspace is a distinct Evolution-only projection over accepted so
 
   assert.equal(await page.locator('#openPurposeWorkspace').isDisabled(),true,'Purpose Workspace must not impersonate an unadopted Reference route');
   const referenceState=await page.evaluate(()=>({contextProjection:globalThis.__VEXLIFE_APP__.state.contextProjection,workspaceOpen:globalThis.__VEXLIFE_APP__.state.workspaceOpen}));
+  await page.locator('#surfaceMenuButton').click();
   await page.locator('#uxProjectionSelect').selectOption('EVOLUTION_PROJECTION');
   await page.waitForFunction(()=>globalThis.__VEXLIFE_APP__.state.uxProjection==='EVOLUTION_PROJECTION');
   assert.equal(await page.locator('#openPurposeWorkspace').isDisabled(),false);
