@@ -5,8 +5,8 @@
     {
       "path": "blueprint/ux-evolution-registry.json",
       "mode": "100644",
-      "bytes": 24847,
-      "sha256": "58888de8764a066e3e946ed98d5a5caecd33e89cd3f7c4c5fb0e5fd039ef84be"
+      "bytes": 26250,
+      "sha256": "c7d7e3c7515b99abcbc91512fa25852150b95355c31f86d5313e7d9d93d89825"
     },
     {
       "path": "reference/browser/modules/public-learning-controller-activated.js",

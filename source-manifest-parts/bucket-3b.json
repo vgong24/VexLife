@@ -3,6 +3,12 @@
   "bucketId": "3b",
   "files": [
     {
+      "path": "reference/browser/evolution/purpose-workspace-projection.js",
+      "mode": "100644",
+      "bytes": 8156,
+      "sha256": "fd59fcced04f04bbe1fbdd298e623b1e89f2d90ac2a15adf3d730926b2e59f62"
+    },
+    {
       "path": "scripts/browser-structure-check.mjs",
       "mode": "100644",
       "bytes": 841,
