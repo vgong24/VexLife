@@ -1,0 +1,32 @@
+/* [VXG RealForever] FCF-02 Purpose Workspace Evolution presentation.
+   Source truth remains owned by the accepted Purpose Workspace foundation. */
+.purpose-workspace-evolution{box-sizing:border-box;width:min(100%,1080px);height:100%;min-height:0;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:24px;overflow:auto;color:var(--text);font:400 17px/1.55 var(--sans)}
+.purpose-workspace-evolution>*{min-width:0}
+.purpose-workspace-evolution__hero{display:grid;gap:4px}
+.purpose-workspace-evolution__eyebrow{font:600 14px/1.55 var(--sans);color:var(--muted)}
+.purpose-workspace-evolution__hero h2{margin:0;font:650 28px/1.25 var(--sans)}
+.purpose-workspace-evolution__hero p{max-width:72ch;margin:4px 0 0;color:var(--muted)}
+.purpose-workspace-evolution__choices{display:flex;gap:8px;flex-wrap:wrap}
+.purpose-workspace-evolution__choice,.purpose-workspace-evolution__task{min-height:48px;border:1px solid var(--line);border-radius:14px;background:var(--raised);color:var(--text);font:600 14px/1.45 var(--sans)}
+.purpose-workspace-evolution__choice{padding:10px 16px}
+.purpose-workspace-evolution__choice[aria-pressed="true"],.purpose-workspace-evolution__task[aria-pressed="true"]{border-color:var(--strong);background:var(--overlay)}
+.purpose-workspace-evolution__depths{padding-top:4px;border-top:1px solid var(--line)}
+.purpose-workspace-evolution__purpose{padding:16px 0;border-block:1px solid var(--line);max-width:72ch}
+.purpose-workspace-evolution__tasks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.purpose-workspace-evolution__task{display:grid;gap:4px;padding:16px;text-align:start}
+.purpose-workspace-evolution__task small,.purpose-workspace-evolution__meta,.purpose-workspace-evolution__stage small,.purpose-workspace-evolution__stage span,.purpose-workspace-evolution__steward-card small{color:var(--muted);overflow-wrap:anywhere}
+.purpose-workspace-evolution__detail{display:grid;gap:16px;min-width:0}
+.purpose-workspace-evolution__detail h3{margin:0;font:650 21px/1.35 var(--sans)}
+.purpose-workspace-evolution__detail p{margin:0;max-width:72ch}
+.purpose-workspace-evolution__stages{display:grid;gap:0;margin:0;padding:0;list-style:none;border-top:1px solid var(--line)}
+.purpose-workspace-evolution__stage{display:grid;grid-template-columns:minmax(220px,.65fr) minmax(0,1fr) minmax(0,1fr);gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.purpose-workspace-evolution__stage strong{min-width:0;overflow-wrap:anywhere}
+.purpose-workspace-evolution__steward-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.purpose-workspace-evolution__steward-card{display:grid;gap:6px;padding:16px;border:1px solid var(--line);border-radius:14px}
+.purpose-workspace-evolution__held{padding-inline-start:12px;border-inline-start:3px solid var(--warn);color:var(--muted)}
+.purpose-workspace-evolution__truth{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--line);font:400 14px/1.55 var(--sans);color:var(--muted)}
+.purpose-workspace-evolution__truth strong{color:var(--text)}
+.purpose-workspace-evolution :focus-visible{outline:3px solid var(--info);outline-offset:2px}
+@media(max-width:760px){.purpose-workspace-evolution{padding:16px;gap:20px}.purpose-workspace-evolution__tasks,.purpose-workspace-evolution__steward-grid{grid-template-columns:1fr}.purpose-workspace-evolution__stage{grid-template-columns:1fr;gap:4px}}
+@media(prefers-reduced-motion:reduce){.purpose-workspace-evolution,.purpose-workspace-evolution *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+@media(forced-colors:active){.purpose-workspace-evolution :focus-visible{outline-color:Highlight}}

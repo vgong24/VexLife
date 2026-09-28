@@ -13,6 +13,8 @@ const registry=JSON.parse(fs.readFileSync(new URL('../blueprint/ux-evolution-reg
 const html=fs.readFileSync(new URL('../reference/browser/index.html',import.meta.url),'utf8');
 const app=fs.readFileSync(new URL('../reference/browser/app.js',import.meta.url),'utf8');
 const css=fs.readFileSync(new URL('../reference/browser/app.css',import.meta.url),'utf8');
+const purposeWorkspaceProjection=fs.readFileSync(new URL('../reference/browser/evolution/purpose-workspace-projection.js',import.meta.url),'utf8');
+const purposeWorkspaceCss=fs.readFileSync(new URL('../reference/browser/evolution/purpose-workspace.css',import.meta.url),'utf8');
 
 const repositoryRoot=fileURLToPath(new URL('..',import.meta.url));
 const uxe703ForeignJournal=Object.freeze({
@@ -56,7 +58,7 @@ test('post-acceptance shell scaffold preserves Reference default and one-owner l
 
 test('Current surface owns one shared inventory for Reference and Evolution migration state',()=>{
   assert.deepEqual(contract.surfaceInventory.map(x=>x.surfaceRef),[
-    'surface.vexlife.conversation','surface.vexlife.health','surface.vexlife.living-journal','surface.vexlife.workspace'
+    'surface.vexlife.conversation','surface.vexlife.health','surface.vexlife.living-journal','surface.vexlife.workspace','surface.vexlife.purpose-workspace'
   ]);
   for(const surface of contract.surfaceInventory){
     assert.match(html,new RegExp(`id="${surface.controlId}"[^>]*data-ux-surface-ref="${surface.surfaceRef}"`));
@@ -95,7 +97,9 @@ test('shell derives Evolution menu availability from each registered migration i
     assert.ok(record.evolutionProjectionRefs.every((ref)=>typeof ref==='string'&&ref.length>0));
   }
   assert.match(app,/HELD_NOT_MIGRATED/);
-  assert.match(app,/button\.disabled=state\.uxProjection===UX_EVOLUTION_PROJECTION&&surfaceState\.state!=='ENABLED'/);
+  assert.match(app,/const referenceHeld=state\.uxProjection===UX_REFERENCE_PROJECTION&&surface\.referenceProjectionAvailable===false/);
+  assert.match(app,/const evolutionHeld=state\.uxProjection===UX_EVOLUTION_PROJECTION&&surfaceState\.state!=='ENABLED'/);
+  assert.match(app,/HELD_REFERENCE_NOT_AVAILABLE/);
 });
 
 test('real loopback canonical shell exposes local Evolution selector without changing Reference default',async t=>{
@@ -132,6 +136,81 @@ test('real loopback canonical shell exposes local Evolution selector without cha
   assert.equal(await page.locator('#contextSurface').isHidden(),false,'Reference context renderer must restore without changing semantic state');
   assert.equal(await page.locator('#view-chat').isHidden(),false);
 });
+
+test('Purpose Workspace is a distinct Evolution-only projection over accepted source truth',async t=>{
+  const surface=contract.surfaceInventory.find(item=>item.surfaceRef==='surface.vexlife.purpose-workspace');
+  assert.ok(surface);
+  assert.equal(surface.semanticRef,'feature.vexlife.scoped-purpose-workspace');
+  assert.equal(surface.referenceProjectionAvailable,false);
+  assert.notEqual(surface.semanticRef,contract.surfaceInventory.find(item=>item.surfaceRef==='surface.vexlife.workspace').semanticRef);
+  const migration=registry.migrationRecords.find(item=>item.semanticRef===surface.semanticRef);
+  assert.equal(migration.migrationLifecycleState,'SHADOW_IMPLEMENTED');
+  assert.deepEqual(migration.evolutionProjectionRefs,['projection.purpose-workspace.evolution-active-surface']);
+  assert.match(purposeWorkspaceProjection,/workspace\.vexlife\.scoped-purpose\.001/);
+  assert.match(purposeWorkspaceProjection,/semanticDepth='DO'/);
+  assert.match(purposeWorkspaceProjection,/\['DO','UNDERSTAND','STEWARD'\]/);
+  assert.match(purposeWorkspaceProjection,/effects:false/);
+  assert.match(purposeWorkspaceCss,/\.purpose-workspace-evolution__tasks\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(purposeWorkspaceCss,/@media\(max-width:760px\)/);
+
+  const child=spawn(process.execPath,['scripts/serve-browser.mjs'],{cwd:new URL('..',import.meta.url),env:{...process.env,VEXLIFE_PORT:'0'},stdio:['ignore','pipe','pipe']});
+  t.after(()=>child.kill());
+  child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');
+  const url=await Promise.race([
+    new Promise((resolve,reject)=>{let err='';child.stderr.on('data',c=>err+=c);child.stdout.on('data',c=>{const m=c.match(/http:\/\/127\.0\.0\.1:\d+/);if(m)resolve(m[0])});child.once('exit',code=>reject(new Error(`browser server exited ${code}: ${err}`)));child.once('error',reject)}),
+    delay(5000,undefined,{ref:false}).then(()=>{throw new Error('browser server did not become ready')})
+  ]);
+  const {chromium}=await import('playwright');const browser=await chromium.launch({headless:true});t.after(()=>browser.close());
+  const page=await browser.newPage({viewport:{width:1280,height:800}});
+  const errors={console:[],page:[]};page.on('console',message=>{if(message.type()==='error')errors.console.push(message.text())});page.on('pageerror',error=>errors.page.push(error.message));
+  await page.goto(url+'/reference/browser/',{waitUntil:'networkidle'});
+  await page.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__?.purposeWorkspaceEvolution));
+
+  assert.equal(await page.locator('#openPurposeWorkspace').isDisabled(),true,'Purpose Workspace must not impersonate an unadopted Reference route');
+  const referenceState=await page.evaluate(()=>({contextProjection:globalThis.__VEXLIFE_APP__.state.contextProjection,workspaceOpen:globalThis.__VEXLIFE_APP__.state.workspaceOpen}));
+  await page.locator('#surfaceMenuButton').click();
+  await page.locator('#uxProjectionSelect').selectOption('EVOLUTION_PROJECTION');
+  await page.waitForFunction(()=>globalThis.__VEXLIFE_APP__.state.uxProjection==='EVOLUTION_PROJECTION');
+  assert.equal(await page.locator('#openPurposeWorkspace').isDisabled(),false);
+  await page.locator('#openPurposeWorkspace').click();
+  await page.waitForSelector('.purpose-workspace-evolution');
+  assert.equal(await page.locator('.purpose-workspace-evolution__task').count(),3);
+  assert.equal(await page.locator('.purpose-workspace-evolution').getAttribute('data-effects'),'false');
+  assert.equal(await page.locator('.purpose-workspace-evolution').getAttribute('data-screen-ref'),'screen.vexlife.purpose-workspace');
+  assert.equal(await page.locator('.purpose-workspace-evolution__hero h2').textContent(),'Purpose Workspace','Purpose Workspace title must resolve through registration-extension localization composition');
+
+  await page.getByRole('button',{name:'UNDERSTAND',exact:true}).click();
+  assert.equal(await page.locator('.purpose-workspace-evolution__stage').count(),5);
+  const stageGeometry=await page.locator('.purpose-workspace-evolution__stage').evaluateAll((rows)=>rows.map((row)=>{
+    const [purpose,owner,evidence]=row.children;
+    return{
+      purposeText:purpose?.textContent??'',
+      purposeOverflow:(purpose?.scrollWidth??0)-(purpose?.clientWidth??0),
+      ownerOverflow:(owner?.scrollWidth??0)-(owner?.clientWidth??0),
+      evidenceOverflow:(evidence?.scrollWidth??0)-(evidence?.clientWidth??0)
+    };
+  }));
+  for(const geometry of stageGeometry){
+    assert.ok(geometry.purposeOverflow<=1,`Purpose Workspace stage label escaped its owning cell: ${geometry.purposeText}`);
+    assert.ok(geometry.ownerOverflow<=1,`Purpose Workspace stage owner escaped its owning cell: ${geometry.purposeText}`);
+    assert.ok(geometry.evidenceOverflow<=1,`Purpose Workspace stage evidence escaped its owning cell: ${geometry.purposeText}`);
+  }
+  await page.getByRole('button',{name:'STEWARD',exact:true}).click();
+  assert.equal(await page.locator('.purpose-workspace-evolution__steward-card').count(),4);
+  const evolved=await page.evaluate(()=>globalThis.__VEXLIFE_APP__.purposeWorkspaceEvolution.snapshot());
+  assert.equal(evolved.surfaceRef,'surface.vexlife.purpose-workspace');
+  assert.equal(evolved.semanticDepth,'STEWARD');
+  assert.equal(evolved.effects,false);
+  assert.equal(evolved.sourceRegistrationState,'CURRENT');
+  assert.equal(evolved.sourceFoundationRegistrationState,'REGISTERED_PREPARED_BROWSER_HELD');
+  assert.match(await page.locator('.purpose-workspace-evolution__truth').textContent(),/CURRENT introduction · source foundation REGISTERED_PREPARED_BROWSER_HELD/);
+
+  const afterState=await page.evaluate(()=>({contextProjection:globalThis.__VEXLIFE_APP__.state.contextProjection,workspaceOpen:globalThis.__VEXLIFE_APP__.state.workspaceOpen}));
+  assert.deepEqual(afterState,referenceState,'Purpose Workspace Evolution projection must not retarget contextual Projects or semantic Navigation state');
+  assert.deepEqual(errors,{console:[],page:[]});
+  await page.close();
+});
+
  
 
 test('shared presentation contract reuses Experience Foundation primitives without taking product semantics',()=>{

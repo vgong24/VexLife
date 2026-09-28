@@ -40,6 +40,13 @@
       "semanticRef": "feature.vexlife.contextual-workspace",
       "title": "Projects",
       "controlId": "openWorkspace"
+    },
+    {
+      "surfaceRef": "surface.vexlife.purpose-workspace",
+      "semanticRef": "feature.vexlife.scoped-purpose-workspace",
+      "title": "Purpose Workspace",
+      "controlId": "openPurposeWorkspace",
+      "referenceProjectionAvailable": false
     }
   ],
   "evolutionEnablement": {

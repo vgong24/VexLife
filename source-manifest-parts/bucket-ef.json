@@ -15,6 +15,12 @@
       "sha256": "bca3f1305aef0b3102b738dc4ca60827ea7ba72ad4dc53ae66c8194564b24a38"
     },
     {
+      "path": "reference/browser/evolution/purpose-workspace.css",
+      "mode": "100644",
+      "bytes": 3738,
+      "sha256": "3fefbc343376815361ebbdb1a7e249513d118f4fdf739edf2fae367e4669cfd6"
+    },
+    {
       "path": "reference/browser/modules/family-room-controller.js",
       "mode": "100644",
       "bytes": 28586,

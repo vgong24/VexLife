@@ -49,7 +49,7 @@ test('SPW-02 composed registration resolves through canonical Blueprint validati
   assert.ok(feature);
   assert.equal(feature.status, 'PREPARED');
   assert.equal(feature.humanIntroduction.disposition, 'WALKTHROUGH');
-  assert.equal(feature.humanIntroduction.routeState, 'HELD');
+  assert.equal(feature.humanIntroduction.routeState, 'CURRENT');
   assert.equal(feature.humanIntroduction.planRefOrNull, plan.planRef);
   assert.equal(plan.effects, false);
   assert.equal(plan.replayable, true);

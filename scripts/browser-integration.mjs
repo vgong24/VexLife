@@ -317,6 +317,112 @@ async function runConversationProductProof(page, viewport, errors) {
   }
 }
 
+
+async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMotion=false) {
+  const checks=[];
+  const assert=(condition,message)=>{if(!condition)throw new Error(message);};
+  const {binding,capture,screenshots}=createExperienceCapture(page,viewport,errors,{
+    surfaceRef:'surface.vexlife.purpose-workspace',
+    rootSelector:'.purpose-workspace-evolution',
+    prefix:'purpose-workspace'
+  });
+  try{
+    await page.emulateMedia({reducedMotion:reducedMotion?'reduce':'no-preference'});
+    const before=await page.evaluate(()=>({
+      contextProjection:globalThis.__VEXLIFE_APP__.state.contextProjection,
+      workspaceOpen:globalThis.__VEXLIFE_APP__.state.workspaceOpen,
+      frame:JSON.stringify(globalThis.__VEXLIFE_APP__.navigation.semanticFrame()),
+      journey:JSON.stringify(globalThis.__VEXLIFE_APP__.navigation.fullJourney())
+    }));
+    assert(await page.locator('#openPurposeWorkspace').isDisabled(),'FCF-02 Purpose Workspace must not impersonate a Reference route');
+    await page.locator('#surfaceMenuButton').click();
+    await page.locator('#uxProjectionSelect').selectOption('EVOLUTION_PROJECTION');
+    await page.waitForFunction(()=>globalThis.__VEXLIFE_APP__.state.uxProjection==='EVOLUTION_PROJECTION');
+    assert(!(await page.locator('#openPurposeWorkspace').isDisabled()),'FCF-02 Purpose Workspace is unavailable in Evolution');
+    await page.locator('#openPurposeWorkspace').click();
+    await page.waitForSelector('.purpose-workspace-evolution');
+    await page.evaluate(()=>{
+      globalThis.__VEXLIFE_FCF02_PURPOSE_INPUTS__=[];
+      for(const type of ['click','keydown']) document.addEventListener(type,(event)=>{
+        const target=event.target instanceof Element?event.target.closest('.purpose-workspace-evolution__choice'):null;
+        if(target)globalThis.__VEXLIFE_FCF02_PURPOSE_INPUTS__.push({type,key:event.key??null,value:target.dataset.value??null,trusted:event.isTrusted});
+      },{capture:true});
+    });
+    const root=page.locator('.purpose-workspace-evolution');
+    const initial=await page.evaluate(()=>({
+      snapshot:globalThis.__VEXLIFE_APP__.purposeWorkspaceEvolution.snapshot(),
+      shell:globalThis.__VEXLIFE_APP__.uxProjectionShell.snapshot(),
+      screenRef:document.querySelector('.purpose-workspace-evolution')?.dataset.screenRef??null,
+      effects:document.querySelector('.purpose-workspace-evolution')?.dataset.effects??null
+    }));
+    assert(initial.shell.activeSurfaceRef==='surface.vexlife.purpose-workspace','FCF-02 shell active surface mismatch');
+    assert(initial.snapshot.semanticDepth==='DO','FCF-02 Purpose Workspace default depth must be DO');
+    assert(initial.snapshot.effects===false&&initial.effects==='false','FCF-02 Purpose Workspace gained effects');
+    assert(initial.screenRef==='screen.vexlife.purpose-workspace','FCF-02 Purpose Workspace screen identity drifted');
+    assert(initial.snapshot.sourceRegistrationState==='CURRENT','FCF-02 visual witness must consume current downstream registration truth');
+    assert(initial.snapshot.sourceFoundationRegistrationState==='REGISTERED_PREPARED_BROWSER_HELD','FCF-02 visual witness must preserve exact source-foundation provenance');
+    assert(await root.locator('.purpose-workspace-evolution__task').count()===3,'FCF-02 Purpose Workspace task projection is incomplete');
+    const shellGeometry=await page.evaluate(()=>{
+      const title=document.querySelector('#evolutionActiveSurfaceTitle'),close=document.querySelector('#evolutionActiveSurfaceClose');
+      const t=title?.getBoundingClientRect(),c=close?.getBoundingClientRect();
+      return{
+        title:(title?.textContent??'').trim(),
+        titleVisible:Boolean(t&&t.width>0&&t.height>0),
+        closeVisible:Boolean(c&&c.width>0&&c.height>0),
+        closeWidth:c?.width??0,
+        closeHeight:c?.height??0
+      };
+    });
+    assert(shellGeometry.titleVisible&&shellGeometry.title.length>0,'FCF-02 Purpose Workspace shell title is not readable');
+    assert(shellGeometry.closeVisible&&shellGeometry.closeWidth>=48&&shellGeometry.closeHeight>=48,'FCF-02 Purpose Workspace Close target is below 48px');
+    assert(await page.evaluate((expected)=>matchMedia('(prefers-reduced-motion: reduce)').matches===expected,reducedMotion),'FCF-02 Purpose Workspace motion preference mismatch');
+    checks.push({name:'default-source-shell-and-motion-truth',...shellGeometry,reducedMotion,sourceRegistrationState:initial.snapshot.sourceRegistrationState,sourceFoundationRegistrationState:initial.snapshot.sourceFoundationRegistrationState});
+    await capture('default-do','CANONICAL_PURPOSE_WORKSPACE_SOURCE__NO_EFFECTS');
+
+    const understand=page.getByRole('button',{name:'UNDERSTAND',exact:true});
+    await understand.click();
+    assert(await root.locator('.purpose-workspace-evolution__stage').count()===5,'FCF-02 pointer UNDERSTAND did not reveal the accepted five-stage process');
+    assert((await page.evaluate(()=>globalThis.__VEXLIFE_APP__.purposeWorkspaceEvolution.snapshot().semanticDepth))==='UNDERSTAND','FCF-02 pointer UNDERSTAND did not update presentation depth');
+    await capture('understand-pointer','CANONICAL_PURPOSE_WORKSPACE_SOURCE__NO_EFFECTS');
+
+    await understand.press('Tab');
+    const keyboardTarget=await page.evaluate(()=>({value:document.activeElement?.dataset?.value??null,text:(document.activeElement?.textContent??'').trim()}));
+    assert(keyboardTarget.value==='STEWARD','FCF-02 semantic depth controls do not expose expected keyboard order');
+    await page.keyboard.press('Enter');
+    assert(await root.locator('.purpose-workspace-evolution__steward-card').count()===4,'FCF-02 keyboard STEWARD did not reveal accepted stewardship roles');
+    const steward=await page.evaluate(()=>globalThis.__VEXLIFE_APP__.purposeWorkspaceEvolution.snapshot());
+    assert(steward.semanticDepth==='STEWARD'&&steward.effects===false,'FCF-02 keyboard STEWARD changed semantic/effect truth');
+    await capture('steward-keyboard','CANONICAL_PURPOSE_WORKSPACE_SOURCE__NO_EFFECTS');
+
+    const inputs=await page.evaluate(()=>globalThis.__VEXLIFE_FCF02_PURPOSE_INPUTS__);
+    assert(inputs.some((event)=>event.type==='click'&&event.value==='UNDERSTAND'&&event.trusted),'FCF-02 trusted pointer UNDERSTAND witness missing');
+    assert(inputs.some((event)=>event.type==='keydown'&&event.key==='Enter'&&event.value==='STEWARD'&&event.trusted),'FCF-02 trusted keyboard STEWARD witness missing');
+    checks.push({name:'trusted-pointer-and-keyboard-depth-navigation',keyboardTarget,events:inputs});
+
+    await page.locator('#evolutionActiveSurfaceClose').click();
+    await page.waitForFunction(()=>globalThis.__VEXLIFE_APP__.uxProjectionShell.snapshot().activeSurfaceRef===null);
+    const after=await page.evaluate(()=>({
+      contextProjection:globalThis.__VEXLIFE_APP__.state.contextProjection,
+      workspaceOpen:globalThis.__VEXLIFE_APP__.state.workspaceOpen,
+      frame:JSON.stringify(globalThis.__VEXLIFE_APP__.navigation.semanticFrame()),
+      journey:JSON.stringify(globalThis.__VEXLIFE_APP__.navigation.fullJourney())
+    }));
+    assert(JSON.stringify(after)===JSON.stringify(before),'FCF-02 Purpose Workspace presentation mutated contextual Projects or Journey');
+    assert(errors.consoleErrors.length===0&&errors.pageErrors.length===0,'FCF-02 Purpose Workspace browser errors were observed');
+    assert(screenshots.length===3,'FCF-02 Purpose Workspace screenshot matrix is incomplete');
+    checks.push({name:'close-preserves-contextual-projects-and-journey',state:'PASS'});
+    return{state:'PASS',...binding,checks,screenshots,effects:false,sourceRegistrationState:steward.sourceRegistrationState,sourceFoundationRegistrationState:steward.sourceFoundationRegistrationState};
+  }catch(error){
+    return{state:'FAILED',...binding,checks,screenshots,error:error instanceof Error?error.message:String(error)};
+  }finally{
+    await page.evaluate(async()=>{
+      const app=globalThis.__VEXLIFE_APP__;
+      await app?.uxProjectionShell?.closeEvolutionActiveSurface('FCF02_PURPOSE_WORKSPACE_PROOF_FINALLY');
+      await app?.uxProjectionShell?.setProjection('REFERENCE_PROJECTION');
+    }).catch(()=>{});
+  }
+}
+
 let playwright;
 try {
   playwright = await import('playwright');
@@ -528,12 +634,26 @@ if (playwright) {
     };
     const conversationDesktop=await runConversationEvolutionViewportProof({width:1440,height:1000},'DESKTOP',false);
     const conversationCompact=await runConversationEvolutionViewportProof({width:390,height:844},'COMPACT',true);
-    const viewportProofs = [journalDesktop, journalCompact, conversationDesktop, conversationCompact];
+    const runPurposeWorkspaceViewportProof=async(viewport,viewportClass,reducedMotion)=>{
+      const proofConsoleErrors=[],proofPageErrors=[],productPage=await browser.newPage({viewport});
+      productPage.on('console',(message)=>{if(message.type()==='error')proofConsoleErrors.push(message.text());});
+      productPage.on('pageerror',(error)=>proofPageErrors.push(error.message));
+      try{
+        await productPage.goto(serverUrl+'/reference/browser/',{waitUntil:'networkidle',timeout:30000});
+        await productPage.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__?.purposeWorkspaceEvolution),null,{timeout:30000});
+        const productExperience=await runPurposeWorkspaceProductProof(productPage,viewport,{consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors},reducedMotion);
+        return{viewport,viewportClass,proof:{state:productExperience.state},productExperience,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
+      }finally{await productPage.close();}
+    };
+    const purposeWorkspaceDesktop=await runPurposeWorkspaceViewportProof({width:1440,height:1000},'DESKTOP',false);
+    const purposeWorkspaceCompact=await runPurposeWorkspaceViewportProof({width:390,height:844},'COMPACT',true);
+    const structuralViewportProofs=[journalDesktop,journalCompact,conversationDesktop,conversationCompact];
+    const viewportProofs=[...structuralViewportProofs,purposeWorkspaceDesktop,purposeWorkspaceCompact];
     const allConsoleErrors = [...consoleErrors, ...compactConsoleErrors, ...viewportProofs.flatMap((item) => item.consoleErrors)];
     const allPageErrors = [...pageErrors, ...compactPageErrors, ...viewportProofs.flatMap((item) => item.pageErrors)];
     const requiredProofs = [
       integration, livedDCompact, q2Compact, q2ViewportInverse, q5Compact, q5WorkspaceInverse,
-      ...viewportProofs.map((item) => item.proof),
+      ...structuralViewportProofs.map((item) => item.proof),
       ...viewportProofs.map((item) => item.productExperience)
     ];
     const state = requiredProofs.every((proof) => proof?.state === 'PASS') && allConsoleErrors.length === 0 && allPageErrors.length === 0 ? 'PASS' : 'FAILED';
@@ -549,6 +669,8 @@ if (playwright) {
       journalCompact,
       conversationDesktop,
       conversationCompact,
+      purposeWorkspaceDesktop,
+      purposeWorkspaceCompact,
       livedDCompact,
       q2Compact,
       q2ViewportInverse,
