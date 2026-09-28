@@ -1049,8 +1049,8 @@ export function formCultivatedFirstLivedTurnEvidence({ binding, runtimeBindingRe
   if (browserTurnReceipt.schemaVersion !== 'vexlife.browser-companion-turn/v1' || browserTurnReceipt.state !== 'TURN_COMPLETED' || browserTurnReceipt.actualHttpCall !== true || browserTurnReceipt.loopbackOnly !== true) {
     fail('CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID', 'First lived evidence requires one actual completed loopback browser-companion turn');
   }
-  if (browserTurnReceipt.modelNameOrBoundedTestProfileRef !== binding.bindingRef) {
-    fail('CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID', 'Browser turn is not bound to the exact accepted activated-model binding');
+  if (browserTurnReceipt.modelNameOrBoundedTestProfileRef !== binding.runtime.requestModel) {
+    fail('CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID', 'Browser turn transport model does not match the exact accepted runtime request model');
   }
   for (const key of ['conversationHeadSha256','requestEventRef','requestEventSha256','responseEventRef','responseEventSha256']) {
     requireString(browserTurnReceipt[key], `browserTurnReceipt.${key}`, 'CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID');
@@ -1076,6 +1076,7 @@ export function formCultivatedFirstLivedTurnEvidence({ binding, runtimeBindingRe
     modelProfileRef: binding.modelProfileRef,
     artifactRef: binding.artifact.artifactRef,
     runtimeAdapterRef: binding.runtime.runtimeAdapterRef,
+    runtimeRequestModel: binding.runtime.requestModel,
     runtimeBindingReceiptRef,
     browserTurnReceiptSha256,
     conversationHeadSha256: browserTurnReceipt.conversationHeadSha256,
