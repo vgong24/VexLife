@@ -39,7 +39,7 @@ test('migration accounting remains non-owner while Journal and Conversation have
   assert.ok(purposeWorkspace.semanticOwnerRefs.every(x=>!x.includes('ux-evolution')));
   assert.equal(purposeWorkspace.cutoverDisposition,'NOT_PROPOSED');
   assert.equal(purposeWorkspace.retirementDisposition,'NOT_ELIGIBLE');
-  assert.deepEqual(load().projectionHost.migratedSemanticRefs,['feature.vexlife.living-journal','feature.vexlife.addressed-conversation','feature.vexlife.scoped-purpose-workspace']);
+  assert.deepEqual(load().projectionHost.migratedSemanticRefs,['feature.vexlife.living-journal','feature.vexlife.addressed-conversation']);
   for(const record of records.filter(x=>x!==journal&&x!==conversation&&x!==purposeWorkspace)){
     assert.equal(record.disposition,'HELD');
     assert.equal(record.migrationLifecycleState,'SOURCE_MAPPED');
