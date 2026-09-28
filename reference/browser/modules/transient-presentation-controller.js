@@ -141,6 +141,11 @@ export function createTransientPresentationController({
     const bounds=constraint(),nextMode=resolveTransientPresentationMode({viewportWidth:bounds.viewportWidth});
     surface.dataset.presentationMode=nextMode;surface.dataset.constraintSpace=bounds.coordinateSpace;surface.dataset.constraintHostRef=bounds.hostRef;
     surface.style.setProperty('--e29-constraint-inline-size',`${bounds.viewportWidth}px`);surface.style.setProperty('--e29-constraint-block-size',`${bounds.viewportHeight}px`);
+    // Closed/hidden transients have no measurable natural rectangle. Persisting a
+    // constrained rect here would turn that zero measurement into fake minimum
+    // geometry before first show(). Keep mode/constraint metadata current, but
+    // defer all geometry until the surface is actually visible.
+    if(!open||surface.hidden)return nextMode;
     if(nextMode==='FULL_SCREEN'){applySurfaceRect(surface,{left:bounds.left,top:bounds.top,width:bounds.viewportWidth,height:bounds.viewportHeight});return nextMode;}
     if(nextMode==='SHEET'){const inset=Math.min(8,Math.max(0,bounds.viewportWidth/4),Math.max(0,bounds.viewportHeight/4)),width=Math.max(0,bounds.viewportWidth-inset*2),height=Math.max(0,Math.min(bounds.viewportHeight*.72,620,bounds.viewportHeight-inset*2));applySurfaceRect(surface,{left:bounds.left+inset,top:bounds.top+bounds.viewportHeight-inset-height,width,height});return nextMode;}
     const rect=surface.getBoundingClientRect();const next=constrainTransientRect({left:rect.left,top:rect.top,width:rect.width,height:rect.height,viewportWidth:bounds.viewportWidth,viewportHeight:bounds.viewportHeight,constraintLeft:bounds.left,constraintTop:bounds.top,margin,minWidth,minHeight});applySurfaceRect(surface,next);return nextMode;
