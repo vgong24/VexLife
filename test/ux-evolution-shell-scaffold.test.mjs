@@ -177,6 +177,7 @@ test('Purpose Workspace is a distinct Evolution-only projection over accepted so
   assert.equal(await page.locator('.purpose-workspace-evolution__task').count(),3);
   assert.equal(await page.locator('.purpose-workspace-evolution').getAttribute('data-effects'),'false');
   assert.equal(await page.locator('.purpose-workspace-evolution').getAttribute('data-screen-ref'),'screen.vexlife.purpose-workspace');
+  assert.equal(await page.locator('.purpose-workspace-evolution__hero h2').textContent(),'Purpose Workspace','Purpose Workspace title must resolve through registration-extension localization composition');
 
   await page.getByRole('button',{name:'UNDERSTAND',exact:true}).click();
   assert.equal(await page.locator('.purpose-workspace-evolution__stage').count(),5);

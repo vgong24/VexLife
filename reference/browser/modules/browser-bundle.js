@@ -23,6 +23,30 @@ export async function loadBrowserBundle(root = '../../') {
     }
     return output;
   }
+  function composeCatalogs(baseCatalogs, registrationExtensions = []) {
+    const supportedLanguages = new Set(['en', 'zh', 'ja']);
+    const catalogs = Object.fromEntries(
+      Object.entries(baseCatalogs).map(([language, catalog]) => {
+        if (!supportedLanguages.has(language) || !catalog || typeof catalog !== 'object' || Array.isArray(catalog)) {
+          throw new Error(`Invalid base localization catalog: ${language}`);
+        }
+        return [language, { ...catalog }];
+      })
+    );
+    for (const extension of registrationExtensions) {
+      const strings = extension?.strings ?? {};
+      for (const [language, entries] of Object.entries(strings)) {
+        if (!supportedLanguages.has(language)) throw new Error(`Unsupported registration localization language: ${language}`);
+        if (!entries || typeof entries !== 'object' || Array.isArray(entries)) throw new Error(`Invalid registration localization catalog: ${language}`);
+        for (const [ref, value] of Object.entries(entries)) {
+          if (typeof value !== 'string' || value.length === 0) throw new Error(`Invalid registration localization value: ${language}.${ref}`);
+          if (Object.hasOwn(catalogs[language], ref)) throw new Error(`Duplicate registration localization ref: ${language}.${ref}`);
+          catalogs[language][ref] = value;
+        }
+      }
+    }
+    return catalogs;
+  }
   const [blueprint, experience, featureRegistry, experienceFoundation, experienceGuidance, designTokens, en, zh, ja] = await Promise.all([
     loadComposedBlueprint(),
     fetchJson('blueprint/experience-registry.json'),
@@ -72,7 +96,7 @@ export async function loadBrowserBundle(root = '../../') {
     experienceFoundation,
     experienceGuidance,
     designTokens,
-    catalogs: { en, zh, ja },
+    catalogs: composeCatalogs({ en, zh, ja }, blueprint.registrationExtensions),
     androidRemoteVessel,
     experienceGallery,
     renderLab
