@@ -4,13 +4,13 @@
   "features": [
     {
       "featureRef": "feature.vexlife.scoped-purpose-workspace",
-      "purpose": "Register one reusable source-managed Purpose Workspace across synthetic domain, role, process and completion contracts while preserving explicit authority/evidence boundaries and holding browser adoption and real external effects.",
+      "purpose": "Register one reusable source-managed Purpose Workspace across synthetic domain, role, process and completion contracts while preserving explicit authority/evidence boundaries; browser presentation is current while real external effects remain held.",
       "status": "PREPARED",
       "humanIntroduction": {
         "disposition": "WALKTHROUGH",
-        "routeState": "HELD",
+        "routeState": "CURRENT",
         "planRefOrNull": "plan.vexlife.feature.scoped-purpose-workspace.introduction.001",
-        "rationale": "The no-effect walkthrough contract is source-registered, but the Purpose Workspace is not yet browser-current or discoverable; the later browser owner must establish that currentness before introduction can run."
+        "rationale": "The no-effect walkthrough contract is source-registered and the Purpose Workspace is browser-current and discoverable in the Evolution projection; the existing walkthrough plan is now current for that adopted surface. Rendered Experience Review and any external effect remain separate evidence-bound gates."
       },
       "canonicalNodeRefs": [
         "screen.vexlife.purpose-workspace"
@@ -73,7 +73,6 @@
         "projection.purpose-workspace.planned"
       ],
       "knownGaps": [
-        "Browser controller, Terrain adoption and discoverability remain held for a later browser owner.",
         "Rendered Experience Review evidence remains a later bounded gate.",
         "Real learner, patient, client, apprentice, professional, Home, Memory, model, training, network and publication effects remain held."
       ]
@@ -140,7 +139,7 @@
           "contentStringRef": "feature-walkthrough.purpose-workspace.stage.complete",
           "targetRefOrNull": "screen.vexlife.purpose-workspace",
           "actionRefOrNull": null,
-          "expectedOutcomeClass": "INTRODUCTION_READY_FOR_LATER_BROWSER_ADOPTION",
+          "expectedOutcomeClass": "INTRODUCTION_CURRENT_ON_BROWSER_ADOPTED_SURFACE",
           "captureRequired": false,
           "recoveryClass": "RETURN_TO_CURRENT_CONTEXT"
         }
@@ -168,7 +167,7 @@
       "feature-walkthrough.purpose-workspace.stage.do": "Do shows the three tasks that need attention now for the selected purpose and domain.",
       "feature-walkthrough.purpose-workspace.stage.understand": "Understand shows how stages, evidence, and relay developed without rewriting the underlying work.",
       "feature-walkthrough.purpose-workspace.stage.steward": "Steward shows ownership, authority, held effects, and the evidence required for completion.",
-      "feature-walkthrough.purpose-workspace.stage.complete": "The source contract is registered. Browser adoption and any real external effect remain separate and held."
+      "feature-walkthrough.purpose-workspace.stage.complete": "The source contract is registered and Purpose Workspace is browser-current. Any real external effect remains separate and held."
     },
     "ja": {
       "screen.purpose-workspace.title": "目的ワークスペース",
@@ -176,7 +175,7 @@
       "feature-walkthrough.purpose-workspace.stage.do": "Do は、選択した目的と領域について今対応が必要な3つのタスクを示します。",
       "feature-walkthrough.purpose-workspace.stage.understand": "Understand は、基礎となる作業を書き換えずに、段階・証拠・リレーがどのように進んだかを示します。",
       "feature-walkthrough.purpose-workspace.stage.steward": "Steward は、所有者、権限、保留中の効果、完了に必要な証拠を示します。",
-      "feature-walkthrough.purpose-workspace.stage.complete": "ソース契約は登録済みです。ブラウザー採用と実際の外部効果は別扱いのまま保留されています。"
+      "feature-walkthrough.purpose-workspace.stage.complete": "ソース契約は登録済みで、Purpose Workspace は現在ブラウザーで利用可能です。実際の外部効果は引き続き別扱いで保留されています。"
     },
     "zh": {
       "screen.purpose-workspace.title": "目的工作区",
@@ -184,7 +183,7 @@
       "feature-walkthrough.purpose-workspace.stage.do": "Do 显示所选目的和领域当前需要关注的三个任务。",
       "feature-walkthrough.purpose-workspace.stage.understand": "Understand 显示阶段、证据与交接如何发展，同时不改写底层工作记录。",
       "feature-walkthrough.purpose-workspace.stage.steward": "Steward 显示负责人、权限、被保留的效果，以及完成所需的证据。",
-      "feature-walkthrough.purpose-workspace.stage.complete": "源合同已完成注册。浏览器采用和任何真实外部效果仍是独立且被保留的后续工作。"
+      "feature-walkthrough.purpose-workspace.stage.complete": "源合同已完成注册，Purpose Workspace 现已在浏览器中处于当前可用状态。任何真实外部效果仍保持独立并继续受控保留。"
     }
   }
 }

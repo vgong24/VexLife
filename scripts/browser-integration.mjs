@@ -359,7 +359,8 @@ async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMo
     assert(initial.snapshot.semanticDepth==='DO','FCF-02 Purpose Workspace default depth must be DO');
     assert(initial.snapshot.effects===false&&initial.effects==='false','FCF-02 Purpose Workspace gained effects');
     assert(initial.screenRef==='screen.vexlife.purpose-workspace','FCF-02 Purpose Workspace screen identity drifted');
-    assert(initial.snapshot.sourceRegistrationState==='REGISTERED_PREPARED_BROWSER_HELD','FCF-02 visual witness must retain exact pre-currentization source truth');
+    assert(initial.snapshot.sourceRegistrationState==='CURRENT','FCF-02 visual witness must consume current downstream registration truth');
+    assert(initial.snapshot.sourceFoundationRegistrationState==='REGISTERED_PREPARED_BROWSER_HELD','FCF-02 visual witness must preserve exact source-foundation provenance');
     assert(await root.locator('.purpose-workspace-evolution__task').count()===3,'FCF-02 Purpose Workspace task projection is incomplete');
     const shellGeometry=await page.evaluate(()=>{
       const title=document.querySelector('#evolutionActiveSurfaceTitle'),close=document.querySelector('#evolutionActiveSurfaceClose');
@@ -375,7 +376,7 @@ async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMo
     assert(shellGeometry.titleVisible&&shellGeometry.title.length>0,'FCF-02 Purpose Workspace shell title is not readable');
     assert(shellGeometry.closeVisible&&shellGeometry.closeWidth>=48&&shellGeometry.closeHeight>=48,'FCF-02 Purpose Workspace Close target is below 48px');
     assert(await page.evaluate((expected)=>matchMedia('(prefers-reduced-motion: reduce)').matches===expected,reducedMotion),'FCF-02 Purpose Workspace motion preference mismatch');
-    checks.push({name:'default-source-shell-and-motion-truth',...shellGeometry,reducedMotion,sourceRegistrationState:initial.snapshot.sourceRegistrationState});
+    checks.push({name:'default-source-shell-and-motion-truth',...shellGeometry,reducedMotion,sourceRegistrationState:initial.snapshot.sourceRegistrationState,sourceFoundationRegistrationState:initial.snapshot.sourceFoundationRegistrationState});
     await capture('default-do','CANONICAL_PURPOSE_WORKSPACE_SOURCE__NO_EFFECTS');
 
     const understand=page.getByRole('button',{name:'UNDERSTAND',exact:true});
@@ -410,7 +411,7 @@ async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMo
     assert(errors.consoleErrors.length===0&&errors.pageErrors.length===0,'FCF-02 Purpose Workspace browser errors were observed');
     assert(screenshots.length===3,'FCF-02 Purpose Workspace screenshot matrix is incomplete');
     checks.push({name:'close-preserves-contextual-projects-and-journey',state:'PASS'});
-    return{state:'PASS',...binding,checks,screenshots,effects:false,sourceRegistrationState:steward.sourceRegistrationState};
+    return{state:'PASS',...binding,checks,screenshots,effects:false,sourceRegistrationState:steward.sourceRegistrationState,sourceFoundationRegistrationState:steward.sourceFoundationRegistrationState};
   }catch(error){
     return{state:'FAILED',...binding,checks,screenshots,error:error instanceof Error?error.message:String(error)};
   }finally{

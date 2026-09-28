@@ -43,6 +43,7 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref}={}){
   const findTask=(domain)=>domain.tasks.find((item)=>item.taskRef===taskRef)??domain.tasks[0];
   const processFor=(task)=>source.processPatterns.find((item)=>item.processPatternRef===task.processPatternRef);
   const completionFor=(task)=>source.completionContracts.find((item)=>item.completionContractRef===task.completionContractRef);
+  const registrationForFeature=()=>source?.registration?.features?.find((item)=>item.featureRef==='feature.vexlife.scoped-purpose-workspace')??null;
 
   const render=()=>{
     if(!host||!source)return;
@@ -142,9 +143,10 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref}={}){
     root.append(detail);
 
     const truth=element('footer','purpose-workspace-evolution__truth');
+    const currentRegistration=registrationForFeature(),registrationState=currentRegistration?.humanIntroduction?.routeState??'UNLOADED';
     truth.append(
       element('strong','','Projection only · no external effect'),
-      element('span','',`${source.registry.registrationPlacement.status} · synthetic source foundation`)
+      element('span','',`${registrationState} introduction · source foundation ${source.registry.registrationPlacement.status}`)
     );
     root.append(truth);
     host.append(root);
@@ -161,6 +163,7 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref}={}){
     },
     requestClose(){return Object.freeze({state:'CLOSED',reason:'PRESENTATION_DISMISS',semanticNavigationMutated:false})},
     snapshot(){
+      const currentRegistration=registrationForFeature();
       return Object.freeze({
         surfaceRef:PURPOSE_WORKSPACE_EVOLUTION_SURFACE_REF,
         projectionRef:PURPOSE_WORKSPACE_EVOLUTION_PROJECTION_REF,
@@ -170,7 +173,8 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref}={}){
         routeRef:'route.purpose-workspace',
         domainRef,taskRef,semanticDepth,
         effects:false,
-        sourceRegistrationState:source?.registry?.registrationPlacement?.status??'UNLOADED'
+        sourceRegistrationState:currentRegistration?.humanIntroduction?.routeState??'UNLOADED',
+        sourceFoundationRegistrationState:source?.registry?.registrationPlacement?.status??'UNLOADED'
       });
     }
   });

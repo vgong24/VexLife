@@ -186,7 +186,9 @@ test('Purpose Workspace is a distinct Evolution-only projection over accepted so
   assert.equal(evolved.surfaceRef,'surface.vexlife.purpose-workspace');
   assert.equal(evolved.semanticDepth,'STEWARD');
   assert.equal(evolved.effects,false);
-  assert.equal(evolved.sourceRegistrationState,'REGISTERED_PREPARED_BROWSER_HELD');
+  assert.equal(evolved.sourceRegistrationState,'CURRENT');
+  assert.equal(evolved.sourceFoundationRegistrationState,'REGISTERED_PREPARED_BROWSER_HELD');
+  assert.match(await page.locator('.purpose-workspace-evolution__truth').textContent(),/CURRENT introduction · source foundation REGISTERED_PREPARED_BROWSER_HELD/);
 
   const afterState=await page.evaluate(()=>({contextProjection:globalThis.__VEXLIFE_APP__.state.contextProjection,workspaceOpen:globalThis.__VEXLIFE_APP__.state.workspaceOpen}));
   assert.deepEqual(afterState,referenceState,'Purpose Workspace Evolution projection must not retarget contextual Projects or semantic Navigation state');
