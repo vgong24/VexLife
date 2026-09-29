@@ -202,7 +202,13 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
     const draftFooter=element('div','purpose-workspace-evolution__draft-footer');
     const reset=element('button','purpose-workspace-evolution__draft-reset',t('purpose-workspace.draft.reset'));
     reset.type='button';
-    reset.addEventListener('click',()=>{draft=emptyDraft();render();});
+    reset.addEventListener('click',()=>{
+      draft=emptyDraft();
+      featureInput.value=draft.featureRef;
+      purposeInput.value=draft.purpose;
+      platformInput.value=draft.platformRefs.join(', ');
+      reset.focus();
+    });
     draftFooter.append(element('small','',t('purpose-workspace.draft.local-only')),reset);
     draftSurface.append(draftFooter);
     root.append(draftSurface);
