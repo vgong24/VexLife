@@ -7,6 +7,12 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { loadBlueprint, validateBlueprint } from '../src/core/blueprint.mjs';
+import {
+  createIntentEnvelope,
+  createIntentWorkgraph,
+  createWorkNode
+} from '../src/core/intent-workgraph.mjs';
+import { persistIntentWorkgraphRuntimeSnapshot } from '../src/core/intent-workgraph-runtime-snapshot.mjs';
 import { collectRepositoryEvidence, runBoundedGit } from '../src/core/repository-evidence.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
 import { writeJson } from '../src/core/utils.mjs';
@@ -15,7 +21,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const receiptPath = path.resolve(ROOT, process.env.VEXLIFE_BROWSER_RECEIPT || 'generated/health/browser-integration.json');
 const repository = collectRepositoryEvidence(ROOT);
 const source = buildSourceManifest(ROOT);
-const blueprint = validateBlueprint(loadBlueprint(ROOT));
+const sourceBundle = loadBlueprint(ROOT);
+const blueprint = validateBlueprint(sourceBundle);
 const baseReceipt = {
   schemaVersion: 'vexlife.browser-execution-receipt/v0',
   receiptRef: `receipt.vexlife.browser-integration.${source.treeSha256.slice(0, 24)}`,
@@ -38,6 +45,84 @@ function finish(receipt, exitCode) {
     return key === 'data' && this.mimeType === 'image/png' && this.encoding === 'base64' ? undefined : value;
   }, 2));
   process.exitCode = exitCode;
+}
+
+function formFcf03ProgressFixtureGraph() {
+  const registry = sourceBundle.intentRegistry;
+  const intent = createIntentEnvelope({
+    intentRef: 'intent.fcf03.browser-progress',
+    originMessageRef: 'message.fcf03.browser-progress',
+    originSpeakerRef: 'person.vexlife.owner',
+    recipientRoleRef: 'role.vex.operations',
+    projectRef: 'project.self-development',
+    threadRef: 'thread.fcf03.browser-progress',
+    channelRef: 'channel.fcf03.browser-progress',
+    originalContentHash: 'a'.repeat(64),
+    desiredOutcome: { intentKey: 'VALIDATE_WORKGRAPH', summary: 'Show truthful current progress' },
+    constraints: [],
+    createdAt: '2026-09-28T00:00:00.000Z',
+    sourceLineageRef: 'lineage.fcf03.browser-progress'
+  }, registry);
+  const node = createWorkNode({
+    workNodeRef: 'work-node.fcf03.browser-ready',
+    rootIntentRef: intent.intentRef,
+    parentWorkNodeRef: null,
+    purpose: 'Prepare the next bounded feature step',
+    processRef: 'process.vexlife.intent.validate-workgraph',
+    state: 'READY',
+    dependencyRefs: [],
+    childRefs: [],
+    roleRef: 'role.vex.operations',
+    priorityClass: 'NORMAL',
+    contextPlanRef: null,
+    applicableCultureRefs: ['foundation.vexlife.state-relay.v1'],
+    applicableLessonRefs: [],
+    applicableBurdenReleaseRefs: [],
+    capabilityEnvelopeRef: 'capability-envelope.intent.contract-validation',
+    effectEnvelopeRef: 'effect-envelope.intent.no-effects',
+    resourceEnvelopeRef: 'resource-envelope.intent.deterministic-local-light',
+    expectedTransitionRef: 'expected-transition.intent.contract-current',
+    completionGateRefs: ['completion-gate.intent.contract-valid'],
+    returnRouteRef: 'return-route.intent.verify-transition',
+    sourceRefs: ['source.fcf03.browser-progress'],
+    createdAt: '2026-09-28T00:00:00.000Z'
+  }, registry);
+  const transitions = [
+    ['CAPTURED', 'DECOMPOSED'],
+    ['DECOMPOSED', 'PLAN_VALIDATED'],
+    ['PLAN_VALIDATED', 'READY']
+  ].map(([priorState, nextState], sequence) => ({
+    transitionRef: `transition.fcf03.browser-progress.${sequence}`,
+    workNodeRef: node.workNodeRef,
+    sequence,
+    priorState,
+    nextState,
+    reason: 'FCF-03 deterministic visual evidence fixture',
+    actorRef: 'vex.vexlife.intent-orchestration',
+    actorRoleRef: 'role.vex.operations',
+    processRef: 'process.vexlife.intent.verify-transition',
+    sourceRefs: [`source.fcf03.browser-progress.transition.${sequence}`],
+    createdAt: `2026-09-28T00:00:0${sequence + 1}.000Z`
+  }));
+  return createIntentWorkgraph({
+    graphRef: 'intent-workgraph.fcf03.browser-progress',
+    intent,
+    nodes: [node],
+    transitions,
+    bindingRefs: {
+      capabilityEnvelopeRef: [node.capabilityEnvelopeRef],
+      effectEnvelopeRef: [node.effectEnvelopeRef],
+      resourceEnvelopeRef: [node.resourceEnvelopeRef],
+      expectedTransitionRef: [node.expectedTransitionRef],
+      completionGateRefs: [...node.completionGateRefs],
+      returnRouteRef: [node.returnRouteRef]
+    },
+    createdAt: '2026-09-28T00:00:00.000Z'
+  }, registry);
+}
+
+function seedFcf03ProgressFixture(home) {
+  return persistIntentWorkgraphRuntimeSnapshot({ home, graph: formFcf03ProgressFixtureGraph() });
 }
 
 // P4R2 uses the existing browser, server and canonical controllers. The evidence
@@ -361,6 +446,13 @@ async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMo
     assert(initial.screenRef==='screen.vexlife.purpose-workspace','FCF-02 Purpose Workspace screen identity drifted');
     assert(initial.snapshot.sourceRegistrationState==='CURRENT','FCF-02 visual witness must consume current downstream registration truth');
     assert(initial.snapshot.sourceFoundationRegistrationState==='REGISTERED_PREPARED_BROWSER_HELD','FCF-02 visual witness must preserve exact source-foundation provenance');
+    assert(initial.snapshot.progressState==='CURRENT','FCF-03 Purpose Workspace progress must consume current Workgraph truth');
+    assert(initial.snapshot.progressProjectRef==='project.self-development','FCF-03 Purpose Workspace progress project binding drifted');
+    assert(initial.snapshot.progressGraphCount===1,'FCF-03 Purpose Workspace progress must project exactly one fixture Workgraph');
+    assert(initial.snapshot.progressExecutionAuthority==='NONE','FCF-03 Purpose Workspace progress gained execution authority');
+    assert(await root.locator('.purpose-workspace-evolution__progress[data-state="CURRENT"]').count()===1,'FCF-03 current progress surface is unavailable');
+    assert(await root.getByRole('heading',{name:'Ready',exact:true}).count()===1,'FCF-03 Ready progress lane is not human-visible');
+    assert(await root.getByText('Prepare the next bounded feature step',{exact:true}).count()===1,'FCF-03 current work purpose is not human-visible');
     assert(await root.locator('.purpose-workspace-evolution__task').count()===3,'FCF-02 Purpose Workspace task projection is incomplete');
     const shellGeometry=await page.evaluate(()=>{
       const title=document.querySelector('#evolutionActiveSurfaceTitle'),close=document.querySelector('#evolutionActiveSurfaceClose');
@@ -376,8 +468,22 @@ async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMo
     assert(shellGeometry.titleVisible&&shellGeometry.title.length>0,'FCF-02 Purpose Workspace shell title is not readable');
     assert(shellGeometry.closeVisible&&shellGeometry.closeWidth>=48&&shellGeometry.closeHeight>=48,'FCF-02 Purpose Workspace Close target is below 48px');
     assert(await page.evaluate((expected)=>matchMedia('(prefers-reduced-motion: reduce)').matches===expected,reducedMotion),'FCF-02 Purpose Workspace motion preference mismatch');
-    checks.push({name:'default-source-shell-and-motion-truth',...shellGeometry,reducedMotion,sourceRegistrationState:initial.snapshot.sourceRegistrationState,sourceFoundationRegistrationState:initial.snapshot.sourceFoundationRegistrationState});
+    checks.push({
+      name:'default-source-shell-and-motion-truth',
+      ...shellGeometry,
+      reducedMotion,
+      sourceRegistrationState:initial.snapshot.sourceRegistrationState,
+      sourceFoundationRegistrationState:initial.snapshot.sourceFoundationRegistrationState,
+      progressState:initial.snapshot.progressState,
+      progressProjectRef:initial.snapshot.progressProjectRef,
+      progressGraphCount:initial.snapshot.progressGraphCount,
+      progressExecutionAuthority:initial.snapshot.progressExecutionAuthority,
+      readyLaneVisible:true
+    });
     await capture('default-do','CANONICAL_PURPOSE_WORKSPACE_SOURCE__NO_EFFECTS');
+    await root.locator('.purpose-workspace-evolution__progress').scrollIntoViewIfNeeded();
+    await capture('progress-current','CANONICAL_INTENT_WORKGRAPH_PROGRESS__NO_EFFECTS');
+    await root.evaluate((node)=>{node.scrollTop=0;});
 
     const understand=page.getByRole('button',{name:'UNDERSTAND',exact:true});
     await understand.click();
@@ -409,9 +515,9 @@ async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMo
     }));
     assert(JSON.stringify(after)===JSON.stringify(before),'FCF-02 Purpose Workspace presentation mutated contextual Projects or Journey');
     assert(errors.consoleErrors.length===0&&errors.pageErrors.length===0,'FCF-02 Purpose Workspace browser errors were observed');
-    assert(screenshots.length===3,'FCF-02 Purpose Workspace screenshot matrix is incomplete');
+    assert(screenshots.length===4,'FCF-03 Purpose Workspace screenshot matrix is incomplete');
     checks.push({name:'close-preserves-contextual-projects-and-journey',state:'PASS'});
-    return{state:'PASS',...binding,checks,screenshots,effects:false,sourceRegistrationState:steward.sourceRegistrationState,sourceFoundationRegistrationState:steward.sourceFoundationRegistrationState};
+    return{state:'PASS',...binding,checks,screenshots,effects:false,progressState:steward.progressState,progressProjectRef:steward.progressProjectRef,progressGraphCount:steward.progressGraphCount,progressExecutionAuthority:steward.progressExecutionAuthority,sourceRegistrationState:steward.sourceRegistrationState,sourceFoundationRegistrationState:steward.sourceFoundationRegistrationState};
   }catch(error){
     return{state:'FAILED',...binding,checks,screenshots,error:error instanceof Error?error.message:String(error)};
   }finally{
@@ -439,7 +545,7 @@ try {
 }
 
 if (playwright) {
-  const integrationHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-browser-integration-home-'));
+  const integrationHome = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-browser-integration-home-')));
   const integrationDeviceRef = 'device.browser.integration';
   const integrationLineageRef = 'companion.lineage.browser.integration';
   fs.mkdirSync(path.join(integrationHome, 'config'), { recursive: true });
@@ -454,6 +560,7 @@ if (playwright) {
     deviceRef: integrationDeviceRef,
     companionLineageRef: integrationLineageRef
   }, null, 2)}\n`);
+  seedFcf03ProgressFixture(integrationHome);
 
   const server = spawn(process.execPath, ['scripts/serve-browser.mjs'], {
     cwd: ROOT,

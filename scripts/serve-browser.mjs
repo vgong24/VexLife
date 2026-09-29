@@ -12,6 +12,8 @@ import {
   assertUxEvolutionRegistry,
   resolveUxProjectionHostSelection,
 } from '../src/core/ux-evolution.mjs';
+import { loadBlueprint } from '../src/core/blueprint.mjs';
+import { projectIntentStatus } from '../src/core/intent-projection.mjs';
 export * from './serve-browser-core.mjs';
 
 import {
@@ -26,7 +28,11 @@ const uxEvolutionRegistry = JSON.parse(fs.readFileSync(new URL('../blueprint/ux-
 assertUxEvolutionRegistry(uxEvolutionRegistry);
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
 const home = path.resolve(process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.vexlife'));
+const intentSourceBundle = loadBlueprint();
+const intentTrustSnapshot = JSON.parse(fs.readFileSync(new URL('../blueprint/intent-trust-snapshot.json', import.meta.url), 'utf8'));
 export const BROWSER_RELATIONSHIPS_INVITATION_REQUEST_MAX_BYTES = BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES * 2;
+export const BROWSER_INTENT_PROJECT_STATUS_PATH = '/api/v1/intent/project-status';
+export const BROWSER_INTENT_PROJECT_STATUS_SCHEMA = 'vexlife.browser-intent-project-status/v1';
 
 function sendJson(response, statusCode, value) {
   const body = `${JSON.stringify(value)}\n`;
@@ -92,6 +98,76 @@ function sourceManagedGenericFollowThroughResolver(runtimeHome) {
   };
 }
 
+function heldIntentProjectStatus(projectRef, reason) {
+  return Object.freeze({
+    schemaVersion: BROWSER_INTENT_PROJECT_STATUS_SCHEMA,
+    state: 'HELD_UNAVAILABLE',
+    currentness: 'UNKNOWN',
+    projectRef: projectRef ?? null,
+    projectionRef: 'projection.intent.status',
+    runtimeSourceRef: 'source.vexlife.intent-workgraph.runtime-snapshot.001',
+    statusProjections: Object.freeze([]),
+    reason,
+    effects: false,
+    executionAuthority: 'NONE'
+  });
+}
+
+export function projectBrowserIntentProjectStatus({
+  projectRef,
+  workgraphs,
+  sourceBundle = intentSourceBundle,
+  trustSnapshot = intentTrustSnapshot
+} = {}) {
+  if (typeof projectRef !== 'string' || !/^project\.[A-Za-z0-9._-]+$/u.test(projectRef) || projectRef.length > 256) {
+    throw new TypeError('Intent project status requires one bounded projectRef');
+  }
+  if (!Array.isArray(workgraphs)) return heldIntentProjectStatus(projectRef, 'CURRENT_WORKGRAPH_UNAVAILABLE');
+  const statusProjections = workgraphs
+    .filter((graph) => graph?.intent?.projectRef === projectRef)
+    .sort((left, right) => left.graphRef.localeCompare(right.graphRef))
+    .map((graph) => projectIntentStatus(graph, {
+      registry: sourceBundle.intentRegistry,
+      registeredProcessRefs: sourceBundle.factory.processes.map((item) => item.processRef),
+      registeredRoleRefs: sourceBundle.blueprint.roles.map((item) => item.roleRef),
+      trustSnapshot
+    }));
+  if (statusProjections.some((status) => (status.validation?.errors ?? []).length > 0)) {
+    return heldIntentProjectStatus(projectRef, 'INTENT_STATUS_VALIDATION_BLOCKED');
+  }
+  return Object.freeze({
+    schemaVersion: BROWSER_INTENT_PROJECT_STATUS_SCHEMA,
+    state: 'CURRENT',
+    currentness: 'CURRENT',
+    projectRef,
+    projectionRef: 'projection.intent.status',
+    runtimeSourceRef: 'source.vexlife.intent-workgraph.runtime-snapshot.001',
+    statusProjections: Object.freeze(statusProjections.map((status) => Object.freeze(structuredClone(status)))),
+    effects: false,
+    executionAuthority: 'NONE'
+  });
+}
+
+function sourceManagedIntentProjectStatusResolver(runtimeHome) {
+  const homeRoot = path.resolve(runtimeHome);
+  let readerPromise = null;
+  return async function resolveIntentProjectStatus(projectRef) {
+    try {
+      if (readerPromise === null) {
+        readerPromise = import('../src/core/intent-workgraph-runtime-snapshot.mjs')
+          .then(({ readIntentWorkgraphRuntimeSnapshots }) => readIntentWorkgraphRuntimeSnapshots);
+      }
+      const readCurrentWorkgraphs = await readerPromise;
+      return projectBrowserIntentProjectStatus({
+        projectRef,
+        workgraphs: readCurrentWorkgraphs({ home: homeRoot })
+      });
+    } catch {
+      return heldIntentProjectStatus(projectRef, 'CURRENT_WORKGRAPH_UNAVAILABLE');
+    }
+  };
+}
+
 export function createVexLifeBrowserServer(options = {}) {
   if (!options || typeof options !== 'object' || Array.isArray(options)) {
     throw new TypeError('VexLife browser server options must be one object');
@@ -100,13 +176,20 @@ export function createVexLifeBrowserServer(options = {}) {
     relationshipsInvitationProductBridge = createBrowserRelationshipsInvitationProductBridge(),
     genericFollowThroughRuntimeHome = home,
     resolveFamilyWorkProjection: callerSuppliedFamilyWorkProjection,
+    resolveIntentProjectStatus: callerSuppliedIntentProjectStatus,
     ...coreOptions
   } = options;
   if (callerSuppliedFamilyWorkProjection !== undefined) {
     throw new TypeError('Production VexLife browser follow-through projection is source-managed and cannot be caller supplied');
   }
+  if (callerSuppliedIntentProjectStatus !== undefined) {
+    throw new TypeError('Production VexLife browser Intent status projection is source-managed and cannot be caller supplied');
+  }
   const invitationBridge = invitationBridgeOrThrow(relationshipsInvitationProductBridge);
   const resolveFamilyWorkProjection = sourceManagedGenericFollowThroughResolver(
+    genericFollowThroughRuntimeHome
+  );
+  const resolveIntentProjectStatus = sourceManagedIntentProjectStatusResolver(
     genericFollowThroughRuntimeHome
   );
   const coreServer = createCoreVexLifeBrowserServer({
@@ -147,6 +230,22 @@ export function createVexLifeBrowserServer(options = {}) {
         'X-VexLife-Projection': selection.selectedProjection,
       });
       response.end();
+      return;
+    }
+
+    if (url.pathname === BROWSER_INTENT_PROJECT_STATUS_PATH) {
+      if (request.method !== 'GET') {
+        response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
+        response.end();
+        return;
+      }
+      const projectRef = url.searchParams.get('projectRef');
+      if (url.searchParams.size !== 1 || typeof projectRef !== 'string' || !/^project\.[A-Za-z0-9._-]+$/u.test(projectRef) || projectRef.length > 256) {
+        sendJson(response, 400, heldIntentProjectStatus(null, 'PROJECT_SCOPE_INVALID'));
+        return;
+      }
+      const result = await resolveIntentProjectStatus(projectRef);
+      sendJson(response, 200, result);
       return;
     }
 
