@@ -22,7 +22,8 @@
         "state.journey"
       ],
       "actionRefs": [
-        "action.context.open"
+        "action.context.open",
+        "action.draft-surface.transact"
       ],
       "permissionRefs": [
         "permission.none"

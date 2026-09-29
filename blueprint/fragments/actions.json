@@ -993,5 +993,18 @@
     "outputStateRefs": [
       "state.cdr-s5-closed-alpha-reference"
     ]
+  },
+  {
+    "actionRef": "action.draft-surface.transact",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "transactionRef": "ref",
+      "draftRef": "ref",
+      "operationRef": "ref",
+      "expectedRevision": "integer",
+      "payload": "object"
+    },
+    "effectClass": "LOCAL_DRAFT",
+    "outputStateRefs": []
   }
 ]

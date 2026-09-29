@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/evolution/purpose-workspace-projection.js",
       "mode": "100644",
-      "bytes": 16746,
-      "sha256": "19f9d015275917befa629fafbd7f4b86ee649f3586640b434bd6431011818255"
+      "bytes": 21789,
+      "sha256": "fd98f3504838592b55a163054ab03911ce14888641514eb093a4da1c73d2f7ad"
     },
     {
       "path": "scripts/browser-structure-check.mjs",

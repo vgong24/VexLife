@@ -53,7 +53,64 @@
         "save": false,
         "deploy": false,
         "publish": false,
-        "typedDraftTransactionReceipt": false
+        "typedDraftTransactionReceipt": true,
+        "transactionContract": {
+          "draftRef": "draft.vexlife.purpose-workspace.local-seed",
+          "draftSessionScope": "EPHEMERAL_BROWSER_SESSION",
+          "actionRef": "action.draft-surface.transact",
+          "permissionRef": "permission.none",
+          "authorityClassRef": "authority.draft",
+          "effectClass": "LOCAL_DRAFT",
+          "editableFields": [
+            "featureRef",
+            "purpose"
+          ],
+          "readOnlyFields": [
+            "platformRefs"
+          ],
+          "initialRevision": 0,
+          "expectedRevisionRequired": true,
+          "revisionIncrementsOnlyOnAppliedMutation": true,
+          "rejectedMutationPreservesRevision": true,
+          "operationRefs": [
+            "operation.vexlife.draft-surface.seed.patch",
+            "operation.vexlife.draft-surface.seed.reset"
+          ],
+          "receiptContract": {
+            "schemaVersion": "vexlife.draft-transaction-receipt/v1",
+            "historyLimit": 32,
+            "fields": [
+              "receiptRef",
+              "transactionRef",
+              "draftRef",
+              "draftSessionRef",
+              "actionRef",
+              "operationRef",
+              "permissionRef",
+              "authorityClassRef",
+              "effectClass",
+              "priorRevision",
+              "nextRevision",
+              "changedFieldRefs",
+              "disposition",
+              "canonicalRegistryMutation",
+              "externalEffect",
+              "save",
+              "deploy",
+              "publish"
+            ],
+            "dispositions": [
+              "APPLIED",
+              "STALE_REJECTED",
+              "INVALID_REJECTED"
+            ],
+            "canonicalRegistryMutation": false,
+            "externalEffect": false,
+            "save": false,
+            "deploy": false,
+            "publish": false
+          }
+        }
       }
     }
   ],

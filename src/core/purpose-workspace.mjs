@@ -46,6 +46,58 @@ export function validatePurposeWorkspaceRegistry(bundle) {
   if (registry?.sourcePlacement?.stageRef !== 'SPW-01' || registry?.sourcePlacement?.status !== 'SOURCE_FOUNDATION_ONLY') errors.push('SPW-01 source placement boundary missing');
   if (registry?.entryContinuityContract?.publicEstablishmentOwnerCurrent !== true || registry?.entryContinuityContract?.featureWalkthroughPlanCurrent !== false) errors.push('onboarding currentness boundary changed');
   if (registry?.workspaceDefinitions?.length !== 1 || registry.workspaceDefinitions[0].workspaceRef !== WORKSPACE_REF) errors.push('workspace identity mismatch');
+  const workspace = registry?.workspaceDefinitions?.[0];
+  const draftContract = workspace?.draftSurfaceContract;
+  const transactionContract = draftContract?.transactionContract;
+  const sameArray = (actual, expected) => Array.isArray(actual) && actual.length === expected.length && actual.every((value, i) => value === expected[i]);
+  const exactKeys = (value, expected) => value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === expected.length && expected.every((key) => Object.hasOwn(value, key));
+  if (!draftContract
+    || draftContract.componentRef !== 'component.vexlife.draft-surface'
+    || draftContract.candidateMeaning !== 'BOUNDED_CONSTRUCTION_SEED_NOT_CANONICAL_FEATURE'
+    || !sameArray(draftContract.seedFields, ['featureRef', 'purpose', 'platformRefs'])
+    || !sameArray(draftContract.defaultPlatformRefs, ['platform.browser'])
+    || draftContract.effectClass !== 'LOCAL_DRAFT'
+    || draftContract.authorityClassRef !== 'authority.draft'
+    || draftContract.persistence !== 'EPHEMERAL_BROWSER_SESSION'
+    || draftContract.canonicalRegistryMutation !== false
+    || draftContract.save !== false
+    || draftContract.deploy !== false
+    || draftContract.publish !== false
+    || draftContract.typedDraftTransactionReceipt !== true) {
+    errors.push('FCF-05 draft surface transaction boundary invalid');
+  }
+  const transactionKeys = ['draftRef', 'draftSessionScope', 'actionRef', 'permissionRef', 'authorityClassRef', 'effectClass', 'editableFields', 'readOnlyFields', 'initialRevision', 'expectedRevisionRequired', 'revisionIncrementsOnlyOnAppliedMutation', 'rejectedMutationPreservesRevision', 'operationRefs', 'receiptContract'];
+  const receiptKeys = ['schemaVersion', 'historyLimit', 'fields', 'dispositions', 'canonicalRegistryMutation', 'externalEffect', 'save', 'deploy', 'publish'];
+  const receiptFields = ['receiptRef', 'transactionRef', 'draftRef', 'draftSessionRef', 'actionRef', 'operationRef', 'permissionRef', 'authorityClassRef', 'effectClass', 'priorRevision', 'nextRevision', 'changedFieldRefs', 'disposition', 'canonicalRegistryMutation', 'externalEffect', 'save', 'deploy', 'publish'];
+  if (!exactKeys(transactionContract, transactionKeys)
+    || transactionContract.draftRef !== 'draft.vexlife.purpose-workspace.local-seed'
+    || transactionContract.draftSessionScope !== 'EPHEMERAL_BROWSER_SESSION'
+    || transactionContract.actionRef !== 'action.draft-surface.transact'
+    || transactionContract.permissionRef !== 'permission.none'
+    || transactionContract.authorityClassRef !== 'authority.draft'
+    || transactionContract.effectClass !== 'LOCAL_DRAFT'
+    || !sameArray(transactionContract.editableFields, ['featureRef', 'purpose'])
+    || !sameArray(transactionContract.readOnlyFields, ['platformRefs'])
+    || transactionContract.initialRevision !== 0
+    || transactionContract.expectedRevisionRequired !== true
+    || transactionContract.revisionIncrementsOnlyOnAppliedMutation !== true
+    || transactionContract.rejectedMutationPreservesRevision !== true
+    || !sameArray(transactionContract.operationRefs, ['operation.vexlife.draft-surface.seed.patch', 'operation.vexlife.draft-surface.seed.reset'])) {
+    errors.push('FCF-05 transaction contract malformed or unsupported');
+  }
+  const receiptContract = transactionContract?.receiptContract;
+  if (!exactKeys(receiptContract, receiptKeys)
+    || receiptContract.schemaVersion !== 'vexlife.draft-transaction-receipt/v1'
+    || !Number.isInteger(receiptContract.historyLimit) || receiptContract.historyLimit < 1 || receiptContract.historyLimit > 64
+    || !sameArray(receiptContract.fields, receiptFields)
+    || !sameArray(receiptContract.dispositions, ['APPLIED', 'STALE_REJECTED', 'INVALID_REJECTED'])
+    || receiptContract.canonicalRegistryMutation !== false
+    || receiptContract.externalEffect !== false
+    || receiptContract.save !== false
+    || receiptContract.deploy !== false
+    || receiptContract.publish !== false) {
+    errors.push('FCF-05 draft transaction receipt contract malformed or unsupported');
+  }
   if (processPatterns?.length !== 6) errors.push('six reusable process patterns required');
   if (completionContracts?.length !== 6) errors.push('six completion contracts required');
   if (domainPacks?.length !== 4) errors.push('four synthetic domain packs required');
