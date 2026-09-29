@@ -481,6 +481,62 @@ async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMo
       readyLaneVisible:true
     });
     await capture('default-do','CANONICAL_PURPOSE_WORKSPACE_SOURCE__NO_EFFECTS');
+
+    const provenanceBefore=await page.evaluate(()=>globalThis.__VEXLIFE_APP__.purposeWorkspaceEvolution.snapshot());
+    assert(provenanceBefore.provenance?.journalRelationState==='UNLINKED','FCF-06 visual fixture must begin from an unlinked local construction session');
+    const provenanceReceipt=await page.evaluate(({draftRef,expectedRevision})=>globalThis.__VEXLIFE_APP__.purposeWorkspaceEvolution.transactDraft({
+      transactionRef:'transaction.browser-integration.fcf06.related-journal.link',
+      draftRef,
+      operationRef:'operation.vexlife.draft-surface.provenance.journal.set',
+      expectedRevision,
+      payload:{journalTarget:{
+        targetClass:'SYNTHETIC_EVENT',
+        pageRef:'page.journal.synthetic.fcf06-visual-witness',
+        eventRef:'event.synthetic.fcf06-visual-witness',
+        sourceRef:'source.synthetic.fcf06-visual-witness'
+      }}
+    }),{draftRef:provenanceBefore.draftRef,expectedRevision:provenanceBefore.draftRevision});
+    assert(provenanceReceipt.disposition==='APPLIED'&&provenanceReceipt.nextRevision===provenanceBefore.draftRevision+1,'FCF-06 visual provenance fixture did not apply exactly once');
+    assert(provenanceReceipt.permissionRef==='permission.none'&&provenanceReceipt.authorityClassRef==='authority.draft'&&provenanceReceipt.effectClass==='LOCAL_DRAFT','FCF-06 visual provenance fixture escaped the local-draft action membrane');
+    assert(provenanceReceipt.externalEffect===false&&provenanceReceipt.canonicalRegistryMutation===false&&provenanceReceipt.save===false&&provenanceReceipt.deploy===false&&provenanceReceipt.publish===false,'FCF-06 visual provenance fixture gained a product or publication effect');
+    const linkedProvenance=await page.evaluate(()=>globalThis.__VEXLIFE_APP__.purposeWorkspaceEvolution.snapshot());
+    const relatedJournal=root.locator('.purpose-workspace-evolution__related-journal');
+    assert(linkedProvenance.provenance?.journalRelationState==='LINKED_REFERENCE_ONLY','FCF-06 linked visual state did not remain reference-only');
+    assert(linkedProvenance.provenance?.JournalAuthority===false&&linkedProvenance.provenance?.MemoryAuthority===false&&linkedProvenance.provenance?.canonicalFeatureAuthority===false,'FCF-06 linked visual state gained forbidden authority');
+    assert(await relatedJournal.isVisible(),'FCF-06 Related Journal disclosure is not human-visible when linked');
+    const relatedJournalText=(await relatedJournal.textContent())??'';
+    for(const token of ['REFERENCE ONLY','Related Journal','SYNTHETIC_EVENT','page.journal.synthetic.fcf06-visual-witness','event.synthetic.fcf06-visual-witness','source.synthetic.fcf06-visual-witness']){
+      assert(relatedJournalText.includes(token),`FCF-06 Related Journal visual witness is missing ${token}`);
+    }
+    const linkedOverflow=await root.evaluate((node)=>Math.max(0,document.documentElement.scrollWidth-innerWidth,node.scrollWidth-node.clientWidth));
+    assert(linkedOverflow<=1,'FCF-06 linked Related Journal visual witness overflows its viewport');
+    assert(await root.getByRole('button',{name:/save|deploy|publish/i}).count()===0,'FCF-06 linked visual state exposed Save/Deploy/Publish');
+    await capture('related-journal-linked','SYNTHETIC_FCF06_REFERENCE_ONLY_PROVENANCE__NO_JOURNAL_OR_MEMORY_MUTATION');
+
+    const provenanceClear=await page.evaluate(({draftRef,expectedRevision})=>globalThis.__VEXLIFE_APP__.purposeWorkspaceEvolution.transactDraft({
+      transactionRef:'transaction.browser-integration.fcf06.related-journal.clear',
+      draftRef,
+      operationRef:'operation.vexlife.draft-surface.provenance.journal.set',
+      expectedRevision,
+      payload:{journalTarget:null}
+    }),{draftRef:linkedProvenance.draftRef,expectedRevision:linkedProvenance.draftRevision});
+    assert(provenanceClear.disposition==='APPLIED','FCF-06 disposable visual provenance fixture did not clear through the same local transaction membrane');
+    const provenanceAfter=await page.evaluate(()=>globalThis.__VEXLIFE_APP__.purposeWorkspaceEvolution.snapshot());
+    assert(provenanceAfter.provenance?.journalRelationState==='UNLINKED'&&await relatedJournal.isHidden(),'FCF-06 disposable visual provenance fixture leaked into later Purpose Workspace captures');
+    checks.push({
+      name:'fcf06-reference-only-related-journal-linked-visual-witness',
+      state:'PASS',
+      viewport,
+      linkedOverflow,
+      targetClass:linkedProvenance.provenance.journalTargetOrNull?.targetClass??null,
+      journalAuthority:linkedProvenance.provenance.JournalAuthority,
+      memoryAuthority:linkedProvenance.provenance.MemoryAuthority,
+      canonicalFeatureAuthority:linkedProvenance.provenance.canonicalFeatureAuthority,
+      save:false,
+      deploy:false,
+      publish:false
+    });
+
     await root.locator('.purpose-workspace-evolution__progress').scrollIntoViewIfNeeded();
     await capture('progress-current','CANONICAL_INTENT_WORKGRAPH_PROGRESS__NO_EFFECTS');
     await root.evaluate((node)=>{node.scrollTop=0;});
@@ -515,7 +571,7 @@ async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMo
     }));
     assert(JSON.stringify(after)===JSON.stringify(before),'FCF-02 Purpose Workspace presentation mutated contextual Projects or Journey');
     assert(errors.consoleErrors.length===0&&errors.pageErrors.length===0,'FCF-02 Purpose Workspace browser errors were observed');
-    assert(screenshots.length===4,'FCF-03 Purpose Workspace screenshot matrix is incomplete');
+    assert(screenshots.length===5,'FCF-06 Purpose Workspace screenshot matrix is incomplete');
     checks.push({name:'close-preserves-contextual-projects-and-journey',state:'PASS'});
     return{state:'PASS',...binding,checks,screenshots,effects:false,progressState:steward.progressState,progressProjectRef:steward.progressProjectRef,progressGraphCount:steward.progressGraphCount,progressExecutionAuthority:steward.progressExecutionAuthority,sourceRegistrationState:steward.sourceRegistrationState,sourceFoundationRegistrationState:steward.sourceFoundationRegistrationState};
   }catch(error){
