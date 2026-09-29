@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.purpose-workspace-registry/v1",
   "registryRef": "registry.vexlife.purpose-workspaces.001",
-  "registryVersion": 5,
+  "registryVersion": 6,
   "purpose": "Preserve the accepted reusable Purpose Workspace source foundation while registering its smallest current Feature/Blueprint/Experience/Module/Process/localization membrane without inferring browser runtime adoption or external professional effects.",
   "composition": "CANONICAL_FRAGMENT_COMPOSITION",
   "workspaceDefinitions": [
@@ -110,6 +110,57 @@
             "deploy": false,
             "publish": false
           }
+        },
+        "journalProvenanceContract": {
+          "provenanceClass": "DESIGN_CONSTRUCTION_SESSION",
+          "provenanceRefPrefix": "provenance.vexlife.design-construction-session",
+          "sessionIdentityField": "draftSessionRef",
+          "operationRef": "operation.vexlife.draft-surface.provenance.journal.set",
+          "relationStates": [
+            "UNLINKED",
+            "LINKED_REFERENCE_ONLY"
+          ],
+          "targetClassField": "targetClass",
+          "journalTargetVariants": {
+            "MEMORY_STATEMENT": [
+              "targetClass",
+              "pageRef",
+              "statementRef",
+              "sourceRefs"
+            ],
+            "ARCHIVE_STATEMENT": [
+              "targetClass",
+              "pageRef",
+              "statementRef",
+              "dayRef",
+              "dailyStratumRef",
+              "sourceRefs"
+            ],
+            "SYNTHETIC_EVENT": [
+              "targetClass",
+              "pageRef",
+              "eventRef",
+              "sourceRef"
+            ]
+          },
+          "exactSourceIdentityRequired": true,
+          "unknownFieldsRejected": true,
+          "crossClassFieldsRejected": true,
+          "sourceRefsNonEmptyUnique": true,
+          "receiptChangedFieldRef": "journalRelation",
+          "persistence": "EPHEMERAL_BROWSER_SESSION",
+          "resetPreservesRelation": true,
+          "closeReopenPreservesRelation": true,
+          "reloadPersistenceClaim": false,
+          "currentWorkStateAuthority": false,
+          "JournalAuthority": false,
+          "MemoryAuthority": false,
+          "canonicalFeatureAuthority": false,
+          "journalMutation": false,
+          "memoryMutation": false,
+          "workgraphMutation": false,
+          "sourceCopy": false,
+          "canonicalFeatureMutation": false
         }
       }
     }
@@ -405,7 +456,9 @@
     "SYNTHETIC_REVIEW_HTML_IS_EVIDENCE_NOT_PRODUCT_SOURCE",
     "TERRAIN_LAYOUT_NEVER_MUTATES_CANONICAL_TRUTH",
     "DRAFT_SURFACE_LOCAL_SEED_NEVER_MUTATES_CANONICAL_FEATURE_REGISTRY",
-    "DRAFT_SURFACE_SAVE_DEPLOY_PUBLISH_HELD_FOR_SUCCESSOR_STAGE"
+    "DRAFT_SURFACE_SAVE_DEPLOY_PUBLISH_HELD_FOR_SUCCESSOR_STAGE",
+    "DESIGN_PROVENANCE_RELATION_IS_REFERENCE_ONLY",
+    "DRAFT_RESET_PRESERVES_SESSION_PROVENANCE_AND_RECEIPT_HISTORY"
   ],
   "includes": {
     "processPatterns": "blueprint/purpose-workspace/process-patterns.json",

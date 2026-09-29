@@ -43,15 +43,76 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
   let domainRef=null,taskRef=null,semanticDepth='DO';
   const emptyDraft=()=>({featureRef:'',purpose:'',platformRefs:['platform.browser']});
   let draft=emptyDraft(),draftRevision=0,draftReceipts=[],draftReceiptOrdinal=0,draftTransactionOrdinal=0,draftControls=null;
+  let journalRelationState='UNLINKED',journalTarget=null;
   const draftSessionRef=`draft-session.vexlife.purpose-workspace.${globalThis.crypto?.randomUUID?.()??`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`}`;
   const draftTransactionContract=()=>source?.registry?.workspaceDefinitions?.[0]?.draftSurfaceContract?.transactionContract??null;
+  const draftProvenanceContract=()=>source?.registry?.workspaceDefinitions?.[0]?.draftSurfaceContract?.journalProvenanceContract??null;
   const nextTransactionRef=()=>`transaction.vexlife.draft-surface.${draftSessionRef}.${++draftTransactionOrdinal}`;
+  const cloneJournalTarget=(target)=>{
+    if(!target)return null;
+    const copy={};
+    for(const [key,value] of Object.entries(target))copy[key]=Array.isArray(value)?Object.freeze([...value]):value;
+    return Object.freeze(copy);
+  };
+  const normalizeJournalTarget=(value)=>{
+    const contract=draftProvenanceContract();
+    if(!contract||!value||typeof value!=='object'||Array.isArray(value))return null;
+    const targetClass=value[contract.targetClassField];
+    const fields=contract.journalTargetVariants?.[targetClass];
+    if(!Array.isArray(fields))return null;
+    const keys=Object.keys(value);
+    if(keys.length!==fields.length||fields.some((key)=>!Object.hasOwn(value,key)))return null;
+    for(const key of fields){
+      if(key==='sourceRefs'){
+        if(!Array.isArray(value[key])||value[key].length===0||value[key].some((item)=>typeof item!=='string'||item.trim().length===0)||new Set(value[key]).size!==value[key].length)return null;
+      }else if(typeof value[key]!=='string'||value[key].trim().length===0)return null;
+    }
+    return cloneJournalTarget(value);
+  };
+  const provenanceSnapshot=()=>{
+    const contract=draftProvenanceContract();
+    return Object.freeze({
+      provenanceRef:contract?`${contract.provenanceRefPrefix}.${draftSessionRef}`:null,
+      provenanceClass:contract?.provenanceClass??null,
+      draftSessionRef,
+      draftRef:draftTransactionContract()?.draftRef??null,
+      draftRevision,
+      projectRefOrNull:progressProjectRef??null,
+      featureRefOrNull:draft.featureRef||null,
+      transactionReceiptRefs:Object.freeze(draftReceipts.map((item)=>item.receiptRef)),
+      journalRelationState,
+      journalTargetOrNull:cloneJournalTarget(journalTarget),
+      currentWorkStateAuthority:false,
+      JournalAuthority:false,
+      MemoryAuthority:false,
+      canonicalFeatureAuthority:false
+    });
+  };
+  const syncRelatedJournal=()=>{
+    const panel=draftControls?.relatedJournal;
+    if(!panel)return;
+    panel.replaceChildren();
+    panel.dataset.relationState=journalRelationState;
+    panel.hidden=journalRelationState!=='LINKED_REFERENCE_ONLY'||!journalTarget;
+    if(panel.hidden)return;
+    panel.append(element('small','purpose-workspace-evolution__related-journal-eyebrow','REFERENCE ONLY'),element('h4','', 'Related Journal'));
+    const summary=element('p','purpose-workspace-evolution__related-journal-summary',`Existing Journal testimony · ${journalTarget.targetClass}`);
+    panel.append(summary);
+    const fields=element('dl','purpose-workspace-evolution__related-journal-fields');
+    for(const [key,value] of Object.entries(journalTarget)){
+      const term=element('dt','',key),detail=element('dd','',Array.isArray(value)?value.join(' · '):value);
+      detail.dataset.provenanceField=key;
+      fields.append(term,detail);
+    }
+    panel.append(fields);
+  };
   const syncDraftControls=()=>{
     if(!draftControls)return;
     draftControls.featureInput.value=draft.featureRef;
     draftControls.purposeInput.value=draft.purpose;
     draftControls.platformInput.value=draft.platformRefs.join(', ');
     draftControls.draftSurface.dataset.revision=String(draftRevision);
+    syncRelatedJournal();
   };
   const recordDraftReceipt=({transactionRef,operationRef,priorRevision,nextRevision,changedFieldRefs,disposition})=>{
     const contract=draftTransactionContract();
@@ -99,6 +160,18 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
       draftRevision=priorRevision+1;
       syncDraftControls();
       return recordDraftReceipt({transactionRef,operationRef,priorRevision,nextRevision:draftRevision,changedFieldRefs,disposition:'APPLIED'});
+    }
+    const provenanceContract=draftProvenanceContract();
+    if(operationRef===provenanceContract?.operationRef){
+      const keys=Object.keys(payload);
+      if(keys.length!==1||keys[0]!=='journalTarget')return reject('INVALID_REJECTED');
+      const nextTarget=payload.journalTarget===null?null:normalizeJournalTarget(payload.journalTarget);
+      if(payload.journalTarget!==null&&!nextTarget)return reject('INVALID_REJECTED');
+      journalTarget=nextTarget;
+      journalRelationState=journalTarget?'LINKED_REFERENCE_ONLY':'UNLINKED';
+      draftRevision=priorRevision+1;
+      syncDraftControls();
+      return recordDraftReceipt({transactionRef,operationRef,priorRevision,nextRevision:draftRevision,changedFieldRefs:[provenanceContract.receiptChangedFieldRef],disposition:'APPLIED'});
     }
     if(operationRef==='operation.vexlife.draft-surface.seed.reset'){
       if(Object.keys(payload).length!==0)return reject('INVALID_REJECTED');
@@ -285,6 +358,11 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
       makeField('purpose-workspace.draft.platform',platformInput)
     );
     draftSurface.append(draftGrid);
+    const relatedJournal=element('section','purpose-workspace-evolution__related-journal');
+    relatedJournal.hidden=true;
+    relatedJournal.dataset.relationState=journalRelationState;
+    relatedJournal.setAttribute('aria-label','Related Journal provenance');
+    draftSurface.append(relatedJournal);
     const draftFooter=element('div','purpose-workspace-evolution__draft-footer');
     const reset=element('button','purpose-workspace-evolution__draft-reset',t('purpose-workspace.draft.reset'));
     reset.type='button';
@@ -299,7 +377,8 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
       reset.focus();
     });
     draftFooter.append(element('small','',t('purpose-workspace.draft.local-only')),reset);
-    draftControls={draftSurface,featureInput,purposeInput,platformInput,reset};
+    draftControls={draftSurface,featureInput,purposeInput,platformInput,reset,relatedJournal};
+    syncRelatedJournal();
     draftSurface.append(draftFooter);
     root.append(draftSurface);
 
@@ -395,6 +474,7 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
         draftSessionRef,
         draftRevision,
         draftReceipts:Object.freeze([...draftReceipts]),
+        provenance:provenanceSnapshot(),
         draftEffectClass:'LOCAL_DRAFT',
         draftAuthorityClass:'authority.draft',
         draftPersistence:'EPHEMERAL_BROWSER_SESSION',

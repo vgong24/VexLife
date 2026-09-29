@@ -49,6 +49,7 @@ export function validatePurposeWorkspaceRegistry(bundle) {
   const workspace = registry?.workspaceDefinitions?.[0];
   const draftContract = workspace?.draftSurfaceContract;
   const transactionContract = draftContract?.transactionContract;
+  const provenanceContract = draftContract?.journalProvenanceContract;
   const sameArray = (actual, expected) => Array.isArray(actual) && actual.length === expected.length && actual.every((value, i) => value === expected[i]);
   const exactKeys = (value, expected) => value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === expected.length && expected.every((key) => Object.hasOwn(value, key));
   if (!draftContract
@@ -97,6 +98,39 @@ export function validatePurposeWorkspaceRegistry(bundle) {
     || receiptContract.deploy !== false
     || receiptContract.publish !== false) {
     errors.push('FCF-05 draft transaction receipt contract malformed or unsupported');
+  }
+  const provenanceKeys = ['provenanceClass', 'provenanceRefPrefix', 'sessionIdentityField', 'operationRef', 'relationStates', 'targetClassField', 'journalTargetVariants', 'exactSourceIdentityRequired', 'unknownFieldsRejected', 'crossClassFieldsRejected', 'sourceRefsNonEmptyUnique', 'receiptChangedFieldRef', 'persistence', 'resetPreservesRelation', 'closeReopenPreservesRelation', 'reloadPersistenceClaim', 'currentWorkStateAuthority', 'JournalAuthority', 'MemoryAuthority', 'canonicalFeatureAuthority', 'journalMutation', 'memoryMutation', 'workgraphMutation', 'sourceCopy', 'canonicalFeatureMutation'];
+  const journalTargetVariants = provenanceContract?.journalTargetVariants;
+  if (!exactKeys(provenanceContract, provenanceKeys)
+    || provenanceContract.provenanceClass !== 'DESIGN_CONSTRUCTION_SESSION'
+    || provenanceContract.provenanceRefPrefix !== 'provenance.vexlife.design-construction-session'
+    || provenanceContract.sessionIdentityField !== 'draftSessionRef'
+    || provenanceContract.operationRef !== 'operation.vexlife.draft-surface.provenance.journal.set'
+    || !sameArray(provenanceContract.relationStates, ['UNLINKED', 'LINKED_REFERENCE_ONLY'])
+    || provenanceContract.targetClassField !== 'targetClass'
+    || !exactKeys(journalTargetVariants, ['MEMORY_STATEMENT', 'ARCHIVE_STATEMENT', 'SYNTHETIC_EVENT'])
+    || !sameArray(journalTargetVariants?.MEMORY_STATEMENT, ['targetClass', 'pageRef', 'statementRef', 'sourceRefs'])
+    || !sameArray(journalTargetVariants?.ARCHIVE_STATEMENT, ['targetClass', 'pageRef', 'statementRef', 'dayRef', 'dailyStratumRef', 'sourceRefs'])
+    || !sameArray(journalTargetVariants?.SYNTHETIC_EVENT, ['targetClass', 'pageRef', 'eventRef', 'sourceRef'])
+    || provenanceContract.exactSourceIdentityRequired !== true
+    || provenanceContract.unknownFieldsRejected !== true
+    || provenanceContract.crossClassFieldsRejected !== true
+    || provenanceContract.sourceRefsNonEmptyUnique !== true
+    || provenanceContract.receiptChangedFieldRef !== 'journalRelation'
+    || provenanceContract.persistence !== 'EPHEMERAL_BROWSER_SESSION'
+    || provenanceContract.resetPreservesRelation !== true
+    || provenanceContract.closeReopenPreservesRelation !== true
+    || provenanceContract.reloadPersistenceClaim !== false
+    || provenanceContract.currentWorkStateAuthority !== false
+    || provenanceContract.JournalAuthority !== false
+    || provenanceContract.MemoryAuthority !== false
+    || provenanceContract.canonicalFeatureAuthority !== false
+    || provenanceContract.journalMutation !== false
+    || provenanceContract.memoryMutation !== false
+    || provenanceContract.workgraphMutation !== false
+    || provenanceContract.sourceCopy !== false
+    || provenanceContract.canonicalFeatureMutation !== false) {
+    errors.push('FCF-06 Journal construction-session provenance contract malformed or unsupported');
   }
   if (processPatterns?.length !== 6) errors.push('six reusable process patterns required');
   if (completionContracts?.length !== 6) errors.push('six completion contracts required');
