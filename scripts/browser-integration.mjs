@@ -511,6 +511,17 @@ async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMo
     const linkedOverflow=await root.evaluate((node)=>Math.max(0,document.documentElement.scrollWidth-innerWidth,node.scrollWidth-node.clientWidth));
     assert(linkedOverflow<=1,'FCF-06 linked Related Journal visual witness overflows its viewport');
     assert(await root.getByRole('button',{name:/save|deploy|publish/i}).count()===0,'FCF-06 linked visual state exposed Save/Deploy/Publish');
+    await relatedJournal.scrollIntoViewIfNeeded();
+    const relatedJournalGeometry=await relatedJournal.evaluate((element)=>{
+      const rect=element.getBoundingClientRect();
+      return{
+        top:rect.top,
+        bottom:rect.bottom,
+        height:rect.height,
+        intersectsViewport:rect.height>0&&rect.bottom>0&&rect.top<innerHeight
+      };
+    });
+    assert(relatedJournalGeometry.intersectsViewport,'FCF-06 Related Journal screenshot target is outside the viewport');
     await capture('related-journal-linked','SYNTHETIC_FCF06_REFERENCE_ONLY_PROVENANCE__NO_JOURNAL_OR_MEMORY_MUTATION');
 
     const provenanceClear=await page.evaluate(({draftRef,expectedRevision})=>globalThis.__VEXLIFE_APP__.purposeWorkspaceEvolution.transactDraft({
@@ -528,6 +539,7 @@ async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMo
       state:'PASS',
       viewport,
       linkedOverflow,
+      relatedJournalGeometry,
       targetClass:linkedProvenance.provenance.journalTargetOrNull?.targetClass??null,
       journalAuthority:linkedProvenance.provenance.JournalAuthority,
       memoryAuthority:linkedProvenance.provenance.MemoryAuthority,
