@@ -42,7 +42,75 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
   let source=null,host=null,progress=null,progressProjectRef=null;
   let domainRef=null,taskRef=null,semanticDepth='DO';
   const emptyDraft=()=>({featureRef:'',purpose:'',platformRefs:['platform.browser']});
-  let draft=emptyDraft();
+  let draft=emptyDraft(),draftRevision=0,draftReceipts=[],draftReceiptOrdinal=0,draftTransactionOrdinal=0,draftControls=null;
+  const draftSessionRef=`draft-session.vexlife.purpose-workspace.${globalThis.crypto?.randomUUID?.()??`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`}`;
+  const draftTransactionContract=()=>source?.registry?.workspaceDefinitions?.[0]?.draftSurfaceContract?.transactionContract??null;
+  const nextTransactionRef=()=>`transaction.vexlife.draft-surface.${draftSessionRef}.${++draftTransactionOrdinal}`;
+  const syncDraftControls=()=>{
+    if(!draftControls)return;
+    draftControls.featureInput.value=draft.featureRef;
+    draftControls.purposeInput.value=draft.purpose;
+    draftControls.platformInput.value=draft.platformRefs.join(', ');
+    draftControls.draftSurface.dataset.revision=String(draftRevision);
+  };
+  const recordDraftReceipt=({transactionRef,operationRef,priorRevision,nextRevision,changedFieldRefs,disposition})=>{
+    const contract=draftTransactionContract();
+    const receipt=Object.freeze({
+      schemaVersion:contract.receiptContract.schemaVersion,
+      receiptRef:`receipt.vexlife.draft-transaction.${draftSessionRef}.${++draftReceiptOrdinal}`,
+      transactionRef,
+      draftRef:contract.draftRef,
+      draftSessionRef,
+      actionRef:contract.actionRef,
+      operationRef,
+      permissionRef:contract.permissionRef,
+      authorityClassRef:contract.authorityClassRef,
+      effectClass:contract.effectClass,
+      priorRevision,
+      nextRevision,
+      changedFieldRefs:Object.freeze([...changedFieldRefs]),
+      disposition,
+      canonicalRegistryMutation:false,
+      externalEffect:false,
+      save:false,
+      deploy:false,
+      publish:false
+    });
+    draftReceipts=[...draftReceipts,receipt].slice(-contract.receiptContract.historyLimit);
+    return receipt;
+  };
+  const transactDraft=(request={})=>{
+    const contract=draftTransactionContract();
+    if(!contract)throw new Error('FCF-05 draft transaction contract unavailable');
+    const transactionRef=typeof request.transactionRef==='string'&&request.transactionRef?request.transactionRef:nextTransactionRef();
+    const operationRef=typeof request.operationRef==='string'&&request.operationRef?request.operationRef:'operation.invalid';
+    const priorRevision=draftRevision;
+    const reject=(disposition)=>recordDraftReceipt({transactionRef,operationRef,priorRevision,nextRevision:priorRevision,changedFieldRefs:[],disposition});
+    if(request.draftRef!==contract.draftRef||!Number.isInteger(request.expectedRevision)||request.expectedRevision<0)return reject('INVALID_REJECTED');
+    if(request.expectedRevision!==priorRevision)return reject('STALE_REJECTED');
+    const payload=request.payload;
+    if(!payload||typeof payload!=='object'||Array.isArray(payload))return reject('INVALID_REJECTED');
+    if(operationRef==='operation.vexlife.draft-surface.seed.patch'){
+      const keys=Object.keys(payload);
+      const editable=new Set(contract.editableFields);
+      if(keys.length===0||keys.some((key)=>!editable.has(key)||typeof payload[key]!=='string'))return reject('INVALID_REJECTED');
+      const changedFieldRefs=keys.filter((key)=>draft[key]!==payload[key]);
+      draft={...draft,...payload,platformRefs:[...draft.platformRefs]};
+      draftRevision=priorRevision+1;
+      syncDraftControls();
+      return recordDraftReceipt({transactionRef,operationRef,priorRevision,nextRevision:draftRevision,changedFieldRefs,disposition:'APPLIED'});
+    }
+    if(operationRef==='operation.vexlife.draft-surface.seed.reset'){
+      if(Object.keys(payload).length!==0)return reject('INVALID_REJECTED');
+      const next=emptyDraft();
+      const changedFieldRefs=contract.editableFields.filter((key)=>draft[key]!==next[key]);
+      draft=next;
+      draftRevision=priorRevision+1;
+      syncDraftControls();
+      return recordDraftReceipt({transactionRef,operationRef,priorRevision,nextRevision:draftRevision,changedFieldRefs,disposition:'APPLIED'});
+    }
+    return reject('INVALID_REJECTED');
+  };
   const findDomain=()=>source.domainPacks.find((item)=>item.domainRef===domainRef)??source.domainPacks[0];
   const findTask=(domain)=>domain.tasks.find((item)=>item.taskRef===taskRef)??domain.tasks[0];
   const processFor=(task)=>source.processPatterns.find((item)=>item.processPatternRef===task.processPatternRef);
@@ -170,6 +238,8 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
     draftSurface.dataset.authorityClass='authority.draft';
     draftSurface.dataset.persistence='EPHEMERAL_BROWSER_SESSION';
     draftSurface.dataset.canonicalRegistryMutation='false';
+    draftSurface.dataset.draftRef=draftTransactionContract()?.draftRef??'';
+    draftSurface.dataset.revision=String(draftRevision);
     draftSurface.append(element('h3','',t('purpose-workspace.draft.title')));
     const draftGrid=element('div','purpose-workspace-evolution__draft-grid');
     const makeField=(labelRef,input)=>{
@@ -182,12 +252,28 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
     featureInput.value=draft.featureRef;
     featureInput.autocomplete='off';
     featureInput.dataset.draftField='featureRef';
-    featureInput.addEventListener('input',()=>{draft={...draft,featureRef:featureInput.value};});
+    featureInput.addEventListener('input',()=>{
+      transactDraft({
+        transactionRef:nextTransactionRef(),
+        draftRef:draftTransactionContract().draftRef,
+        operationRef:'operation.vexlife.draft-surface.seed.patch',
+        expectedRevision:draftRevision,
+        payload:{featureRef:featureInput.value}
+      });
+    });
     const purposeInput=element('textarea','purpose-workspace-evolution__draft-input purpose-workspace-evolution__draft-purpose');
     purposeInput.rows=3;
     purposeInput.value=draft.purpose;
     purposeInput.dataset.draftField='purpose';
-    purposeInput.addEventListener('input',()=>{draft={...draft,purpose:purposeInput.value};});
+    purposeInput.addEventListener('input',()=>{
+      transactDraft({
+        transactionRef:nextTransactionRef(),
+        draftRef:draftTransactionContract().draftRef,
+        operationRef:'operation.vexlife.draft-surface.seed.patch',
+        expectedRevision:draftRevision,
+        payload:{purpose:purposeInput.value}
+      });
+    });
     const platformInput=element('input','purpose-workspace-evolution__draft-input');
     platformInput.type='text';
     platformInput.value=draft.platformRefs.join(', ');
@@ -203,13 +289,17 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
     const reset=element('button','purpose-workspace-evolution__draft-reset',t('purpose-workspace.draft.reset'));
     reset.type='button';
     reset.addEventListener('click',()=>{
-      draft=emptyDraft();
-      featureInput.value=draft.featureRef;
-      purposeInput.value=draft.purpose;
-      platformInput.value=draft.platformRefs.join(', ');
+      transactDraft({
+        transactionRef:nextTransactionRef(),
+        draftRef:draftTransactionContract().draftRef,
+        operationRef:'operation.vexlife.draft-surface.seed.reset',
+        expectedRevision:draftRevision,
+        payload:{}
+      });
       reset.focus();
     });
     draftFooter.append(element('small','',t('purpose-workspace.draft.local-only')),reset);
+    draftControls={draftSurface,featureInput,purposeInput,platformInput,reset};
     draftSurface.append(draftFooter);
     root.append(draftSurface);
 
@@ -284,6 +374,7 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
       return Object.freeze({state:'MOUNTED',surfaceRef:PURPOSE_WORKSPACE_EVOLUTION_SURFACE_REF,effects:false});
     },
     requestClose(){return Object.freeze({state:'CLOSED',reason:'PRESENTATION_DISMISS',semanticNavigationMutated:false})},
+    transactDraft(request){return transactDraft(request)},
     snapshot(){
       const currentRegistration=registrationForFeature();
       return Object.freeze({
@@ -300,6 +391,10 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
         progressGraphCount:Array.isArray(progress?.statusProjections)?progress.statusProjections.length:0,
         progressExecutionAuthority:progress?.executionAuthority??'NONE',
         draft:Object.freeze({featureRef:draft.featureRef,purpose:draft.purpose,platformRefs:Object.freeze([...draft.platformRefs])}),
+        draftRef:draftTransactionContract()?.draftRef??null,
+        draftSessionRef,
+        draftRevision,
+        draftReceipts:Object.freeze([...draftReceipts]),
         draftEffectClass:'LOCAL_DRAFT',
         draftAuthorityClass:'authority.draft',
         draftPersistence:'EPHEMERAL_BROWSER_SESSION',
