@@ -39,7 +39,17 @@
         "feature-walkthrough.purpose-workspace.stage.do",
         "feature-walkthrough.purpose-workspace.stage.understand",
         "feature-walkthrough.purpose-workspace.stage.steward",
-        "feature-walkthrough.purpose-workspace.stage.complete"
+        "feature-walkthrough.purpose-workspace.stage.complete",
+        "purpose-workspace.progress.title",
+        "purpose-workspace.progress.happening",
+        "purpose-workspace.progress.ready",
+        "purpose-workspace.progress.waiting",
+        "purpose-workspace.progress.needs-human",
+        "purpose-workspace.progress.blocked",
+        "purpose-workspace.progress.recently-completed",
+        "purpose-workspace.progress.next-safe-action",
+        "purpose-workspace.progress.empty",
+        "purpose-workspace.progress.unavailable"
       ],
       "testRefs": [
         "test.navigation.screen-frame",
@@ -167,7 +177,17 @@
       "feature-walkthrough.purpose-workspace.stage.do": "Do shows the three tasks that need attention now for the selected purpose and domain.",
       "feature-walkthrough.purpose-workspace.stage.understand": "Understand shows how stages, evidence, and relay developed without rewriting the underlying work.",
       "feature-walkthrough.purpose-workspace.stage.steward": "Steward shows ownership, authority, held effects, and the evidence required for completion.",
-      "feature-walkthrough.purpose-workspace.stage.complete": "The source contract is registered and Purpose Workspace is browser-current. Any real external effect remains separate and held."
+      "feature-walkthrough.purpose-workspace.stage.complete": "The source contract is registered and Purpose Workspace is browser-current. Any real external effect remains separate and held.",
+      "purpose-workspace.progress.title": "Current progress",
+      "purpose-workspace.progress.happening": "Happening now",
+      "purpose-workspace.progress.ready": "Ready",
+      "purpose-workspace.progress.waiting": "Waiting",
+      "purpose-workspace.progress.needs-human": "Needs you",
+      "purpose-workspace.progress.blocked": "Blocked",
+      "purpose-workspace.progress.recently-completed": "Recently completed",
+      "purpose-workspace.progress.next-safe-action": "Next safe action",
+      "purpose-workspace.progress.empty": "No current work is recorded for this project.",
+      "purpose-workspace.progress.unavailable": "Current progress is unavailable."
     },
     "ja": {
       "screen.purpose-workspace.title": "目的ワークスペース",
@@ -175,7 +195,17 @@
       "feature-walkthrough.purpose-workspace.stage.do": "Do は、選択した目的と領域について今対応が必要な3つのタスクを示します。",
       "feature-walkthrough.purpose-workspace.stage.understand": "Understand は、基礎となる作業を書き換えずに、段階・証拠・リレーがどのように進んだかを示します。",
       "feature-walkthrough.purpose-workspace.stage.steward": "Steward は、所有者、権限、保留中の効果、完了に必要な証拠を示します。",
-      "feature-walkthrough.purpose-workspace.stage.complete": "ソース契約は登録済みで、Purpose Workspace は現在ブラウザーで利用可能です。実際の外部効果は引き続き別扱いで保留されています。"
+      "feature-walkthrough.purpose-workspace.stage.complete": "ソース契約は登録済みで、Purpose Workspace は現在ブラウザーで利用可能です。実際の外部効果は引き続き別扱いで保留されています。",
+      "purpose-workspace.progress.title": "現在の進捗",
+      "purpose-workspace.progress.happening": "進行中",
+      "purpose-workspace.progress.ready": "準備完了",
+      "purpose-workspace.progress.waiting": "待機中",
+      "purpose-workspace.progress.needs-human": "確認が必要",
+      "purpose-workspace.progress.blocked": "ブロック中",
+      "purpose-workspace.progress.recently-completed": "最近完了",
+      "purpose-workspace.progress.next-safe-action": "次の安全なアクション",
+      "purpose-workspace.progress.empty": "このプロジェクトには現在の作業記録がありません。",
+      "purpose-workspace.progress.unavailable": "現在の進捗を確認できません。"
     },
     "zh": {
       "screen.purpose-workspace.title": "目的工作区",
@@ -183,7 +213,17 @@
       "feature-walkthrough.purpose-workspace.stage.do": "Do 显示所选目的和领域当前需要关注的三个任务。",
       "feature-walkthrough.purpose-workspace.stage.understand": "Understand 显示阶段、证据与交接如何发展，同时不改写底层工作记录。",
       "feature-walkthrough.purpose-workspace.stage.steward": "Steward 显示负责人、权限、被保留的效果，以及完成所需的证据。",
-      "feature-walkthrough.purpose-workspace.stage.complete": "源合同已完成注册，Purpose Workspace 现已在浏览器中处于当前可用状态。任何真实外部效果仍保持独立并继续受控保留。"
+      "feature-walkthrough.purpose-workspace.stage.complete": "源合同已完成注册，Purpose Workspace 现已在浏览器中处于当前可用状态。任何真实外部效果仍保持独立并继续受控保留。",
+      "purpose-workspace.progress.title": "当前进度",
+      "purpose-workspace.progress.happening": "正在进行",
+      "purpose-workspace.progress.ready": "已就绪",
+      "purpose-workspace.progress.waiting": "等待中",
+      "purpose-workspace.progress.needs-human": "需要你的确认",
+      "purpose-workspace.progress.blocked": "受阻",
+      "purpose-workspace.progress.recently-completed": "最近完成",
+      "purpose-workspace.progress.next-safe-action": "下一步安全操作",
+      "purpose-workspace.progress.empty": "此项目当前没有工作记录。",
+      "purpose-workspace.progress.unavailable": "暂时无法确认当前进度。"
     }
   }
 }
