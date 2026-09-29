@@ -17,8 +17,8 @@
     {
       "path": "src/core/purpose-workspace.mjs",
       "mode": "100644",
-      "bytes": 24349,
-      "sha256": "d7dac8ddf4b37a1c8fb4150573597a3255459e40725a1cca9c3db6fcf1713622"
+      "bytes": 27293,
+      "sha256": "9aee7f94a1ce05a3a92896bd4e18386016d5adc4c313fce234bd795c50b514ee"
     },
     {
       "path": "src/core/security-access-convergence.mjs",
