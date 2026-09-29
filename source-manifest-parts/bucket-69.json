@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "69",
+  "files": [
+    {
+      "path": "blueprint/feature-construction-registry.json",
+      "mode": "100644",
+      "bytes": 10219,
+      "sha256": "36650be3aa0d09d1b22e4b9c9f563c7c32e25f475d4333c48c5f9edb16f2812a"
+    }
+  ]
+}

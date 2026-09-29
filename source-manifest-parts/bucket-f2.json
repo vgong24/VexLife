@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 1925,
       "sha256": "171c4039384b837a93a7a31258997b7434444cc20a13d605d951bbe6a47323e3"
+    },
+    {
+      "path": "test/feature-construction.test.mjs",
+      "mode": "100644",
+      "bytes": 12219,
+      "sha256": "575b2837fa9346744007ca6a5d8b28b6ddd3cb153f8d4dc92e33473e22c5ad7d"
     }
   ]
 }

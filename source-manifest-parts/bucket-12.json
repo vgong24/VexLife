@@ -9,6 +9,12 @@
       "sha256": "d67ab988d44881760d4a1ba398710de94088e8cff0a46a5ecc3e500f623c335d"
     },
     {
+      "path": "docs/FEATURE-CONSTRUCTION-RECIPE.md",
+      "mode": "100644",
+      "bytes": 6975,
+      "sha256": "ec41c328252022447cf0888804d09768e7cfd8931dda67d30db96216799ce42c"
+    },
+    {
       "path": "test/navigation-continuity-registry-inheritance.test.mjs",
       "mode": "100644",
       "bytes": 3152,
