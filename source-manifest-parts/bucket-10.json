@@ -17,8 +17,8 @@
     {
       "path": "test/fcf04-purpose-workspace-draft-surface.test.mjs",
       "mode": "100644",
-      "bytes": 4216,
-      "sha256": "f53aed735917d5b9645733697b747b67f1bd27bf68f5bf236c96000dc29ad6e2"
+      "bytes": 7268,
+      "sha256": "6d520e1d9232e9d69a62eb57c1d6804692c7b2fd91ad55a7eb6bea26144aa1ee"
     },
     {
       "path": "test/home-bridge-authenticated-session.test.mjs",
