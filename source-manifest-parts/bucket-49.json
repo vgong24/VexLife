@@ -9,6 +9,12 @@
       "sha256": "30a67a574b9968c704e503f1ee1e2c28d8db570da3b16c9567c02a729d1efcc0"
     },
     {
+      "path": "test/fcf05-purpose-workspace-draft-transaction.test.mjs",
+      "mode": "100644",
+      "bytes": 11993,
+      "sha256": "f2ba8d65f46bb998fce7833daa8555e7d5d0b33fd9437fb8c7b2e128f8f4010f"
+    },
+    {
       "path": "test/vex-family-human-experience-placement.test.mjs",
       "mode": "100644",
       "bytes": 5825,
