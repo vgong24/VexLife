@@ -100,11 +100,22 @@ test('FCF-07 UI and non-UI composition remain truthful and do not manufacture au
     noUiPacket.notApplicableStages.filter((item) => ['05_PLACE_HUMAN_SURFACE_AND_PRESENTATION_IF_NEEDED','06_BIND_ACTION_PERMISSION_EFFECT_IF_NEEDED'].includes(item.stageRef)),
     [
       { stageRef: '05_PLACE_HUMAN_SURFACE_AND_PRESENTATION_IF_NEEDED', reason: 'NO_HUMAN_VISIBLE_CANONICAL_NODE_REFS' },
-      { stageRef: '06_BIND_ACTION_PERMISSION_EFFECT_IF_NEEDED', reason: 'CANDIDATE_EFFECT_CLASS_REQUIRES_NO_EXTERNAL_EFFECT_AUTHORITY' }
+      { stageRef: '06_BIND_ACTION_PERMISSION_EFFECT_IF_NEEDED', reason: 'NO_ACTION_PERMISSION_OR_EFFECT_BINDING_REQUIRED_BY_PROPOSED_CANDIDATE' }
     ]
   );
   assert.equal(noUiPacket.requiredProofClasses.includes('AFFECTED_VISUAL_ASSURANCE'), false);
   assert.equal(noUiPacket.heldBoundaries.includes('NO_EXTERNAL_EFFECT_AUTHORITY_REQUIRED_OR_GRANTED'), true);
+
+  const localDraftPacket = compileFeatureConstructionPacket({ candidate: candidate({ ui: false, effectClass: 'LOCAL_DRAFT' }), currentSourceProfile: profile, registry });
+  const localDraftStage = localDraftPacket.constructionStages.find((item) => item.stageRef === '06_BIND_ACTION_PERMISSION_EFFECT_IF_NEEDED');
+  assert.equal(localDraftStage.applicability, 'REQUIRED');
+  assert.equal(localDraftPacket.heldBoundaries.includes('NO_EXTERNAL_EFFECT_AUTHORITY_REQUIRED_OR_GRANTED'), true);
+  assert.equal(localDraftPacket.heldBoundaries.includes('LOCAL_DRAFT_DOES_NOT_AUTHORIZE_SAVE_DEPLOY_OR_PUBLISH'), true);
+
+  const readOnlyWithAction = candidate({ ui: false, effectClass: 'READ_ONLY' });
+  readOnlyWithAction.actionRefs = ['action.view.select'];
+  const readOnlyWithActionPacket = compileFeatureConstructionPacket({ candidate: readOnlyWithAction, currentSourceProfile: profile, registry });
+  assert.equal(readOnlyWithActionPacket.constructionStages.find((item) => item.stageRef === '06_BIND_ACTION_PERMISSION_EFFECT_IF_NEEDED').applicability, 'REQUIRED');
 });
 
 test('FCF-07 packet exposes current owners, held boundaries, unknowns and a read-only next action', () => {

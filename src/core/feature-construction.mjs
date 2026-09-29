@@ -230,13 +230,13 @@ function candidateUnknowns(candidate) {
   return unknowns;
 }
 
-function compileStages(registry, { humanVisibleUI, definitelyNonExternal }) {
+function compileStages(registry, { humanVisibleUI, actionPermissionEffectBindingNeeded }) {
   return registry.constructionStages.map((stage) => {
     if (stage.stageRef === '05_PLACE_HUMAN_SURFACE_AND_PRESENTATION_IF_NEEDED' && !humanVisibleUI) {
       return { ...clone(stage), applicability: 'NOT_APPLICABLE_WITH_REASON', reason: 'NO_HUMAN_VISIBLE_CANONICAL_NODE_REFS' };
     }
-    if (stage.stageRef === '06_BIND_ACTION_PERMISSION_EFFECT_IF_NEEDED' && definitelyNonExternal) {
-      return { ...clone(stage), applicability: 'NOT_APPLICABLE_WITH_REASON', reason: 'CANDIDATE_EFFECT_CLASS_REQUIRES_NO_EXTERNAL_EFFECT_AUTHORITY' };
+    if (stage.stageRef === '06_BIND_ACTION_PERMISSION_EFFECT_IF_NEEDED' && !actionPermissionEffectBindingNeeded) {
+      return { ...clone(stage), applicability: 'NOT_APPLICABLE_WITH_REASON', reason: 'NO_ACTION_PERMISSION_OR_EFFECT_BINDING_REQUIRED_BY_PROPOSED_CANDIDATE' };
     }
     return { ...clone(stage), applicability: 'REQUIRED', reason: null };
   });
@@ -257,7 +257,11 @@ export function compileFeatureConstructionPacket({
   const humanVisibleUI = normalizedCandidate.canonicalNodeRefs.some((ref) =>
     ref.startsWith('screen.') || ref.startsWith('element.') || ref.startsWith('region.'));
   const definitelyNonExternal = DEFINITELY_NON_EXTERNAL_EFFECTS.has(normalizedCandidate.effectClass);
-  const constructionStages = compileStages(registry, { humanVisibleUI, definitelyNonExternal });
+  const hasDeclaredActionOrPermission = (normalizedCandidate.actionRefs ?? []).length > 0 || (normalizedCandidate.permissionRefs ?? []).length > 0;
+  const actionPermissionEffectBindingNeeded = normalizedCandidate.effectClass === 'LOCAL_DRAFT'
+    || hasDeclaredActionOrPermission
+    || !definitelyNonExternal;
+  const constructionStages = compileStages(registry, { humanVisibleUI, actionPermissionEffectBindingNeeded });
   const notApplicableStages = constructionStages
     .filter((stage) => stage.applicability === 'NOT_APPLICABLE_WITH_REASON')
     .map((stage) => ({ stageRef: stage.stageRef, reason: stage.reason }));
