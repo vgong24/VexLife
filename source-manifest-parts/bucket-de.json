@@ -9,6 +9,12 @@
       "sha256": "b8cf15cd2730105ca295488e6008533be15e8807d7fe4446e0714aa234a20646"
     },
     {
+      "path": "test/fcf06-purpose-workspace-journal-provenance.test.mjs",
+      "mode": "100644",
+      "bytes": 14182,
+      "sha256": "1616d348bcb9d2cd7ea06e4d0751a5a748e817690cfa0d6b42b39ac9aac543a6"
+    },
+    {
       "path": "test/public-learning-navigation-request.test.mjs",
       "mode": "100644",
       "bytes": 3261,
