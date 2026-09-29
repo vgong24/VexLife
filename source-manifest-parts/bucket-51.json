@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 8539,
       "sha256": "1319469b8f89e54a09c41c5d13afced41519bee23d5b9974f53392a21383a656"
+    },
+    {
+      "path": "test/fcf03-purpose-workspace-progress.test.mjs",
+      "mode": "100644",
+      "bytes": 8595,
+      "sha256": "35f87bc108e939fb9806a69cfc95a47e8fe621ba2e0a21aa2b47bf01ac95541b"
     }
   ]
 }
