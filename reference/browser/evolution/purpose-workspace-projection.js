@@ -1,5 +1,5 @@
 // [VXG RealForever]
-// FCF-03 browser presentation over the accepted source-managed Scoped Purpose Workspace.
+// FCF-04 browser presentation over the accepted source-managed Scoped Purpose Workspace.
 // This adapter owns presentation only. It performs no external effect and does not become
 // a work-state, Navigation, Terrain, Home, Memory, model, or training authority.
 
@@ -41,6 +41,8 @@ async function loadAcceptedPurposeWorkspace(){
 export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefForTerrain=()=>null}={}){
   let source=null,host=null,progress=null,progressProjectRef=null;
   let domainRef=null,taskRef=null,semanticDepth='DO';
+  const emptyDraft=()=>({featureRef:'',purpose:'',platformRefs:['platform.browser']});
+  let draft=emptyDraft();
   const findDomain=()=>source.domainPacks.find((item)=>item.domainRef===domainRef)??source.domainPacks[0];
   const findTask=(domain)=>domain.tasks.find((item)=>item.taskRef===taskRef)??domain.tasks[0];
   const processFor=(task)=>source.processPatterns.find((item)=>item.processPatternRef===task.processPatternRef);
@@ -162,6 +164,55 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
     }
     root.append(progressSection);
 
+    const draftSurface=element('section','purpose-workspace-evolution__draft-surface');
+    draftSurface.dataset.componentRef='component.vexlife.draft-surface';
+    draftSurface.dataset.effectClass='LOCAL_DRAFT';
+    draftSurface.dataset.authorityClass='authority.draft';
+    draftSurface.dataset.persistence='EPHEMERAL_BROWSER_SESSION';
+    draftSurface.dataset.canonicalRegistryMutation='false';
+    draftSurface.append(element('h3','',t('purpose-workspace.draft.title')));
+    const draftGrid=element('div','purpose-workspace-evolution__draft-grid');
+    const makeField=(labelRef,input)=>{
+      const label=element('label','purpose-workspace-evolution__draft-field');
+      label.append(element('span','',t(labelRef)),input);
+      return label;
+    };
+    const featureInput=element('input','purpose-workspace-evolution__draft-input');
+    featureInput.type='text';
+    featureInput.value=draft.featureRef;
+    featureInput.autocomplete='off';
+    featureInput.dataset.draftField='featureRef';
+    featureInput.addEventListener('input',()=>{draft={...draft,featureRef:featureInput.value};});
+    const purposeInput=element('textarea','purpose-workspace-evolution__draft-input purpose-workspace-evolution__draft-purpose');
+    purposeInput.rows=3;
+    purposeInput.value=draft.purpose;
+    purposeInput.dataset.draftField='purpose';
+    purposeInput.addEventListener('input',()=>{draft={...draft,purpose:purposeInput.value};});
+    const platformInput=element('input','purpose-workspace-evolution__draft-input');
+    platformInput.type='text';
+    platformInput.value=draft.platformRefs.join(', ');
+    platformInput.readOnly=true;
+    platformInput.dataset.draftField='platformRefs';
+    draftGrid.append(
+      makeField('purpose-workspace.draft.feature-ref',featureInput),
+      makeField('purpose-workspace.draft.purpose',purposeInput),
+      makeField('purpose-workspace.draft.platform',platformInput)
+    );
+    draftSurface.append(draftGrid);
+    const draftFooter=element('div','purpose-workspace-evolution__draft-footer');
+    const reset=element('button','purpose-workspace-evolution__draft-reset',t('purpose-workspace.draft.reset'));
+    reset.type='button';
+    reset.addEventListener('click',()=>{
+      draft=emptyDraft();
+      featureInput.value=draft.featureRef;
+      purposeInput.value=draft.purpose;
+      platformInput.value=draft.platformRefs.join(', ');
+      reset.focus();
+    });
+    draftFooter.append(element('small','',t('purpose-workspace.draft.local-only')),reset);
+    draftSurface.append(draftFooter);
+    root.append(draftSurface);
+
     const taskGrid=element('section','purpose-workspace-evolution__tasks');
     for(const item of domain.tasks){
       const card=element('button','purpose-workspace-evolution__task');
@@ -248,6 +299,14 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
         progressProjectRef,
         progressGraphCount:Array.isArray(progress?.statusProjections)?progress.statusProjections.length:0,
         progressExecutionAuthority:progress?.executionAuthority??'NONE',
+        draft:Object.freeze({featureRef:draft.featureRef,purpose:draft.purpose,platformRefs:Object.freeze([...draft.platformRefs])}),
+        draftEffectClass:'LOCAL_DRAFT',
+        draftAuthorityClass:'authority.draft',
+        draftPersistence:'EPHEMERAL_BROWSER_SESSION',
+        draftCanonicalRegistryMutation:false,
+        draftSave:false,
+        draftDeploy:false,
+        draftPublish:false,
         sourceRegistrationState:currentRegistration?.humanIntroduction?.routeState??'UNLOADED',
         sourceFoundationRegistrationState:source?.registry?.registrationPlacement?.status??'UNLOADED'
       });

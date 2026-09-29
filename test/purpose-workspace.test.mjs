@@ -122,7 +122,8 @@ test('Experience Topology maps itself with zero unresolved or human-visible orph
   assert.equal(topology.metrics.domainPackCount, 4);
   assert.equal(topology.metrics.roleLensCount, 16);
   assert.equal(topology.metrics.taskCount, 12);
-  assert.equal(topology.metrics.sharedComponentCount, 11);
+  assert.equal(topology.metrics.sharedComponentCount, 12);
+  assert.equal(bundle.registry.workspaceDefinitions[0].componentRefs.includes('component.vexlife.draft-surface'), true);
   assert.equal(topology.metrics.domainPerScreenReuseRatio, 4);
   assert.equal(topology.edges.some((edge) => edge.from === topology.topologyRef && edge.to === topology.topologyRef && edge.relation === 'MAPS_SELF'), true);
 });
