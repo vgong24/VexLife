@@ -190,11 +190,35 @@ export function buildCurrentSourceProfile({
   return Object.freeze({ ...profile, profileHash: computeCurrentSourceProfileHash(profile) });
 }
 
-function validateCurrentSourceProfile(profile) {
+function validateSourceRecord(record, expectedPath, label) {
+  if (!exactKeys(record, ['path','bytes','sha256'])) throw new Error(`${label} source record shape mismatch`);
+  if (record.path !== expectedPath) throw new Error(`${label} source path mismatch`);
+  if (!Number.isInteger(record.bytes) || record.bytes < 0) throw new Error(`${label} source byte count invalid`);
+  if (!/^[0-9a-f]{64}$/u.test(record.sha256)) throw new Error(`${label} source sha256 invalid`);
+}
+
+function validateCurrentSourceProfile(profile, registry) {
   if (profile?.schemaVersion !== FEATURE_CONSTRUCTION_SOURCE_PROFILE_SCHEMA) throw new Error('currentSourceProfile schema mismatch');
   if (profile?.repositoryRef !== 'github.vgong24.VexLife') throw new Error('currentSourceProfile repository mismatch');
+  if (profile?.recipeRef !== registry.recipeRef) throw new Error('currentSourceProfile recipeRef mismatch');
   if (!uniqueStrings(profile?.platformRefs ?? []) || profile.platformRefs.length === 0) throw new Error('currentSourceProfile platformRefs invalid');
-  if (!(profile?.sourceBindings?.length) || !(profile?.recipeSources?.length)) throw new Error('currentSourceProfile source identities missing');
+  if (!Array.isArray(profile?.sourceBindings) || profile.sourceBindings.length !== registry.sourceBindings.length) throw new Error('currentSourceProfile source binding count mismatch');
+  for (const [index, expected] of registry.sourceBindings.entries()) {
+    const observed = profile.sourceBindings[index];
+    if (!exactKeys(observed, ['bindingRef','ownerRef','purpose','paths'])
+      || observed.bindingRef !== expected.bindingRef
+      || observed.ownerRef !== expected.ownerRef
+      || observed.purpose !== expected.purpose
+      || !Array.isArray(observed.paths)
+      || observed.paths.length !== expected.paths.length) {
+      throw new Error(`currentSourceProfile source binding mismatch at ${expected.bindingRef}`);
+    }
+    expected.paths.forEach((sourcePath, pathIndex) => validateSourceRecord(observed.paths[pathIndex], sourcePath, expected.bindingRef));
+  }
+  if (!Array.isArray(profile?.recipeSources) || profile.recipeSources.length !== registry.recipeSourcePaths.length) {
+    throw new Error('currentSourceProfile recipe source count mismatch');
+  }
+  registry.recipeSourcePaths.forEach((sourcePath, index) => validateSourceRecord(profile.recipeSources[index], sourcePath, 'recipeSources'));
   if (!nonempty(profile.profileHash) || profile.profileHash !== computeCurrentSourceProfileHash(profile)) throw new Error('currentSourceProfile profileHash mismatch');
 }
 
@@ -250,7 +274,7 @@ export function compileFeatureConstructionPacket({
   if (!registry) throw new Error('registry is required');
   const validation = validateFeatureConstructionRegistry(registry, { requirePaths: false });
   if (!validation.ok) throw new Error(validation.errors[0]);
-  validateCurrentSourceProfile(currentSourceProfile);
+  validateCurrentSourceProfile(currentSourceProfile, registry);
   const normalizedCandidate = normalizeCandidate(candidate, currentSourceProfile);
   const requiredReviewLensRefs = deriveRequiredLensRefs(normalizedCandidate);
   const candidateSemanticHash = semanticHash(normalizedCandidate);

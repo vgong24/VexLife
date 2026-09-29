@@ -57,7 +57,7 @@
     },
     {
       "bindingRef": "binding.feature-construction.action-permission",
-      "ownerRef": "source.blueprint.action-permission-fragments",
+      "ownerRef": "blueprint.vexlife.universal.001",
       "purpose": "Canonical action and permission/effect identities; this recipe never grants them.",
       "paths": [
         "blueprint/fragments/actions.json",
@@ -98,6 +98,7 @@
     "blueprint/feature-construction-registry.json",
     "src/core/feature-construction.mjs",
     "scripts/feature-construction.mjs",
+    "test/feature-construction.test.mjs",
     "docs/FEATURE-CONSTRUCTION-RECIPE.md",
     "package.json",
     "blueprint/orientation.json"

@@ -53,6 +53,8 @@ test('FCF-07 registry is exact, no-effect and every named source path exists', (
   assert.equal(registry.effects, false);
   assert.equal(registry.mutationAuthorityGranted, false);
   assert.equal(registry.constructionStages.length, 13);
+  assert.equal(registry.recipeSourcePaths.includes('test/feature-construction.test.mjs'), true);
+  assert.equal(registry.sourceBindings.find((item) => item.bindingRef === 'binding.feature-construction.action-permission').ownerRef, 'blueprint.vexlife.universal.001');
 });
 
 test('FCF-07 compiler is deterministic and binds candidate, recipe and current source profile', () => {
@@ -72,6 +74,14 @@ test('FCF-07 compiler is deterministic and binds candidate, recipe and current s
   drifted.profileHash = computeCurrentSourceProfileHash(drifted);
   const afterDrift = compileFeatureConstructionPacket({ candidate: proposed, currentSourceProfile: drifted, registry });
   assert.notEqual(afterDrift.packetHash, first.packetHash);
+
+  const missingBinding = structuredClone(profile);
+  missingBinding.sourceBindings.pop();
+  missingBinding.profileHash = computeCurrentSourceProfileHash(missingBinding);
+  assert.throws(
+    () => compileFeatureConstructionPacket({ candidate: proposed, currentSourceProfile: missingBinding, registry }),
+    /source binding count mismatch/
+  );
 });
 
 test('FCF-07 reuses canonical deriveRequiredLensRefs and compiles an existing scaffold candidate without writes', () => {
@@ -171,6 +181,8 @@ test('FCF-07 CLI is read-only by default and emits one machine-readable packet',
     'SOURCE-MANIFEST.json'
   ];
   const before = Object.fromEntries(protectedPaths.map((sourcePath) => [sourcePath, fileSha256(sourcePath)]));
+  const gitHeadBefore = spawnSync('git', ['rev-parse','HEAD'], { cwd: VEXLIFE_ROOT, encoding: 'utf8' }).stdout.trim();
+  const gitStatusBefore = spawnSync('git', ['status','--porcelain=v1','--untracked-files=no'], { cwd: VEXLIFE_ROOT, encoding: 'utf8' }).stdout;
   const result = spawnSync(process.execPath, [
     SCRIPT,
     '--feature-ref','feature.vexlife.fcf07-cli-example',
@@ -186,6 +198,8 @@ test('FCF-07 CLI is read-only by default and emits one machine-readable packet',
   assert.equal(packet.effects, false);
   const after = Object.fromEntries(protectedPaths.map((sourcePath) => [sourcePath, fileSha256(sourcePath)]));
   assert.deepEqual(after, before);
+  assert.equal(spawnSync('git', ['rev-parse','HEAD'], { cwd: VEXLIFE_ROOT, encoding: 'utf8' }).stdout.trim(), gitHeadBefore);
+  assert.equal(spawnSync('git', ['status','--porcelain=v1','--untracked-files=no'], { cwd: VEXLIFE_ROOT, encoding: 'utf8' }).stdout, gitStatusBefore);
 
   const rejected = spawnSync(process.execPath, [SCRIPT, '--write', 'true'], { cwd: VEXLIFE_ROOT, encoding: 'utf8' });
   assert.notEqual(rejected.status, 0);
