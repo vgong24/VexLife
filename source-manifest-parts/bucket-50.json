@@ -5,8 +5,8 @@
     {
       "path": "blueprint/orientation.json",
       "mode": "100644",
-      "bytes": 2566,
-      "sha256": "4e5bd83be1dd9df4f094b4fe420b129b5a5a1819a451381e22da184469ca9c66"
+      "bytes": 2609,
+      "sha256": "b63ee8f021ef51ecfdccc793b654eb76a035f1dcee0b450129c9a121fa04662b"
     },
     {
       "path": "scripts/form-artifact-mirror.mjs",

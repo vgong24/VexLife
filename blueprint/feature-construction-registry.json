@@ -1,0 +1,176 @@
+{
+  "schemaVersion": "vexlife.feature-construction-registry/v1",
+  "registryRef": "registry.vexlife.feature-construction.001",
+  "registryVersion": 1,
+  "recipeRef": "recipe.vexlife.feature-construction.001",
+  "sourceRef": "source.vexlife.feature-construction-recipe",
+  "packetSchemaVersion": "vexlife.feature-construction-packet/v1",
+  "purpose": "Compile a proposed Feature candidate plus current source identities into a deterministic no-effect construction packet that names obligations, owners, held boundaries, proof classes and the next safe action without creating source or lifecycle authority.",
+  "effects": false,
+  "mutationAuthorityGranted": false,
+  "candidateStatus": "PROPOSED",
+  "sourceBindings": [
+    {
+      "bindingRef": "binding.feature-construction.feature-definition",
+      "ownerRef": "registry.vexlife.features.001",
+      "purpose": "Canonical Feature candidate, scaffold, validation and review-lens derivation.",
+      "paths": [
+        "blueprint/feature-registry.json",
+        "src/core/feature-registry.mjs",
+        "scripts/feature-scaffold.mjs",
+        "scripts/feature-check.mjs"
+      ]
+    },
+    {
+      "bindingRef": "binding.feature-construction.work-state",
+      "ownerRef": "registry.vexlife.intent-orchestration.001",
+      "purpose": "Canonical Intent Workgraph and progress truth.",
+      "paths": [
+        "blueprint/intent-orchestration-registry.json",
+        "src/core/intent-workgraph.mjs"
+      ]
+    },
+    {
+      "bindingRef": "binding.feature-construction.workspace",
+      "ownerRef": "registry.vexlife.purpose-workspaces.001",
+      "purpose": "Purpose Workspace, local Draft Surface, transaction currentness and construction-session provenance.",
+      "paths": [
+        "blueprint/purpose-workspace-registry.json",
+        "reference/browser/evolution/purpose-workspace-projection.js"
+      ]
+    },
+    {
+      "bindingRef": "binding.feature-construction.presentation",
+      "ownerRef": "registry.vexlife.presentation-graph.001",
+      "purpose": "Presentation placement, containment, reachability and rendered-evidence obligations when human-visible UI is implicated.",
+      "paths": [
+        "blueprint/presentation-graph-registry.json"
+      ]
+    },
+    {
+      "bindingRef": "binding.feature-construction.experience",
+      "ownerRef": "foundation.vexlife.experience.001",
+      "purpose": "Experience patterns, interaction forms, availability and action projection grammar.",
+      "paths": [
+        "blueprint/experience-foundation.json"
+      ]
+    },
+    {
+      "bindingRef": "binding.feature-construction.action-permission",
+      "ownerRef": "blueprint.vexlife.universal.001",
+      "purpose": "Canonical action and permission/effect identities; this recipe never grants them.",
+      "paths": [
+        "blueprint/fragments/actions.json",
+        "blueprint/fragments/permissions.json"
+      ]
+    },
+    {
+      "bindingRef": "binding.feature-construction.review",
+      "ownerRef": "registry.vexlife.review-lenses.001",
+      "purpose": "Source-managed review-lens definitions used by the canonical Feature Registry derivation.",
+      "paths": [
+        "blueprint/review-lens-registry.json"
+      ]
+    },
+    {
+      "bindingRef": "binding.feature-construction.currentness",
+      "ownerRef": "orientation.vexlife.dedicated-repository.001",
+      "purpose": "Repository orientation and canonical source-manifest currentness.",
+      "paths": [
+        "blueprint/orientation.json",
+        "SOURCE-MANIFEST.json",
+        "scripts/orient.mjs",
+        "scripts/source-manifest.mjs"
+      ]
+    },
+    {
+      "bindingRef": "binding.feature-construction.implementation-precedent",
+      "ownerRef": "plan.vexlife.foundation-to-demo.001",
+      "purpose": "Existing no-authority implementation-packet precedent; FCF-07 does not replace its plan owner.",
+      "paths": [
+        "blueprint/implementation-plan.json",
+        "src/core/implementation-plan.mjs",
+        "scripts/implementation-packet.mjs"
+      ]
+    }
+  ],
+  "recipeSourcePaths": [
+    "blueprint/feature-construction-registry.json",
+    "src/core/feature-construction.mjs",
+    "scripts/feature-construction.mjs",
+    "test/feature-construction.test.mjs",
+    "docs/FEATURE-CONSTRUCTION-RECIPE.md",
+    "package.json",
+    "blueprint/orientation.json"
+  ],
+  "constructionStages": [
+    {"stageRef":"01_ORIENT_CURRENT_SOURCE","obligation":"ORIENT_CURRENT_SOURCE","purpose":"Ground current repository, canonical owners, source identities and held boundaries before any effect."},
+    {"stageRef":"02_FORM_FEATURE_CANDIDATE","obligation":"FORM_FEATURE_CANDIDATE","purpose":"Form one explicit PROPOSED Feature candidate without canonical registry mutation."},
+    {"stageRef":"03_DISCOVER_EXISTING_OWNERS_AND_REUSE","obligation":"DISCOVER_EXISTING_OWNERS_AND_REUSE","purpose":"Locate existing semantic, work, presentation, action, review and currentness owners before adding source."},
+    {"stageRef":"04_PLACE_WORK_AND_PROGRESS","obligation":"PLACE_WORK_AND_PROGRESS","purpose":"Bind work/progress to canonical Intent Workgraph truth rather than a parallel progress store."},
+    {"stageRef":"05_PLACE_HUMAN_SURFACE_AND_PRESENTATION_IF_NEEDED","obligation":"PLACE_HUMAN_SURFACE_AND_PRESENTATION_IF_NEEDED","purpose":"When human-visible UI is implicated, reuse semantic owners and Presentation Graph; otherwise record a reasoned N/A."},
+    {"stageRef":"06_BIND_ACTION_PERMISSION_EFFECT_IF_NEEDED","obligation":"BIND_ACTION_PERMISSION_EFFECT_IF_NEEDED","purpose":"Bind canonical action/permission/effect semantics when behavior requires them; never infer authority from the packet."},
+    {"stageRef":"07_BIND_LOCALIZATION_ACCESSIBILITY_RECOVERY","obligation":"BIND_LOCALIZATION_ACCESSIBILITY_RECOVERY","purpose":"Make localization, accessibility, recovery and environment obligations explicit for the affected feature."},
+    {"stageRef":"08_DEFINE_EXACT_SOURCE_MEMBRANE_AND_HELD_SCOPE","obligation":"DEFINE_EXACT_SOURCE_MEMBRANE_AND_HELD_SCOPE","purpose":"Define exact authored/generated custody and held scope before source mutation."},
+    {"stageRef":"09_IMPLEMENT_BOUNDED_CANDIDATE","obligation":"IMPLEMENT_BOUNDED_CANDIDATE","purpose":"Implement only after separate source authority, branch and claim are current."},
+    {"stageRef":"10_PROVE_EXACT_SOURCE_AND_RENDERED_BEHAVIOR","obligation":"PROVE_EXACT_SOURCE_AND_RENDERED_BEHAVIOR","purpose":"Prove exact source and affected runtime/rendered behavior without upgrading evidence classes."},
+    {"stageRef":"11_RUN_AFFECTED_REVIEW_LENSES_AND_ASSURANCE","obligation":"RUN_AFFECTED_REVIEW_LENSES_AND_ASSURANCE","purpose":"Run canonical affected review lenses and fresh claimless Independent Assurance."},
+    {"stageRef":"12_LIFECYCLE_CURRENTNESS_READY_MERGE_POSTMERGE","obligation":"LIFECYCLE_CURRENTNESS_READY_MERGE_POSTMERGE","purpose":"Treat Formal Review, currentness, READY, merge and post-merge proof as distinct lifecycle effects."},
+    {"stageRef":"13_RELEASE_CLAIM_AND_RETURN_TERMINAL","obligation":"RELEASE_CLAIM_AND_RETURN_TERMINAL","purpose":"Release exact writer custody only after accepted-main proof and return terminal evidence."}
+  ],
+  "conditionalRules": [
+    {"ruleRef":"rule.feature-construction.non-ui","condition":"humanVisibleUI=false","disposition":"05_PLACE_HUMAN_SURFACE_AND_PRESENTATION_IF_NEEDED may be NOT_APPLICABLE_WITH_REASON and visual proof is not manufactured."},
+    {"ruleRef":"rule.feature-construction.no-external-effect","condition":"candidate effect class is definitively non-external","disposition":"No external-effect authority is created or requested by the packet."},
+    {"ruleRef":"rule.feature-construction.local-draft","condition":"effectClass=LOCAL_DRAFT","disposition":"Save, Deploy and Publish remain distinct held effects."},
+    {"ruleRef":"rule.feature-construction.journal-optional","condition":"Journal provenance is not implicated","disposition":"FCF-06 provenance relation is not forced into the feature."},
+    {"ruleRef":"rule.feature-construction.platform-evidence","condition":"one or more platformRefs are proposed","disposition":"Only separately proved platform behavior may be claimed conformant."}
+  ],
+  "requiredCurrentnessChecks": [
+    "CURRENT_MAIN_AND_CANDIDATE_IDENTITY",
+    "ORIENTATION_REQUIRED_SOURCES_CURRENT",
+    "FEATURE_REGISTRY_VALID",
+    "SOURCE_MANIFEST_CURRENT",
+    "CURRENT_SOURCE_PROFILE_HASH_MATCH",
+    "OPEN_CLAIM_AND_PATH_OVERLAP_RECHECK_BEFORE_MUTATION",
+    "PLATFORM_NATIVE_EVIDENCE_FOR_EACH_CONFORMANCE_CLAIM"
+  ],
+  "requiredProofClasses": [
+    "EXACT_HEAD_SOURCE_OWNER_PROOF",
+    "AFFECTED_REVIEW_LENSES",
+    "FRESH_CLAIMLESS_INDEPENDENT_ASSURANCE",
+    "FORMAL_REVIEW",
+    "PRE_READY_CURRENTNESS",
+    "READY_TRIGGERED_DCO",
+    "POST_READY_CURRENTNESS",
+    "EXACT_OWNER_MERGE_DUTY",
+    "POST_MERGE_ACCEPTED_MAIN_PROOF",
+    "CLAIM_RELEASE_AND_TERMINAL_RETURN"
+  ],
+  "heldBoundaries": [
+    "FEATURE_CONSTRUCTION_RECIPE != FEATURE_REGISTRY",
+    "FEATURE_CONSTRUCTION_PACKET != SOURCE_AUTHORITY",
+    "RECIPE_COMPILER != EFFECT_EXECUTOR",
+    "PACKET_READY != BRANCH_CREATED",
+    "PACKET_READY != CLAIM_ACTIVE",
+    "PACKET_READY != IMPLEMENTED",
+    "PACKET_READY != READY",
+    "PACKET_READY != PUBLISHED",
+    "NO_AUTOMATIC_FEATURE_REGISTRY_WRITE",
+    "NO_AUTOMATIC_WORKGRAPH_MUTATION",
+    "NO_AUTOMATIC_BRANCH_OR_CLAIM_CREATION",
+    "NO_AUTOMATIC_SOURCE_MUTATION",
+    "NO_AUTOMATIC_MERGE_OR_PUBLICATION",
+    "JOURNAL_PROVENANCE_NOT_FORCED",
+    "ONE_PLATFORM_PROVED != OTHER_PLATFORMS_CONFORMANT",
+    "SAVE != DEPLOY",
+    "SAVE != PUBLISH"
+  ],
+  "precedents": [
+    {"precedentRef":"FCF01","rule":"Presentation adoption reuses existing semantic owners."},
+    {"precedentRef":"FCF02","rule":"Project and Feature construction composes over Purpose Workspace."},
+    {"precedentRef":"FCF03","rule":"Progress derives from canonical Intent Workgraph truth."},
+    {"precedentRef":"FCF04","rule":"Draft Surface is local and noncanonical."},
+    {"precedentRef":"FCF05","rule":"Draft mutations bind canonical action/effect/currentness and bounded receipts."},
+    {"precedentRef":"FCF06","rule":"Construction provenance is a reference relation, not Journal or Memory mutation."}
+  ]
+}

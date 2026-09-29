@@ -35,6 +35,7 @@
     "evolution:status": "node scripts/evolution-status.mjs",
     "feature:check": "node scripts/feature-check.mjs",
     "feature:scaffold": "node scripts/feature-scaffold.mjs",
+    "feature:construction": "node scripts/feature-construction.mjs",
     "bridge:check": "node scripts/bridge-check.mjs",
     "intent:check": "node scripts/intent-check.mjs",
     "intent:plan": "node scripts/intent-plan.mjs",

@@ -15,6 +15,12 @@
       "sha256": "83c4fa9d2aa76a1b6b61a284c6c844625ec23acaacb9af9299d2573ad1bc3af5"
     },
     {
+      "path": "scripts/feature-construction.mjs",
+      "mode": "100644",
+      "bytes": 2825,
+      "sha256": "43aa5f63a2da01f98dadc6266f96a79bba94f2ce4a469c316985cf20064261ee"
+    },
+    {
       "path": "src/core/registry-core.mjs",
       "mode": "100644",
       "bytes": 34556,
