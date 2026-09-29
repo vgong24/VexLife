@@ -49,7 +49,13 @@
         "purpose-workspace.progress.recently-completed",
         "purpose-workspace.progress.next-safe-action",
         "purpose-workspace.progress.empty",
-        "purpose-workspace.progress.unavailable"
+        "purpose-workspace.progress.unavailable",
+        "purpose-workspace.draft.title",
+        "purpose-workspace.draft.feature-ref",
+        "purpose-workspace.draft.purpose",
+        "purpose-workspace.draft.platform",
+        "purpose-workspace.draft.reset",
+        "purpose-workspace.draft.local-only"
       ],
       "testRefs": [
         "test.navigation.screen-frame",
@@ -187,7 +193,13 @@
       "purpose-workspace.progress.recently-completed": "Recently completed",
       "purpose-workspace.progress.next-safe-action": "Next safe action",
       "purpose-workspace.progress.empty": "No current work is recorded for this project.",
-      "purpose-workspace.progress.unavailable": "Current progress is unavailable."
+      "purpose-workspace.progress.unavailable": "Current progress is unavailable.",
+      "purpose-workspace.draft.title": "Draft surface",
+      "purpose-workspace.draft.feature-ref": "Feature reference",
+      "purpose-workspace.draft.purpose": "Purpose",
+      "purpose-workspace.draft.platform": "Platform",
+      "purpose-workspace.draft.reset": "Reset draft",
+      "purpose-workspace.draft.local-only": "Local draft only · not saved, deployed, or published."
     },
     "ja": {
       "screen.purpose-workspace.title": "目的ワークスペース",
@@ -205,7 +217,13 @@
       "purpose-workspace.progress.recently-completed": "最近完了",
       "purpose-workspace.progress.next-safe-action": "次の安全なアクション",
       "purpose-workspace.progress.empty": "このプロジェクトには現在の作業記録がありません。",
-      "purpose-workspace.progress.unavailable": "現在の進捗を確認できません。"
+      "purpose-workspace.progress.unavailable": "現在の進捗を確認できません。",
+      "purpose-workspace.draft.title": "ドラフト面",
+      "purpose-workspace.draft.feature-ref": "機能リファレンス",
+      "purpose-workspace.draft.purpose": "目的",
+      "purpose-workspace.draft.platform": "プラットフォーム",
+      "purpose-workspace.draft.reset": "ドラフトをリセット",
+      "purpose-workspace.draft.local-only": "ローカルドラフトのみ · 保存・デプロイ・公開は行いません。"
     },
     "zh": {
       "screen.purpose-workspace.title": "目的工作区",
@@ -223,7 +241,13 @@
       "purpose-workspace.progress.recently-completed": "最近完成",
       "purpose-workspace.progress.next-safe-action": "下一步安全操作",
       "purpose-workspace.progress.empty": "此项目当前没有工作记录。",
-      "purpose-workspace.progress.unavailable": "暂时无法确认当前进度。"
+      "purpose-workspace.progress.unavailable": "暂时无法确认当前进度。",
+      "purpose-workspace.draft.title": "草稿区域",
+      "purpose-workspace.draft.feature-ref": "功能引用",
+      "purpose-workspace.draft.purpose": "用途",
+      "purpose-workspace.draft.platform": "平台",
+      "purpose-workspace.draft.reset": "重置草稿",
+      "purpose-workspace.draft.local-only": "仅限本地草稿 · 不保存、不部署、不发布。"
     }
   }
 }

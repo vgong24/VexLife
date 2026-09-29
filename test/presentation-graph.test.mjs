@@ -208,3 +208,23 @@ test('P4 Conversation normalization registers presentation graph nodes without n
   assert.equal(active.presentationContract.productSemanticOwnership, false);
 });
 
+
+
+test('FCF-04 registers the Purpose Workspace draft surface as a non-semantic local-draft child', () => {
+  const draft = registry.presentationNodes.find((item) => item.presentationRef === 'presentation.vexlife.purpose-workspace.draft-surface');
+  assert.ok(draft);
+  assert.equal(draft.parentPresentationRefOrNull, 'presentation.vexlife.purpose-workspace.body');
+  assert.equal(draft.semanticOwnerRefOrNull, 'screen.vexlife.purpose-workspace');
+  assert.equal(draft.presentationOwnerRef, 'github.issue.vexlife.755');
+  assert.equal(draft.productSemanticOwnership, false);
+  assert.equal(draft.presentationContract.componentRef, 'component.vexlife.draft-surface');
+  assert.equal(draft.presentationContract.effectClass, 'LOCAL_DRAFT');
+  assert.equal(draft.presentationContract.authorityClassRef, 'authority.draft');
+  assert.equal(draft.presentationContract.persistence, 'EPHEMERAL_BROWSER_SESSION');
+  assert.equal(draft.presentationContract.canonicalFeatureRegistryMutation, false);
+  assert.equal(draft.presentationContract.save, false);
+  assert.equal(draft.presentationContract.deploy, false);
+  assert.equal(draft.presentationContract.publish, false);
+  const reachability = registry.reachabilityPaths.find((item) => item.targetRef === draft.presentationRef);
+  assert.equal(reachability?.state, 'CURRENTLY_RENDERED');
+});
