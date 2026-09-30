@@ -1,0 +1,26 @@
+[
+  {
+    "actionRef": "action.vessel-studio.reference.transition",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "eventType": "enum",
+      "payload": "object",
+      "expectedRevision": "integer"
+    },
+    "effectClass": "LOCAL_DRAFT",
+    "outputStateRefs": [
+      "state.vessel-studio-practicum-reference"
+    ]
+  },
+  {
+    "actionRef": "action.vessel-studio.reference.reset",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "expectedRevision": "integer"
+    },
+    "effectClass": "LOCAL_DRAFT",
+    "outputStateRefs": [
+      "state.vessel-studio-practicum-reference"
+    ]
+  }
+]

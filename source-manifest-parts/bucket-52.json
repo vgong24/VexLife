@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 1054,
       "sha256": "42c605803b39f8093b5c55957d2e42fe5ef06e30ca642ee1635801104902a980"
+    },
+    {
+      "path": "test/vessel-studio-practicum-browser.test.mjs",
+      "mode": "100644",
+      "bytes": 9399,
+      "sha256": "cb0ce91a8ce322cd096f0428331952ae1e099ab97baa660f66b26f024e2f985e"
     }
   ]
 }

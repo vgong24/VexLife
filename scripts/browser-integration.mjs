@@ -597,6 +597,44 @@ async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMo
   }
 }
 
+async function runVesselStudioPracticumProof(browser,serverUrl){
+  const run=async(viewport,reducedMotion)=>{
+    const page=await browser.newPage({viewport}),consoleErrors=[],pageErrors=[],requests=[];
+    page.on('console',(message)=>{if(message.type()==='error')consoleErrors.push(message.text())});
+    page.on('pageerror',(error)=>pageErrors.push(error.message));
+    page.on('request',(request)=>requests.push(request.url()));
+    try{
+      await page.emulateMedia({reducedMotion:reducedMotion?'reduce':'no-preference'});
+      await page.goto(serverUrl+'/reference/browser/vessel-studio/index.html',{waitUntil:'networkidle',timeout:30000});
+      await page.waitForFunction(()=>document.documentElement.dataset.vesselStudioReady==='true',null,{timeout:30000});
+      await page.selectOption('#avatarOption','vessel-option.synthetic.avatar.spark');
+      await page.locator('#avatarPreview').click();
+      await page.locator('#avatarUse').click();
+      await page.selectOption('#colorOption','vessel-option.synthetic.color.sky');
+      await page.selectOption('#glowOption','vessel-option.synthetic.glow.pulse');
+      await page.locator('#colorGlowUse').click();
+      await page.selectOption('#voiceOption','voice-profile.synthetic.gentle');
+      await page.locator('#voicePreview').click();
+      await page.locator('#voiceUse').click();
+      await page.locator('#namePresentation').fill('Vex');
+      await page.locator('#nameUse').click();
+      await page.selectOption('#environmentOption','environment.synthetic.starlit-studio');
+      await page.locator('#environmentUse').click();
+      await page.locator('#reviewOffer').click();
+      const observed=await page.evaluate(()=>{
+        const api=globalThis.__VEXLIFE_VESSEL_STUDIO__,root=document.querySelector('#vesselStudioPracticum'),offer=document.querySelector('#vesselOfferReview'),rect=offer.getBoundingClientRect();
+        return{snapshot:api.snapshot(),horizontalOverflow:Math.max(0,document.documentElement.scrollWidth-innerWidth,root.scrollWidth-root.clientWidth),offerGeometry:{top:rect.top,bottom:rect.bottom,height:rect.height,intersectsViewport:rect.height>0&&rect.bottom>0&&rect.top<innerHeight},reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches};
+      });
+      const externalRequests=requests.filter((value)=>{const url=new URL(value);return url.hostname!=='127.0.0.1'||url.protocol!=='http:'});
+      const png=await page.screenshot({type:'png',fullPage:true,animations:'disabled'});
+      const state=observed.snapshot.offerStatus==='REFERENCE_ONLY_READY'&&observed.snapshot.effects===false&&observed.snapshot.MemoryAuthority===false&&observed.snapshot.modelRuntimeAuthority===false&&observed.snapshot.save===false&&observed.snapshot.deploy===false&&observed.snapshot.publish===false&&observed.horizontalOverflow<=1&&consoleErrors.length===0&&pageErrors.length===0&&externalRequests.length===0?'PASS':'FAILED';
+      return{state,viewport,reducedMotion,consoleErrors,pageErrors,externalRequests,horizontalOverflow:observed.horizontalOverflow,offerGeometry:observed.offerGeometry,snapshot:observed.snapshot,screenshots:[{filename:'vessel-studio-offer-reference-'+viewport.width+'.png',mimeType:'image/png',encoding:'base64',bytes:png.length,sha256:createHash('sha256').update(png).digest('hex'),data:png.toString('base64'),inputProvenance:'SYNTHETIC_FCF08_REFERENCE_ONLY_VESSEL_OPTIONS'}]};
+    }finally{await page.close()}
+  };
+  const desktop=await run({width:1440,height:1000},false),compact=await run({width:390,height:844},true);
+  return{state:desktop.state==='PASS'&&compact.state==='PASS'?'PASS':'FAILED',desktop,compact,consoleErrors:[...desktop.consoleErrors,...compact.consoleErrors],pageErrors:[...desktop.pageErrors,...compact.pageErrors],screenshots:[...desktop.screenshots,...compact.screenshots],effects:false};
+}
+
 let playwright;
 try {
   playwright = await import('playwright');
@@ -822,14 +860,15 @@ if (playwright) {
     };
     const purposeWorkspaceDesktop=await runPurposeWorkspaceViewportProof({width:1440,height:1000},'DESKTOP',false);
     const purposeWorkspaceCompact=await runPurposeWorkspaceViewportProof({width:390,height:844},'COMPACT',true);
+    const vesselStudioPracticum=await runVesselStudioPracticumProof(browser,serverUrl);
     const structuralViewportProofs=[journalDesktop,journalCompact,conversationDesktop,conversationCompact];
     const viewportProofs=[...structuralViewportProofs,purposeWorkspaceDesktop,purposeWorkspaceCompact];
-    const allConsoleErrors = [...consoleErrors, ...compactConsoleErrors, ...viewportProofs.flatMap((item) => item.consoleErrors)];
-    const allPageErrors = [...pageErrors, ...compactPageErrors, ...viewportProofs.flatMap((item) => item.pageErrors)];
+    const allConsoleErrors = [...consoleErrors, ...compactConsoleErrors, ...viewportProofs.flatMap((item) => item.consoleErrors), ...vesselStudioPracticum.consoleErrors];
+    const allPageErrors = [...pageErrors, ...compactPageErrors, ...viewportProofs.flatMap((item) => item.pageErrors), ...vesselStudioPracticum.pageErrors];
     const requiredProofs = [
       integration, livedDCompact, q2Compact, q2ViewportInverse, q5Compact, q5WorkspaceInverse,
       ...structuralViewportProofs.map((item) => item.proof),
-      ...viewportProofs.map((item) => item.productExperience)
+      ...viewportProofs.map((item) => item.productExperience), vesselStudioPracticum
     ];
     const state = requiredProofs.every((proof) => proof?.state === 'PASS') && allConsoleErrors.length === 0 && allPageErrors.length === 0 ? 'PASS' : 'FAILED';
     finish({
@@ -846,6 +885,7 @@ if (playwright) {
       conversationCompact,
       purposeWorkspaceDesktop,
       purposeWorkspaceCompact,
+      vesselStudioPracticum,
       livedDCompact,
       q2Compact,
       q2ViewportInverse,

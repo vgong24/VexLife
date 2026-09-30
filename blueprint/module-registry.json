@@ -18,7 +18,8 @@
       "blueprint/module-registry/security-access-preview.json",
       "blueprint/module-registry/artifact-delivery.json",
       "blueprint/module-registry/model-connection.json",
-      "blueprint/module-registry/companion-availability-reentry.json"
+      "blueprint/module-registry/companion-availability-reentry.json",
+      "blueprint/module-registry/vessel-studio.json"
     ]
   }
 }

@@ -15,6 +15,12 @@
       "sha256": "45686acc47560279f2735ec4fc13619ae51f59ffd0fe0776df0bac7f1a92e11d"
     },
     {
+      "path": "blueprint/module-registry/vessel-studio.json",
+      "mode": "100644",
+      "bytes": 2015,
+      "sha256": "6d4873e299e5f154ed8ae92cef1ee1e3efaa3c60f239d45c481137285e8a165b"
+    },
+    {
       "path": "blueprint/process-factory/processes-purpose-workspace.json",
       "mode": "100644",
       "bytes": 2705,

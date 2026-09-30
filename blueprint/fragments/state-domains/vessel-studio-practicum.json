@@ -1,0 +1,7 @@
+[
+  {
+    "stateRef": "state.vessel-studio-practicum-reference",
+    "ownerRef": "service.context",
+    "brief": "Ephemeral browser-local synthetic Vessel Studio practicum state with expected-revision guarded selections, typed silent-witness events, explicit reset recovery and no canonical identity, Memory, model, sensor, purchase, publication or SDK effect."
+  }
+]

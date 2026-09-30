@@ -3,6 +3,12 @@
   "bucketId": "cf",
   "files": [
     {
+      "path": "blueprint/fragments/actions/vessel-studio-practicum.json",
+      "mode": "100644",
+      "bytes": 628,
+      "sha256": "e5c59b921b27f0f25141700e3cc00c91036f28f58a6317632c4b37ef3ac86136"
+    },
+    {
       "path": "docs/release/unsigned-release-candidate.md",
       "mode": "100644",
       "bytes": 4813,

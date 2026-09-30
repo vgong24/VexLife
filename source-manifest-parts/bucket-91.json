@@ -3,6 +3,12 @@
   "bucketId": "91",
   "files": [
     {
+      "path": "blueprint/fragments/screens/vessel-studio-practicum.json",
+      "mode": "100644",
+      "bytes": 8390,
+      "sha256": "e5daabca9a3d45233d27e0db0f8e6d4c29d912f83b5683ad884f9b38c6db5027"
+    },
+    {
       "path": "blueprint/module-registry/vex-family.json",
       "mode": "100644",
       "bytes": 899,

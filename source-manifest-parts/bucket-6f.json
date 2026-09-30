@@ -9,6 +9,12 @@
       "sha256": "163eb2ca27fa6775b17f029186e479ce17984e3fe1d27736c5618844cacf1125"
     },
     {
+      "path": "reference/browser/vessel-studio/index.html",
+      "mode": "100644",
+      "bytes": 4745,
+      "sha256": "fbf61690f511036e0649a98aa5ced516ab003fd74605537f304e658026476db5"
+    },
+    {
       "path": "test/browser-family-conversation-server-composition.test.mjs",
       "mode": "100644",
       "bytes": 10484,

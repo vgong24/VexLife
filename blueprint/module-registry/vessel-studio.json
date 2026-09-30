@@ -1,0 +1,66 @@
+[
+  {
+    "moduleRef": "module.vexlife.browser.vessel-studio-document",
+    "path": "reference/browser/vessel-studio/index.html",
+    "role": "Standalone human-visible synthetic Vessel Studio practicum document; reference-only and not production onboarding.",
+    "platformScope": [
+      "BROWSER"
+    ],
+    "reads": [
+      "registry.vexlife.vessel-studio-practicum.001",
+      "registration.vexlife.vessel-studio-practicum.001"
+    ],
+    "writes": [],
+    "tests": [
+      "test/vessel-studio-practicum-browser.test.mjs"
+    ],
+    "changeMap": [
+      "screen.vexlife.vessel-studio-practicum",
+      "feature.vexlife.vessel-studio-practicum"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.vessel-studio-styles",
+    "path": "reference/browser/vessel-studio/app.css",
+    "role": "Accessible responsive Vessel Studio practicum styling using only CSS-rendered synthetic vessel forms.",
+    "platformScope": [
+      "BROWSER"
+    ],
+    "reads": [
+      "screen.vexlife.vessel-studio-practicum"
+    ],
+    "writes": [],
+    "tests": [
+      "test/vessel-studio-practicum-browser.test.mjs"
+    ],
+    "changeMap": [
+      "screen.vexlife.vessel-studio-practicum"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.vessel-studio-controller",
+    "path": "reference/browser/vessel-studio/app.js",
+    "role": "Expected-revision browser-local synthetic selection/event controller for non-binding vessel-offer preparation.",
+    "platformScope": [
+      "BROWSER"
+    ],
+    "reads": [
+      "registry.vexlife.vessel-studio-practicum.001",
+      "registration.vexlife.vessel-studio-practicum.001"
+    ],
+    "writes": [
+      "state.vessel-studio-practicum-reference"
+    ],
+    "loadedBy": [
+      "reference/browser/vessel-studio/index.html"
+    ],
+    "tests": [
+      "test/vessel-studio-practicum-browser.test.mjs"
+    ],
+    "changeMap": [
+      "state.vessel-studio-practicum-reference",
+      "screen.vexlife.vessel-studio-practicum",
+      "feature.vexlife.vessel-studio-practicum"
+    ]
+  }
+]

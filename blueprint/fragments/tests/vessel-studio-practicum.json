@@ -1,0 +1,18 @@
+[
+  {
+    "testRef": "test.vessel-studio.practicum-boundaries",
+    "brief": "Vessel Studio remains reference-only with synthetic/owned options and cannot assign permanent identity, clone voice, write Memory, invoke models/sensors, purchase assets, publish, deploy or mutate SDK source."
+  },
+  {
+    "testRef": "test.vessel-studio.practicum-currentness",
+    "brief": "Expected-revision local draft transitions apply once; stale and malformed events fail closed; revert and reset remain bounded recovery operations."
+  },
+  {
+    "testRef": "test.vessel-studio.practicum-accessibility",
+    "brief": "Vessel Studio preserves keyboard operation, named controls, >=44px targets, readable compact layout, reduced-motion equivalence and explicit rights/identity boundaries."
+  },
+  {
+    "testRef": "test.vessel-studio.practicum-browser",
+    "brief": "Real Chromium proves the synthetic Vessel Studio practicum desktop/compact journey, same-origin-only requests, no console/page errors and ephemeral reload behavior."
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "6a",
+  "files": [
+    {
+      "path": "blueprint/fragments/tests/vessel-studio-practicum.json",
+      "mode": "100644",
+      "bytes": 1022,
+      "sha256": "e5009ddf735ec0b2469b8cf590842b68b298c28e0ee266205ed8356f8acbe2c3"
+    }
+  ]
+}
