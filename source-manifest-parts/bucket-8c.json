@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/vessel-studio/app.js",
       "mode": "100644",
-      "bytes": 12225,
-      "sha256": "f63bb5b01226d8d86a80ceba355830475b3dff6bf7811282ac5dda7799b1d95c"
+      "bytes": 12205,
+      "sha256": "f7d4559a08385af23e54129dfaaa0eb9f2977d4e72e647daa36e8b6aef00d8fe"
     },
     {
       "path": "src/core/g04b-native-training-worker.mjs",
