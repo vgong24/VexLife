@@ -9,6 +9,12 @@
       "sha256": "7cac9de06746ae66f37ad65db99262d0261fb09c64a120d51d6d6cbc6862e292"
     },
     {
+      "path": "reference/browser/vessel-studio/app.css",
+      "mode": "100644",
+      "bytes": 4704,
+      "sha256": "78eb78d103779688bea24245e885b1305577a4dc493dbc25bf82f264f082d329"
+    },
+    {
       "path": "test/browser-living-journal-memory-http-route.test.mjs",
       "mode": "100644",
       "bytes": 16671,

@@ -5,8 +5,8 @@
     {
       "path": "blueprint/presentation-graph-registry.json",
       "mode": "100644",
-      "bytes": 74971,
-      "sha256": "b41b21bf5b55e4258e3823d08d049c6e14c77748ebadf36134db76d47d59e268"
+      "bytes": 79729,
+      "sha256": "3519b786fae97b5aa6ffb119db2e25412fbadc695b9cfb3ad1a499a425130f8a"
     },
     {
       "path": "install/vexlife-setup.sh",

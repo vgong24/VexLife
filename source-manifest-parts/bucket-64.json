@@ -3,6 +3,12 @@
   "bucketId": "64",
   "files": [
     {
+      "path": "blueprint/fragments/state-domains/vessel-studio-practicum.json",
+      "mode": "100644",
+      "bytes": 368,
+      "sha256": "5103ebd70f0a37919ba62265cce88551e5d48d04efef95c922521786da200190"
+    },
+    {
       "path": "scripts/impact-report.mjs",
       "mode": "100644",
       "bytes": 679,

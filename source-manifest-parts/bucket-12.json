@@ -5,8 +5,8 @@
     {
       "path": "blueprint/vexlife.blueprint.json",
       "mode": "100644",
-      "bytes": 2286,
-      "sha256": "d67ab988d44881760d4a1ba398710de94088e8cff0a46a5ecc3e500f623c335d"
+      "bytes": 2629,
+      "sha256": "e022c0e69d83654f5e727c1ec0c73fb22ac879004be98ca17883e7138a45495f"
     },
     {
       "path": "docs/FEATURE-CONSTRUCTION-RECIPE.md",
