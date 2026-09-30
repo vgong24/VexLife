@@ -1,0 +1,181 @@
+{
+  "schemaVersion": "vexlife.vessel-studio-practicum/v1",
+  "registryRef": "registry.vexlife.vessel-studio-practicum.001",
+  "ownerRef": "github.issue.vexlife.768",
+  "architectureSourceRefs": [
+    "github.issue.vextreme-sdk.248",
+    "github.issue.vextreme-sdk.240",
+    "github.issue.vextreme-sdk.229",
+    "github.issue.vextreme-sdk.574"
+  ],
+  "surfaceRef": "surface.vexlife.vessel-studio-practicum.reference.001",
+  "screenRef": "screen.vexlife.vessel-studio-practicum",
+  "featureRef": "feature.vexlife.vessel-studio-practicum",
+  "mode": "USER_PREPARES_WITH_SILENT_WITNESS",
+  "surfaceState": "REFERENCE_ONLY_LOCAL_DRAFT",
+  "participantClass": "SYNTHETIC_REFERENCE_ONLY",
+  "persistence": "EPHEMERAL_BROWSER_SESSION",
+  "effectClass": "LOCAL_DRAFT",
+  "authorityClassRef": "authority.draft",
+  "permissionRef": "permission.none",
+  "transitionActionRef": "action.vessel-studio.reference.transition",
+  "resetActionRef": "action.vessel-studio.reference.reset",
+  "stateRef": "state.vessel-studio-practicum-reference",
+  "expectedRevisionCurrentness": true,
+  "eventTypes": [
+    "AVATAR_OPTION_PREVIEWED",
+    "AVATAR_OPTION_SELECTED",
+    "COLOR_CHANGED",
+    "VOICE_PREVIEWED",
+    "VOICE_SELECTED",
+    "NAME_PRESENTATION_SELECTED",
+    "ENVIRONMENT_SELECTED",
+    "OPTION_REVERTED",
+    "VESSEL_OFFER_FINALIZED_REFERENCE_ONLY"
+  ],
+  "eventPayloadKeys": {
+    "AVATAR_OPTION_PREVIEWED": [
+      "avatarRef"
+    ],
+    "AVATAR_OPTION_SELECTED": [
+      "avatarRef"
+    ],
+    "COLOR_CHANGED": [
+      "colorRef",
+      "glowRef"
+    ],
+    "VOICE_PREVIEWED": [
+      "voiceProfileRef"
+    ],
+    "VOICE_SELECTED": [
+      "voiceProfileRef"
+    ],
+    "NAME_PRESENTATION_SELECTED": [
+      "namePresentation"
+    ],
+    "ENVIRONMENT_SELECTED": [
+      "environmentRef"
+    ],
+    "OPTION_REVERTED": [],
+    "VESSEL_OFFER_FINALIZED_REFERENCE_ONLY": []
+  },
+  "options": {
+    "avatars": [
+      {
+        "optionRef": "vessel-option.synthetic.avatar.orb",
+        "labelStringRef": "vessel-studio.avatar.orb",
+        "shapeClass": "ORB",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE"
+      },
+      {
+        "optionRef": "vessel-option.synthetic.avatar.spark",
+        "labelStringRef": "vessel-studio.avatar.spark",
+        "shapeClass": "SPARK",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE"
+      },
+      {
+        "optionRef": "vessel-option.synthetic.avatar.petal",
+        "labelStringRef": "vessel-studio.avatar.petal",
+        "shapeClass": "PETAL",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE"
+      }
+    ],
+    "colors": [
+      {
+        "optionRef": "vessel-option.synthetic.color.sky",
+        "labelStringRef": "vessel-studio.color.sky",
+        "cssValue": "#7cc7ff",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE"
+      },
+      {
+        "optionRef": "vessel-option.synthetic.color.rose",
+        "labelStringRef": "vessel-studio.color.rose",
+        "cssValue": "#f69abb",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE"
+      },
+      {
+        "optionRef": "vessel-option.synthetic.color.mint",
+        "labelStringRef": "vessel-studio.color.mint",
+        "cssValue": "#8ee3c0",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE"
+      }
+    ],
+    "glows": [
+      {
+        "optionRef": "vessel-option.synthetic.glow.soft",
+        "labelStringRef": "vessel-studio.glow.soft",
+        "glowClass": "SOFT",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE"
+      },
+      {
+        "optionRef": "vessel-option.synthetic.glow.pulse",
+        "labelStringRef": "vessel-studio.glow.pulse",
+        "glowClass": "PULSE",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE"
+      },
+      {
+        "optionRef": "vessel-option.synthetic.glow.steady",
+        "labelStringRef": "vessel-studio.glow.steady",
+        "glowClass": "STEADY",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE"
+      }
+    ],
+    "voices": [
+      {
+        "optionRef": "voice-profile.synthetic.gentle",
+        "labelStringRef": "vessel-studio.voice.gentle",
+        "previewStringRef": "vessel-studio.voice.gentle.preview",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE",
+        "audioAssetRefOrNull": null,
+        "voiceCloningAllowed": false,
+        "trainingAllowed": false
+      },
+      {
+        "optionRef": "voice-profile.synthetic.bright",
+        "labelStringRef": "vessel-studio.voice.bright",
+        "previewStringRef": "vessel-studio.voice.bright.preview",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE",
+        "audioAssetRefOrNull": null,
+        "voiceCloningAllowed": false,
+        "trainingAllowed": false
+      }
+    ],
+    "environments": [
+      {
+        "optionRef": "environment.synthetic.starlit-studio",
+        "labelStringRef": "vessel-studio.environment.starlit",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE"
+      },
+      {
+        "optionRef": "environment.synthetic.sunrise-room",
+        "labelStringRef": "vessel-studio.environment.sunrise",
+        "rightsClass": "VEXTREME_SYNTHETIC_REFERENCE"
+      }
+    ]
+  },
+  "rights": {
+    "allOptionsSyntheticOrVextremeOwned": true,
+    "externalAssetDownloadAllowed": false,
+    "voiceCloneAllowed": false,
+    "biometricProcessingAllowed": false,
+    "purchaseAllowed": false,
+    "marketplaceAllowed": false,
+    "publicationAllowed": false
+  },
+  "nonCollapseRules": [
+    "INITIAL_VESSEL != PERMANENT_IDENTITY",
+    "VOICE_SELECTION != VOICE_CLONING_RIGHTS",
+    "NAME_PRESENTATION != LINEAGE_IDENTITY",
+    "FIRST_MEETING_EVENT != AUTOMATIC_MEMORY"
+  ],
+  "authority": {
+    "currentWorkStateAuthority": false,
+    "MemoryAuthority": false,
+    "JournalAuthority": false,
+    "modelRuntimeAuthority": false,
+    "SDKAuthority": false,
+    "publicationAuthority": false,
+    "saveAuthority": false,
+    "deployAuthority": false
+  }
+}

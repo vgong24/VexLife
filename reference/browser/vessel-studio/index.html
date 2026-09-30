@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Vessel Studio — reference practicum</title>
+  <link rel="stylesheet" href="./app.css">
+</head>
+<body>
+<main id="vesselStudioPracticum" class="studio" data-reference-only="true">
+  <header class="hero">
+    <div>
+      <p class="eyebrow" data-i18n="vessel-studio.eyebrow"></p>
+      <h1 data-i18n="screen.vessel-studio-practicum.title"></h1>
+      <p class="subtitle" data-i18n="vessel-studio.subtitle"></p>
+    </div>
+    <label class="language-control"><span data-i18n="vessel-studio.language"></span>
+      <select id="language"><option value="en">English</option><option value="ja">日本語</option><option value="zh">中文</option></select>
+    </label>
+  </header>
+  <section class="truth-strip" aria-label="Reference boundaries">
+    <strong data-i18n="vessel-studio.reference"></strong>
+    <span data-i18n="vessel-studio.identity-boundary"></span>
+    <span data-i18n="vessel-studio.voice-boundary"></span>
+  </section>
+  <div class="layout">
+    <section class="preview card" aria-labelledby="preview-title">
+      <h2 id="preview-title" data-i18n="vessel-studio.offer"></h2>
+      <div id="vesselPreview" class="vessel-preview" data-shape="NONE" data-glow="NONE" aria-hidden="true">
+        <div class="vessel-head"><span class="vessel-eye"></span><span class="vessel-eye"></span><span class="vessel-mouth"></span></div>
+        <div class="vessel-body"></div>
+      </div>
+      <div id="vesselOfferReview" class="offer" aria-live="polite">
+        <p id="offerStatus"></p>
+        <dl>
+          <div><dt data-i18n="vessel-studio.avatar"></dt><dd id="offerAvatar"></dd></div>
+          <div><dt data-i18n="vessel-studio.color"></dt><dd id="offerColor"></dd></div>
+          <div><dt data-i18n="vessel-studio.glow"></dt><dd id="offerGlow"></dd></div>
+          <div><dt data-i18n="vessel-studio.voice"></dt><dd id="offerVoice"></dd></div>
+          <div><dt data-i18n="vessel-studio.name"></dt><dd id="offerName"></dd></div>
+          <div><dt data-i18n="vessel-studio.environment"></dt><dd id="offerEnvironment"></dd></div>
+        </dl>
+      </div>
+      <p class="local-only" data-i18n="vessel-studio.local-only"></p>
+    </section>
+    <section class="controls card" aria-label="Vessel Studio controls">
+      <fieldset><legend data-i18n="vessel-studio.avatar"></legend>
+        <select id="avatarOption"></select>
+        <div class="button-row"><button id="avatarPreview" type="button" data-i18n="vessel-studio.avatar.preview"></button><button id="avatarUse" type="button" data-i18n="vessel-studio.avatar.use"></button></div>
+      </fieldset>
+      <fieldset><legend><span data-i18n="vessel-studio.color"></span> + <span data-i18n="vessel-studio.glow"></span></legend>
+        <div class="two"><select id="colorOption"></select><select id="glowOption"></select></div>
+        <button id="colorGlowUse" type="button" data-i18n="vessel-studio.color.apply"></button>
+      </fieldset>
+      <fieldset><legend data-i18n="vessel-studio.voice"></legend>
+        <select id="voiceOption"></select>
+        <div class="button-row"><button id="voicePreview" type="button" data-i18n="vessel-studio.voice.preview"></button><button id="voiceUse" type="button" data-i18n="vessel-studio.voice.use"></button></div>
+        <output id="voicePreviewStatus" class="status" aria-live="polite"></output>
+      </fieldset>
+      <fieldset><legend data-i18n="vessel-studio.name"></legend>
+        <input id="namePresentation" maxlength="40" autocomplete="off" data-i18n-placeholder="vessel-studio.name.placeholder">
+        <button id="nameUse" type="button" data-i18n="vessel-studio.name.use"></button>
+      </fieldset>
+      <fieldset><legend data-i18n="vessel-studio.environment"></legend>
+        <select id="environmentOption"></select>
+        <button id="environmentUse" type="button" data-i18n="vessel-studio.environment.use"></button>
+      </fieldset>
+      <div class="button-row recovery">
+        <button id="revert" type="button" data-i18n="vessel-studio.revert"></button>
+        <button id="reviewOffer" type="button" class="primary" data-i18n="vessel-studio.review"></button>
+        <button id="reset" type="button" data-i18n="vessel-studio.reset"></button>
+      </div>
+      <output id="transactionStatus" class="status" aria-live="polite"></output>
+    </section>
+  </div>
+  <section class="events card" aria-labelledby="events-title">
+    <div class="events-head"><h2 id="events-title" data-i18n="vessel-studio.events"></h2><span id="revisionBadge"></span></div>
+    <ol id="eventTrail"></ol>
+  </section>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -7,18 +7,23 @@
   "includes": {
     "product": "blueprint/fragments/product.json",
     "invariants": "blueprint/fragments/invariants.json",
-    "stateDomains": "blueprint/fragments/state-domains.json",
+    "stateDomains": [
+      "blueprint/fragments/state-domains.json",
+      "blueprint/fragments/state-domains/vessel-studio-practicum.json"
+    ],
     "roles": "blueprint/fragments/roles.json",
     "permissions": "blueprint/fragments/permissions.json",
     "actions": [
       "blueprint/fragments/actions.json",
-      "blueprint/fragments/actions/security-access-preview.json"
+      "blueprint/fragments/actions/security-access-preview.json",
+      "blueprint/fragments/actions/vessel-studio-practicum.json"
     ],
     "terrain": "blueprint/fragments/terrain.json",
     "platforms": "blueprint/fragments/platform-bindings.json",
     "tests": [
       "blueprint/fragments/tests.json",
-      "blueprint/fragments/tests/security-access-preview.json"
+      "blueprint/fragments/tests/security-access-preview.json",
+      "blueprint/fragments/tests/vessel-studio-practicum.json"
     ],
     "registryRefs": "blueprint/fragments/registry-refs.json",
     "navigationContinuity": "blueprint/navigation-continuity-registry.json",
@@ -38,10 +43,12 @@
       "blueprint/fragments/screens/terrain.json",
       "blueprint/fragments/screens/health.json",
       "blueprint/fragments/screens/guide-overlay.json",
-      "blueprint/fragments/screens/cdr-s5-closed-alpha.json"
+      "blueprint/fragments/screens/cdr-s5-closed-alpha.json",
+      "blueprint/fragments/screens/vessel-studio-practicum.json"
     ],
     "registrationExtensions": [
-      "blueprint/purpose-workspace/registration.json"
+      "blueprint/purpose-workspace/registration.json",
+      "blueprint/vessel-studio-practicum/registration.json"
     ],
     "securityAccessPreview": "blueprint/security-access-preview-registry.json",
     "homeBridge": "blueprint/home-bridge-registry.json",

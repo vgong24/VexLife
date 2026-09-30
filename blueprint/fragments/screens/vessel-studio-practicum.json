@@ -1,0 +1,202 @@
+{
+  "screenRef": "screen.vexlife.vessel-studio-practicum",
+  "routeRef": "route.vessel-studio-practicum",
+  "titleStringRef": "screen.vessel-studio-practicum.title",
+  "stateSelectorRefs": [
+    "state.vessel-studio-practicum-reference"
+  ],
+  "regions": [
+    {
+      "regionRef": "region.vessel-studio-practicum.studio",
+      "labelStringRef": "vessel-studio.offer",
+      "conceptRef": "concept.region.vessel-studio-practicum.studio",
+      "navigationNodeRef": "nav.region.vessel-studio-practicum.studio",
+      "elements": [
+        {
+          "elementRef": "element.vessel-studio.reference-status",
+          "kind": "REFERENCE_SUMMARY",
+          "labelStringRef": "vessel-studio.reference",
+          "conceptRef": "concept.element.vessel-studio.reference-status",
+          "interactionRef": "interaction.vessel-studio.reference-status",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-studio.reference-observed",
+          "accessibility": {
+            "role": "status",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.vessel-studio.reference-status"
+          },
+          "testRefs": [
+            "test.vessel-studio.practicum-boundaries"
+          ]
+        },
+        {
+          "elementRef": "element.vessel-studio.avatar-choice",
+          "kind": "ACTION",
+          "labelStringRef": "vessel-studio.avatar",
+          "actionRef": "action.vessel-studio.reference.transition",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.vessel-studio.avatar-choice",
+          "interactionRef": "interaction.vessel-studio.avatar-choice",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-studio.reference-transition",
+          "accessibility": {
+            "role": "group",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.vessel-studio.avatar-choice"
+          },
+          "testRefs": [
+            "test.vessel-studio.practicum-currentness",
+            "test.vessel-studio.practicum-accessibility"
+          ]
+        },
+        {
+          "elementRef": "element.vessel-studio.color-glow-choice",
+          "kind": "ACTION",
+          "labelStringRef": "vessel-studio.color",
+          "actionRef": "action.vessel-studio.reference.transition",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.vessel-studio.color-glow-choice",
+          "interactionRef": "interaction.vessel-studio.color-glow-choice",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-studio.reference-transition",
+          "accessibility": {
+            "role": "group",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.vessel-studio.color-glow-choice"
+          },
+          "testRefs": [
+            "test.vessel-studio.practicum-currentness",
+            "test.vessel-studio.practicum-accessibility"
+          ]
+        },
+        {
+          "elementRef": "element.vessel-studio.voice-choice",
+          "kind": "ACTION",
+          "labelStringRef": "vessel-studio.voice",
+          "actionRef": "action.vessel-studio.reference.transition",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.vessel-studio.voice-choice",
+          "interactionRef": "interaction.vessel-studio.voice-choice",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-studio.reference-transition",
+          "accessibility": {
+            "role": "group",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.vessel-studio.voice-choice"
+          },
+          "testRefs": [
+            "test.vessel-studio.practicum-boundaries",
+            "test.vessel-studio.practicum-accessibility"
+          ]
+        },
+        {
+          "elementRef": "element.vessel-studio.name-presentation",
+          "kind": "ACTION",
+          "labelStringRef": "vessel-studio.name",
+          "actionRef": "action.vessel-studio.reference.transition",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.vessel-studio.name-presentation",
+          "interactionRef": "interaction.vessel-studio.name-presentation",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-studio.reference-transition",
+          "accessibility": {
+            "role": "group",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.vessel-studio.name-presentation"
+          },
+          "testRefs": [
+            "test.vessel-studio.practicum-boundaries",
+            "test.vessel-studio.practicum-accessibility"
+          ]
+        },
+        {
+          "elementRef": "element.vessel-studio.environment-choice",
+          "kind": "ACTION",
+          "labelStringRef": "vessel-studio.environment",
+          "actionRef": "action.vessel-studio.reference.transition",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.vessel-studio.environment-choice",
+          "interactionRef": "interaction.vessel-studio.environment-choice",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-studio.reference-transition",
+          "accessibility": {
+            "role": "group",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.vessel-studio.environment-choice"
+          },
+          "testRefs": [
+            "test.vessel-studio.practicum-currentness",
+            "test.vessel-studio.practicum-accessibility"
+          ]
+        },
+        {
+          "elementRef": "element.vessel-studio.revert",
+          "kind": "ACTION",
+          "labelStringRef": "vessel-studio.revert",
+          "actionRef": "action.vessel-studio.reference.transition",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.vessel-studio.revert",
+          "interactionRef": "interaction.vessel-studio.revert",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-studio.reference-transition",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.vessel-studio.revert"
+          },
+          "testRefs": [
+            "test.vessel-studio.practicum-currentness"
+          ]
+        },
+        {
+          "elementRef": "element.vessel-studio.offer-review",
+          "kind": "ACTION",
+          "labelStringRef": "vessel-studio.review",
+          "actionRef": "action.vessel-studio.reference.transition",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.vessel-studio.offer-review",
+          "interactionRef": "interaction.vessel-studio.offer-review",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-studio.reference-transition",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.vessel-studio.offer-review"
+          },
+          "testRefs": [
+            "test.vessel-studio.practicum-boundaries",
+            "test.vessel-studio.practicum-browser"
+          ]
+        },
+        {
+          "elementRef": "element.vessel-studio.reset",
+          "kind": "ACTION",
+          "labelStringRef": "vessel-studio.reset",
+          "actionRef": "action.vessel-studio.reference.reset",
+          "permissionRef": "permission.none",
+          "conceptRef": "concept.element.vessel-studio.reset",
+          "interactionRef": "interaction.vessel-studio.reset",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vessel-studio.reference-reset",
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.vessel-studio.reset"
+          },
+          "testRefs": [
+            "test.vessel-studio.practicum-currentness",
+            "test.vessel-studio.practicum-browser"
+          ]
+        }
+      ]
+    }
+  ],
+  "testRefs": [
+    "test.vessel-studio.practicum-boundaries",
+    "test.vessel-studio.practicum-currentness",
+    "test.vessel-studio.practicum-accessibility",
+    "test.vessel-studio.practicum-browser"
+  ],
+  "conceptRef": "concept.screen.vexlife.vessel-studio-practicum",
+  "navigationNodeRef": "nav.screen.vexlife.vessel-studio-practicum"
+}
