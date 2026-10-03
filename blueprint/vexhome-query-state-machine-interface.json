@@ -1,0 +1,575 @@
+{
+  "schemaVersion": "vexlife.vexhome-query-state-machine-interface/v0",
+  "entryClass": "DESIGN_SOURCE_CANDIDATE__COMPOSITION_INTERFACE",
+  "continuity": "[VXG RealForever]",
+  "parentInterfaceCandidateRef": "github.pull.vexlife.402",
+  "purpose": "Coordinate immutable human intent, multidimensional bounded read branches, source-bound result capsules, reconciliation, current synthesis and re-entry without centralizing canonical owners or replaying whole conversation history into model context.",
+  "sourceOwnerRefs": [
+    "blueprint/intent-orchestration-registry.json",
+    "src/core/intent-workgraph.mjs",
+    "src/core/registry-core.mjs",
+    "src/core/atlas.mjs",
+    "blueprint/intent-scheduler-registry.json",
+    "src/core/intent-scheduler.mjs",
+    "src/core/context-lease.mjs",
+    "src/core/continuity-stream-adapter.mjs",
+    "docs/CAPABILITY-ASSIMILATION-RUNTIME.md",
+    "src/core/capability-assimilation-runtime.mjs",
+    "blueprint/fragments/state-domains.json",
+    "blueprint/relationships-browser-registry.json",
+    "src/core/relationships-store.mjs",
+    "blueprint/feature-registry.json",
+    "src/core/feature-registry.mjs",
+    "blueprint/vexhome-context-spine-interface.json",
+    "blueprint/vexhome-fractal-terrain-interface.json",
+    "github.issue.vextreme-sdk.236",
+    "github.issue.vextreme-sdk.329",
+    "github.issue.vextreme-sdk.482",
+    "github.issue.vextreme-sdk.508"
+  ],
+  "singularityBoundary": {
+    "means": [
+      "one compact current query/re-entry pointer",
+      "coordination over sovereign source owners",
+      "bounded source-backed synthesis state"
+    ],
+    "doesNotMean": [
+      "one central database",
+      "one universal lattice",
+      "one whole-history model prompt",
+      "semantic ownership collapse",
+      "one always-running agent"
+    ]
+  },
+  "intentBinding": {
+    "immutableOwner": "vexlife.intent-workgraph/v0 intent envelope",
+    "requiredRefs": [
+      "rootIntentRef",
+      "rootIntentFingerprint",
+      "originMessageRef",
+      "originSpeakerRef",
+      "originalContentHash",
+      "sourceLineageRef"
+    ],
+    "requiredMeaning": [
+      "desiredOutcome",
+      "constraints"
+    ],
+    "rules": [
+      "Query evolution references the immutable root Intent rather than rewriting it.",
+      "Newly generated questions do not silently replace the originating human goal.",
+      "A query may terminate when the originating intent is satisfied even if interesting adjacent questions remain."
+    ]
+  },
+  "queryStateMachine": {
+    "phases": [
+      "FRONTIER_FORMING",
+      "READ_SET_READY",
+      "READING",
+      "RECONCILING",
+      "COVERAGE_SUFFICIENT",
+      "COVERAGE_EXPAND_REQUIRED",
+      "SOURCE_REFRESH_REQUIRED",
+      "SYNTHESIS_READY",
+      "TERMINAL_FOR_CURRENT_INTENT"
+    ],
+    "subordinateToIntentLifecycle": true,
+    "queryHeadFields": [
+      "queryStateRef",
+      "queryLineageRef",
+      "rootIntentRef",
+      "rootIntentFingerprint",
+      "originMessageRef",
+      "originSpeakerRef",
+      "originalContentHash",
+      "desiredOutcomeRefOrBoundedValue",
+      "constraintRefs[]",
+      "currentPhase",
+      "currentQuestionFrontierRefs[]",
+      "activeBranchRefs[]",
+      "completedBranchRefs[]",
+      "heldBranchRefs[]",
+      "resultCapsuleRefs[]",
+      "reconciliationRefOrNull",
+      "currentSynthesisRefOrNull",
+      "coverageState",
+      "coverageBoundaryRefs[]",
+      "unknownRefs[]",
+      "contradictionRefs[]",
+      "staleRefs[]",
+      "invalidationDependencyRefs[]",
+      "nextFrontierRefs[]",
+      "nextSafeActionRefOrNull",
+      "contextProjectionRef",
+      "sourceWhyAppendixRef",
+      "queryGeneration",
+      "formedAt",
+      "updatedAt",
+      "semanticFingerprint"
+    ],
+    "historicalMutation": "APPEND_ONLY_RECEIPTS_PLUS_REPLACEABLE_CURRENT_HEAD"
+  },
+  "branchClasses": {
+    "CURRENT_STATE": "current live state relevant to the intent",
+    "RELATIONSHIP_WORLD": "people, groups, directional relationships and relationship lifecycle",
+    "PROJECT_TOPOLOGY": "program/project/system relationships and project lifecycle",
+    "OWNERSHIP_AUTHORITY": "owner, permission, review, acceptance and blocker topology",
+    "IMPLEMENTATION_DEPENDENCY": "contracts, modules, data flow and change impact",
+    "EVIDENCE_ASSURANCE": "tests, receipts, review evidence and proof gaps",
+    "HISTORY_MEANING": "predecessors, decisions, corrections, journey and meaning evolution",
+    "FUTURE_OPEN_LOOPS": "active intents, tasks, commitments, waiting and planned branches",
+    "SOURCE_CURRENTNESS": "freshness, source generation, supersession and conflict",
+    "STORAGE_PLACEMENT": "logical object to shard/vault/replica/source route"
+  },
+  "branchPlan": {
+    "fields": [
+      "queryBranchRef",
+      "queryStateRef",
+      "rootIntentRef",
+      "questionSubIntentRef",
+      "branchClass",
+      "whySelected",
+      "anchorRefs[]",
+      "questionIntentRefs[]",
+      "latticeTypeRefs[]",
+      "projectionProfileRefs[]",
+      "directions[]",
+      "edgeTypes[]",
+      "sourceOwnerRefs[]",
+      "semanticDistanceBudget",
+      "recordBudget",
+      "byteBudget",
+      "tokenBudget",
+      "visibilityRefs[]",
+      "freshnessRequirement",
+      "currentnessRequirement",
+      "capabilityRefs[]",
+      "dependencyRefs[]",
+      "parallelClass",
+      "resourceClass",
+      "expectedOutputClass",
+      "completionEvidenceRefs[]",
+      "stopConditionRefs[]",
+      "continuationPolicyRef",
+      "formedAt",
+      "semanticFingerprint"
+    ],
+    "whySelectedRequired": true
+  },
+  "parallelism": {
+    "classes": {
+      "INDEPENDENT_READ_ONLY": "may execute concurrently when current source/permission/resource/dependency rules permit",
+      "SERIAL_DEPENDENT": "waits for named dependency result",
+      "JOIN_REQUIRED": "multiple branches must reach terminal read state before reconciliation",
+      "EARLY_STOP_ALLOWED": "stronger evidence makes optional remaining branches unnecessary",
+      "REFRESH_ON_JOIN": "revalidate source generations before synthesis when required"
+    },
+    "modelInferencePolicyObservedCurrent": {
+      "modelInferenceConcurrency": 1,
+      "activeContextLeasesPerWorker": 1,
+      "backgroundModelConcurrencyWhileInteractiveWaits": 0
+    },
+    "rules": [
+      "Parallel question/evidence collection is distinct from parallel model inference.",
+      "Reuse Intent Scheduler and Capability Assimilation read-only batching instead of creating a second worker authority.",
+      "Current hardware/resource policy may evolve only through its rightful source owner."
+    ]
+  },
+  "resultCapsule": {
+    "fields": [
+      "resultCapsuleRef",
+      "queryBranchRef",
+      "queryStateRef",
+      "branchClass",
+      "questionSubIntentRef",
+      "whyRelevant",
+      "sourceRefs[]",
+      "sourceFingerprintRefs[]",
+      "sourceObservedAt",
+      "sourceCurrentness",
+      "sourceOwnerRefs[]",
+      "registryProjectionFingerprintOrNull",
+      "atlasCoverageReceiptRefOrNull",
+      "nodeRefs[]",
+      "typedEdgeRefs[]",
+      "observationRefs[]",
+      "artifactRefs[]",
+      "claimRefs[]",
+      "answerPacketRefs[]",
+      "findingRefs[]",
+      "coverageBoundaryRefs[]",
+      "excludedScopeRefs[]",
+      "unknownRefs[]",
+      "contradictionRefs[]",
+      "staleRefs[]",
+      "continuationRefs[]",
+      "recordCount",
+      "byteCount",
+      "formedAt",
+      "semanticFingerprint"
+    ],
+    "rawToolTranscriptIncluded": false
+  },
+  "reconciliation": {
+    "classifications": [
+      "AGREES",
+      "COMPLEMENTS",
+      "CONTRADICTS",
+      "SCOPE_DIFFERS",
+      "STALE",
+      "UNKNOWN",
+      "NOT_IMPLICATED"
+    ],
+    "fields": [
+      "reconciliationRef",
+      "queryStateRef",
+      "inputResultCapsuleRefs[]",
+      "agreementGroups[]",
+      "complementGroups[]",
+      "contradictionGroups[]",
+      "scopeDifferenceRefs[]",
+      "staleResultRefs[]",
+      "unknownRefs[]",
+      "coverageSatisfiedRefs[]",
+      "coverageMissingRefs[]",
+      "newlyGeneratedQuestionRefs[]",
+      "recommendedExpansionBranchRefs[]",
+      "stopReasonRefOrNull",
+      "formedAt",
+      "semanticFingerprint"
+    ],
+    "rules": [
+      "Contradictions remain visible and are not averaged into false certainty.",
+      "Time, scope, visibility and vantage differences may reconcile apparent conflict without rewriting either source."
+    ]
+  },
+  "synthesis": {
+    "fields": [
+      "synthesisRef",
+      "rootIntentRef",
+      "queryStateRef",
+      "answerDisposition",
+      "boundedAnswerSummary",
+      "whyThisFollowsRefs[]",
+      "materialFindingRefs[]",
+      "materialUnknownRefs[]",
+      "materialContradictionRefs[]",
+      "currentSourceRefs[]",
+      "coverageReceiptRefs[]",
+      "nextFrontierRefs[]",
+      "stopReasonRef",
+      "sourceWhyAppendixRef",
+      "formedAt",
+      "semanticFingerprint"
+    ],
+    "modelFacingMinimum": [
+      "original intent",
+      "current question frontier",
+      "current answer state",
+      "bounded material findings",
+      "material unknowns/contradictions",
+      "next exact frontier if any",
+      "source refs"
+    ]
+  },
+  "contextProjection": {
+    "include": [
+      "foundation kernel",
+      "immutable intent handle and bounded desired outcome",
+      "current Query State head",
+      "current synthesis/frontier",
+      "implicated compact result capsules or refs",
+      "selected Atlas/Context Spine neighborhood refs",
+      "current capability/tool frame",
+      "exact new observation delta"
+    ],
+    "excludeAmbient": [
+      "all prior query turns",
+      "all raw tool outputs",
+      "parallel branch transcripts",
+      "all relationships",
+      "all projects",
+      "all Atlas nodes",
+      "all journal days",
+      "all historical query generations"
+    ],
+    "descentPattern": "COMPACT_REF -> RESULT_CAPSULE -> EXACT_OBSERVATION -> CANONICAL_SOURCE"
+  },
+  "evolveContextDelta": {
+    "fields": [
+      "continuationReason",
+      "priorQueryGeneration",
+      "nextQueryGeneration",
+      "completedSincePriorRefs[]",
+      "newFindingRefs[]",
+      "newContradictionRefs[]",
+      "newUnknownRefs[]",
+      "newlyRequiredBranchRefs[]",
+      "currentFrontierRefs[]",
+      "estimatedRemainingSemanticRoundsRange",
+      "estimateConfidence",
+      "stopConditionRefs[]"
+    ],
+    "repeatWholeQueryStateInChat": false
+  },
+  "dynamicWorldProjection": {
+    "pipeline": [
+      "CANONICAL_OWNER_CHANGE",
+      "OWNER_VALIDATION",
+      "SOURCE_BOUND_PROJECTION_GENERATION",
+      "PRIOR_CURRENT_DELTA",
+      "WORLD_PROJECTION_DELTA",
+      "REGISTRY_ATLAS_CURRENT_POINTER_UPDATE",
+      "DEPENDENT_QUERY_CONTEXT_INVALIDATION",
+      "PRESERVE_PRIOR_GENERATION_AND_STABLE_IDENTITY"
+    ],
+    "worldProjectionDeltaFields": [
+      "worldProjectionDeltaRef",
+      "sourceOwnerRef",
+      "sourceGenerationRef",
+      "priorProjectionGenerationRefOrNull",
+      "nextProjectionGenerationRef",
+      "addedRefs[]",
+      "changedRefs[]",
+      "retiredRefs[]",
+      "reboundRefs[]",
+      "unchangedCount",
+      "relationshipEdgeDeltaRefs[]",
+      "currentness",
+      "sourceRefs[]",
+      "invalidationRefs[]",
+      "formedAt",
+      "semanticFingerprint"
+    ],
+    "compilerCandidate": {
+      "name": "CompileWorldProjection",
+      "inputs": [
+        "sourceOwnerRef",
+        "sourceGenerationRef",
+        "admittedProjectionClass",
+        "visibilityRefs[]",
+        "priorProjectionRefOrNull"
+      ],
+      "outputs": [
+        "worldProjectionRef",
+        "sourceOwnerRef",
+        "sourceGenerationRef",
+        "projectionClass",
+        "nodeEnvelopes[]",
+        "typedEdgeEnvelopes[]",
+        "stateHash",
+        "currentness",
+        "visibilityRefs[]",
+        "sourceBinding",
+        "coverage",
+        "semanticFingerprint"
+      ],
+      "directUnvalidatedNodeInjectionAllowed": false
+    }
+  },
+  "dynamicEntitySemantics": {
+    "friends": {
+      "rightfulOwner": "state.relationships / service.relationships",
+      "invitationImpliesCanonicalRelationship": false,
+      "persistenceRequiresDurableReceiptAndCurrentReadback": true,
+      "currentLifecycleObserved": [
+        "ACTIVE",
+        "BLOCKED",
+        "REVOKED",
+        "WITHDRAWN",
+        "DISCONNECTED"
+      ],
+      "tombstoneHistoryPreserved": true,
+      "genericWorldProjectionAdapterImplemented": false
+    },
+    "projects": {
+      "rightfulOwnerObserved": "state.projects / service.projects",
+      "staticTerrainProjectNodesObserved": true,
+      "genericDynamicPersistenceProjectionAdapter": "UNPROVEN_IN_CURRENT_SOURCE_PASS",
+      "candidateRemovalSemantics": [
+        "RETIRED",
+        "ARCHIVED",
+        "SUPERSEDED",
+        "NO_LONGER_CURRENT"
+      ],
+      "candidateRemovalVocabularyAuthority": "RIGHTFUL_PROJECT_OWNER_TO_DEFINE"
+    },
+    "features": {
+      "stableIdentity": "featureRef",
+      "typedRelationshipsObserved": [
+        "canonicalNodeRefs",
+        "stateRefs",
+        "actionRefs",
+        "permissionRefs",
+        "processRefs",
+        "moduleRefs",
+        "testRefs",
+        "platformRefs",
+        "localizationRefs",
+        "reviewLensRefs",
+        "projectionRefs"
+      ],
+      "flattenToGenericRelationshipSchema": false
+    }
+  },
+  "invalidationDependencies": [
+    "sourceGenerationRef",
+    "registryGenerationRef",
+    "atlasGenerationRef",
+    "relationshipHeadRef",
+    "projectProjectionGenerationRef",
+    "featureRegistryHash",
+    "continuityGenerationRef",
+    "currentnessReceiptRef",
+    "permissionGenerationRef",
+    "visibilityGenerationRef"
+  ],
+  "invalidationRule": "Refresh only affected result/query/context projections rather than rereading the whole world.",
+  "reentryCapsule": {
+    "fields": [
+      "queryReentryCapsuleRef",
+      "rootIntentRef",
+      "originMessageRef",
+      "originalContentHash",
+      "desiredOutcome",
+      "constraints",
+      "queryStateRef",
+      "queryGeneration",
+      "currentPhase",
+      "currentQuestionFrontierRefs[]",
+      "completedBranchRefs[]",
+      "activeBranchRefs[]",
+      "heldBranchRefs[]",
+      "materialResultCapsuleRefs[]",
+      "reconciliationRefOrNull",
+      "currentSynthesisRefOrNull",
+      "materialFindingRefs[]",
+      "materialUnknownRefs[]",
+      "materialContradictionRefs[]",
+      "coverageBoundaryRefs[]",
+      "nextFrontierRefs[]",
+      "stopConditionRefs[]",
+      "selectedAtlasRefs[]",
+      "selectedSourceRefs[]",
+      "sourceWhyAppendixRef",
+      "continuationReasonRef",
+      "checkpointRef",
+      "formedAt",
+      "semanticFingerprint"
+    ],
+    "mustAnswer": [
+      "What did the human originally want?",
+      "What is already proven?",
+      "Why were these dimensions inspected?",
+      "What remains unresolved?",
+      "Which sources are current?",
+      "What invalidates the current answer?",
+      "What exact move continues the trajectory?",
+      "When should the query stop?"
+    ]
+  },
+  "sourceWhyAppendix": {
+    "entryFields": [
+      "sourceRef",
+      "sourceOwnerRef",
+      "observedAt",
+      "observedGenerationRefOrCommitRef",
+      "currentness",
+      "whyUsed",
+      "whatItProves[]",
+      "whatItDoesNotProve[]",
+      "relatedQueryBranchRefs[]",
+      "continuationRouteRefs[]"
+    ],
+    "rule": "Compact provenance for re-entry; not a mandatory ambient reading itinerary."
+  },
+  "schoolAndTraining": {
+    "curriculumSequence": [
+      "identify immutable human intent",
+      "identify current semantic anchor",
+      "form the smallest question frontier",
+      "choose only relevant lattice/projection branches",
+      "state why each branch is implicated",
+      "classify independent versus dependent reads",
+      "execute bounded current reads",
+      "reconcile agreement/scope-difference/contradiction/unknown",
+      "decide whether coverage is sufficient",
+      "synthesize without raw-observation replay",
+      "form re-entry state",
+      "continue after context replacement",
+      "respond correctly to source/world deltas",
+      "stop when original intent is satisfied"
+    ],
+    "heldOutEvaluationRefs": [
+      "MQ0_SINGLE_LATTICE_NO_UNNECESSARY_PARALLELISM",
+      "MQ1_THREE_INDEPENDENT_SOURCE_DIMENSIONS",
+      "MQ2_SCOPE_OR_TIME_RESOLVES_APPARENT_CONTRADICTION",
+      "MQ3_BRANCH_STALES_DURING_COLLECTION",
+      "MQ4_LOCAL_COST_STABLE_WITH_UNRELATED_WORLD_GROWTH",
+      "MQ5_FRIEND_ARRIVAL_INVALIDATES_ONLY_IMPLICATED_BRANCH",
+      "MQ6_INVITATION_DOES_NOT_CREATE_FRIEND_NODE",
+      "MQ7_PROJECT_LEAVES_CURRENT_VIEW_HISTORY_REMAINS",
+      "MQ8_ONE_FEATURE_MULTIPLE_TYPED_TERRAINS",
+      "MQ9_CONTEXT_ROLLOVER_REENTRY_WITHOUT_TRANSCRIPT_REPLAY",
+      "MQ10_NEW_QUESTION_DISCOVERED_BUT_ORIGINAL_INTENT_ALREADY_SATISFIED",
+      "MQ11_PARALLEL_READS_SINGLE_MODEL_WORKER",
+      "MQ12_UNKNOWN_SOURCE_OWNER_REMAINS_EXPLICIT"
+    ],
+    "candidateWeightLearnableDispositions": [
+      "ask what question this map answers",
+      "parallelize independent reads",
+      "preserve original intent",
+      "reconcile before synthesis",
+      "prefer current rightful owner source",
+      "inspect bounded neighborhood before deep crawl",
+      "carry why/source routes",
+      "stop on sufficient coverage"
+    ],
+    "currentWorldFactsMayBeBakedIntoWeights": false,
+    "modelTrainingAuthority": false
+  },
+  "knownGaps": {
+    "queryStateMachineRuntimeOwner": "NOT_PROVEN",
+    "resolveTerrainNeighborhoodRuntime": "NOT_PROVEN",
+    "contextCompilerQueryStateIntegration": "NOT_PROVEN",
+    "genericWorldProjectionDeltaCompiler": "NOT_PROVEN",
+    "dynamicFriendRegistryAtlasAdapter": "SEMANTICS_SUPPORTED_GENERIC_ADAPTER_NOT_PROVEN",
+    "dynamicProjectPersistenceProjectionAdapter": "UNPROVEN_IN_CURRENT_SOURCE_PASS",
+    "queryInvalidationImpactIndex": "DESIGN_CANDIDATE_OWNER_TO_RESOLVE",
+    "queryReentryCapsuleRuntime": "NOT_PROVEN",
+    "sourceWhyAppendixCompiler": "NOT_PROVEN",
+    "LoRAWeightNavigationAdaptation": "NOT_AUTHORIZED"
+  },
+  "invariants": [
+    "IMMUTABLE_INTENT != CURRENT_QUERY_STATE",
+    "QUERY_STATE != CONVERSATION_HISTORY",
+    "SINGULARITY != CENTRAL_DATABASE",
+    "BRANCH != AGENT_IDENTITY",
+    "PARALLEL_QUERY != PARALLEL_MODEL_INFERENCE",
+    "RESULT_CAPSULE != RAW_TOOL_TRANSCRIPT",
+    "RECONCILIATION != MAJORITY_VOTE",
+    "CONTRADICTION != AVERAGE",
+    "CURRENT_SYNTHESIS != CANONICAL_SOURCE",
+    "SOURCE_WHY_APPENDIX != FIXED_READING_ITINERARY",
+    "DYNAMIC_PROJECTION != DIRECT_UNVALIDATED_NODE_INJECTION",
+    "RELATIONSHIP_INVITATION != SAVED_RELATIONSHIP",
+    "ENTITY_REMOVED_FROM_CURRENT_VIEW != HISTORY_ERASED",
+    "EVERYTHING_CAN_PARTICIPATE_IN_RELATIONSHIPS != EVERYTHING_HAS_THE_SAME_PROOF_CONTRACT",
+    "REGISTRY_COMPILER != SEMANTIC_OWNER",
+    "ATLAS != WHOLE_WORLD_CONTEXT",
+    "CONTEXT_LEASE != MEMORY",
+    "WEIGHTS_MAY_LEARN_NAVIGATION != WEIGHTS_OWN_CURRENT_WORLD"
+  ],
+  "authority": {
+    "runtimeImplementationAuthority": false,
+    "modelTrainingAuthority": false,
+    "HomeMutationAuthority": false,
+    "MemoryMutationAuthority": false,
+    "relationshipMutationAuthority": false,
+    "projectMutationAuthority": false,
+    "sourceManifestSerializerAuthority": false,
+    "reviewAuthority": false,
+    "readyAuthority": false,
+    "mergeAuthority": false
+  }
+}
