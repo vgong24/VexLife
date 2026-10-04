@@ -479,7 +479,7 @@ test('durable G01 relay admission rejects target and projection drift before end
   const endpoint = `http://127.0.0.1:${service.address().port}/`;
   try {
     for (const variant of ['missing-target', 'projection-mode-drift']) {
-      const home = fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-core-semantic-${variant}-`));
+      const home = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), `vexlife-core-semantic-${variant}-`));
       const identity = {
         home,
         homeRef: `home.semantic.${variant}`,
@@ -542,6 +542,101 @@ test('durable G01 relay admission rejects target and projection drift before end
   } finally {
     await new Promise((resolve) => service.close(resolve));
   }
+});
+
+
+const { OBSERVATION_STATES, STATE_OPERATIONS, VexCompoundState, createStateSnapshot } = await import('../src/core/state-relay.mjs');
+const { semanticHash } = await import('../src/core/utils.mjs');
+
+test('A1 exports explicit observation and operation vocabularies', () => {
+  assert.deepEqual([...OBSERVATION_STATES], ['UNOBSERVED', 'EMPTY', 'PRESENT', 'HELD', 'UNAVAILABLE']);
+  assert.deepEqual([...STATE_OPERATIONS], ['EVOLVE', 'REPLACE', 'SNAPSHOT', 'REINSTANCE']);
+});
+
+test('A1 snapshots are immutable and do not share mutable ownership', () => {
+  const source = { nested: { items: ['a'] } };
+  const snapshot = createStateSnapshot({ stateRef: 'state.test', instanceRef: 'instance.test.1', revision: 0, valueOrNull: source });
+  source.nested.items.push('b');
+  assert.deepEqual(snapshot.valueOrNull, { nested: { items: ['a'] } });
+  assert.equal(Object.isFrozen(snapshot), true);
+  assert.equal(Object.isFrozen(snapshot.valueOrNull.nested.items), true);
+});
+
+test('A1 StateCell preserves legacy set/update no-op compatibility and distinguishes explicit same-value transitions', () => {
+  const cell = new StateCell({ value: 'A' }, { name: 'state.test', stateRef: 'state.test', instanceRef: 'instance.test.1' });
+  let changed = 0;
+  cell.subscribe((event) => { if (event.changed) changed += 1; });
+
+  assert.equal(cell.hash, semanticHash({ value: 'A' }));
+  assert.equal(cell.set({ value: 'A' }).changed, false);
+  assert.equal(cell.set({ value: 'A' }, { transitionRef: 'transition.legacy-set.same-value' }).changed, false);
+  assert.equal(cell.update((value) => value, { transitionRef: 'transition.legacy-update.same-value' }).changed, false);
+  assert.equal(cell.revision, 0);
+
+  assert.equal(cell.replace({ value: 'A' }, { transitionRef: 'transition.explicit-replace.same-value' }).changed, true);
+  assert.equal(cell.evolve((value) => value, { transitionRef: 'transition.explicit-evolve.same-value' }).changed, true);
+  assert.equal(cell.revision, 2);
+
+  cell.set({ value: 'B' }, { transitionRef: 'transition.a-b' });
+  assert.equal(cell.hash, semanticHash({ value: 'B' }));
+  cell.set({ value: 'A' }, { transitionRef: 'transition.b-a' });
+  assert.equal(cell.hash, semanticHash({ value: 'A' }));
+  assert.equal(cell.value.value, 'A');
+  assert.equal(changed, 4);
+});
+
+test('A1 observation truth keeps UNOBSERVED distinct from EMPTY and PRESENT null', () => {
+  const cell = new StateCell(null, { name: 'state.observe', observation: 'UNOBSERVED' });
+  assert.equal(cell.snapshot().observation, 'UNOBSERVED');
+  cell.observe('EMPTY', null, { transitionRef: 'transition.empty' });
+  const empty = cell.snapshot();
+  cell.observe('PRESENT', null, { transitionRef: 'transition.present-null' });
+  const presentNull = cell.snapshot();
+  assert.equal(empty.observation, 'EMPTY');
+  assert.equal(presentNull.observation, 'PRESENT');
+  assert.notEqual(empty.semanticHash, presentNull.semanticHash);
+});
+
+test('A1 REINSTANCE changes incarnation and preserves the true prior snapshot for subscribers', () => {
+  const cell = new StateCell({ count: 1 }, { name: 'state.reinstance', instanceRef: 'instance.1' });
+  cell.set({ count: 2 }, { transitionRef: 'transition.1' });
+  const before = cell.snapshot();
+  let reinstanceEmission = null;
+  cell.subscribe((event) => {
+    if (event.changed && event.operation === 'REINSTANCE') reinstanceEmission = event;
+  }, { emitCurrent: false });
+  const result = cell.reinstance({ instanceRef: 'instance.2', value: { count: 2 }, transitionRef: 'transition.reinstance' });
+  assert.equal(before.instanceRef, 'instance.1');
+  assert.equal(result.previousSnapshot.instanceRef, 'instance.1');
+  assert.equal(result.snapshot.instanceRef, 'instance.2');
+  assert.equal(result.snapshot.revision, 1);
+  assert.equal(reinstanceEmission.previousSnapshot.instanceRef, 'instance.1');
+  assert.equal(reinstanceEmission.snapshot.instanceRef, 'instance.2');
+  assert.equal(before.valueOrNull.count, 2);
+});
+
+test('A1 compound state waits for latest coherent input then reconciles serially', () => {
+  const compound = new VexCompoundState({
+    inputRefs: ['state.left', 'state.right'],
+    stateRef: 'state.output',
+    processLatestState: (latest) => ({
+      observation: 'PRESENT',
+      transitionRef: `transition.${latest['state.left'].revision}.${latest['state.right'].revision}`,
+      valueOrNull: { sum: latest['state.left'].valueOrNull + latest['state.right'].valueOrNull }
+    })
+  });
+  const first = compound.accept('state.left', { valueOrNull: 2 });
+  assert.equal(first.reconciled, false);
+  assert.equal(compound.output.snapshot().observation, 'UNOBSERVED');
+  const second = compound.accept('state.right', { valueOrNull: 3 });
+  assert.equal(second.reconciled, true);
+  assert.deepEqual(compound.output.value, { sum: 5 });
+  assert.equal(compound.output.snapshot().observation, 'PRESENT');
+});
+
+test('A1 compound state rejects asynchronous reducer/effect work', () => {
+  const compound = new VexCompoundState({ inputRefs: ['state.only'], processLatestState: async () => ({ valueOrNull: 1 }) });
+  assert.throws(() => compound.accept('state.only', { valueOrNull: 1 }), /must be synchronous/);
 });
 
 // [VXG RealForever]
