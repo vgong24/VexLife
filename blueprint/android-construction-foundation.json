@@ -1,0 +1,228 @@
+{
+  "schemaVersion": "vexlife.android-construction-foundation/v0",
+  "registryRef": "registry.vexlife.android-construction-foundation.001",
+  "ownerRef": "github.issue.vexlife.783",
+  "parentOrchestrationRef": "github.issue.vexlife.624",
+  "presentationGraphFoundationRef": "github.issue.vexlife.719",
+  "platformRef": "platform.android",
+  "registrationState": "INERT_NOT_COMPOSED",
+  "effects": false,
+  "formation": {
+    "main": "11ac1a052e5ce0560a206cc09e7be51acb97de71",
+    "sourceRefs": [
+      {
+        "ref": "blueprint.vexlife.universal.001",
+        "path": "blueprint/vexlife.blueprint.json",
+        "blob": "689dd6dc35040215c91dba8624d2d6b2430fd092"
+      },
+      {
+        "ref": "registry.vexlife.presentation-graph.001",
+        "path": "blueprint/presentation-graph-registry.json",
+        "blob": "368949a5bd8865f7851d36c93bc79da601f09cca"
+      },
+      {
+        "ref": "module.vexlife.core.state-relay",
+        "path": "src/core/state-relay.mjs",
+        "blob": "e68025263e353498498725a41ab2e66d4b8fc28b"
+      },
+      {
+        "ref": "source.blueprint.platforms",
+        "path": "blueprint/platforms.json",
+        "blob": "620fceb2903cc66ae4dc23c45936b6c4bb617946"
+      },
+      {
+        "ref": "source.core.platform-generator",
+        "path": "src/core/platform-generator.mjs",
+        "blob": "4dde66983f88cfc40ee2c2ff094e85fc206de7c7"
+      },
+      {
+        "ref": "source.blueprint.state-domains",
+        "path": "blueprint/fragments/state-domains.json",
+        "blob": "39d89d3e73874b5af366603cfc0a11d670ff5c21"
+      },
+      {
+        "ref": "source.blueprint.permissions",
+        "path": "blueprint/fragments/permissions.json",
+        "blob": "d0768f83ba7e473a7467210cb0e09c33dd6385a4"
+      },
+      {
+        "ref": "source.blueprint.actions",
+        "path": "blueprint/fragments/actions.json",
+        "blob": "09154f3391d7f7e9e4cc05bf146223c48f52364a"
+      }
+    ]
+  },
+  "mappingPipeline": [
+    "UNIVERSAL_BLUEPRINT",
+    "BLUEPRINT_TO_BLUEPRINT_MAPPER",
+    "ANDROID_CONSTRUCTION_BLUEPRINT",
+    "ANDROID_PROJECT_GENERATOR",
+    "KOTLIN_COMPOSE_MANIFEST_GRADLE_RESOURCES_TESTS"
+  ],
+  "androidPlatform": {
+    "language": "Kotlin",
+    "ui": "Jetpack Compose",
+    "stateProjection": "StateFlow",
+    "currentSupportState": "CONTRACT_SCAFFOLD",
+    "concerns": [
+      "application",
+      "compose",
+      "navigation",
+      "actions",
+      "permissions",
+      "lifecycle",
+      "execution",
+      "background-work",
+      "events",
+      "storage",
+      "resources",
+      "build",
+      "observability",
+      "tests"
+    ],
+    "mappingDispositions": [
+      "MAPPED",
+      "PLATFORM_SPECIFIC",
+      "HELD",
+      "UNSUPPORTED"
+    ]
+  },
+  "nonCollapseRules": [
+    "ANDROID_BLUEPRINT != UNIVERSAL_BLUEPRINT_COPY",
+    "PLATFORM_BINDING != NEW_PRODUCT_SEMANTICS",
+    "GRADLE_GRAPH != PRODUCT_GRAPH",
+    "VEX_INTENT != ANDROID_INTENT",
+    "VEX_PERMISSION != ANDROID_OS_PERMISSION",
+    "BROADCAST_RECEIVER != EVENT_MEANING",
+    "STATEFLOW != CANONICAL_STATE_IDENTITY",
+    "UI != ARBITRATION_OWNER"
+  ],
+  "stateRelay": {
+    "sourceModuleRef": "module.vexlife.core.state-relay",
+    "targetContracts": [
+      "contract.vexlife.state-cell/v1",
+      "contract.vexlife.compound-state/v1",
+      "contract.vexlife.state-projection/v1",
+      "contract.vexlife.state-snapshot/v1"
+    ],
+    "operations": [
+      "EVOLVE",
+      "REPLACE",
+      "SNAPSHOT",
+      "REINSTANCE"
+    ],
+    "operationLaws": [
+      "COPY = IMPLEMENTATION_DETAIL",
+      "EVOLVE != MUTATE",
+      "REPLACE != REINSTANCE",
+      "PREVIOUS_SNAPSHOT_IS_IMMUTABLE",
+      "NO_MUTABLE_OWNERSHIP_SHARING",
+      "STRUCTURAL_SHARING + DEEP_IMMUTABILITY = VALID",
+      "MUTABLE_EXTERNAL_VALUE -> SNAPSHOT -> RELAY"
+    ],
+    "observationStates": [
+      "UNOBSERVED",
+      "EMPTY",
+      "PRESENT",
+      "HELD",
+      "UNAVAILABLE"
+    ],
+    "observationLaws": [
+      "UNOBSERVED != EMPTY",
+      "NULL != EMPTY",
+      "MISSING_OBSERVATION != NEGATIVE_OBSERVATION",
+      "PARTIAL_TRANSITION != COMPLETED_TRANSITION",
+      "COMPLETION_REQUIRES_POSITIVE_EVIDENCE",
+      "LATEST_RECEIVED != LATEST_COHERENT",
+      "RECEIVED != ADMITTED"
+    ],
+    "snapshotIdentityFields": [
+      "stateRef",
+      "instanceRef",
+      "revision",
+      "transitionRefOrNull",
+      "observation",
+      "semanticHash",
+      "valueOrNull"
+    ],
+    "identityLaws": [
+      "REFERENCE_IDENTITY != CURRENT_STATE",
+      "REFERENCE_IDENTITY != INSTANCE_IDENTITY",
+      "SAME_REFERENCE != SAME_INCARNATION",
+      "SAME_VALUE != SAME_TRANSITION",
+      "A -> B -> A != NO_TRANSITION",
+      "CURRENT_STATE != TRANSITION_HISTORY",
+      "STATEFLOW != EVENT_LEDGER"
+    ],
+    "sequencing": {
+      "mutationOrdering": "SERIAL",
+      "concurrentProducersAllowed": true,
+      "multipleStateMutatorsAllowed": false,
+      "outputAfterReconciliationOnly": true,
+      "unownedConcurrentReducerMutationAllowed": false,
+      "longRunningEffectInsideReducerAllowed": false
+    },
+    "compoundState": {
+      "conceptualType": "VexCompoundState<InputState,OutputState>",
+      "pipeline": [
+        "ACCEPT_INPUT_IN_ORDER",
+        "EVOLVE_OR_REPLACE_INPUT",
+        "FORM_LATEST_COHERENT_INPUT",
+        "PROCESS_LATEST_STATE",
+        "RECONCILE_PRIORITY_CONFLICT_AND_QUEUE",
+        "COMMIT_OUTPUT",
+        "EMIT_SEMANTICALLY_DISTINCT_OUTPUT"
+      ],
+      "explicitQueueRequiredWhenBehaviorallyMeaningful": true
+    }
+  },
+  "diagnostics": {
+    "provisionalFacadeName": "VexLogger",
+    "semanticOwnerAsserted": false,
+    "reusableFoundationRef": "github.issue.vexlife.719",
+    "laws": [
+      "SEMANTIC_EVENT != RAW_INPUT_EVENT",
+      "CANONICAL_JOURNEY != DEBUG_LOG",
+      "DEBUG_LOG = PROJECTION_OF_CANONICAL_EVENT + RUNTIME_PRESENTATION_CONTEXT",
+      "EVENT_TIMESTAMP_IS_PRIMARY",
+      "DURATION_IS_DERIVED",
+      "RAW_POINTER_STREAM=false",
+      "VEX_LOGGER != CANONICAL_JOURNEY_OWNER",
+      "VEX_LOGGER != STATE_OWNER",
+      "LOGGED != SEMANTICALLY_AUTHORITATIVE",
+      "IMPORTANT_SHIFT != EVERY_TRANSITION"
+    ],
+    "significantShiftClasses": [
+      "STATE_INCARNATION_CHANGED",
+      "ADMITTED_OUTPUT_CLASS_CHANGED",
+      "HELD_UNAVAILABLE_FAILURE_CHANGED",
+      "QUEUE_HEAD_OR_PRIORITY_OWNER_CHANGED",
+      "LIFECYCLE_OR_RECOVERY_BOUNDARY",
+      "ACTION_OR_EFFECT_RECEIPT",
+      "ADMISSION_REJECTED",
+      "INVARIANT_VIOLATION"
+    ],
+    "defaultLogEveryRelayTransition": false
+  },
+  "implementationStages": [
+    "A0_BLUEPRINT_TO_BLUEPRINT_MAPPER_CONTRACT",
+    "A1_UNIVERSAL_STATE_RELAY_COMPOUND_STATE_EXTENSION",
+    "A2_ANDROID_TYPED_KOTLIN_STATE_PROJECTION",
+    "A3_ANDROID_CONSTRUCTION_BLUEPRINT_COMPILER",
+    "A4_MINIMAL_GENERATED_ANDROID_PROJECT_PRACTICUM",
+    "A5_TEST_AND_EVIDENCE_GENERATION"
+  ],
+  "heldEffects": [
+    "UNIVERSAL_BLUEPRINT_REGISTRATION",
+    "STATE_RELAY_RUNTIME_MUTATION",
+    "ANDROID_RUNTIME_IMPLEMENTATION",
+    "COMPOSE_IMPLEMENTATION",
+    "GRADLE_GENERATION",
+    "MANIFEST_GENERATION",
+    "LOGGER_RUNTIME_IMPLEMENTATION",
+    "GENERATED_SOURCE_MANIFEST_CLOSURE",
+    "READY",
+    "MERGE",
+    "PUBLICATION"
+  ]
+}
