@@ -15,6 +15,12 @@
       "sha256": "503b5b3088b7a41e5d92accfddc3fecac97e0edfd2e51d144373750252078406"
     },
     {
+      "path": "docs/ANDROID-CONSTRUCTION-FOUNDATION.md",
+      "mode": "100644",
+      "bytes": 7110,
+      "sha256": "f6f4f9f028221968b1ce8b6fdad8c04ed5f211ab149563a82d332a523ee9ceb8"
+    },
+    {
       "path": "src/core/blueprint.mjs",
       "mode": "100644",
       "bytes": 4120,
