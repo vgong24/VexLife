@@ -97,7 +97,7 @@ export class StateCell {
     this.#instanceRef = instanceRef ?? `${this.stateRef}.instance.0`;
     this.#observation = normalizeObservation(observation);
     this.#value = structuredClone(initialValue);
-    this.#hash = semanticHash({ observation: this.#observation, valueOrNull: initialValue ?? null });
+    this.#hash = semanticHash(initialValue);
   }
 
   get value() { return structuredClone(this.#value); }
@@ -123,14 +123,15 @@ export class StateCell {
     operation = 'REPLACE',
     observation = this.#observation,
     forceTransition = false,
-    honorTransitionRef = true
+    honorTransitionRef = true,
+    previousSnapshotOverride = null
   } = {}) {
     const normalizedObservation = normalizeObservation(observation);
-    const nextHash = semanticHash({ observation: normalizedObservation, valueOrNull: nextValue ?? null });
+    const nextHash = semanticHash(nextValue);
     const nextTransitionRef = transitionFromMetadata(metadata);
     const equal = this.equality
       ? this.equality(this.#value, nextValue) && normalizedObservation === this.#observation
-      : nextHash === this.#hash;
+      : nextHash === this.#hash && normalizedObservation === this.#observation;
     const distinctTransition = honorTransitionRef &&
       nextTransitionRef !== null &&
       nextTransitionRef !== this.#transitionRef;
@@ -148,7 +149,7 @@ export class StateCell {
     }
 
     const previousHash = this.#hash;
-    const previousSnapshot = this.snapshot();
+    const previousSnapshot = previousSnapshotOverride ?? this.snapshot();
     this.#value = structuredClone(nextValue);
     this.#hash = nextHash;
     this.#observation = normalizedObservation;
@@ -206,7 +207,8 @@ export class StateCell {
     const result = this.#commit(value, { transitionRef }, {
       operation: 'REINSTANCE',
       observation,
-      forceTransition: true
+      forceTransition: true,
+      previousSnapshotOverride: previousSnapshot
     });
     return { ...result, previousSnapshot };
   }
