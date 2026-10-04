@@ -22,6 +22,19 @@ export function createSecurityAccessController({ registry, t, guide, storage = g
   };
   const bridge = () => createSecurityAccessRuntimeBridge(registry, { runtimeState, previewVisible });
 
+  const PERCEPTION_REASON_STRING_REFS = Object.freeze({
+    NO_ACCEPTED_PRODUCER: 'security-access.perception.reason.no-accepted-producer',
+    AUTHORITY_NOT_ESTABLISHED: 'security-access.perception.reason.authority-not-established',
+    ADAPTER_UNAVAILABLE: 'security-access.perception.reason.adapter-unavailable',
+    OBSERVER_NOT_ESTABLISHED: 'security-access.perception.reason.observer-not-established',
+    HELD: 'security-access.perception.reason.held'
+  });
+  const PERCEPTION_CURRENTNESS_STRING_REFS = Object.freeze({
+    CURRENT: 'security-access.perception.currentness.current',
+    STALE: 'security-access.perception.currentness.stale',
+    UNKNOWN: 'security-access.perception.currentness.unknown'
+  });
+
   function renderPerceptionStatus(projection) {
     const facts = byId('securityAccessRegion')?.querySelector('.security-access-facts');
     if (!facts) return;
@@ -34,17 +47,32 @@ export function createSecurityAccessController({ registry, t, guide, storage = g
       label.dataset.i18n = 'security-access.perception';
       const value = document.createElement('h3');
       value.id = 'securityAccessPerceptionState';
-      host.append(label, value);
+      const evidence = document.createElement('p');
+      evidence.id = 'securityAccessPerceptionEvidence';
+      host.append(label, value, evidence);
       facts.append(host);
     }
     const label = host.querySelector('small');
     const value = host.querySelector('#securityAccessPerceptionState');
+    const evidence = host.querySelector('#securityAccessPerceptionEvidence');
     const stringRef = registry.perceptionStatus.stateStringRefs[projection.perceptionStatus.state];
-    if (!stringRef) throw new Error('Security & Access perception status string binding missing');
+    const currentnessStringRef = PERCEPTION_CURRENTNESS_STRING_REFS[projection.perceptionStatus.currentness];
+    const reasonStringRef = PERCEPTION_REASON_STRING_REFS[projection.perceptionStatus.state];
+    if (!stringRef || !currentnessStringRef || !reasonStringRef) throw new Error('Security & Access perception visible truth binding missing');
     if (label) label.textContent = t('security-access.perception');
     if (value) {
       value.dataset.i18n = stringRef;
       value.textContent = t(stringRef);
+    }
+    if (evidence) {
+      evidence.textContent = [
+        `${t('security-access.perception.source')}: ${t('security-access.perception.source-owner')}`,
+        `${t('security-access.perception.currentness')}: ${t(currentnessStringRef)}`,
+        `${t('security-access.perception.reason')}: ${t(reasonStringRef)}`
+      ].join(' · ');
+      evidence.dataset.perceptionSourceOwner = projection.perceptionStatus.semanticOwnerRef;
+      evidence.dataset.perceptionCurrentness = projection.perceptionStatus.currentness;
+      evidence.dataset.perceptionReasonStringRef = reasonStringRef;
     }
     host.dataset.perceptionState = projection.perceptionStatus.state;
     host.dataset.perceptionCurrentness = projection.perceptionStatus.currentness;

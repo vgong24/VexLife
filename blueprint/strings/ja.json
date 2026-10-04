@@ -396,5 +396,17 @@
   "security-access.perception.authority-not-established": "認可が確立されていません",
   "security-access.perception.adapter-unavailable": "アダプター利用不可",
   "security-access.perception.observer-not-established": "オブザーバー未確立",
-  "security-access.perception.held": "保留中"
+  "security-access.perception.held": "保留中",
+  "security-access.perception.source": "ソース",
+  "security-access.perception.source-owner": "知覚ブローカー #243",
+  "security-access.perception.currentness": "最新性",
+  "security-access.perception.currentness.current": "現在",
+  "security-access.perception.currentness.stale": "古い",
+  "security-access.perception.currentness.unknown": "不明",
+  "security-access.perception.reason": "理由",
+  "security-access.perception.reason.no-accepted-producer": "この画面には、承認済みの知覚プロデューサーの根拠が接続されていません。",
+  "security-access.perception.reason.authority-not-established": "現在のセッション認可は確立されていません。",
+  "security-access.perception.reason.adapter-unavailable": "承認済みのブローカー専用知覚アダプターは接続されていません。",
+  "security-access.perception.reason.observer-not-established": "ブローカー／インジケーターのアクティブ状態を確認する監視根拠は確立されていません。",
+  "security-access.perception.reason.held": "承認済みの所有者根拠が得られるまで知覚は保留されます。"
 }

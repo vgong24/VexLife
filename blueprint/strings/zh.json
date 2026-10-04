@@ -396,5 +396,17 @@
   "security-access.perception.authority-not-established": "尚未建立授权",
   "security-access.perception.adapter-unavailable": "适配器不可用",
   "security-access.perception.observer-not-established": "尚未建立观察器状态",
-  "security-access.perception.held": "暂缓"
+  "security-access.perception.held": "暂缓",
+  "security-access.perception.source": "来源",
+  "security-access.perception.source-owner": "感知代理 #243",
+  "security-access.perception.currentness": "时效状态",
+  "security-access.perception.currentness.current": "当前",
+  "security-access.perception.currentness.stale": "已过期",
+  "security-access.perception.currentness.unknown": "未知",
+  "security-access.perception.reason": "原因",
+  "security-access.perception.reason.no-accepted-producer": "此界面尚未连接已接受的感知数据源证据。",
+  "security-access.perception.reason.authority-not-established": "当前会话授权尚未建立。",
+  "security-access.perception.reason.adapter-unavailable": "尚未连接已接受的仅限代理的感知适配器。",
+  "security-access.perception.reason.observer-not-established": "尚未建立活动代理／指示器观察状态的证据。",
+  "security-access.perception.reason.held": "在获得已接受的所有者证据之前，感知保持暂缓。"
 }

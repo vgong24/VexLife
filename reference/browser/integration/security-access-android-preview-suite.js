@@ -94,6 +94,11 @@ async function runAndroidShapedCompactProof({ assert, delay }) {
     assert(snapshot.projection.perceptionStatus.state === 'NO_ACCEPTED_PRODUCER', 'Security & Access compact perception truth drifted');
     assert(snapshot.projection.perceptionStatus.activeObservation === false && snapshot.projection.perceptionStatus.effectAuthorityGranted === false, 'Security & Access compact perception status crossed an effect boundary');
     assert(compactDocument.querySelector('#securityAccessPerceptionStatus')?.dataset.perceptionState === 'NO_ACCEPTED_PRODUCER', 'Security & Access compact perception row unavailable');
+    const compactPerceptionEvidence = compactDocument.querySelector('#securityAccessPerceptionEvidence');
+    assert(compactPerceptionEvidence?.dataset.perceptionSourceOwner === 'github.issue.vextreme-sdk.243', 'Security & Access compact perception source owner is not visible');
+    assert(compactPerceptionEvidence?.dataset.perceptionCurrentness === 'UNKNOWN', 'Security & Access compact perception currentness is not visible');
+    assert(compactPerceptionEvidence?.dataset.perceptionReasonStringRef === 'security-access.perception.reason.no-accepted-producer', 'Security & Access compact perception reason is not visible');
+    assert((compactPerceptionEvidence?.textContent ?? '').length > 0 && !(compactPerceptionEvidence?.textContent ?? '').includes('security-access.perception.'), 'Security & Access compact perception evidence rendered raw string refs');
     assert(snapshot.projection.androidFirst === true && snapshot.projection.iPhoneRequired === false, 'Security & Access compact Android-first truth drifted');
     assert(snapshot.authenticationPerformed === false && snapshot.authorizationPerformed === false && snapshot.protectedEffectPerformed === false, 'Security & Access compact proof crossed an authentication/authorization/effect boundary');
     assert(Object.values(snapshot.effects).every((value) => value === false), 'Security & Access compact proof changed a protected effect');
@@ -120,6 +125,11 @@ export const securityAccessPreviewSuite = Object.freeze({
     assert(initial.projection.perceptionStatus.state === 'NO_ACCEPTED_PRODUCER', 'Security & Access must truthfully report no accepted Perception producer');
     assert(initial.projection.perceptionStatus.activeObservation === false && initial.projection.perceptionStatus.activeCaptureClaim === false, 'Security & Access Perception status must remain inactive');
     assert(document.querySelector('#securityAccessPerceptionStatus')?.dataset.perceptionState === 'NO_ACCEPTED_PRODUCER', 'Security & Access Perception status is not visibly projected');
+    const perceptionEvidence = document.querySelector('#securityAccessPerceptionEvidence');
+    assert(perceptionEvidence?.dataset.perceptionSourceOwner === 'github.issue.vextreme-sdk.243', 'Security & Access Perception source owner is not visibly bound');
+    assert(perceptionEvidence?.dataset.perceptionCurrentness === 'UNKNOWN', 'Security & Access Perception currentness is not visibly bound');
+    assert(perceptionEvidence?.dataset.perceptionReasonStringRef === 'security-access.perception.reason.no-accepted-producer', 'Security & Access Perception reason is not visibly bound');
+    assert((perceptionEvidence?.textContent ?? '').length > 0 && !(perceptionEvidence?.textContent ?? '').includes('security-access.perception.'), 'Security & Access Perception evidence rendered raw string refs');
     assert(Object.values(initial.effects).every((value) => value === false), 'Security & Access protected effect ledger is not all false');
 
     document.querySelector('#securityAccessDetailsToggle')?.click();
@@ -140,7 +150,9 @@ export const securityAccessPreviewSuite = Object.freeze({
       selectLanguage(language);
       await delay(5);
       const title = document.querySelector('#securityAccessTitle')?.textContent ?? '';
+      const evidenceText = document.querySelector('#securityAccessPerceptionEvidence')?.textContent ?? '';
       assert(title.length > 0 && !title.includes('security-access.'), `Security & Access ${language} localization unavailable`);
+      assert(evidenceText.length > 0 && !evidenceText.includes('security-access.perception.'), `Security & Access Perception ${language} source/currentness/reason localization unavailable`);
     }
     const visibleText = region.textContent ?? '';
     assert(!/\biPhone\b/i.test(visibleText), 'Security & Access first slice unexpectedly requires iPhone');

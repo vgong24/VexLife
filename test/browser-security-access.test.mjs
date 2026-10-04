@@ -32,6 +32,10 @@ test('Security & Access browser surface is contextual Health, not a new top-leve
   assert.match(app, /createSecurityAccessController/);
   assert.doesNotMatch(html, /route\.security-access|screen\.vexlife\.security-access/);
   assert.match(controller, /securityAccessPerceptionStatus/);
+  assert.match(controller, /securityAccessPerceptionEvidence/);
+  assert.match(controller, /perceptionSourceOwner/);
+  assert.match(controller, /perceptionCurrentness/);
+  assert.match(controller, /perceptionReasonStringRef/);
   assert.match(controller, /perceptionStatus\.presentationRef/);
 });
 
@@ -51,7 +55,13 @@ test('Security & Access visible strings are complete in EN JA ZH', () => {
     'security-access.guide.explanation',
     'security-access.perception','security-access.perception.no-accepted-producer',
     'security-access.perception.authority-not-established','security-access.perception.adapter-unavailable',
-    'security-access.perception.observer-not-established','security-access.perception.held'
+    'security-access.perception.observer-not-established','security-access.perception.held',
+    'security-access.perception.source','security-access.perception.source-owner',
+    'security-access.perception.currentness','security-access.perception.currentness.current',
+    'security-access.perception.currentness.stale','security-access.perception.currentness.unknown',
+    'security-access.perception.reason','security-access.perception.reason.no-accepted-producer',
+    'security-access.perception.reason.authority-not-established','security-access.perception.reason.adapter-unavailable',
+    'security-access.perception.reason.observer-not-established','security-access.perception.reason.held'
   ];
   for (const language of bundle.blueprint.product.requiredLanguages) for (const key of required) {
     assert.equal(typeof bundle.strings[language][key], 'string', `${language} missing ${key}`);
