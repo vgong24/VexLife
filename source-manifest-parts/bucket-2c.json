@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/modules/security-access-controller.js",
       "mode": "100644",
-      "bytes": 3938,
-      "sha256": "8c973952c1182dfb6c65a4cf66f1874ae49d0ac697f14500735aa7a6d29ba518"
+      "bytes": 5360,
+      "sha256": "438f4218cfb5d53c2b0b64ba08ebd5753bab077dd6cb5fe1dd98d76a356b4971"
     },
     {
       "path": "test/concern-watch.test.mjs",
