@@ -3,6 +3,12 @@
   "bucketId": "ab",
   "files": [
     {
+      "path": "blueprint/android-construction-foundation.json",
+      "mode": "100644",
+      "bytes": 7123,
+      "sha256": "d3fa501139468f76e70028574a8e710d2603791029678bfb92154326d1f62e45"
+    },
+    {
       "path": "blueprint/fragments/invariants.json",
       "mode": "100644",
       "bytes": 1098,
