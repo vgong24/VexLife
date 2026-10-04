@@ -31,6 +31,8 @@ test('Security & Access browser surface is contextual Health, not a new top-leve
   assert.match(html, /id="securityAccessPreviewVisible"/);
   assert.match(app, /createSecurityAccessController/);
   assert.doesNotMatch(html, /route\.security-access|screen\.vexlife\.security-access/);
+  assert.match(controller, /securityAccessPerceptionStatus/);
+  assert.match(controller, /perceptionStatus\.presentationRef/);
 });
 
 test('Security & Access compact styling keeps controls mobile shaped and accessible', () => {
@@ -46,7 +48,10 @@ test('Security & Access visible strings are complete in EN JA ZH', () => {
     'security-access.status.backend-unavailable','security-access.android-first','security-access.trusted-devices',
     'security-access.trusted-devices.none','security-access.recovery','security-access.recovery.not-configured-here',
     'security-access.review-options','security-access.ask-vex','security-access.held-actions',
-    'security-access.guide.explanation'
+    'security-access.guide.explanation',
+    'security-access.perception','security-access.perception.no-accepted-producer',
+    'security-access.perception.authority-not-established','security-access.perception.adapter-unavailable',
+    'security-access.perception.observer-not-established','security-access.perception.held'
   ];
   for (const language of bundle.blueprint.product.requiredLanguages) for (const key of required) {
     assert.equal(typeof bundle.strings[language][key], 'string', `${language} missing ${key}`);

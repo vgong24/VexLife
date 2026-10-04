@@ -390,5 +390,11 @@
   "vex.resize.sw": "从左下角调整 Vex 大小",
   "vex.summon": "召唤 Vex",
   "vex.visible.name": "Vex",
-  "workspace.label": "工作区"
+  "workspace.label": "工作区",
+  "security-access.perception": "感知",
+  "security-access.perception.no-accepted-producer": "没有已接受的感知数据源",
+  "security-access.perception.authority-not-established": "尚未建立授权",
+  "security-access.perception.adapter-unavailable": "适配器不可用",
+  "security-access.perception.observer-not-established": "尚未建立观察器状态",
+  "security-access.perception.held": "暂缓"
 }

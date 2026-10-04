@@ -13,7 +13,8 @@ test('Security & Access source contains no protected browser/network implementat
   for (const pattern of [
     /navigator\.credentials/, /PublicKeyCredential/, /\bWebAuthn\b/, /\bWebSocket\b/,
     /\bEventSource\b/, /\bRTCPeerConnection\b/, /\bBluetooth\b/, /\bUSB\b/,
-    /createServer\s*\(/, /listen\s*\(/, /child_process/, /process\.env/
+    /createServer\s*\(/, /listen\s*\(/, /child_process/, /process\.env/,
+    /navigator\.mediaDevices/, /getUserMedia\s*\(/, /getDisplayMedia\s*\(/, /MediaRecorder/, /AudioContext/
   ]) assert.doesNotMatch(source, pattern);
 });
 
@@ -21,6 +22,12 @@ test('Security & Access effect ledger explicitly keeps every protected effect fa
   const bridge = createSecurityAccessRuntimeBridge(registry);
   assert.deepEqual(Object.keys(bridge.effects).sort(), [...SECURITY_ACCESS_EFFECT_FIELDS].sort());
   assert.ok(Object.values(bridge.effects).every((value) => value === false));
+  assert.equal(bridge.projection.perceptionStatus.activeObservation, false);
+  assert.equal(bridge.projection.perceptionStatus.activeCaptureClaim, false);
+  assert.equal(bridge.projection.perceptionStatus.rawContentAccess, false);
+  assert.equal(bridge.projection.perceptionStatus.memoryAcceptance, false);
+  assert.equal(bridge.projection.perceptionStatus.trainingEligibility, false);
+  assert.equal(bridge.projection.perceptionStatus.effectAuthorityGranted, false);
 });
 
 test('preview visibility does not alter protected effect truth', () => {

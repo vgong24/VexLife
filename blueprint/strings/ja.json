@@ -390,5 +390,11 @@
   "vex.resize.sw": "左下から Vex のサイズを変更",
   "vex.summon": "Vex を呼ぶ",
   "vex.visible.name": "Vex",
-  "workspace.label": "ワークスペース"
+  "workspace.label": "ワークスペース",
+  "security-access.perception": "知覚",
+  "security-access.perception.no-accepted-producer": "承認済みの知覚プロデューサーなし",
+  "security-access.perception.authority-not-established": "認可が確立されていません",
+  "security-access.perception.adapter-unavailable": "アダプター利用不可",
+  "security-access.perception.observer-not-established": "オブザーバー未確立",
+  "security-access.perception.held": "保留中"
 }

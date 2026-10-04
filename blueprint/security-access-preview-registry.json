@@ -128,5 +128,41 @@
     "MODEL_AVAILABLE != SECURITY_CONTROL_AVAILABLE"
   ],
   "androidRemoteVesselRegistryRef": "registry.vexlife.android-remote-vessel.001",
-  "androidRemoteVesselProjectionRef": "projection.security-access.android-remote-vessel"
+  "androidRemoteVesselProjectionRef": "projection.security-access.android-remote-vessel",
+  "perceptionStatus": {
+    "projectionRef": "projection.security-access.perception-status",
+    "semanticOwnerRef": "github.issue.vextreme-sdk.243",
+    "presentationOwnerRef": "github.issue.vexlife.335",
+    "presentationRef": "presentation.vexlife.security-access.perception-status",
+    "runtimeBindingRef": "#securityAccessPerceptionStatus",
+    "safeDefault": "NO_ACCEPTED_PRODUCER",
+    "states": [
+      "NO_ACCEPTED_PRODUCER",
+      "AUTHORITY_NOT_ESTABLISHED",
+      "ADAPTER_UNAVAILABLE",
+      "OBSERVER_NOT_ESTABLISHED",
+      "HELD"
+    ],
+    "stateStringRefs": {
+      "NO_ACCEPTED_PRODUCER": "security-access.perception.no-accepted-producer",
+      "AUTHORITY_NOT_ESTABLISHED": "security-access.perception.authority-not-established",
+      "ADAPTER_UNAVAILABLE": "security-access.perception.adapter-unavailable",
+      "OBSERVER_NOT_ESTABLISHED": "security-access.perception.observer-not-established",
+      "HELD": "security-access.perception.held"
+    },
+    "reconnectOwnerRefs": [
+      "github.issue.vextreme-sdk.226.comment.5975243336",
+      "github.issue.vextreme-sdk.241.comment.5975244509",
+      "github.issue.vextreme-sdk.232.comment.5975245661",
+      "github.issue.vextreme-sdk.243.comment.5975268334"
+    ],
+    "activeObservation": false,
+    "activeCaptureClaim": false,
+    "positiveSessionAuthority": false,
+    "rawContentAccess": false,
+    "rawRetention": false,
+    "memoryAcceptance": false,
+    "trainingEligibility": false,
+    "effectAuthorityGranted": false
+  }
 }

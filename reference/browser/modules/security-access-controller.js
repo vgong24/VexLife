@@ -22,6 +22,34 @@ export function createSecurityAccessController({ registry, t, guide, storage = g
   };
   const bridge = () => createSecurityAccessRuntimeBridge(registry, { runtimeState, previewVisible });
 
+  function renderPerceptionStatus(projection) {
+    const facts = byId('securityAccessRegion')?.querySelector('.security-access-facts');
+    if (!facts) return;
+    let host = byId('securityAccessPerceptionStatus');
+    if (!host) {
+      host = document.createElement('article');
+      host.id = 'securityAccessPerceptionStatus';
+      host.dataset.presentationRef = registry.perceptionStatus.presentationRef;
+      const label = document.createElement('small');
+      label.dataset.i18n = 'security-access.perception';
+      const value = document.createElement('h3');
+      value.id = 'securityAccessPerceptionState';
+      host.append(label, value);
+      facts.append(host);
+    }
+    const label = host.querySelector('small');
+    const value = host.querySelector('#securityAccessPerceptionState');
+    const stringRef = registry.perceptionStatus.stateStringRefs[projection.perceptionStatus.state];
+    if (!stringRef) throw new Error('Security & Access perception status string binding missing');
+    if (label) label.textContent = t('security-access.perception');
+    if (value) {
+      value.dataset.i18n = stringRef;
+      value.textContent = t(stringRef);
+    }
+    host.dataset.perceptionState = projection.perceptionStatus.state;
+    host.dataset.perceptionCurrentness = projection.perceptionStatus.currentness;
+  }
+
   function renderHeldActions(projection) {
     const host = byId('securityAccessHeldActions');
     if (!host) return;
@@ -54,8 +82,9 @@ export function createSecurityAccessController({ registry, t, guide, storage = g
     if (details) details.hidden = !previewVisible || !detailsOpen;
     if (detailsToggle) detailsToggle.setAttribute('aria-expanded', String(detailsOpen));
     if (status) status.textContent = t(projection.statusStringRef);
+    renderPerceptionStatus(projection);
     renderHeldActions(projection);
-    record('PREVIEW_RENDERED', { previewVisible, runtimeState });
+    record('PREVIEW_RENDERED', { previewVisible, runtimeState, perceptionState: projection.perceptionStatus.state });
     return current;
   }
 

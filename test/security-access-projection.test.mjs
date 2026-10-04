@@ -12,6 +12,16 @@ const registry = JSON.parse(fs.readFileSync(new URL('../blueprint/security-acces
 
 const effects = () => Object.fromEntries(SECURITY_ACCESS_EFFECT_FIELDS.map((field) => [field, false]));
 
+function perception(state = 'NO_ACCEPTED_PRODUCER', overrides = {}) {
+  return {
+    state,
+    sourceRefs: ['github.issue.vextreme-sdk.243.comment.5975268334'],
+    currentness: 'CURRENT',
+    reasonRefs: ['reason.perception.real-producer-held'],
+    ...overrides
+  };
+}
+
 function convergence(state = 'CURRENT', overrides = {}) {
   return {
     schemaVersion: 'vexlife.security-access-convergence/v1',
@@ -63,6 +73,10 @@ test('Security & Access registry keeps Android-first no-auth ownership', () => {
   assert.equal(registry.projection.stateRef, 'state.health');
   assert.equal(registry.projection.ownerRef, 'service.health');
   assert.equal(registry.flag.securityPolicyAuthority, false);
+  assert.equal(registry.perceptionStatus.semanticOwnerRef, 'github.issue.vextreme-sdk.243');
+  assert.equal(registry.perceptionStatus.safeDefault, 'NO_ACCEPTED_PRODUCER');
+  assert.equal(registry.perceptionStatus.states.includes('ACTIVE_NOW'), false);
+  assert.equal(registry.perceptionStatus.effectAuthorityGranted, false);
   const widened = structuredClone(registry);
   widened.flag.securityPolicyAuthority = true;
   assert.throws(() => validateSecurityAccessRegistry(widened), /security-policy authority false/);
@@ -81,6 +95,33 @@ test('Security & Access executes only preview and backend-unavailable states', (
   for (const held of ['NOT_CONFIGURED','READY_TO_CONNECT','CONNECTED','PROTECTIVE_FREEZE']) {
     assert.throws(() => projectSecurityAccessPreview(registry, { runtimeState: held }), /held outside the first slice/);
   }
+});
+
+test('Security & Access defaults Perception to no accepted producer with all active/effect truth false', () => {
+  const projection = projectSecurityAccessPreview(registry, { runtimeState:'PREVIEW_ONLY' });
+  assert.equal(projection.perceptionStatus.state, 'NO_ACCEPTED_PRODUCER');
+  assert.equal(projection.perceptionStatus.sourceProjectionAvailable, false);
+  assert.equal(projection.perceptionStatus.currentness, 'UNKNOWN');
+  for (const field of ['activeObservation','activeCaptureClaim','positiveSessionAuthority','rawContentAccess','rawRetention','memoryAcceptance','trainingEligibility','effectAuthorityGranted']) assert.equal(projection.perceptionStatus[field], false);
+  assert.equal(projection.perceptionStatus.realReconnectRequired, true);
+});
+
+test('Security & Access accepts only inactive Perception owner states and rejects ACTIVE_NOW or authority injection', () => {
+  for (const state of registry.perceptionStatus.states) {
+    const projection = projectSecurityAccessPreview(registry, { perceptionProjection: perception(state) });
+    assert.equal(projection.perceptionStatus.state, state);
+    assert.equal(projection.perceptionStatus.sourceProjectionAvailable, true);
+    assert.equal(projection.perceptionStatus.semanticOwnerRef, 'github.issue.vextreme-sdk.243');
+    assert.equal(projection.perceptionStatus.activeObservation, false);
+    assert.equal(projection.perceptionStatus.effectAuthorityGranted, false);
+  }
+  assert.throws(() => projectSecurityAccessPreview(registry, { perceptionProjection: perception('ACTIVE_NOW') }), /outside the inactive slice/);
+  assert.throws(() => projectSecurityAccessPreview(registry, { perceptionProjection: { ...perception(), effectAuthorityGranted:true } }), /rejects unregistered field effectAuthorityGranted/);
+});
+
+test('Security & Access perception currentness and refs remain source-bound and fail closed', () => {
+  assert.throws(() => projectSecurityAccessPreview(registry, { perceptionProjection: perception('HELD', { currentness:'CURRENTISH' }) }), /currentness is invalid/);
+  assert.throws(() => projectSecurityAccessPreview(registry, { perceptionProjection: perception('HELD', { sourceRefs:['dup','dup'] }) }), /unique non-empty refs/);
 });
 
 test('Security & Access projection has a closed input shape and rejects hostile payloads', () => {
@@ -182,6 +223,8 @@ test('typed runtime bridge cannot authenticate, authorize or perform protected e
   assert.equal(bridge.authorizationPerformed, false);
   assert.equal(bridge.protectedEffectPerformed, false);
   assert.equal(bridge.projection.ownerConvergence.state, 'RECOVERY_REQUIRED');
+  assert.equal(bridge.projection.perceptionStatus.state, 'NO_ACCEPTED_PRODUCER');
+  assert.equal(bridge.projection.perceptionStatus.activeObservation, false);
   assert.ok(Object.values(bridge.effects).every((value) => value === false));
 });
 

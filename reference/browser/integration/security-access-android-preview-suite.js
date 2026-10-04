@@ -91,6 +91,9 @@ async function runAndroidShapedCompactProof({ assert, delay }) {
     assert(heldRows.length === 8 && heldRows.every((row) => compactWindow.getComputedStyle(row).gridTemplateColumns.split(/\s+/).filter(Boolean).length === 1), 'Security & Access compact held actions did not collapse to one column');
 
     const snapshot = compactApp.securityAccess.snapshot();
+    assert(snapshot.projection.perceptionStatus.state === 'NO_ACCEPTED_PRODUCER', 'Security & Access compact perception truth drifted');
+    assert(snapshot.projection.perceptionStatus.activeObservation === false && snapshot.projection.perceptionStatus.effectAuthorityGranted === false, 'Security & Access compact perception status crossed an effect boundary');
+    assert(compactDocument.querySelector('#securityAccessPerceptionStatus')?.dataset.perceptionState === 'NO_ACCEPTED_PRODUCER', 'Security & Access compact perception row unavailable');
     assert(snapshot.projection.androidFirst === true && snapshot.projection.iPhoneRequired === false, 'Security & Access compact Android-first truth drifted');
     assert(snapshot.authenticationPerformed === false && snapshot.authorizationPerformed === false && snapshot.protectedEffectPerformed === false, 'Security & Access compact proof crossed an authentication/authorization/effect boundary');
     assert(Object.values(snapshot.effects).every((value) => value === false), 'Security & Access compact proof changed a protected effect');
@@ -114,6 +117,9 @@ export const securityAccessPreviewSuite = Object.freeze({
     const initial = app.securityAccess.snapshot();
     assert(initial.projection.androidFirst === true && initial.projection.iPhoneRequired === false, 'Security & Access Android-first truth drift');
     assert(initial.projection.runtimeState === 'BACKEND_UNAVAILABLE', 'Security & Access must truthfully report disconnected runtime');
+    assert(initial.projection.perceptionStatus.state === 'NO_ACCEPTED_PRODUCER', 'Security & Access must truthfully report no accepted Perception producer');
+    assert(initial.projection.perceptionStatus.activeObservation === false && initial.projection.perceptionStatus.activeCaptureClaim === false, 'Security & Access Perception status must remain inactive');
+    assert(document.querySelector('#securityAccessPerceptionStatus')?.dataset.perceptionState === 'NO_ACCEPTED_PRODUCER', 'Security & Access Perception status is not visibly projected');
     assert(Object.values(initial.effects).every((value) => value === false), 'Security & Access protected effect ledger is not all false');
 
     document.querySelector('#securityAccessDetailsToggle')?.click();
@@ -138,7 +144,9 @@ export const securityAccessPreviewSuite = Object.freeze({
     }
     const visibleText = region.textContent ?? '';
     assert(!/\biPhone\b/i.test(visibleText), 'Security & Access first slice unexpectedly requires iPhone');
-    checks.push('EN/JA/ZH and Android-first visible truth remain available');
+    const perceptionText = document.querySelector('#securityAccessPerceptionStatus')?.textContent ?? '';
+    assert(perceptionText.length > 0 && !perceptionText.includes('security-access.perception'), 'Security & Access Perception localized truth unavailable');
+    checks.push('EN/JA/ZH, Android-first, and inactive Perception truth remain available');
 
     app.securityAccess.setPreviewVisible(false);
     const hidden = app.securityAccess.snapshot();
