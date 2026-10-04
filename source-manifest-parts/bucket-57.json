@@ -9,6 +9,12 @@
       "sha256": "429786d54ea6c5a307d1fb49c956d1989a4d0f2ae46ffdd36ffa93aaa8164abf"
     },
     {
+      "path": "test/blueprint-mapper.test.mjs",
+      "mode": "100644",
+      "bytes": 7703,
+      "sha256": "b515d90d96cf446c448d6db141e6316f4a01c9ec9da2a1be066e3c57e6e6541b"
+    },
+    {
       "path": "test/companion-availability-reentry.test.mjs",
       "mode": "100644",
       "bytes": 8043,
