@@ -25,6 +25,12 @@
       "mode": "100644",
       "bytes": 795,
       "sha256": "fc8f7a2303ce6c2d12ca4ceeb8d67e766f9f81aba03a4ffb9cf26545b3eed6f6"
+    },
+    {
+      "path": "test/pages-deployment.test.mjs",
+      "mode": "100644",
+      "bytes": 7320,
+      "sha256": "404f24c19da0eeb5370fb257df174a5d287f234856eefe18a226e57c5fd85e7b"
     }
   ]
 }

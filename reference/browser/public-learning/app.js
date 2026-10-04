@@ -1,8 +1,15 @@
 import { createPublicLearningController } from '../modules/public-learning-controller-activated.js';
 
-const json = async (path) => {
-  const response = await fetch(path, { credentials: 'same-origin' });
-  if (!response.ok) throw new Error(`Public learning source unavailable: ${path} (${response.status})`);
+const MODULE_SUFFIX = '/reference/browser/public-learning/app.js';
+const modulePath = new URL(import.meta.url).pathname;
+if (!modulePath.endsWith(MODULE_SUFFIX)) throw new Error('Public learning module path is outside the admitted deployment shape');
+const routeBasePath = modulePath.slice(0, -MODULE_SUFFIX.length);
+const withBasePath = (logicalPath) => `${routeBasePath}${logicalPath.startsWith('/') ? logicalPath : `/${logicalPath}`}`;
+
+const json = async (logicalPath) => {
+  const requestPath = withBasePath(logicalPath);
+  const response = await fetch(requestPath, { credentials: 'same-origin' });
+  if (!response.ok) throw new Error(`Public learning source unavailable: ${requestPath} (${response.status})`);
   return response.json();
 };
 
@@ -19,7 +26,8 @@ const controller = createPublicLearningController({
   projection,
   registry,
   navigationContinuityRegistry,
-  catalogs: { en, ja, zh }
+  catalogs: { en, ja, zh },
+  routeBasePath
 });
 
 globalThis.__vexlifePublicLearning = Object.freeze({

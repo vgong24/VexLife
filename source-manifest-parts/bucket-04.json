@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 20119,
       "sha256": "70e6757abe5dd1495f2b355739d629ad460bad28758b8296f4e3e55e9175a720"
+    },
+    {
+      "path": "scripts/build-public-pages.mjs",
+      "mode": "100644",
+      "bytes": 8285,
+      "sha256": "106bf5ba673df6d1d87e51fa8f9315b52ac4d859bd7826d80d1c542ec0734ef9"
     }
   ]
 }

@@ -1,0 +1,67 @@
+name: VexLife Pages deployment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vexlife-pages-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact main source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - name: Install declared dependencies
+        run: npm ci
+
+      - name: Read current Pages base path without enabling Pages
+        id: pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        with:
+          enablement: 'false'
+
+      - name: Build exact reviewed public artifact
+        run: >-
+          node scripts/build-public-pages.mjs
+          --base-path "${{ steps.pages.outputs.base_path }}"
+          --source-acceptance-state ACCEPTED_CURRENT
+          --live-deployment-state DEPLOYED
+          --out generated/pages-site
+
+      - name: Re-run public safety boundary
+        run: npm run public-safety:check
+
+      - name: Upload only the reviewed public artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: generated/pages-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy exact uploaded Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+# [VXG RealForever]

@@ -14,6 +14,18 @@ const normalizeRoute = (value) => {
   const route = String(value || '/');
   return route.endsWith('/') ? route : `${route}/`;
 };
+const normalizeRouteBasePath = (value) => {
+  const base = String(value || '').trim();
+  if (base === '' || base === '/') return '';
+  need(/^\/[A-Za-z0-9._~-]+(?:\/[A-Za-z0-9._~-]+)*$/u.test(base), 'invalid public route base path');
+  return base;
+};
+const physicalRoutePath = (base, logical) => `${base}${logical}`;
+const logicalRoutePath = (base, pathname) => {
+  if (!base) return pathname;
+  need(pathname === base || pathname.startsWith(`${base}/`), 'browser pathname is outside the public route base path');
+  return pathname.slice(base.length) || '/';
+};
 
 export function validatePublicLearningBrowserInputs({ projection, registry, catalogs }) {
   need(projection?.schemaVersion === PUBLIC_PROJECTION_SCHEMA, 'Stage 7 requires a public-learning projection');
@@ -98,8 +110,9 @@ export function buildPublicPresentationTerrain(projection) {
   });
 }
 
-export function createPublicLearningController({ projection, registry, catalogs, root = document }) {
+export function createPublicLearningController({ projection, registry, catalogs, root = document, routeBasePath = '' }) {
   validatePublicLearningBrowserInputs({ projection, registry, catalogs });
+  const normalizedRouteBasePath = normalizeRouteBasePath(routeBasePath);
   const presentation = buildPublicPresentationTerrain(projection);
   const projectionByRef = new Map(projection.nodes.map((node) => [node.ref, node]));
   const terrainByRef = new Map(presentation.map((node) => [node.terrainNodeRef, node]));
@@ -113,7 +126,7 @@ export function createPublicLearningController({ projection, registry, catalogs,
   for (const list of childrenByRef.values()) list.sort();
   const leafByCanonical = new Map(projection.leaves.map((leaf) => [leaf.canonicalRef, leaf]));
   const leafByRoute = new Map(projection.leaves.map((leaf) => [normalizeRoute(leaf.routePath), leaf]));
-  const initialLeaf = leafByRoute.get(normalizeRoute(location.pathname)) ?? null;
+  const initialLeaf = leafByRoute.get(normalizeRoute(logicalRoutePath(normalizedRouteBasePath, location.pathname))) ?? null;
   const rootRef = registry.presentationPolicy.entryRef;
   const initialRef = initialLeaf?.canonicalRef ?? rootRef;
   need(terrainByRef.has(initialRef), `initial public ref is outside the Stage-7 presentation tree: ${initialRef}`);
@@ -348,9 +361,9 @@ export function createPublicLearningController({ projection, registry, catalogs,
     leafPanel.hidden = false;
     leafScroller.scrollTop = 0;
     if (direct) {
-      history.replaceState({ vexlifePublic: 'DIRECT_LEAF', canonicalRef: leaf.canonicalRef }, '', leaf.routePath);
+      history.replaceState({ vexlifePublic: 'DIRECT_LEAF', canonicalRef: leaf.canonicalRef }, '', physicalRoutePath(normalizedRouteBasePath, leaf.routePath));
     } else {
-      history.pushState({ vexlifePublic: 'LEAF', canonicalRef: leaf.canonicalRef }, '', leaf.routePath);
+      history.pushState({ vexlifePublic: 'LEAF', canonicalRef: leaf.canonicalRef }, '', physicalRoutePath(normalizedRouteBasePath, leaf.routePath));
     }
     leafScroller.focus({ preventScroll: true });
     return clone(currentReturnBundle);
@@ -361,7 +374,7 @@ export function createPublicLearningController({ projection, registry, catalogs,
     const currentFrame = navigation.semanticFrame();
     const frameExact = same(currentFrame, bundle.semanticFrame);
     const terrainResult = terrain.restorePresentation(bundle.terrainPresentation);
-    if (replaceRoute) history.replaceState({ vexlifePublic: 'FIELD', canonicalRef: terrain.currentRef() }, '', bundle.routeState.fieldRoutePath);
+    if (replaceRoute) history.replaceState({ vexlifePublic: 'FIELD', canonicalRef: terrain.currentRef() }, '', physicalRoutePath(normalizedRouteBasePath, bundle.routeState.fieldRoutePath));
     leafPanel.hidden = true;
     const leafScrollTop = currentReturnBundle?.leafScrollState?.scrollTop ?? 0;
     currentLeaf = null;
@@ -385,7 +398,7 @@ export function createPublicLearningController({ projection, registry, catalogs,
       terrain: terrainResult,
       leafScrollState: { scrollTop: leafScrollTop },
       stableFocusRef: bundle.stableFocusRef,
-      routePath: location.pathname,
+      routePath: logicalRoutePath(normalizedRouteBasePath, location.pathname),
       journeyEventCount: navigation.fullJourney().length
     };
     return clone(lastReturnReceipt);
@@ -425,7 +438,7 @@ export function createPublicLearningController({ projection, registry, catalogs,
   applyLocalizedChrome();
   renderCurrentDetail();
 
-  history.replaceState({ vexlifePublic: initialLeaf ? 'DIRECT_LEAF' : 'FIELD', canonicalRef: initialRef }, '', initialLeaf ? initialLeaf.routePath : registry.fieldRoutePath);
+  history.replaceState({ vexlifePublic: initialLeaf ? 'DIRECT_LEAF' : 'FIELD', canonicalRef: initialRef }, '', physicalRoutePath(normalizedRouteBasePath, initialLeaf ? initialLeaf.routePath : registry.fieldRoutePath));
   addEventListener('popstate', () => {
     if (currentLeaf && currentReturnBundle) restoreField(currentReturnBundle, { replaceRoute: false });
   });
@@ -434,6 +447,7 @@ export function createPublicLearningController({ projection, registry, catalogs,
   const proof = () => ({
     schemaVersion: 'vexlife.public-learning-browser-proof-snapshot/v1',
     locale,
+    routeBasePath: normalizedRouteBasePath,
     sourceProjectionRef: projection.projectionRef,
     sourceProjectionHash: projection.projectionHash,
     currentRef: terrain.currentRef(),
@@ -442,7 +456,7 @@ export function createPublicLearningController({ projection, registry, catalogs,
     journeyEventCount: navigation.fullJourney().length,
     leafOpen: !leafPanel.hidden,
     leafRef: currentLeaf?.leafRef ?? null,
-    routePath: location.pathname,
+    routePath: logicalRoutePath(normalizedRouteBasePath, location.pathname),
     accessibleListRefs: [...root.querySelectorAll('[data-public-list-ref]')].map((item) => item.dataset.publicListRef),
     returnBundle: currentReturnBundle ? clone(currentReturnBundle) : null,
     lastReturnReceipt: lastReturnReceipt ? clone(lastReturnReceipt) : null

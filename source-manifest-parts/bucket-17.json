@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/modules/public-learning-controller-activated.js",
       "mode": "100644",
-      "bytes": 5361,
-      "sha256": "f46c90f16a7bf18384f6b8e95b61fbc9d7b8a64a1552c0fc2393617a1227ea26"
+      "bytes": 5398,
+      "sha256": "b3979a74942768b6e9f359632b4fe5a54c8d3a2f7c0aecb1b008cc67ca022442"
     },
     {
       "path": "src/core/platform-generator.mjs",

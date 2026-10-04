@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/public-learning/app.js",
       "mode": "100644",
-      "bytes": 1406,
-      "sha256": "b79d02fce42b974311dddfc8d263140cc26ca9d80177410dddbe9f3da9d06867"
+      "bytes": 1933,
+      "sha256": "f0dd6cf6aa35d0ba6c345624ac0d2d27a38d1222848fadc5f1a7f26aa5e4361d"
     },
     {
       "path": "scripts/daily-memory-dream.mjs",

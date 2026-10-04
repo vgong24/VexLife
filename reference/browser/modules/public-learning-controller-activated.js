@@ -31,12 +31,13 @@ export function createPublicLearningController({
   registry,
   navigationContinuityRegistry,
   catalogs,
-  root = document
+  root = document,
+  routeBasePath = ''
 }) {
   need(navigationContinuityRegistry?.schemaVersion === 'vexlife.navigation-continuity-registry/v1',
     'Stage 7 activation requires the accepted Navigation Continuity registry');
 
-  const base = createBasePublicLearningController({ projection, registry, catalogs, root });
+  const base = createBasePublicLearningController({ projection, registry, catalogs, root, routeBasePath });
   need(typeof base.terrain?.performTerrainTravel === 'function',
     'Stage 7 activation requires the public-learning Terrain facade');
 

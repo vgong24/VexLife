@@ -87,12 +87,12 @@ test('the HTML preserves exact thirteen-stage order and five-chapter coverage', 
   assert.equal(exactAttributeValues(html, 'data-chapter-panel').length, 5);
 });
 
-test('the page remains a same-origin zero-effect source candidate', () => {
+test('the page remains a same-origin zero-effect accepted source', () => {
   const html = read('pages/vexlife-onboarding.html');
   const css = read('pages/vexlife-onboarding.css');
   const js = read('pages/vexlife-onboarding.js');
   const refs = [...attributeValues(html, 'href'), ...attributeValues(html, 'src')];
-  assert.match(html, /<body data-effect-class="NONE" data-publication-state="SOURCE_CANDIDATE">/u);
+  assert.match(html, /<body data-effect-class="NONE" data-publication-state="SOURCE_ACCEPTED">/u);
   assert.doesNotMatch(html, /<form\b|<iframe\b|<object\b|<embed\b/iu);
   assert.doesNotMatch(html, /<[^>]+\sdownload(?:\s|=|>)/iu);
   for (const ref of refs) {
