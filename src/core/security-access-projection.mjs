@@ -1,4 +1,4 @@
-const INPUT_KEYS = new Set(['runtimeState', 'previewVisible', 'convergenceProjection']);
+const INPUT_KEYS = new Set(['runtimeState', 'previewVisible', 'convergenceProjection', 'perceptionProjection']);
 
 const CONVERGENCE_SCHEMA = 'vexlife.security-access-convergence/v1';
 const CONVERGENCE_TRUTH_CLASS = 'FAMILY_SECURITY_CONTRACT_BOUND_CONSUMER_PROJECTION';
@@ -28,6 +28,9 @@ const RECOVERY_POLICY_KEYS = new Set([
   'compromiseStateOrNull', 'availableFactorClassRefs', 'recoveryDispositionOrNull',
   'recoveredOwnerStateOrNull', 'humanChoiceRequired'
 ]);
+
+const PERCEPTION_INPUT_KEYS = new Set(['state', 'sourceRefs', 'currentness', 'reasonRefs']);
+const PERCEPTION_CURRENTNESS = new Set(['CURRENT', 'STALE', 'UNKNOWN']);
 
 export const SECURITY_ACCESS_EFFECT_FIELDS = Object.freeze([
   'realPasskeyRegistration','realWebAuthnEffect','realTOTPEnrollment','totpSecretStorage',
@@ -84,6 +87,54 @@ function heldConvergenceSummary() {
     missingOwnerRefs: Object.freeze([]),
     realIntegrationComplete: false,
     effectAuthorityGranted: false
+  });
+}
+
+function heldPerceptionStatus(registry) {
+  const contract = registry.perceptionStatus;
+  return Object.freeze({
+    state: contract.safeDefault,
+    semanticOwnerRef: contract.semanticOwnerRef,
+    sourceProjectionAvailable: false,
+    sourceRefs: Object.freeze([]),
+    currentness: 'UNKNOWN',
+    reasonRefs: Object.freeze([]),
+    reconnectOwnerRefs: Object.freeze([...contract.reconnectOwnerRefs]),
+    activeObservation: false,
+    activeCaptureClaim: false,
+    positiveSessionAuthority: false,
+    rawContentAccess: false,
+    rawRetention: false,
+    memoryAcceptance: false,
+    trainingEligibility: false,
+    effectAuthorityGranted: false,
+    realReconnectRequired: true
+  });
+}
+
+function normalizePerceptionProjection(registry, value) {
+  const contract = registry.perceptionStatus;
+  if (value == null) return heldPerceptionStatus(registry);
+  exactKeys(value, PERCEPTION_INPUT_KEYS, 'Security & Access perception projection');
+  if (!contract.states.includes(value.state)) throw new Error('Security & Access perception state is outside the inactive slice');
+  if (!PERCEPTION_CURRENTNESS.has(value.currentness)) throw new Error('Security & Access perception currentness is invalid');
+  return Object.freeze({
+    state: value.state,
+    semanticOwnerRef: contract.semanticOwnerRef,
+    sourceProjectionAvailable: true,
+    sourceRefs: uniqueRefs(value.sourceRefs, 'perception sourceRefs'),
+    currentness: value.currentness,
+    reasonRefs: uniqueRefs(value.reasonRefs, 'perception reasonRefs'),
+    reconnectOwnerRefs: Object.freeze([...contract.reconnectOwnerRefs]),
+    activeObservation: false,
+    activeCaptureClaim: false,
+    positiveSessionAuthority: false,
+    rawContentAccess: false,
+    rawRetention: false,
+    memoryAcceptance: false,
+    trainingEligibility: false,
+    effectAuthorityGranted: false,
+    realReconnectRequired: true
   });
 }
 
@@ -203,6 +254,17 @@ export function validateSecurityAccessRegistry(registry) {
   const executable = new Set(registry.executableFirstSliceStates ?? []);
   if (executable.size !== 2 || !executable.has('PREVIEW_ONLY') || !executable.has('BACKEND_UNAVAILABLE')) throw new Error('Security & Access first-slice executable state drift');
   if (!Array.isArray(registry.heldActions) || registry.heldActions.length !== 8 || registry.heldActions.some((item) => item.enabled !== false)) throw new Error('Security & Access held action contract drift');
+  const perception = registry.perceptionStatus;
+  if (!object(perception)) throw new Error('Security & Access perception status contract missing');
+  if (perception.semanticOwnerRef !== 'github.issue.vextreme-sdk.243') throw new Error('Security & Access perception semantic owner drift');
+  if (perception.presentationOwnerRef !== 'github.issue.vexlife.335') throw new Error('Security & Access perception presentation owner drift');
+  if (perception.presentationRef !== 'presentation.vexlife.security-access.perception-status') throw new Error('Security & Access perception presentation identity drift');
+  if (perception.runtimeBindingRef !== '#securityAccessPerceptionStatus') throw new Error('Security & Access perception runtime binding drift');
+  if (!Array.isArray(perception.states) || perception.states.length !== 5 || !perception.states.includes(perception.safeDefault) || perception.states.includes('ACTIVE_NOW')) throw new Error('Security & Access perception inactive-state boundary drift');
+  for (const field of ['activeObservation','activeCaptureClaim','positiveSessionAuthority','rawContentAccess','rawRetention','memoryAcceptance','trainingEligibility','effectAuthorityGranted']) {
+    if (perception[field] !== false) throw new Error(`Security & Access perception protected field must remain false: ${field}`);
+  }
+  if (!Array.isArray(perception.reconnectOwnerRefs) || perception.reconnectOwnerRefs.length !== 4) throw new Error('Security & Access perception reconnect owner refs drift');
   const protectedEffects = new Set(registry.protectedEffects ?? []);
   for (const field of SECURITY_ACCESS_EFFECT_FIELDS) if (!protectedEffects.has(field)) throw new Error(`Security & Access protected effect missing ${field}`);
   return registry;
@@ -219,7 +281,8 @@ function normalizeInput(registry, input = {}) {
   return {
     runtimeState,
     previewVisible,
-    convergence: normalizeConvergenceProjection(input.convergenceProjection ?? null)
+    convergence: normalizeConvergenceProjection(input.convergenceProjection ?? null),
+    perception: normalizePerceptionProjection(registry, input.perceptionProjection ?? null)
   };
 }
 
@@ -241,6 +304,7 @@ export function projectSecurityAccessPreview(registry, input = {}) {
     trustedDevicesState: 'NO_RUNTIME_DATA_AVAILABLE',
     recoveryState: 'NOT_CONFIGURED_HERE',
     ownerConvergence: normalized.convergence,
+    perceptionStatus: normalized.perception,
     heldActions: Object.freeze(registry.heldActions.map((item) => Object.freeze({
       actionKey: item.actionKey,
       labelStringRef: item.labelStringRef,
