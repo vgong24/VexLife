@@ -50,12 +50,12 @@ async function runAndroidShapedCompactProof({ assert, delay }) {
     const regionRect = region.getBoundingClientRect();
     assert(regionRect.width > 0 && regionRect.width <= compactWindow.innerWidth + 1, 'Security & Access compact card exceeds the Android-shaped viewport');
     const factCards = [...facts.children];
-    assert(factCards.length === 3, 'Security & Access compact facts are incomplete');
+    assert(factCards.length === 4, 'Security & Access compact facts are incomplete');
+    assert(factCards.some((card) => card.id === 'securityAccessPerceptionStatus'), 'Security & Access compact Perception fact is missing');
     const factColumns = compactWindow.getComputedStyle(facts).gridTemplateColumns.split(/\s+/).filter(Boolean);
     assert(factColumns.length === 1, 'Security & Access compact facts did not collapse to one column');
-    const firstFactRect = factCards[0].getBoundingClientRect();
-    const secondFactRect = factCards[1].getBoundingClientRect();
-    assert(secondFactRect.top >= firstFactRect.bottom - 1, 'Security & Access compact fact cards overlap instead of stacking');
+    const factRects = factCards.map((card) => card.getBoundingClientRect());
+    assert(factRects.slice(1).every((rect, index) => rect.top >= factRects[index].bottom - 1), 'Security & Access compact fact cards overlap instead of stacking');
 
     const actionStyle = compactWindow.getComputedStyle(actions);
     assert(actionStyle.display === 'grid', 'Security & Access compact primary actions did not switch to grid layout');
