@@ -9,6 +9,12 @@
       "sha256": "43a7e906a487e53e0413b846e98d7ee6c44fc410e3c0901d1b80c014d864b343"
     },
     {
+      "path": "src/core/blueprint-mapper.mjs",
+      "mode": "100644",
+      "bytes": 8275,
+      "sha256": "000cbd97a0be114432cf2baad4159c9474a7c5097ba409a35d9b1e2c0db8dd50"
+    },
+    {
       "path": "test/intent-completion-verifier.test.mjs",
       "mode": "100644",
       "bytes": 23417,
