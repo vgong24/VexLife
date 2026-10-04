@@ -5,8 +5,8 @@
     {
       "path": "src/core/public-learning.mjs",
       "mode": "100644",
-      "bytes": 23197,
-      "sha256": "a55ab315a108cef7adf5f912ead94cbb820d01ba718d1a296d0c3dc680481607"
+      "bytes": 23389,
+      "sha256": "d81bade5cd38b5d4d71b2dbaabc81261a03a3e49fdbebc6d97283a60a3146023"
     },
     {
       "path": "test/browser-security-access.test.mjs",

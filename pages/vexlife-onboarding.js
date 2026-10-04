@@ -31,7 +31,7 @@ const state = {
   complete: false,
   statusRef: null,
   effectClass: 'NONE',
-  publicationState: 'SOURCE_CANDIDATE',
+  publicationState: 'SOURCE_ACCEPTED',
   catalogState: 'LOADING',
   stageRefs: [...STAGE_REFS]
 };
@@ -272,7 +272,7 @@ function bindLanguageControls() {
 
 function verifyStaticContract() {
   invariant(document.body.dataset.effectClass === 'NONE', 'Page effect class must remain NONE');
-  invariant(document.body.dataset.publicationState === 'SOURCE_CANDIDATE', 'Page publication state must remain SOURCE_CANDIDATE');
+  invariant(document.body.dataset.publicationState === 'SOURCE_ACCEPTED', 'Page publication state must remain SOURCE_ACCEPTED');
 
   const observedStageRefs = [...document.querySelectorAll('[data-stage-ref]')]
     .map((element) => element.dataset.stageRef);

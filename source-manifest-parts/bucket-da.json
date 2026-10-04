@@ -11,8 +11,8 @@
     {
       "path": "pages/vexlife-onboarding.js",
       "mode": "100644",
-      "bytes": 11484,
-      "sha256": "a9298b6ce6bc57a523572bf3c74473a1757425dd371c02447d22174097798250"
+      "bytes": 11481,
+      "sha256": "11d87fae65b7b1795679b768a4b0cba93174f353285a393937e377e036b88e12"
     },
     {
       "path": "test/browser-model-turn-witness-integration.test.mjs",

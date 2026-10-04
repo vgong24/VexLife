@@ -219,7 +219,7 @@ async function runCase({ browser, pageUrl, outputDir, locale, viewport }) {
     assert(browserState.locale === locale, `${caseRef}: wrong locale`);
     assert(browserState.catalogState === 'CURRENT', `${caseRef}: catalog is not current`);
     assert(browserState.effectClass === 'NONE', `${caseRef}: effect class widened`);
-    assert(browserState.publicationState === 'SOURCE_CANDIDATE', `${caseRef}: publication state widened`);
+    assert(browserState.publicationState === 'SOURCE_ACCEPTED', `${caseRef}: publication state widened`);
     assert(arraysEqual(browserState.stageRefs, STAGE_REFS), `${caseRef}: stage refs drifted`);
     checks.push('STATE_CONTRACT_CURRENT');
 
@@ -427,7 +427,7 @@ async function main() {
       viewports: VIEWPORTS,
       stageRefs: [...STAGE_REFS],
       effectClass: 'NONE',
-      publicationState: 'SOURCE_CANDIDATE'
+      publicationState: 'SOURCE_ACCEPTED'
     },
     summary: {
       expectedCaseCount: LOCALES.length * VIEWPORTS.length,
