@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 62310,
       "sha256": "eac14e02219c4ce120c1d13766b348522483c145a9b4393b910e07ae055e993b"
+    },
+    {
+      "path": "test/presentation-structural-health.test.mjs",
+      "mode": "100644",
+      "bytes": 6133,
+      "sha256": "e691b952932ff364df975e169c3231a60d1b3eba2614f2cfb147dc5b996769bd"
     }
   ]
 }

@@ -212,6 +212,34 @@ home-bridge.json
 
 Generated projections are read-side conveniences. Canonical registries remain the write side.
 
+## Presentation structural health
+
+```bash
+npm run presentation:health
+```
+
+Presentation health is a blocking Build Health consumer of the accepted
+Presentation Graph, module registry and platform/localization contracts. It
+regenerates the current `generated/presentation/**` projection set and runs one
+bounded real-browser Presentation observer, while separately checking:
+
+```text
+canonical screen -> graph anatomy or exact owner-held accounting
+standalone browser document -> screen/surface/redirect accounting
+presentation node -> exactly one owner-aligned placement
+graph-covered screen -> explicit reachability
+test obligation -> exactly one behavior witness
+unknown/stale witness -> exact owner + reason + wake condition
+platform scaffold -> explicit adoption debt, never native conformance
+required locales -> loaded source catalogs + registered localization check
+```
+
+A `PASS` means **all current presentation structure is accounted for**. It does
+not mean every witness or platform is green. Owner-routed and wake-bound holds
+remain visible in `externalHolds[]`; native conformance is never inferred from
+generated scaffolds, browser evidence or screenshots, and lived assistive-tech
+proof remains distinct from source/rendered accessibility contracts.
+
 ## Impact and propagation
 
 A blueprint change should produce:

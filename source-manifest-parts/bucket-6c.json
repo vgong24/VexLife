@@ -5,8 +5,8 @@
     {
       "path": "blueprint/build-health-registry.json",
       "mode": "100644",
-      "bytes": 15453,
-      "sha256": "494babc2b1ab4a06eb3dffb6e1d534c025bc13bf514e3adc357ad4aecd08bdf3"
+      "bytes": 23133,
+      "sha256": "75c3457ef2d22a2658616bc533d314a2358edf61b59ce01428e8f4f20d7b6464"
     },
     {
       "path": "blueprint/model-connection-binding-registry.json",

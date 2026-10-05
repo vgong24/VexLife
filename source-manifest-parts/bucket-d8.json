@@ -5,8 +5,8 @@
     {
       "path": "blueprint/module-registry/scripts.json",
       "mode": "100644",
-      "bytes": 30845,
-      "sha256": "3b456c4c224d57edc51d8431d4f693a2413ce95ec14263090e113cdbda231a7b"
+      "bytes": 32125,
+      "sha256": "d3f8178902874e6fa60d7f8db46e63fbdc63afb2d216394ea962202e8b24e54d"
     },
     {
       "path": "docs/COMPANION-AUTO-REENTRY-POLICY.md",
