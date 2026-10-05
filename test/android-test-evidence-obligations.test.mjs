@@ -139,9 +139,18 @@ test('A5 preserves A4 ancestry, dispositions, held reasons and implementationEvi
       assert.equal(ancestry.get(unit.ancestryPath).expectation.reasonOrNull, unit.reasonOrNull);
     }
     const heldTruth = byClass(output, 'HELD_UNSUPPORTED_TRUTH');
-    assert.equal(heldTruth.length, 2);
-    assert.ok(heldTruth.every((item) => item.expectation.platformBindingRefOrNull === null));
-    assert.ok(heldTruth.every((item) => item.expectation.implementationEvidence === false));
+    const expectedHeldUnits = evidence.projectPlan.constructionUnits
+      .filter((unit) => ['HELD', 'UNSUPPORTED'].includes(unit.disposition));
+    assert.equal(heldTruth.length, expectedHeldUnits.length);
+    const heldByAncestry = new Map(heldTruth.map((item) => [item.subjectRef.replace('construction-unit.', ''), item]));
+    for (const unit of expectedHeldUnits) {
+      const item = heldByAncestry.get(unit.ancestryPath);
+      assert.ok(item, `missing HELD/UNSUPPORTED truth obligation for ${unit.ancestryPath}`);
+      assert.equal(item.expectation.disposition, unit.disposition);
+      assert.equal(item.expectation.reasonOrNull, unit.reasonOrNull);
+      assert.equal(item.expectation.platformBindingRefOrNull, null);
+      assert.equal(item.expectation.implementationEvidence, false);
+    }
   } finally {
     fs.rmSync(evidence.root, { recursive: true, force: true });
   }
