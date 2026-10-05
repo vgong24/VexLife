@@ -3,6 +3,12 @@
   "bucketId": "9a",
   "files": [
     {
+      "path": "platform/android/gradlew.bat",
+      "mode": "100644",
+      "bytes": 2766,
+      "sha256": "59328c7a17f673b1a63040bfb380a0c749e5d6df3406f7f18641060314cd9aa1"
+    },
+    {
       "path": "test/orientation.test.mjs",
       "mode": "100644",
       "bytes": 18485,

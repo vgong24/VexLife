@@ -9,6 +9,12 @@
       "sha256": "82921d7b190dae0889815d69c64705ca2aa8f6623103cc0781ab0b64b4847b3c"
     },
     {
+      "path": "platform/android/gradlew",
+      "mode": "100755",
+      "bytes": 8656,
+      "sha256": "a5a5c199ba02189ae8c46a334223371a20599d9c298ef65e7540ede4a3f72d59"
+    },
+    {
       "path": "scripts/doctor.mjs",
       "mode": "100644",
       "bytes": 1131,

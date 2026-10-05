@@ -15,6 +15,12 @@
       "sha256": "bca3f1305aef0b3102b738dc4ca60827ea7ba72ad4dc53ae66c8194564b24a38"
     },
     {
+      "path": "platform/android/gradle/libs.versions.toml",
+      "mode": "100644",
+      "bytes": 263,
+      "sha256": "1a7f0833a862a2928ab9bb10a7fa3555e5d845fab53876fa5cddf293c1c9a17e"
+    },
+    {
       "path": "reference/browser/evolution/purpose-workspace.css",
       "mode": "100644",
       "bytes": 7354,

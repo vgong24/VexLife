@@ -37,7 +37,8 @@
     "generated/**"
   ],
   "allowedBinaryPatterns": [
-    "test/fixtures/public-safety/allowed/*.dat"
+    "test/fixtures/public-safety/allowed/*.dat",
+    "platform/android/gradle/wrapper/gradle-wrapper.jar"
   ],
   "prePublicationChecks": [
     "exact source commit and independent review known",
