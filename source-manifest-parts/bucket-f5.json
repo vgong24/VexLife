@@ -5,8 +5,8 @@
     {
       "path": "platform/android/state-relay/src/main/kotlin/vexlife/android/state/VexStateProjection.kt",
       "mode": "100644",
-      "bytes": 4178,
-      "sha256": "bbd755e62cf65078807abfce6a7166e733db380b029f3c3a3308de9f57feaf88"
+      "bytes": 5287,
+      "sha256": "5ff3ee2a916e3d49c371d1d0700f54c841ddd3b981bea83cb50566a47387d15c"
     },
     {
       "path": "reference/browser/relationships/app.js",

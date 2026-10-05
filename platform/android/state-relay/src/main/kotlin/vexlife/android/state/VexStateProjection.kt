@@ -1,5 +1,7 @@
 package vexlife.android.state
 
+import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,6 +47,27 @@ enum class VexProjectionAdmission {
     REJECTED_CONTRADICTORY_REVISION,
 }
 
+@OptIn(ExperimentalForInheritanceCoroutinesApi::class)
+private class DefensiveCopyStateFlow<T>(
+    private val source: StateFlow<VexStateSnapshot<T>>,
+    private val expose: (VexStateSnapshot<T>) -> VexStateSnapshot<T>,
+) : StateFlow<VexStateSnapshot<T>> {
+    override val replayCache: List<VexStateSnapshot<T>>
+        get() = listOf(value)
+
+    override val value: VexStateSnapshot<T>
+        get() = expose(source.value)
+
+    override suspend fun collect(collector: FlowCollector<VexStateSnapshot<T>>): Nothing =
+        source.collect(
+            object : FlowCollector<VexStateSnapshot<T>> {
+                override suspend fun emit(value: VexStateSnapshot<T>) {
+                    collector.emit(expose(value))
+                }
+            },
+        )
+}
+
 /**
  * Latest-state adapter only. It intentionally stores no transition ledger.
  * Caller-provided [copyValue] is mandatory so mutable platform values cannot
@@ -58,7 +81,10 @@ class VexStateProjection<T>(
     private val stateRef = initial.stateRef
     private val mutableState = MutableStateFlow(retain(initial))
 
-    val state: StateFlow<VexStateSnapshot<T>> = mutableState.asStateFlow()
+    val state: StateFlow<VexStateSnapshot<T>> = DefensiveCopyStateFlow(
+        source = mutableState.asStateFlow(),
+        expose = ::expose,
+    )
 
     fun admit(received: VexStateSnapshot<T>): VexProjectionAdmission = synchronized(lock) {
         require(received.stateRef == stateRef) {
@@ -88,6 +114,10 @@ class VexStateProjection<T>(
     }
 
     private fun retain(snapshot: VexStateSnapshot<T>): VexStateSnapshot<T> = snapshot.copy(
+        valueOrNull = copyValue(snapshot.valueOrNull),
+    )
+
+    private fun expose(snapshot: VexStateSnapshot<T>): VexStateSnapshot<T> = snapshot.copy(
         valueOrNull = copyValue(snapshot.valueOrNull),
     )
 

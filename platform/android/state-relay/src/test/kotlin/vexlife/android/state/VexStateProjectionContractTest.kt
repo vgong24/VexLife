@@ -1,5 +1,7 @@
 package vexlife.android.state
 
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -44,6 +46,49 @@ class VexStateProjectionContractTest {
 
         assertEquals(listOf("a"), projection.state.value.valueOrNull?.toList())
         assertNotSame(callerOwned, projection.state.value.valueOrNull)
+    }
+
+    @Test
+    fun `state value exposure cannot mutate retained snapshot`() {
+        val projection = projection(snapshot())
+        val exposed = requireNotNull(projection.state.value.valueOrNull)
+        exposed += "consumer mutation"
+
+        val reread = projection.state.value
+        assertEquals(listOf("a"), reread.valueOrNull?.toList())
+        assertEquals("hash.a", reread.semanticHash)
+        assertEquals(0L, reread.revision)
+        assertEquals(null, reread.transitionRefOrNull)
+        assertNotSame(exposed, reread.valueOrNull)
+    }
+
+    @Test
+    fun `stateflow replay cache returns a defensive snapshot copy`() {
+        val projection = projection(snapshot())
+        val replayed = requireNotNull(projection.state.replayCache.single().valueOrNull)
+        replayed += "replay mutation"
+
+        val reread = projection.state.value
+        assertEquals(listOf("a"), reread.valueOrNull?.toList())
+        assertEquals("hash.a", reread.semanticHash)
+        assertEquals(0L, reread.revision)
+        assertEquals(null, reread.transitionRefOrNull)
+        assertNotSame(replayed, reread.valueOrNull)
+    }
+
+    @Test
+    fun `stateflow collectors receive defensive snapshot copies`() = runBlocking {
+        val projection = projection(snapshot())
+        val collected = projection.state.first()
+        val exposed = requireNotNull(collected.valueOrNull)
+        exposed += "collector mutation"
+
+        val reread = projection.state.value
+        assertEquals(listOf("a"), reread.valueOrNull?.toList())
+        assertEquals("hash.a", reread.semanticHash)
+        assertEquals(0L, reread.revision)
+        assertEquals(null, reread.transitionRefOrNull)
+        assertNotSame(exposed, reread.valueOrNull)
     }
 
     @Test
