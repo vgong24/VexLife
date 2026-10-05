@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 5808,
       "sha256": "f49b19750884f22f70476f2349b40f448eb588bb2d78a281e99175fa9bbf9e50"
+    },
+    {
+      "path": "src/core/android-test-evidence-obligations.mjs",
+      "mode": "100644",
+      "bytes": 24419,
+      "sha256": "47a9fd86b38c3ef55f35ed0c4deac5cf8090cfa4e013b2a9490228d2f952275b"
     }
   ]
 }
