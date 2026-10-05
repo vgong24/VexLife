@@ -96,6 +96,8 @@ test('A4 plan preserves A3/A2 identity and keeps implementation effects held', (
     assert.equal(plan.generatorStage, ANDROID_PROJECT_GENERATOR_STAGE);
     assert.equal(plan.constructionBlueprintSha256, result.constructionBlueprintSha256);
     assert.equal(plan.sourceMappingRef, input.sourceMappingRef);
+    assert.equal(plan.sourceBlueprint.contractVersion, input.sourceBlueprint.contractVersion);
+    assert.equal(plan.sourceBlueprint.contractVersion, 1);
     assert.deepEqual(plan.foundation, input.foundation);
     assert.deepEqual(plan.targetPlatform, input.targetPlatform);
     assert.deepEqual(plan.stateProjectionSurface, input.stateProjectionSurface);
@@ -130,6 +132,21 @@ test('A4 preserves mixed dispositions without fabricating implementation evidenc
     assert.equal(byPath.get(sources[2].ancestryPath).materializationState, 'HELD');
     assert.equal(byPath.get(sources[3].ancestryPath).materializationState, 'UNSUPPORTED');
     assert.ok(plan.constructionUnits.every((entry) => entry.implementationEvidence === false));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('A4 preserves the accepted numeric source blueprint contractVersion without inventing a new type contract', () => {
+  const input = a3Blueprint();
+  assert.equal(input.sourceBlueprint.contractVersion, 1);
+  const root = tempRoot();
+  try {
+    generateAndroidProjectPracticum({ constructionBlueprint: input, outputRoot: root });
+    const plan = readGenerated(root, 'generated/project-plan.json');
+    const carried = readGenerated(root, 'generated/android-construction-blueprint.json');
+    assert.equal(plan.sourceBlueprint.contractVersion, 1);
+    assert.equal(carried.sourceBlueprint.contractVersion, 1);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
