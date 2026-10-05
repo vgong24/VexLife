@@ -15,6 +15,12 @@
       "sha256": "51b639fe6aeeffdee3381ddde0cf31b9cd724f76d930955681d27963ff15560e"
     },
     {
+      "path": "src/core/android-project-generator.mjs",
+      "mode": "100644",
+      "bytes": 19391,
+      "sha256": "dfc0f757851a405fea663976481bf1604a79df5615dbd7a1987216d7d2f49c85"
+    },
+    {
       "path": "test/cdr-s5-closed-alpha-browser.test.mjs",
       "mode": "100644",
       "bytes": 16559,
