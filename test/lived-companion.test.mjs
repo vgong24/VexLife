@@ -28,7 +28,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DELAYED_SUCCESS_TIMEOUT_MS = 1000;
 
 function ref(prefix) { return `${prefix}.${crypto.randomUUID()}`; }
-function temp(label) { return fs.mkdtempSync(path.join(os.tmpdir(), `vexlife-g01-${label}-`)); }
+const TEST_TEMP_ROOT = fs.realpathSync.native(os.tmpdir());
+
+function temp(label) { return fs.mkdtempSync(path.join(TEST_TEMP_ROOT, `vexlife-g01-${label}-`)); }
 function makeHome(label) {
   const home = temp(label);
   const identity = {
