@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 8289,
       "sha256": "de71b499f916d123693acb17d6260459d08eb9b543da698930203fab8400d985"
+    },
+    {
+      "path": "test/android-project-generator.test.mjs",
+      "mode": "100644",
+      "bytes": 11925,
+      "sha256": "cc08d4af90dd34d3c804a29420c0e4af583658adcb507f9cecdc6b226643dc02"
     }
   ]
 }
