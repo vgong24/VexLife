@@ -388,7 +388,7 @@ function obligation({
 }
 
 function currentObligations(plan, result, sourceA4IdentityFingerprint) {
-  const bind = (spec) => bind({ sourceA4IdentityFingerprint, ...spec });
+  const bind = (spec) => obligation({ sourceA4IdentityFingerprint, ...spec });
   const output = [
     bind({
       obligationClass: 'A4_INPUT_IDENTITY',
