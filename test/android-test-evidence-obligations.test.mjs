@@ -38,14 +38,17 @@ function rulesFor(blueprint, overrides = new Map()) {
   }));
 }
 
-function a0Mapping(overrides = new Map()) {
+function a0Mapping(
+  overrides = new Map(),
+  mappingRef = 'mapping.vexlife.android-construction.a5.test'
+) {
   const { blueprint, platforms, foundation } = fixture();
   return mapBlueprintToPlatformBlueprint({
     sourceBlueprint: blueprint,
     platformRegistry: platforms,
     platformRef: 'platform.android',
     foundation,
-    mappingRef: 'mapping.vexlife.android-construction.a5.test',
+    mappingRef,
     mappingRules: rulesFor(blueprint, overrides)
   });
 }
@@ -100,6 +103,39 @@ test('A5 deterministically compiles accepted A4 plan/result into immutable unpro
     assert.equal(Object.isFrozen(one.obligations), true);
   } finally {
     fs.rmSync(evidence.root, { recursive: true, force: true });
+  }
+});
+
+test('A5 binds every obligation ref to one exact A4 identity fingerprint', () => {
+  const first = a4Evidence();
+  const second = a4Evidence(a0Mapping(
+    new Map(),
+    'mapping.vexlife.android-construction.a5.alternate'
+  ));
+  try {
+    const one = compile(first.projectPlan, first.generationResult);
+    const two = compile(second.projectPlan, second.generationResult);
+
+    assert.notEqual(
+      one.sourceA4.sourceA4IdentityFingerprint,
+      two.sourceA4.sourceA4IdentityFingerprint
+    );
+    assert.ok(one.obligations.every(
+      (item) => item.sourceA4IdentityFingerprint === one.sourceA4.sourceA4IdentityFingerprint
+    ));
+    assert.ok(two.obligations.every(
+      (item) => item.sourceA4IdentityFingerprint === two.sourceA4.sourceA4IdentityFingerprint
+    ));
+
+    const secondRefs = new Set(two.obligations.map((item) => item.obligationRef));
+    assert.equal(
+      one.obligations.some((item) => secondRefs.has(item.obligationRef)),
+      false,
+      'distinct accepted A4 identities must not alias any A5 obligationRef'
+    );
+  } finally {
+    fs.rmSync(first.root, { recursive: true, force: true });
+    fs.rmSync(second.root, { recursive: true, force: true });
   }
 });
 
