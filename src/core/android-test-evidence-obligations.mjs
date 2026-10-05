@@ -336,7 +336,32 @@ function validateResult(generationResult, constructionBlueprintSha256) {
   };
 }
 
+function buildSourceA4Identity(plan, result) {
+  const core = {
+    planSchemaVersion: A4_PLAN_SCHEMA,
+    resultSchemaVersion: A4_RESULT_SCHEMA,
+    generatorStage: A4_STAGE,
+    constructionBlueprintSha256: plan.constructionBlueprintSha256,
+    sourceMappingRef: plan.sourceMappingRef,
+    sourceBlueprint: clone(plan.sourceBlueprint),
+    foundation: clone(plan.foundation),
+    targetPlatform: clone(plan.targetPlatform),
+    stateProjectionSurface: clone(plan.stateProjectionSurface),
+    generationCustody: clone(plan.generationCustody),
+    constructionUnits: clone(plan.constructionUnits),
+    planBoundaries: clone(plan.boundaries),
+    generatedPaths: clone(result.generatedPaths),
+    inventory: clone(result.inventory),
+    resultEffects: clone(result.effects)
+  };
+  return {
+    ...core,
+    sourceA4IdentityFingerprint: semanticHash(core)
+  };
+}
+
 function obligation({
+  sourceA4IdentityFingerprint,
   obligationClass,
   obligationState,
   subjectRef,
@@ -344,7 +369,9 @@ function obligation({
   requiredEvidenceClass,
   expectation
 }) {
+  requiredString(sourceA4IdentityFingerprint, 'sourceA4IdentityFingerprint');
   const core = {
+    sourceA4IdentityFingerprint,
     obligationClass,
     obligationState,
     evidenceState: 'UNPROVEN',
@@ -360,9 +387,10 @@ function obligation({
   };
 }
 
-function currentObligations(plan, result) {
+function currentObligations(plan, result, sourceA4IdentityFingerprint) {
+  const bind = (spec) => bind({ sourceA4IdentityFingerprint, ...spec });
   const output = [
-    obligation({
+    bind({
       obligationClass: 'A4_INPUT_IDENTITY',
       obligationState: 'REQUIRED',
       subjectRef: `construction-blueprint.sha256.${plan.constructionBlueprintSha256}`,
@@ -376,7 +404,7 @@ function currentObligations(plan, result) {
         sourceMappingRef: plan.sourceMappingRef
       }
     }),
-    obligation({
+    bind({
       obligationClass: 'DETERMINISM',
       obligationState: 'REQUIRED',
       subjectRef: `construction-blueprint.sha256.${plan.constructionBlueprintSha256}`,
@@ -387,7 +415,7 @@ function currentObligations(plan, result) {
         sameInputProducesSameInventoryBytesAndSha256: true
       }
     }),
-    obligation({
+    bind({
       obligationClass: 'DISPOSABLE_CUSTODY',
       obligationState: 'REQUIRED',
       subjectRef: 'platform.android.project-practicum-custody',
@@ -395,7 +423,7 @@ function currentObligations(plan, result) {
       requiredEvidenceClass: 'CUSTODY_BOUNDARY',
       expectation: clone(plan.generationCustody)
     }),
-    obligation({
+    bind({
       obligationClass: 'NO_UNEARNED_EFFECTS',
       obligationState: 'REQUIRED',
       subjectRef: 'platform.android.a4-effect-boundary',
@@ -406,7 +434,7 @@ function currentObligations(plan, result) {
         resultEffects: clone(result.effects)
       }
     }),
-    obligation({
+    bind({
       obligationClass: 'SOURCE_MANIFEST_CURRENTNESS_REQUIREMENT',
       obligationState: 'REQUIRED',
       subjectRef: 'source-manifest.vexlife.current',
@@ -414,7 +442,7 @@ function currentObligations(plan, result) {
       requiredEvidenceClass: 'SOURCE_CURRENTNESS',
       expectation: { requiredState: 'SOURCE_MANIFEST_CURRENT' }
     }),
-    obligation({
+    bind({
       obligationClass: 'FOCUSED_CONTRACT_TEST_REQUIREMENT',
       obligationState: 'REQUIRED',
       subjectRef: 'test.android.a0-a5.focused',
@@ -429,7 +457,7 @@ function currentObligations(plan, result) {
         ]
       }
     }),
-    obligation({
+    bind({
       obligationClass: 'FULL_REPOSITORY_CHECK_REQUIREMENT',
       obligationState: 'REQUIRED',
       subjectRef: 'repository.vexlife.full-check',
@@ -440,7 +468,7 @@ function currentObligations(plan, result) {
   ];
 
   for (const record of result.inventory) {
-    output.push(obligation({
+    output.push(bind({
       obligationClass: 'GENERATED_TREE_INVENTORY',
       obligationState: 'REQUIRED',
       subjectRef: `generated-path.${record.path}`,
@@ -451,7 +479,7 @@ function currentObligations(plan, result) {
   }
 
   for (const unit of plan.constructionUnits) {
-    output.push(obligation({
+    output.push(bind({
       obligationClass: 'ANCESTRY_PRESERVATION',
       obligationState: 'REQUIRED',
       subjectRef: `construction-unit.${unit.ancestryPath}`,
@@ -469,7 +497,7 @@ function currentObligations(plan, result) {
       }
     }));
     if (['HELD', 'UNSUPPORTED'].includes(unit.disposition)) {
-      output.push(obligation({
+      output.push(bind({
         obligationClass: 'HELD_UNSUPPORTED_TRUTH',
         obligationState: 'REQUIRED',
         subjectRef: `construction-unit.${unit.ancestryPath}`,
@@ -487,8 +515,9 @@ function currentObligations(plan, result) {
   return output;
 }
 
-function heldObligations() {
+function heldObligations(sourceA4IdentityFingerprint) {
   return HELD_CLASSES.map((obligationClass) => obligation({
+    sourceA4IdentityFingerprint,
     obligationClass,
     obligationState: 'HELD',
     subjectRef: `platform.android.${obligationClass.toLowerCase().replaceAll('_', '-')}`,
@@ -506,7 +535,11 @@ export function compileAndroidTestEvidenceObligations({
   const plan = validatePlan(projectPlan);
   const result = validateResult(generationResult, plan.constructionBlueprintSha256);
   const resolvedCompilerRef = requiredString(compilerRef, 'compilerRef');
-  const obligations = [...currentObligations(plan, result), ...heldObligations()]
+  const sourceA4Identity = buildSourceA4Identity(plan, result);
+  const obligations = [
+    ...currentObligations(plan, result, sourceA4Identity.sourceA4IdentityFingerprint),
+    ...heldObligations(sourceA4Identity.sourceA4IdentityFingerprint)
+  ]
     .sort((left, right) =>
       compareText(left.obligationClass, right.obligationClass) ||
       compareText(left.subjectRef, right.subjectRef) ||
@@ -543,7 +576,8 @@ export function compileAndroidTestEvidenceObligations({
       targetPlatform: plan.targetPlatform,
       stateProjectionSurface: plan.stateProjectionSurface,
       generatedPaths: result.generatedPaths,
-      inventoryFingerprint: result.inventoryFingerprint
+      inventoryFingerprint: result.inventoryFingerprint,
+      sourceA4IdentityFingerprint: sourceA4Identity.sourceA4IdentityFingerprint
     },
     obligations,
     summary: {
