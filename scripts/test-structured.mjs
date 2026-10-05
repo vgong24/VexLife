@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const testRoot = path.join(ROOT, 'test');
+const TEST_TMPDIR = fs.realpathSync.native(os.tmpdir());
 const isolatedTestFiles = new Set([
   // These suites consume live host resource evidence. Keep each suite's
   // internal assertions intact, but do not let unrelated test-file scheduling
@@ -56,7 +58,8 @@ for (const group of groups) {
   const result = spawnSync(process.execPath, group.arguments, {
     cwd: ROOT,
     encoding: 'utf8',
-    maxBuffer: 32 * 1024 * 1024
+    maxBuffer: 32 * 1024 * 1024,
+    env: { ...process.env, TMPDIR: TEST_TMPDIR }
   });
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
