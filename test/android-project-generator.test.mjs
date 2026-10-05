@@ -210,6 +210,61 @@ test('A4 requires an absolute empty non-symlink output root and preserves caller
   }
 });
 
+test('A4 rejects repository product-custody output roots before generated files are written', () => {
+  const input = a3Blueprint();
+  const repositoryLocal = fs.mkdtempSync(path.join(repoRoot, '.a4-practicum-custody-'));
+  try {
+    assert.throws(
+      () => generateAndroidProjectPracticum({ constructionBlueprint: input, outputRoot: repositoryLocal }),
+      /inside VexLife source custody is forbidden/u
+    );
+    assert.deepEqual(fs.readdirSync(repositoryLocal), []);
+  } finally {
+    fs.rmSync(repositoryLocal, { recursive: true, force: true });
+  }
+
+  const generatedBase = path.join(repoRoot, 'generated');
+  fs.mkdirSync(generatedBase, { recursive: true });
+  const sourceExcluded = fs.mkdtempSync(path.join(generatedBase, 'a4-practicum-custody-'));
+  try {
+    const result = generateAndroidProjectPracticum({ constructionBlueprint: input, outputRoot: sourceExcluded });
+    assert.equal(result.generatedPaths.length, 6);
+  } finally {
+    fs.rmSync(sourceExcluded, { recursive: true, force: true });
+  }
+});
+
+test('A4 rejects unknown A3 contract fields before filesystem effects', () => {
+  const cases = [
+    ['top-level', (value) => { value.unreviewedEffect = true; }],
+    ['source blueprint', (value) => { value.sourceBlueprint.unreviewedIdentity = 'forged'; }],
+    ['foundation', (value) => { value.foundation.unreviewedOwnerBinding = 'forged'; }],
+    ['target platform', (value) => { value.targetPlatform.unreviewedRuntimeSemantics = 'forged'; }],
+    ['state projection', (value) => { value.stateProjectionSurface.eventLedgerOverride = true; }],
+    ['generation boundary', (value) => { value.generationBoundary.unreviewedCustody = 'forged'; }],
+    ['boundaries', (value) => { value.boundaries.unreviewedEffect = false; }],
+    ['disposition counts', (value) => { value.dispositionCounts.UNREVIEWED = 0; }],
+    ['mapping', (value) => { value.mappings[0].unreviewedEffect = false; }],
+    ['construction unit', (value) => { value.constructionUnits[0].unreviewedEffect = false; }]
+  ];
+
+  for (const [label, mutate] of cases) {
+    const input = structuredClone(a3Blueprint());
+    mutate(input);
+    const root = tempRoot();
+    try {
+      assert.throws(
+        () => generateAndroidProjectPracticum({ constructionBlueprint: input, outputRoot: root }),
+        /must contain exactly/u,
+        label + ' extra field must fail closed'
+      );
+      assert.deepEqual(fs.readdirSync(root), []);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
 test('A4 leaves durable platform/android byte-identical', () => {
   const durable = path.join(repoRoot, 'platform/android');
   const before = new Map(files(durable).map((relative) => [relative, digest(path.join(durable, ...relative.split('/')))]));
