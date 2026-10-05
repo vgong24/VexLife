@@ -5,8 +5,8 @@
     {
       "path": "test/android-test-evidence-obligations.test.mjs",
       "mode": "100644",
-      "bytes": 13342,
-      "sha256": "faaf56f8aff5445c43e07e11e28d84e4bd472258b34524d68a04dffe5f93de31"
+      "bytes": 13920,
+      "sha256": "def809bd110a6027f1d79d1a84029e4965f6fa871834c23b22849f908557cc67"
     },
     {
       "path": "test/vex-self-capability-frame.test.mjs",
