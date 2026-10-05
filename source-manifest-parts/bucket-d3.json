@@ -49,6 +49,12 @@
       "mode": "100644",
       "bytes": 2471,
       "sha256": "0242e0bf344cefd1026c7cf397a821bc02fec7a08cfa04818f7e37e25d1cc3b0"
+    },
+    {
+      "path": "test/android-construction-compiler.test.mjs",
+      "mode": "100644",
+      "bytes": 8076,
+      "sha256": "d6fc6b4aa7dce13b941c8ecd64aca07028947364500675fa0f12fa0160b48ec1"
     }
   ]
 }
