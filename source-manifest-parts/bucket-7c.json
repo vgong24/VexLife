@@ -3,6 +3,12 @@
   "bucketId": "7c",
   "files": [
     {
+      "path": "platform/android/gradle/wrapper/gradle-wrapper.properties",
+      "mode": "100644",
+      "bytes": 368,
+      "sha256": "c629b14195c2b627ef184fba4416f5dfce6f69c8b088230965bf3f77b8a1a7b4"
+    },
+    {
       "path": "reference/browser/modules/browser-bundle.js",
       "mode": "100644",
       "bytes": 4509,

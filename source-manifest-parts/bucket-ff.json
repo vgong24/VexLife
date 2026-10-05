@@ -9,6 +9,12 @@
       "sha256": "31de1cf0fe842a424bc01055982aaf8b77aa3b1f9dc93ac594f40b9fc97ca42e"
     },
     {
+      "path": "platform/android/gradle.properties",
+      "mode": "100644",
+      "bytes": 243,
+      "sha256": "b888876b30c21499182647f2929f8318b27562c5308b61410356f1aa67ef591c"
+    },
+    {
       "path": "test/model-connection-turn-composer.test.mjs",
       "mode": "100644",
       "bytes": 6594,
