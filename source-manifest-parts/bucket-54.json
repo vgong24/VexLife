@@ -17,8 +17,8 @@
     {
       "path": "src/core/android-project-generator.mjs",
       "mode": "100644",
-      "bytes": 19495,
-      "sha256": "a6c76dad97fddb13ba6e3801fc1d810c256f2a7dcd0134be87b6c76a26378518"
+      "bytes": 19391,
+      "sha256": "dfc0f757851a405fea663976481bf1604a79df5615dbd7a1987216d7d2f49c85"
     },
     {
       "path": "test/cdr-s5-closed-alpha-browser.test.mjs",
