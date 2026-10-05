@@ -9,6 +9,12 @@
       "sha256": "6cd92ce4f8decf285f5de2f4e41f77824671ea96ec95a417cee22f44166f38bb"
     },
     {
+      "path": "platform/android/state-relay/src/test/kotlin/vexlife/android/state/VexStateProjectionContractTest.kt",
+      "mode": "100644",
+      "bytes": 5147,
+      "sha256": "70b58acb64638bd1395964c806a3f281a7aecaea5caa9587a6aa399891341700"
+    },
+    {
       "path": "reference/browser/app.css",
       "mode": "100644",
       "bytes": 37411,

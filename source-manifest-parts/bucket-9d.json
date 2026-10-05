@@ -9,6 +9,12 @@
       "sha256": "eb6702b5140607c8c7d7a7d9788a01b0a33a40c7f26b586feac70eb664691658"
     },
     {
+      "path": "platform/android/state-relay/build.gradle.kts",
+      "mode": "100644",
+      "bytes": 416,
+      "sha256": "3afb2214513088e2dcbf68c8b52a7dd3db2879f26692df73dc8e77d63728fc54"
+    },
+    {
       "path": "reference/browser/index.html",
       "mode": "100644",
       "bytes": 29721,

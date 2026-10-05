@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 3797,
       "sha256": "64854045a0c06645b6e318ef09a00e250e5631076f219a656d0df808da5da4b4"
+    },
+    {
+      "path": "platform/android/settings.gradle.kts",
+      "mode": "100644",
+      "bytes": 1116,
+      "sha256": "c79aa6d402288b01e61e8fecb467bf5359c5bb01e7c7db3c03ec7149901eac90"
     }
   ]
 }

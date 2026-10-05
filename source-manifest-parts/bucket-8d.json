@@ -5,8 +5,8 @@
     {
       "path": "PUBLIC-SAFETY-MANIFEST.json",
       "mode": "100644",
-      "bytes": 1915,
-      "sha256": "05421af74cf1ee0edac60a636e9a9b0c716629c634029088b783b2ec9eb082a3"
+      "bytes": 1973,
+      "sha256": "0d81b638d43ab1e13810ec88f9589d333b1b0d3bd662a728d9b9ee5ac65883a9"
     },
     {
       "path": "blueprint/android-remote-vessel-registry.json",

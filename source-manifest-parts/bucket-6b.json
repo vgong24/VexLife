@@ -9,6 +9,12 @@
       "sha256": "b852bb88ade9b5c06d80d32a22a9fbefb2abd92f87105509b9bd7e2a7681ef75"
     },
     {
+      "path": "platform/android/build.gradle.kts",
+      "mode": "100644",
+      "bytes": 234,
+      "sha256": "1db291a6efd53cd9396c8f08e31afa31e8bee114d253363a14ce44de719c8fb1"
+    },
+    {
       "path": "reference/browser/modules/experience-guidance-human-projection.js",
       "mode": "100644",
       "bytes": 29692,
