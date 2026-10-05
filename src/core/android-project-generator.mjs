@@ -181,8 +181,9 @@ function validateOrdered(value) {
 }
 
 function validateBlueprint(input) {
-  const value = exactKeys(input, A3_BLUEPRINT_KEYS, 'constructionBlueprint');
+  const value = object(input, 'constructionBlueprint');
   exact(value.schemaVersion, A3_SCHEMA, 'constructionBlueprint.schemaVersion');
+  exactKeys(value, A3_BLUEPRINT_KEYS, 'constructionBlueprint');
   exact(value.compilerStage, A3_STAGE, 'constructionBlueprint.compilerStage');
   const compilerRef = string(value.compilerRef, 'constructionBlueprint.compilerRef');
   const sourceMappingRef = string(value.sourceMappingRef, 'constructionBlueprint.sourceMappingRef');
@@ -190,7 +191,6 @@ function validateBlueprint(input) {
   string(sourceBlueprint.schemaVersion, 'constructionBlueprint.sourceBlueprint.schemaVersion');
   string(sourceBlueprint.blueprintRef, 'constructionBlueprint.sourceBlueprint.blueprintRef');
   string(sourceBlueprint.version, 'constructionBlueprint.sourceBlueprint.version');
-  if (sourceBlueprint.contractVersion !== null) string(sourceBlueprint.contractVersion, 'constructionBlueprint.sourceBlueprint.contractVersion');
   exact(value.canonicalAncestryRequired, true, 'constructionBlueprint.canonicalAncestryRequired');
   exact(value.registrationState, 'INERT_NOT_COMPOSED', 'constructionBlueprint.registrationState');
   exact(value.effects, false, 'constructionBlueprint.effects');
