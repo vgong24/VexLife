@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.build-health-registry/v0",
   "registryRef": "registry.vexlife.build-health.001",
-  "registryVersion": 3,
+  "registryVersion": 4,
   "purpose": "One source-managed list of mandatory health checks and the lenses each protects.",
   "semanticNoOpRule": "Equal check inputs and outputs do not create another durable health transition.",
   "checkResultContract": {
@@ -343,6 +343,26 @@
       ],
       "blocking": true,
       "timeoutMs": 120000
+    },
+    {
+      "checkRef": "check.presentation-structural-health",
+      "command": "npm run presentation:health",
+      "category": "EXPERIENCE",
+      "purpose": "Compile current Presentation Graph projections, fail closed on unaccounted screens/documents/owners/placements/reachability, preserve owner-held witness/platform debt, and execute one bounded browser runtime observation.",
+      "lensRefs": [
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "blocking": true,
+      "timeoutMs": 120000
     }
   ],
   "validationEvidencePolicy": {
@@ -435,5 +455,123 @@
       "providerOutageAloneMayAuthorizeReuse": false,
       "currentnessGrantsExecutionAuthority": false
     }
+  },
+  "presentationAccounting": {
+    "schemaVersion": "vexlife.presentation-health-accounting/v1",
+    "purpose": "Require every current VexLife presentation root to be graph-covered or explicitly owner-accounted, preserve non-green conformance debt, and prevent repository Health from treating missing Presentation evidence as success.",
+    "graphOwnerRef": "github.issue.vexlife.719",
+    "parentRef": "github.issue.vexlife.624",
+    "screenAccounts": [
+      {
+        "subjectRef": "screen.vexlife.guide-overlay",
+        "sourceOwnerRef": "module.vexlife.browser.guide-controller",
+        "disposition": "ROUTE_TO_RIGHTFUL_OWNER",
+        "ownerRef": "github.issue.vexlife.719",
+        "reason": "Current universal Guide screen is implemented and browser-visible but has no explicit Presentation Graph anatomy/reachability/witness lineage.",
+        "wakeCondition": "github.issue.vexlife.719.comment.5987450732 returns a current-main-bound Guide disposition."
+      },
+      {
+        "subjectRef": "screen.vexlife.cdr-s5-closed-alpha",
+        "sourceOwnerRef": "github.issue.vexlife.216",
+        "semanticOwnerRef": "github.issue.vextreme-sdk.577",
+        "disposition": "ROUTE_TO_RIGHTFUL_OWNER",
+        "ownerRef": "github.issue.vexlife.719",
+        "reason": "Current implemented CDR S5 closed-alpha browser screen has no explicit Presentation Graph anatomy/reachability/witness lineage.",
+        "wakeCondition": "github.issue.vexlife.719.comment.5987450732 returns a current-main-bound CDR S5 disposition."
+      }
+    ],
+    "externalSurfaceAccounts": [
+      {
+        "subjectRef": "surface.vexlife.public-learning.architecture-atlas.001",
+        "sourceOwnerRef": "github.issue.vexlife.182",
+        "implementationRef": "github.issue.vexlife.209",
+        "disposition": "ROUTE_TO_RIGHTFUL_OWNER",
+        "ownerRef": "github.issue.vexlife.719",
+        "reason": "Accepted Public Learning Architecture/Atlas is a standalone current browser presentation outside the universal-screen-only Presentation Graph placement model.",
+        "wakeCondition": "github.issue.vexlife.719.comment.5987450732 returns a current-main-bound Public Learning disposition."
+      }
+    ],
+    "witnessCurrentnessAccount": {
+      "subjectRef": "registry.vexlife.presentation-graph.001",
+      "disposition": "ROUTE_TO_RIGHTFUL_OWNER",
+      "ownerRef": "github.issue.vexlife.719",
+      "reason": "Current registry behavior witnesses remain UNKNOWN/PENDING_EXACT_CANDIDATE_SOURCE_PROOF and therefore are accounting lineage, not current PASS proof.",
+      "wakeCondition": "github.issue.vexlife.719.comment.5987619871 returns a current-main-bound behavior-witness currentness disposition."
+    },
+    "standaloneDocuments": [
+      {
+        "moduleRef": "module.vexlife.browser.document",
+        "routeKind": "SCREEN",
+        "subjectRef": "screen.vexlife.shell",
+        "sourceOwnerRef": "module.vexlife.browser.document"
+      },
+      {
+        "moduleRef": "module.vexlife.browser.architecture-atlas-document",
+        "routeKind": "SURFACE",
+        "subjectRef": "surface.vexlife.public-learning.architecture-atlas.001",
+        "sourceOwnerRef": "github.issue.vexlife.182"
+      },
+      {
+        "moduleRef": "module.vexlife.browser.evolution-host-document",
+        "routeKind": "NON_SEMANTIC_REDIRECT",
+        "subjectRef": "module.vexlife.browser.evolution-host-document",
+        "sourceOwnerRef": "github.issue.vexlife.624",
+        "disposition": "ACCEPTED_CURRENT",
+        "reason": "Legacy Evolution document redirects into the canonical shell and owns no product semantics or renderer state."
+      },
+      {
+        "moduleRef": "module.vexlife.browser.cdr-s5-closed-alpha-document",
+        "routeKind": "SCREEN",
+        "subjectRef": "screen.vexlife.cdr-s5-closed-alpha",
+        "sourceOwnerRef": "github.issue.vexlife.216"
+      },
+      {
+        "moduleRef": "module.vexlife.browser.vessel-studio-document",
+        "routeKind": "SCREEN",
+        "subjectRef": "screen.vexlife.vessel-studio-practicum",
+        "sourceOwnerRef": "github.issue.vexlife.768"
+      }
+    ],
+    "platformAccounts": [
+      {
+        "platformRef": "platform.browser",
+        "supportState": "REFERENCE_IMPLEMENTED",
+        "disposition": "ACCEPTED_CURRENT",
+        "ownerRef": "module.vexlife.browser.adapter",
+        "reason": "Browser is the current reference implementation; native conformance is not inferred from it."
+      },
+      {
+        "platformRef": "platform.android",
+        "supportState": "CONTRACT_SCAFFOLD",
+        "disposition": "HELD_WITH_EXACT_WAKE_CONDITION",
+        "ownerRef": "github.issue.vexlife.783",
+        "reason": "Android presentation remains contract/adoption scaffold; current A2 StateFlow work is not Compose/native presentation conformance.",
+        "wakeCondition": "Android Construction admits and accepts a Presentation/Compose adoption stage with native rendered accessibility, input, recovery and environment evidence."
+      },
+      {
+        "platformRef": "platform.ios",
+        "supportState": "CONTRACT_SCAFFOLD",
+        "disposition": "HELD_WITH_EXACT_WAKE_CONDITION",
+        "ownerRef": "module.vexlife.core.platform-generator",
+        "reason": "iOS presentation is scaffold-only and no native conformance is claimed.",
+        "wakeCondition": "An explicit iOS adoption owner is formed and returns accepted native rendered accessibility, input, recovery and environment evidence."
+      },
+      {
+        "platformRef": "platform.windows",
+        "supportState": "CONTRACT_SCAFFOLD",
+        "disposition": "HELD_WITH_EXACT_WAKE_CONDITION",
+        "ownerRef": "module.vexlife.core.platform-generator",
+        "reason": "Windows presentation is scaffold-only and no native conformance is claimed.",
+        "wakeCondition": "An explicit Windows adoption owner is formed and returns accepted native rendered accessibility, input, recovery and environment evidence."
+      },
+      {
+        "platformRef": "platform.macos",
+        "supportState": "CONTRACT_SCAFFOLD",
+        "disposition": "HELD_WITH_EXACT_WAKE_CONDITION",
+        "ownerRef": "module.vexlife.core.platform-generator",
+        "reason": "macOS presentation is scaffold-only and no native conformance is claimed.",
+        "wakeCondition": "An explicit macOS adoption owner is formed and returns accepted native rendered accessibility, input, recovery and environment evidence."
+      }
+    ]
   }
 }

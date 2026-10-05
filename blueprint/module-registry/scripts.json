@@ -895,7 +895,9 @@
     "writes": [
       "generated/presentation/**"
     ],
-    "loadedBy": [],
+    "loadedBy": [
+      "module.vexlife.script.presentation-health"
+    ],
     "tests": [
       "test/presentation-graph.test.mjs"
     ],
@@ -917,13 +919,45 @@
     "writes": [
       "generated/health/presentation-runtime-trace.json"
     ],
-    "loadedBy": [],
+    "loadedBy": [
+      "module.vexlife.script.presentation-health"
+    ],
     "tests": [
       "test/presentation-graph-observer.test.mjs"
     ],
     "changeMap": [
       "scripts/presentation-graph.mjs",
       "docs/VEX-PRESENTATION-GRAPH.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.presentation-health",
+    "path": "scripts/presentation-health.mjs",
+    "role": "Compile Presentation Graph/source-owner accounting into Build Health, regenerate current presentation projections, preserve explicit external holds, and execute one bounded runtime observer without becoming a semantic owner.",
+    "platformScope": "BUILD_TIME",
+    "reads": [
+      "registry.vexlife.build-health.001",
+      "blueprint/presentation-graph-registry.json",
+      "module.vexlife.script.presentation-graph",
+      "module.vexlife.script.presentation-graph-observer",
+      "registry.vexlife.modules.001"
+    ],
+    "writes": [
+      "generated/presentation/**",
+      "generated/health/presentation-runtime-trace.json"
+    ],
+    "loadedBy": [
+      "npm run presentation:health",
+      "check.presentation-structural-health"
+    ],
+    "tests": [
+      "test/presentation-structural-health.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/build-health-registry.json",
+      "blueprint/presentation-graph-registry.json",
+      "blueprint/module-registry.json",
+      "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
     ]
   }
 ]

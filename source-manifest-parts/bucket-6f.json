@@ -15,6 +15,12 @@
       "sha256": "fbf61690f511036e0649a98aa5ced516ab003fd74605537f304e658026476db5"
     },
     {
+      "path": "scripts/presentation-health.mjs",
+      "mode": "100644",
+      "bytes": 14044,
+      "sha256": "70fbbd14f6c7b2a1d8e6b1be4835debdbf1445ac74b8b2fa203454c968dbe78c"
+    },
+    {
       "path": "test/browser-family-conversation-server-composition.test.mjs",
       "mode": "100644",
       "bytes": 10484,
