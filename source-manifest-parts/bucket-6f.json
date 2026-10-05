@@ -17,8 +17,8 @@
     {
       "path": "scripts/presentation-health.mjs",
       "mode": "100644",
-      "bytes": 14044,
-      "sha256": "70fbbd14f6c7b2a1d8e6b1be4835debdbf1445ac74b8b2fa203454c968dbe78c"
+      "bytes": 14195,
+      "sha256": "1e61906141f90f8a99a2565dd2264514ab79283356a585b64c07bab03122971a"
     },
     {
       "path": "test/browser-family-conversation-server-composition.test.mjs",

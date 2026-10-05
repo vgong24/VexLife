@@ -552,24 +552,24 @@
         "platformRef": "platform.ios",
         "supportState": "CONTRACT_SCAFFOLD",
         "disposition": "HELD_WITH_EXACT_WAKE_CONDITION",
-        "ownerRef": "module.vexlife.core.platform-generator",
-        "reason": "iOS presentation is scaffold-only and no native conformance is claimed.",
+        "ownerRef": "github.issue.vexlife.624",
+        "reason": "ios presentation is scaffold-only; github.issue.vexlife.624 owns the Presentation/UI orchestration hold until an explicit ios adoption owner is formed. No native conformance is claimed.",
         "wakeCondition": "An explicit iOS adoption owner is formed and returns accepted native rendered accessibility, input, recovery and environment evidence."
       },
       {
         "platformRef": "platform.windows",
         "supportState": "CONTRACT_SCAFFOLD",
         "disposition": "HELD_WITH_EXACT_WAKE_CONDITION",
-        "ownerRef": "module.vexlife.core.platform-generator",
-        "reason": "Windows presentation is scaffold-only and no native conformance is claimed.",
+        "ownerRef": "github.issue.vexlife.624",
+        "reason": "windows presentation is scaffold-only; github.issue.vexlife.624 owns the Presentation/UI orchestration hold until an explicit windows adoption owner is formed. No native conformance is claimed.",
         "wakeCondition": "An explicit Windows adoption owner is formed and returns accepted native rendered accessibility, input, recovery and environment evidence."
       },
       {
         "platformRef": "platform.macos",
         "supportState": "CONTRACT_SCAFFOLD",
         "disposition": "HELD_WITH_EXACT_WAKE_CONDITION",
-        "ownerRef": "module.vexlife.core.platform-generator",
-        "reason": "macOS presentation is scaffold-only and no native conformance is claimed.",
+        "ownerRef": "github.issue.vexlife.624",
+        "reason": "macos presentation is scaffold-only; github.issue.vexlife.624 owns the Presentation/UI orchestration hold until an explicit macos adoption owner is formed. No native conformance is claimed.",
         "wakeCondition": "An explicit macOS adoption owner is formed and returns accepted native rendered accessibility, input, recovery and environment evidence."
       }
     ]

@@ -24,6 +24,9 @@ function accountOk(item, label, errors) {
   if (HELD.has(item?.disposition) && (typeof item.wakeCondition !== 'string' || !item.wakeCondition)) {
     errors.push(`${label}.wakeCondition is required`);
   }
+  if (HELD.has(item?.disposition) && !/^github\.issue\./.test(item.ownerRef ?? '')) {
+    errors.push(`${label}.ownerRef durable owner required`);
+  }
 }
 function indexed(items, field, label, errors) {
   const map = new Map();

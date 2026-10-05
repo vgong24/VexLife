@@ -101,3 +101,14 @@ test('platform scaffold state cannot impersonate native conformance', () => {
   const result = derivePresentationStructuralHealth(f);
   assert.ok(result.errors.some((e) => e.includes('platform.android accounting supportState drifted')));
 });
+
+
+test('owner-held presentation debt requires a durable issue owner route', () => {
+  const f = current();
+  f.bundle.buildHealth.presentationAccounting.platformAccounts
+    .find((item) => item.platformRef === 'platform.ios').ownerRef = 'module.vexlife.core.platform-generator';
+  const result = derivePresentationStructuralHealth(f);
+  assert.equal(result.state, 'BLOCKED');
+  assert.ok(result.unknownOwners > 0);
+  assert.ok(result.errors.some((e) => e.includes('platformAccounts.platform.ios.ownerRef durable owner required')));
+});
