@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 3445,
       "sha256": "4b190d30e93d6eb39bffbc782dc3cc04a2fa49b5c349bd783ba08cfd7fc0cfed"
+    },
+    {
+      "path": "docs/VEX-FURNISHING.md",
+      "mode": "100644",
+      "bytes": 13784,
+      "sha256": "e0e755ced72c8b6ef5e1cbfc0aacefe38dcfc066fc2ed5f514f60ed2d7dee75b"
     }
   ]
 }
