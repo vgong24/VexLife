@@ -338,6 +338,11 @@ test('VF02A-11 S semantic migration always routes outside Furnishing', () => {
 });
 
 test('VF02A-12 unknown, duplicate, semantic-authority and effect-authority acquisition fail closed', () => {
+  assert.throws(
+    () => compileFurnishingRegistry(registryWith(relationshipsRecord())),
+    /knownRefs is required for a non-empty Furnishing registry/u
+  );
+
   const duplicate = relationshipsRecord();
   duplicate.bindings.visibility.push(structuredClone(duplicate.bindings.currentness[0]));
   assert.throws(() => compileFurnishingRegistry(registryWith(duplicate), { knownRefs: knownRefs() }), /duplicate bindingRef/u);
