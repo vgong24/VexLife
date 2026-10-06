@@ -5,8 +5,8 @@
     {
       "path": "blueprint/fragments/screens/shell.json",
       "mode": "100644",
-      "bytes": 18752,
-      "sha256": "e4c1d5844c8884a28340812e4db76195dbda6065d95771d4057b7263ef536967"
+      "bytes": 17887,
+      "sha256": "627dfdbc5a4857fe7504563e3fc48f8cc0007323c1cf69e917154d1aed90d0b7"
     },
     {
       "path": "test/browser-companion-recovery-http-route.test.mjs",
