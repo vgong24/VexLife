@@ -245,7 +245,8 @@ function homeCompanionStatusKey(availabilityState,readState='UNKNOWN'){
 }
 function renderFurnishingHome(){
   const host=$('#furnishingHome');if(!host)return;
-  const homeVisible=!state.contextProjection&&!state.uxActiveSurfaceRef;
+  const guideOwnsPrimaryAttention=state.guideOpen===true&&state.guideMinimized===false;
+  const homeVisible=!state.contextProjection&&!state.uxActiveSurfaceRef&&!guideOwnsPrimaryAttention;
   host.hidden=!homeVisible;host.setAttribute('aria-hidden',String(!homeVisible));
   if(!homeVisible)return;
   const healthObserved=healthCompanionAvailabilityReadState!=='UNREQUESTED';
@@ -381,6 +382,7 @@ $('#surfaceMenuButton').addEventListener('click',(event)=>{event.stopPropagation
 const openLivingJournal=async({loadMemory=true}={})=>{restoreLivingJournalPresentDefault();livingJournal.open({selectedNodeRef:state.selectedNodeRef});navigation.openContext('living-journal','element.living-journal.open','action.living-journal.open');projectFrame();if(loadMemory){await loadLivingJournalMemory();projectFrame();}return livingJournal.snapshot();};
 $('#homeTalkToVex').addEventListener('click',()=>{void openCurrentVexConversation();});
 $('#homeContinueOpen').addEventListener('click',()=>{openCurrentConversationFromHome();});
+for(const selector of ['#vexSummon','#guideMinimize','#guideClose'])$(selector)?.addEventListener('click',()=>queueMicrotask(()=>projectFrame()));
 $('#openConversation').addEventListener('click',()=>{void routeCurrentSurface('surface.vexlife.conversation',()=>openContext('chat'));toggleSurfaceMenu(false);});
 $('#openHealth').addEventListener('click',()=>{void routeCurrentSurface('surface.vexlife.health',()=>void openHealth());toggleSurfaceMenu(false);});
 $('#openLivingJournal').addEventListener('click',()=>{void routeCurrentSurface('surface.vexlife.living-journal',()=>void openLivingJournal());toggleSurfaceMenu(false);});
