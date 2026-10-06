@@ -597,6 +597,173 @@ async function runPurposeWorkspaceProductProof(page, viewport, errors, reducedMo
   }
 }
 
+async function runFurnishingHomeProductProof(page, viewport, errors) {
+  const checks = [];
+  const assert = (condition, message) => { if (!condition) throw new Error(message); };
+  const turnRequests = [];
+  const onRequest = (request) => {
+    if (new URL(request.url()).pathname === '/api/v1/companion/turn') turnRequests.push(request.url());
+  };
+  page.on('request', onRequest);
+  try {
+    await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 30000 });
+    await page.evaluate(async () => {
+      const app = globalThis.__VEXLIFE_APP__;
+      await app.refreshHealthCompanionAvailability();
+      app.projectFrame();
+    });
+    const initial = await page.evaluate(() => {
+      const app = globalThis.__VEXLIFE_APP__;
+      const host = document.querySelector('#furnishingHome');
+      const talk = document.querySelector('#homeTalkToVex');
+      const resume = document.querySelector('#homeContinueOpen');
+      const availability = app.healthCompanionAvailability();
+      const availabilityState = availability?.availabilityState ?? 'UNKNOWN';
+      const messageCount = [...app.messages.values()].reduce((count, list) => count + list.length, 0);
+      const statusKeys = ['READY','RECOVERABLE','HELD','UNKNOWN'].map((state) => app.homeCompanionStatusKey(state));
+      return {
+        frame: app.navigation.semanticFrame(),
+        journeyLength: app.navigation.fullJourney().length,
+        messageCount,
+        homeHidden: host?.hidden ?? true,
+        homeAriaHidden: host?.getAttribute('aria-hidden'),
+        guideNodeRef: document.querySelector('#vexSummon')?.dataset.nodeRef ?? null,
+        talkNodeRef: talk?.dataset.nodeRef ?? null,
+        continueNodeRef: resume?.dataset.nodeRef ?? null,
+        availabilityState,
+        statusText: document.querySelector('#homeVexStatus')?.textContent ?? '',
+        expectedStatusText: app.t(app.homeCompanionStatusKey(availabilityState)),
+        statusKeys,
+        talkHeight: talk?.getBoundingClientRect().height ?? 0,
+        continueHeight: resume?.getBoundingClientRect().height ?? 0,
+        libraryText: document.querySelector('#homeLibrary')?.textContent ?? '',
+        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth, (host?.scrollWidth ?? 0) - (host?.clientWidth ?? 0))
+      };
+    });
+    assert(initial.homeHidden === false && initial.homeAriaHidden === 'false', 'VF03B Home furnishings are not visible on the Home frame');
+    assert(initial.guideNodeRef === 'element.vex.summon', 'VF03B Guide identity drifted');
+    assert(initial.talkNodeRef === 'element.vex.current-companion.open' && initial.talkNodeRef !== initial.guideNodeRef, 'VF03B Talk to Vex is not distinct from Guide');
+    assert(initial.continueNodeRef === 'element.furnishing.continue.open-current', 'VF03B Continue element identity drifted');
+    assert(initial.statusText === initial.expectedStatusText, 'VF03B Home Companion status diverges from canonical availability truth');
+    assert(new Set(initial.statusKeys).size === 4, 'VF03B READY / RECOVERABLE / HELD / UNKNOWN copy collapsed');
+    assert(initial.talkHeight >= 44 && initial.continueHeight >= 44, 'VF03B Home controls fell below the 44px target');
+    assert(initial.horizontalOverflow <= 1, 'VF03B Home furnishings overflow horizontally');
+    assert(initial.libraryText.length > 0 && !/vexstream/i.test(initial.libraryText), 'VF03B Library minted unavailable VexStream identity');
+    checks.push('Home shows distinct source-bound Companion / Continue / Library furnishing controls');
+
+    await page.locator('#surfaceMenuButton').click();
+    await page.locator('#openConversation').click();
+    await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.state.contextProjection === 'chat');
+    const generic = await page.evaluate(() => {
+      const app = globalThis.__VEXLIFE_APP__;
+      return {
+        frame: app.navigation.semanticFrame(),
+        homeHidden: document.querySelector('#furnishingHome')?.hidden ?? false
+      };
+    });
+    assert(generic.frame.projectRef === initial.frame.projectRef && generic.frame.threadRef === initial.frame.threadRef && generic.frame.channelRef === initial.frame.channelRef, 'VF03B generic Open conversation retargeted the current context');
+    assert(generic.homeHidden === true, 'VF03B Home furnishings did not yield to contextual Conversation');
+    await page.evaluate(() => globalThis.__VEXLIFE_APP__.returnToTerrain());
+    await page.waitForFunction(() => document.querySelector('#furnishingHome')?.hidden === false);
+    checks.push('generic Conversation preserves target and Home yields/restores');
+
+    await page.locator('#homeContinueOpen').click();
+    await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.state.contextProjection === 'chat');
+    const resumed = await page.evaluate(() => globalThis.__VEXLIFE_APP__.navigation.semanticFrame());
+    assert(resumed.projectRef === initial.frame.projectRef && resumed.threadRef === initial.frame.threadRef && resumed.channelRef === initial.frame.channelRef, 'VF03B Continue did not reopen the exact current Conversation');
+    await page.evaluate(() => globalThis.__VEXLIFE_APP__.returnToTerrain());
+    await page.waitForFunction(() => document.querySelector('#furnishingHome')?.hidden === false);
+    checks.push('Continue resumes exact current Conversation without invented recency');
+
+    const beforeTalk = await page.evaluate(() => ({
+      journeyLength: globalThis.__VEXLIFE_APP__.navigation.fullJourney().length,
+      messageCount: [...globalThis.__VEXLIFE_APP__.messages.values()].reduce((count, list) => count + list.length, 0)
+    }));
+    await page.locator('#homeTalkToVex').click();
+    await page.waitForFunction(() => {
+      const state = globalThis.__VEXLIFE_APP__.state;
+      return state.contextProjection === 'chat'
+        && state.projectRef === 'project.self-development'
+        && state.threadRef === 'thread.self-development.open-conversation'
+        && state.channelRef === 'channel.self-development.companion';
+    });
+    const talked = await page.evaluate(() => {
+      const app = globalThis.__VEXLIFE_APP__;
+      const journey = app.navigation.fullJourney();
+      return {
+        frame: app.navigation.semanticFrame(),
+        journeyLength: journey.length,
+        lastJourney: journey.at(-1),
+        messageCount: [...app.messages.values()].reduce((count, list) => count + list.length, 0),
+        homeHidden: document.querySelector('#furnishingHome')?.hidden ?? false
+      };
+    });
+    assert(talked.journeyLength === beforeTalk.journeyLength + 1, 'VF03B Talk to Vex recorded invisible intermediate navigation steps');
+    assert(talked.lastJourney?.elementRef === 'element.vex.current-companion.open' && talked.lastJourney?.actionRef === 'action.view.select', 'VF03B Talk to Vex Journey provenance is not the visible Home portal');
+    assert(talked.messageCount === beforeTalk.messageCount, 'VF03B Talk to Vex performed a model/message turn');
+    assert(talked.homeHidden === true, 'VF03B Home furnishings remained visible over Companion Conversation');
+    assert(turnRequests.length === 0, 'VF03B Home proof invoked the real Companion turn endpoint');
+    checks.push('Talk to Vex is one visible atomic portal and performs no model turn');
+
+    await page.evaluate(() => globalThis.__VEXLIFE_APP__.returnToTerrain());
+    await page.waitForFunction(() => document.querySelector('#furnishingHome')?.hidden === false);
+    const finalGeometry = await page.evaluate(() => {
+      const host = document.querySelector('#furnishingHome');
+      return {
+        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth, (host?.scrollWidth ?? 0) - (host?.clientWidth ?? 0)),
+        actualViewport: { width: innerWidth, height: innerHeight }
+      };
+    });
+    assert(finalGeometry.actualViewport.width === viewport.width && finalGeometry.actualViewport.height === viewport.height, 'VF03B Home viewport drifted');
+    assert(finalGeometry.horizontalOverflow <= 1, 'VF03B Home overflowed after interaction walk');
+    const png = await page.screenshot({ type: 'png', animations: 'disabled' });
+    assert(png.length <= 1500000, 'VF03B Home screenshot exceeds bounded evidence size');
+    return {
+      state: 'PASS',
+      evidenceClass: 'REAL_BROWSER_SYNTHETIC_REFERENCE_INPUT',
+      viewport,
+      sourceBoundAvailabilityState: initial.availabilityState,
+      genericConversationPreservedTarget: true,
+      continuePreservedTarget: true,
+      talkToVexPortal: {
+        projectRef: talked.frame.projectRef,
+        threadRef: talked.frame.threadRef,
+        channelRef: talked.frame.channelRef,
+        elementRef: talked.lastJourney?.elementRef ?? null,
+        actionRef: talked.lastJourney?.actionRef ?? null
+      },
+      guideDistinct: true,
+      realCompanionTurnExecuted: false,
+      humanAccepted: false,
+      checks,
+      screenshot: {
+        filename: `home-furnishings-default-${document.documentElement?.lang ?? 'en'}-dark-${viewport.width}.png`,
+        mimeType: 'image/png',
+        encoding: 'base64',
+        bytes: png.length,
+        sha256: createHash('sha256').update(png).digest('hex'),
+        data: png.toString('base64')
+      },
+      consoleErrors: [...errors.consoleErrors],
+      pageErrors: [...errors.pageErrors]
+    };
+  } catch (error) {
+    return {
+      state: 'FAILED',
+      evidenceClass: 'REAL_BROWSER_SYNTHETIC_REFERENCE_INPUT',
+      viewport,
+      humanAccepted: false,
+      realCompanionTurnExecuted: false,
+      checks,
+      consoleErrors: [...errors.consoleErrors],
+      pageErrors: [...errors.pageErrors],
+      error: error instanceof Error ? error.message : String(error)
+    };
+  } finally {
+    page.off('request', onRequest);
+  }
+}
+
 async function runVesselStudioPracticumProof(browser,serverUrl){
   const run=async(viewport,reducedMotion)=>{
     const page=await browser.newPage({viewport}),consoleErrors=[],pageErrors=[],requests=[];
@@ -858,11 +1025,24 @@ if (playwright) {
         return{viewport,viewportClass,proof:{state:productExperience.state},productExperience,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
       }finally{await productPage.close();}
     };
+    const runFurnishingHomeViewportProof=async(viewport,viewportClass)=>{
+      const proofConsoleErrors=[],proofPageErrors=[],productPage=await browser.newPage({viewport});
+      productPage.on('console',(message)=>{if(message.type()==='error')proofConsoleErrors.push(message.text());});
+      productPage.on('pageerror',(error)=>proofPageErrors.push(error.message));
+      try{
+        await productPage.goto(serverUrl+'/reference/browser/',{waitUntil:'networkidle',timeout:30000});
+        await productPage.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__),null,{timeout:30000});
+        const productExperience=await runFurnishingHomeProductProof(productPage,viewport,{consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors});
+        return{viewport,viewportClass,proof:{state:productExperience.state},productExperience,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
+      }finally{await productPage.close();}
+    };
+    const furnishingHomeDesktop=await runFurnishingHomeViewportProof({width:1440,height:1000},'DESKTOP');
+    const furnishingHomeCompact=await runFurnishingHomeViewportProof({width:390,height:844},'COMPACT');
     const purposeWorkspaceDesktop=await runPurposeWorkspaceViewportProof({width:1440,height:1000},'DESKTOP',false);
     const purposeWorkspaceCompact=await runPurposeWorkspaceViewportProof({width:390,height:844},'COMPACT',true);
     const vesselStudioPracticum=await runVesselStudioPracticumProof(browser,serverUrl);
     const structuralViewportProofs=[journalDesktop,journalCompact,conversationDesktop,conversationCompact];
-    const viewportProofs=[...structuralViewportProofs,purposeWorkspaceDesktop,purposeWorkspaceCompact];
+    const viewportProofs=[...structuralViewportProofs,purposeWorkspaceDesktop,purposeWorkspaceCompact,furnishingHomeDesktop,furnishingHomeCompact];
     const allConsoleErrors = [...consoleErrors, ...compactConsoleErrors, ...viewportProofs.flatMap((item) => item.consoleErrors), ...vesselStudioPracticum.consoleErrors];
     const allPageErrors = [...pageErrors, ...compactPageErrors, ...viewportProofs.flatMap((item) => item.pageErrors), ...vesselStudioPracticum.pageErrors];
     const requiredProofs = [
@@ -885,6 +1065,8 @@ if (playwright) {
       conversationCompact,
       purposeWorkspaceDesktop,
       purposeWorkspaceCompact,
+      furnishingHomeDesktop,
+      furnishingHomeCompact,
       vesselStudioPracticum,
       livedDCompact,
       q2Compact,
