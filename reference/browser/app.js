@@ -263,10 +263,13 @@ async function openCurrentVexConversation(){
   const thread=project?.threads?.find((item)=>item.threadRef==='thread.self-development.open-conversation');
   const channel=channels.find((item)=>item.channelRef==='channel.self-development.companion'&&item.projectRef===project?.projectRef&&item.threadRef===thread?.threadRef);
   if(!project||!thread||!channel)throw new Error('Current Vex doorway requires the canonical Self Development Companion context');
-  chat.selectProject(project,'element.project.self-development');
-  chat.selectThread(project,thread,'element.thread.open-conversation');
-  chat.selectChannel(channel,'element.channel.companion');
-  openContext('chat','element.vex.current-companion.open');
+  navigation.navigate('element.vex.current-companion.open',{
+    projectRef:project.projectRef,
+    threadRef:thread.threadRef,
+    channelRef:channel.channelRef,
+    contextProjection:'chat'
+  },'action.view.select');
+  projectFrame();
   await chat.refreshCompanionAvailability();
   projectFrame();
   return {projectRef:project.projectRef,threadRef:thread.threadRef,channelRef:channel.channelRef};
