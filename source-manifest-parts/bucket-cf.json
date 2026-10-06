@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 6322,
       "sha256": "0c4386964ee74665a192d3e6ceb9b750f4861597bd62c95d37697e79805ae17e"
+    },
+    {
+      "path": "test/furnishing.test.mjs",
+      "mode": "100644",
+      "bytes": 22373,
+      "sha256": "9663e5eefd900114b124d70f64fc1ebd7e8920c1e9eb2cf00987e407c1735dc5"
     }
   ]
 }

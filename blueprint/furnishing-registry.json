@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "vexlife.furnishing-registry/v0",
+  "registryRef": "registry.vexlife.furnishing.001",
+  "registryVersion": 1,
+  "ownerRef": "github.issue.vexlife.811",
+  "parentRef": "github.issue.vexlife.624",
+  "sourcePlacementRef": "github.issue.vexlife.811.comment.6008774332",
+  "purpose": "Compose source-bound addressability, explicit single/multi-home placement intent, bounded orientation neighborhoods, currentness/visibility/reachability/availability/attention/recovery inputs, action discoverability and platform posture without acquiring semantic, relationship or effect authority.",
+  "effects": {
+    "network": false,
+    "provider": false,
+    "publication": false,
+    "Home": false,
+    "Memory": false,
+    "training": false,
+    "modelWeights": false,
+    "sensorActivation": false,
+    "relationshipMutation": false,
+    "conversationMutation": false,
+    "libraryMutation": false,
+    "semanticMutation": false,
+    "effectAuthority": false
+  },
+  "nonCollapseRules": [
+    "VEX_FURNISHING != SEMANTIC_OWNER",
+    "RESOURCE_IDENTITY != CURRENT_PLACEMENT",
+    "PLACEMENT_MOVE != RESOURCE_MIGRATION",
+    "GEOMETRY_MOVE != SEMANTIC_MOVE",
+    "MULTI_HOME_PROJECTION != DUPLICATE_RESOURCE",
+    "PLACED != CURRENTLY_VISIBLE",
+    "CURRENTLY_VISIBLE != CURRENTLY_EXECUTABLE",
+    "ADDRESSABILITY_LINK != SEMANTIC_RELATIONSHIP_EDGE",
+    "ACTION_REFERENCE != EFFECT_AUTHORITY",
+    "FURNISHING_REGISTRY != CURRENT_STATE_STORE",
+    "FURNISHING_PROJECTION != PRODUCT_TRUTH",
+    "PRESENTATION_GRAPH != SEMANTIC_OWNER",
+    "NAVIGATION_ROUTE != EFFECT_AUTHORITY",
+    "ANDROID_PROJECTION != ANDROID_SEMANTIC_FORK",
+    "VEX_PERCEPTION != EFFECT_AUTHORITY"
+  ],
+  "contract": {
+    "subjectClasses": [
+      "RESOURCE_PLACEMENT",
+      "DERIVED_COLLECTION",
+      "PRESENCE",
+      "CONTEXTUAL_INDEX",
+      "EXTERNAL_SERVICE"
+    ],
+    "movementClasses": ["G", "P", "V", "A", "S"],
+    "placementPostures": ["PLACED", "MULTI_HOME", "UNPLACED", "HELD"],
+    "addressabilityLinkClasses": [
+      "ORIENTATION_NEIGHBOR",
+      "CONTEXTUAL_PROJECTION",
+      "CONTINUATION_ENTRY",
+      "SOURCE_ASSOCIATION"
+    ],
+    "platformPostures": [
+      "SHARED_IDENTITY",
+      "ADAPTER_REQUIRED",
+      "HELD",
+      "NOT_APPLICABLE"
+    ],
+    "derivedStateVocabularies": {
+      "currentness": ["CURRENT", "HELD", "UNKNOWN"],
+      "visibility": ["VISIBLE", "HIDDEN", "HELD", "UNKNOWN"],
+      "reachability": ["REACHABLE", "UNREACHABLE", "HELD", "UNKNOWN"],
+      "availability": ["AVAILABLE", "UNAVAILABLE", "HELD", "UNKNOWN"],
+      "attention": ["ATTENTION", "NONE", "HELD", "UNKNOWN"],
+      "recovery": ["AVAILABLE", "UNAVAILABLE", "HELD", "UNKNOWN"]
+    },
+    "actionAvailabilityStates": ["AVAILABLE", "HELD", "UNAVAILABLE", "UNKNOWN"],
+    "projectionPolicy": {
+      "registryStoresDynamicTruth": false,
+      "missingRequiredBindingState": "UNKNOWN",
+      "conflictingSourceObservationsState": "UNKNOWN",
+      "semanticRelationAuthority": false,
+      "addressabilityLinksAreSemanticRelations": false,
+      "effectAuthorityGranted": false,
+      "boundedNeighborhoods": true,
+      "rawHistoryRequired": false
+    }
+  },
+  "furnishings": []
+}
