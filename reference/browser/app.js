@@ -58,7 +58,6 @@ let healthCompanionAvailability=null;
 let healthCompanionAvailabilityReadState='UNREQUESTED';
 let healthCompanionAvailabilityFailureCode=null;
 const healthCompanionAvailabilitySnapshot=()=>healthCompanionAvailability?structuredClone(healthCompanionAvailability):null;
-const HOME_COMPANION_AVAILABILITY_TIMEOUT_MS=5000;
 const UX_REFERENCE_PROJECTION='REFERENCE_PROJECTION',UX_EVOLUTION_PROJECTION='EVOLUTION_PROJECTION';
 const UX_EVOLUTION_LIFECYCLE_STATES=new Set(uxEvolutionShellScaffold.evolutionEnablement.acceptedLifecycleStates);
 const uxEvolutionAdapters=new Map();
@@ -200,7 +199,7 @@ async function refreshHealthCompanionAvailability(){
   healthCompanionAvailabilityFailureCode=null;
   renderHealth();
   try{
-    const response=await fetch(BROWSER_COMPANION_AVAILABILITY_PATH,{method:'GET',cache:'no-store',signal:AbortSignal.timeout(HOME_COMPANION_AVAILABILITY_TIMEOUT_MS)});
+    const response=await fetch(BROWSER_COMPANION_AVAILABILITY_PATH,{method:'GET',cache:'no-store'});
     if(!response.ok){
       healthCompanionAvailabilityFailureCode=`COMPANION_AVAILABILITY_HTTP_${response.status}`;
       throw new Error(healthCompanionAvailabilityFailureCode);
@@ -232,7 +231,7 @@ function renderHealth(){
     : {state:'UNAVAILABLE',executed:false,currentness:healthCompanionAvailabilityReadState==='UNREQUESTED'?'UNKNOWN':healthCompanionAvailabilityReadState,failureCodeOrNull:healthCompanionAvailabilityFailureCode};
   $('#technicalHealth').textContent=JSON.stringify({healthState:'ATTENTION',evidenceClass,dataTruthClass:state.dataTruthClass,presentationContractRef:rootContract.contractRef,presentationFoundation:'EXACT_E2_7_ROOT_BODY',primaryStageScreenRef:'screen.vexlife.terrain',contextProjection:state.contextProjection,platformRef:'platform.browser',repositoryReceipt:{state:'NOT_RUN',executed:false,currentness:'UNKNOWN'},modelReceipt,companionAvailability:availability,companionAvailabilityReadState:healthCompanionAvailabilityReadState,companionAvailabilityFailureCodeOrNull:healthCompanionAvailabilityFailureCode,currentScreenFrame:frame,fullJourneyCount:navigation.fullJourney().length,rawPointerLogging:false,designTokenRef:designTokens.tokenSetRef},null,2);
 }
-function homeCompanionStatusKey(availabilityState,readState=healthCompanionAvailabilityReadState){
+function homeCompanionStatusKey(availabilityState,readState='UNKNOWN'){
   if(readState==='LOADING'||readState==='UNREQUESTED')return 'home.vex.status.checking';
   switch(availabilityState){
     case 'READY':return 'home.vex.status.ready';
@@ -249,10 +248,15 @@ function renderFurnishingHome(){
   const homeVisible=!state.contextProjection&&!state.uxActiveSurfaceRef;
   host.hidden=!homeVisible;host.setAttribute('aria-hidden',String(!homeVisible));
   if(!homeVisible)return;
-  const availability=healthCompanionAvailabilitySnapshot(),availabilityState=availability?.availabilityState??'UNKNOWN';
+  const healthObserved=healthCompanionAvailabilityReadState!=='UNREQUESTED';
+  const conversationAvailability=chat?.companionAvailability?.()??null;
+  const conversationReadState=chat?.companionAvailabilityState?.()??'UNKNOWN';
+  const availability=healthObserved?healthCompanionAvailabilitySnapshot():conversationAvailability;
+  const readState=healthObserved?healthCompanionAvailabilityReadState:conversationReadState;
+  const availabilityState=availability?.availabilityState??readState??'UNKNOWN';
   const presence=$('#homeVexPresence'),status=$('#homeVexStatus');
   if(presence)presence.dataset.availabilityState=availabilityState;
-  if(status)status.textContent=t(homeCompanionStatusKey(availabilityState));
+  if(status)status.textContent=t(homeCompanionStatusKey(availabilityState,readState));
   const channel=chat?.currentChannel?.(),detail=$('#homeContinueDetail'),open=$('#homeContinueOpen');
   if(channel){
     const label=channel.kind==='DIRECT'&&channel.roleKey&&channel.roleKey!=='victor'?`${visibleRoleLabel('victor')} → ${visibleRoleLabel(channel.roleKey)}`:t(channel.labelRef);
@@ -270,8 +274,6 @@ async function openCurrentVexConversation(){
     channelRef:channel.channelRef,
     contextProjection:'chat'
   },'action.view.select');
-  projectFrame();
-  await chat.refreshCompanionAvailability();
   projectFrame();
   return {projectRef:project.projectRef,threadRef:thread.threadRef,channelRef:channel.channelRef};
 }
@@ -407,7 +409,7 @@ registerEvolutionSurfaceAdapter(CONVERSATION_EVOLUTION_SURFACE_REF,createConvers
 registerEvolutionSurfaceAdapter(PURPOSE_WORKSPACE_EVOLUTION_SURFACE_REF,purposeWorkspaceEvolution);
 await loadAndRegisterLivingJournalEvolutionSurface(globalThis.__VEXLIFE_APP__);
 projectFrame();
-void refreshHealthCompanionAvailability().then(()=>projectFrame());
+
 if(new URLSearchParams(globalThis.location.search).get('integration')==='1'){const{runBrowserIntegration}=await import('./integration-test.js');globalThis.__VEXLIFE_INTEGRATION_PROMISE__=runBrowserIntegration();}
 
 // [VXG RealForever]
