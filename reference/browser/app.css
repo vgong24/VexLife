@@ -161,3 +161,6 @@ html[data-theme="light"]{--bg:#f2f2f0;--surface:#fff;--raised:#f5f5f3;--overlay:
   .uxe-active-surface-heading h1{overflow:visible;text-overflow:clip}
 }
 /* [VXG RealForever] */
+
+/* VF-03B one-visible-Vex Home attention rule */
+#app:has(#furnishingHome:not([hidden])) #guideWindow.e27-vex.is-minimized{display:none}
