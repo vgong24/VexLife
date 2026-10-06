@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.furnishing-registry/v0",
   "registryRef": "registry.vexlife.furnishing.001",
-  "registryVersion": 1,
+  "registryVersion": 2,
   "ownerRef": "github.issue.vexlife.811",
   "parentRef": "github.issue.vexlife.624",
   "sourcePlacementRef": "github.issue.vexlife.811.comment.6008774332",
@@ -46,8 +46,19 @@
       "CONTEXTUAL_INDEX",
       "EXTERNAL_SERVICE"
     ],
-    "movementClasses": ["G", "P", "V", "A", "S"],
-    "placementPostures": ["PLACED", "MULTI_HOME", "UNPLACED", "HELD"],
+    "movementClasses": [
+      "G",
+      "P",
+      "V",
+      "A",
+      "S"
+    ],
+    "placementPostures": [
+      "PLACED",
+      "MULTI_HOME",
+      "UNPLACED",
+      "HELD"
+    ],
     "addressabilityLinkClasses": [
       "ORIENTATION_NEIGHBOR",
       "CONTEXTUAL_PROJECTION",
@@ -61,14 +72,48 @@
       "NOT_APPLICABLE"
     ],
     "derivedStateVocabularies": {
-      "currentness": ["CURRENT", "HELD", "UNKNOWN"],
-      "visibility": ["VISIBLE", "HIDDEN", "HELD", "UNKNOWN"],
-      "reachability": ["REACHABLE", "UNREACHABLE", "HELD", "UNKNOWN"],
-      "availability": ["AVAILABLE", "UNAVAILABLE", "HELD", "UNKNOWN"],
-      "attention": ["ATTENTION", "NONE", "HELD", "UNKNOWN"],
-      "recovery": ["AVAILABLE", "UNAVAILABLE", "HELD", "UNKNOWN"]
+      "currentness": [
+        "CURRENT",
+        "HELD",
+        "UNKNOWN"
+      ],
+      "visibility": [
+        "VISIBLE",
+        "HIDDEN",
+        "HELD",
+        "UNKNOWN"
+      ],
+      "reachability": [
+        "REACHABLE",
+        "UNREACHABLE",
+        "HELD",
+        "UNKNOWN"
+      ],
+      "availability": [
+        "AVAILABLE",
+        "UNAVAILABLE",
+        "HELD",
+        "UNKNOWN"
+      ],
+      "attention": [
+        "ATTENTION",
+        "NONE",
+        "HELD",
+        "UNKNOWN"
+      ],
+      "recovery": [
+        "AVAILABLE",
+        "UNAVAILABLE",
+        "HELD",
+        "UNKNOWN"
+      ]
     },
-    "actionAvailabilityStates": ["AVAILABLE", "HELD", "UNAVAILABLE", "UNKNOWN"],
+    "actionAvailabilityStates": [
+      "AVAILABLE",
+      "HELD",
+      "UNAVAILABLE",
+      "UNKNOWN"
+    ],
     "projectionPolicy": {
       "registryStoresDynamicTruth": false,
       "missingRequiredBindingState": "UNKNOWN",
@@ -80,5 +125,206 @@
       "rawHistoryRequired": false
     }
   },
-  "furnishings": []
+  "furnishings": [
+    {
+      "furnishingRef": "furnishing.vexlife.relationships",
+      "subject": {
+        "subjectClass": "RESOURCE_PLACEMENT",
+        "subjectRef": "feature.vexlife.relationships",
+        "resourceRefOrNull": "state.relationships",
+        "semanticOwnerRefs": [
+          "service.relationships"
+        ],
+        "sourceRefs": [
+          "feature.vexlife.relationships",
+          "state.relationships"
+        ]
+      },
+      "placement": {
+        "posture": "PLACED",
+        "primary": {
+          "placementRef": "placement.vexlife.relationships.self-development",
+          "terrainNodeRefOrNull": "terrain.resource.relationships",
+          "presentationRefOrNull": "presentation.vexlife.relationships.active-surface",
+          "routeRefOrNull": "route.relationships",
+          "experienceDispositionRefOrNull": null,
+          "ownerRefs": [
+            "github.issue.vexlife.237",
+            "service.relationships"
+          ],
+          "sourceRefs": [
+            "feature.vexlife.relationships",
+            "presentation.vexlife.relationships.active-surface"
+          ]
+        },
+        "contextual": []
+      },
+      "bindings": {
+        "currentness": [
+          {
+            "bindingRef": "binding.relationships.currentness",
+            "ownerRef": "service.relationships",
+            "sourceRef": "state.relationships",
+            "required": true
+          }
+        ],
+        "visibility": [
+          {
+            "bindingRef": "binding.relationships.visibility",
+            "ownerRef": "github.issue.vexlife.237",
+            "sourceRef": "presentation.vexlife.relationships.active-surface",
+            "required": true
+          }
+        ],
+        "reachability": [
+          {
+            "bindingRef": "binding.relationships.reachability",
+            "ownerRef": "github.issue.vexlife.719",
+            "sourceRef": "reachability.vexlife.relationships.active-surface",
+            "required": true
+          }
+        ],
+        "availability": [
+          {
+            "bindingRef": "binding.relationships.availability",
+            "ownerRef": "service.relationships",
+            "sourceRef": "state.relationships",
+            "required": true
+          }
+        ],
+        "attention": [],
+        "recovery": []
+      },
+      "actionBindings": [
+        {
+          "actionBindingRef": "action-binding.relationships.open",
+          "actionRef": "action.context.open",
+          "permissionRefOrNull": "permission.none",
+          "actionSourceRef": "feature.vexlife.relationships",
+          "availabilityBindingRef": "binding.relationships.action.open.availability",
+          "availabilityOwnerRef": "service.relationships",
+          "availabilitySourceRef": "state.relationships",
+          "required": true
+        },
+        {
+          "actionBindingRef": "action-binding.relationships.back",
+          "actionRef": "action.navigation.back",
+          "permissionRefOrNull": "permission.none",
+          "actionSourceRef": "feature.vexlife.relationships",
+          "availabilityBindingRef": "binding.relationships.action.back.availability",
+          "availabilityOwnerRef": "service.relationships",
+          "availabilitySourceRef": "state.relationships",
+          "required": true
+        }
+      ],
+      "addressabilityLinks": [
+        {
+          "linkRef": "addressability.relationships.addressed-conversation",
+          "linkClass": "CONTEXTUAL_PROJECTION",
+          "targetSubjectRef": "feature.vexlife.addressed-conversation",
+          "ownerRef": "service.conversation",
+          "sourceRef": "feature.vexlife.addressed-conversation",
+          "semanticRelationAuthority": false
+        }
+      ],
+      "platformProjections": [],
+      "wakePredicates": []
+    },
+    {
+      "furnishingRef": "furnishing.vexlife.addressed-conversation",
+      "subject": {
+        "subjectClass": "RESOURCE_PLACEMENT",
+        "subjectRef": "feature.vexlife.addressed-conversation",
+        "resourceRefOrNull": "feature.vexlife.addressed-conversation",
+        "semanticOwnerRefs": [
+          "service.conversation"
+        ],
+        "sourceRefs": [
+          "feature.vexlife.addressed-conversation",
+          "state.channels",
+          "state.messages"
+        ]
+      },
+      "placement": {
+        "posture": "PLACED",
+        "primary": {
+          "placementRef": "placement.vexlife.addressed-conversation.open-thread",
+          "terrainNodeRefOrNull": "terrain.thread.open-conversation",
+          "presentationRefOrNull": "presentation.vexlife.conversation.active-surface",
+          "routeRefOrNull": "route.chat",
+          "experienceDispositionRefOrNull": null,
+          "ownerRefs": [
+            "github.issue.vexlife.696",
+            "service.conversation"
+          ],
+          "sourceRefs": [
+            "feature.vexlife.addressed-conversation",
+            "presentation.vexlife.conversation.active-surface"
+          ]
+        },
+        "contextual": []
+      },
+      "bindings": {
+        "currentness": [
+          {
+            "bindingRef": "binding.addressed-conversation.currentness",
+            "ownerRef": "service.conversation",
+            "sourceRef": "state.channels",
+            "required": true
+          }
+        ],
+        "visibility": [
+          {
+            "bindingRef": "binding.addressed-conversation.visibility",
+            "ownerRef": "github.issue.vexlife.696",
+            "sourceRef": "presentation.vexlife.conversation.active-surface",
+            "required": true
+          }
+        ],
+        "reachability": [
+          {
+            "bindingRef": "binding.addressed-conversation.reachability",
+            "ownerRef": "github.issue.vexlife.719",
+            "sourceRef": "reachability.vexlife.conversation.active-surface",
+            "required": true
+          }
+        ],
+        "availability": [
+          {
+            "bindingRef": "binding.addressed-conversation.availability",
+            "ownerRef": "service.conversation",
+            "sourceRef": "state.channels",
+            "required": true
+          }
+        ],
+        "attention": [],
+        "recovery": []
+      },
+      "actionBindings": [
+        {
+          "actionBindingRef": "action-binding.addressed-conversation.channel-select",
+          "actionRef": "action.channel.select",
+          "permissionRefOrNull": "permission.none",
+          "actionSourceRef": "feature.vexlife.addressed-conversation",
+          "availabilityBindingRef": "binding.addressed-conversation.action.channel-select.availability",
+          "availabilityOwnerRef": "service.conversation",
+          "availabilitySourceRef": "state.channels",
+          "required": true
+        },
+        {
+          "actionBindingRef": "action-binding.addressed-conversation.message-send",
+          "actionRef": "action.message.send",
+          "permissionRefOrNull": "permission.conversation.send",
+          "actionSourceRef": "feature.vexlife.addressed-conversation",
+          "availabilityBindingRef": "binding.addressed-conversation.action.message-send.availability",
+          "availabilityOwnerRef": "service.conversation",
+          "availabilitySourceRef": "state.channels",
+          "required": true
+        }
+      ],
+      "addressabilityLinks": [],
+      "platformProjections": [],
+      "wakePredicates": []
+    }
+  ]
 }

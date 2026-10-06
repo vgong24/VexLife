@@ -5,8 +5,8 @@
     {
       "path": "blueprint/furnishing-registry.json",
       "mode": "100644",
-      "bytes": 3172,
-      "sha256": "618ce78fb30fd4a760132eec5d1fd004441e357e17ebf21e851ac888ae828fa7"
+      "bytes": 10818,
+      "sha256": "3532368142f0665acf5ea9923acd7f6a3ca5d8e4d1acb93a603a8707b2931778"
     },
     {
       "path": "blueprint/intent-trust-snapshot.json",

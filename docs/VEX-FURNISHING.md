@@ -375,3 +375,75 @@ Library / VexStream Music
 That wave must prove that a real human can find/resume/understand those subjects and that Vex can reconstruct the same bounded neighborhood, currentness and source/why picture—while all semantic/effect owners remain intact.
 
 <!-- [VXG RealForever][811][813][VEX-FURNISHING][VF02A] -->
+
+## VF-03A — adopt current lived Relationships + addressed Conversation
+
+VF-03A is the first populated Furnishing adoption. It does not move the UI. It records two already-current lived placements so Vex and later currentness consumers can orient through the same identities a human already uses.
+
+```text
+furnishing.vexlife.relationships
+  subject = feature.vexlife.relationships
+  resource = state.relationships
+  semantic owner = service.relationships
+  primary = terrain.resource.relationships
+          + presentation.vexlife.relationships.active-surface
+          + route.relationships
+
+furnishing.vexlife.addressed-conversation
+  subject/resource = feature.vexlife.addressed-conversation
+  semantic owner = service.conversation
+  source state = state.channels + state.messages
+  primary = terrain.thread.open-conversation
+          + presentation.vexlife.conversation.active-surface
+          + route.chat
+```
+
+The Relationships record keeps its accepted Self Development placement. VF-03A does **not** move Relationships merely to match an earlier candidate-district sketch.
+
+Relationships carries one source-bound `CONTEXTUAL_PROJECTION` addressability link toward addressed Conversation. That means “Conversation is a legitimate surface reachable from this human context”; it does not assert friendship, reciprocal trust, channel membership or conversation ownership.
+
+### Current-source reference universe
+
+Once the registry is populated, `knownRefs` is no longer a test-only input. The CLI derives the reference universe from **typed current identity sources**:
+
+```text
+loadBlueprint()
+-> compileRegistryPack(bundle).entries + aliases
+-> STATE_DOMAIN.ownerRef values carried by typed registry entries
+
+blueprint/presentation-graph-registry.json
+-> registry/foundation/owner identities
+-> typed presentation-node identities/owners/source refs
+-> typed reachability identities/steps
+
+union
+-> Furnishing knownRefs
+```
+
+There is deliberately no recursive `*Ref` / `*Refs` suffix scan. A key such as `inputSchema.pathRefs` describes future input shape and is not current reference-bearing data merely because its name ends in `Refs`. Likewise arbitrary nested config/prose and runtime binding strings never become identity authority. Typed nullable source refs contribute no identity when `null`; malformed non-null values in the bounded typed adapters still fail closed. Required-vs-optional validity remains owned by each canonical source validator.
+
+```text
+FURNISHING_KNOWN_REFS != SECOND_IDENTITY_REGISTRY
+REFERENCE_UNIVERSE = PROJECTION_OF_CURRENT_CANONICAL_SOURCE
+```
+
+The reference universe also retains **source-derived kind metadata**. Furnishing does not infer kinds from string prefixes. Fields with unambiguous identity classes fail closed against existing-but-wrong-kind refs:
+
+```text
+terrainNodeRefOrNull -> TERRAIN
+presentationRefOrNull -> PRESENTATION
+routeRefOrNull -> ROUTE
+actionRef -> ACTION
+permissionRefOrNull -> PERMISSION
+platformRef -> PLATFORM
+```
+
+Broader owner/source/resource fields remain source-bound without forcing a narrower class than their current owners define. A non-empty Furnishing compile requires both reference existence and this typed-kind catalog; a plain untyped Set is insufficient.
+
+### Runtime truth remains separate
+
+Static population does not make either furnishing current or executable. Until rightful runtime/currentness observations are supplied, projection remains `UNKNOWN` for currentness, visibility, reachability, availability and action availability.
+
+The Conversation record may expose `action.channel.select` and `action.message.send` identities by reference, but `AVAILABLE` is still an observation, not a registry claim, and every projected action retains `effectAuthorityGranted=false`.
+
+Continue, Library, shell-level Companion presence and VexStream Music remain outside VF-03A until their separately requested owner/source seams converge.
