@@ -622,6 +622,8 @@ async function runFurnishingHomeProductProof(page, viewport, errors) {
       const messageCount = [...app.messages.values()].reduce((count, list) => count + list.length, 0);
       const statusKeys = ['READY','RECOVERABLE','HELD','UNKNOWN'].map((state) => app.homeCompanionStatusKey(state));
       return {
+        locale: document.documentElement.lang || 'und',
+        theme: document.documentElement.dataset.theme || 'default',
         frame: app.navigation.semanticFrame(),
         journeyLength: app.navigation.fullJourney().length,
         messageCount,
@@ -737,7 +739,7 @@ async function runFurnishingHomeProductProof(page, viewport, errors) {
       humanAccepted: false,
       checks,
       screenshot: {
-        filename: `home-furnishings-default-${document.documentElement?.lang ?? 'en'}-dark-${viewport.width}.png`,
+        filename: `home-furnishings-default-${initial.locale}-${initial.theme}-${viewport.width}.png`,
         mimeType: 'image/png',
         encoding: 'base64',
         bytes: png.length,
