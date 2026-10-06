@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "7e",
+  "files": [
+    {
+      "path": "test/android-r2-project-skeleton.test.mjs",
+      "mode": "100644",
+      "bytes": 9389,
+      "sha256": "c416b327aa0a4f7c9a306b69fdf5658ff7cf2ea019ba87cfebcc84d206ced4bf"
+    }
+  ]
+}

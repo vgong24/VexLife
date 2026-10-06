@@ -17,8 +17,8 @@
     {
       "path": "platform/android/README.md",
       "mode": "100644",
-      "bytes": 930,
-      "sha256": "f7deee74f730e8d7f670923e2214c2b73e4c645e1970be8dc8b36e01aa10cda0"
+      "bytes": 1538,
+      "sha256": "d138608d271609b36eb44e7c02d69d4ac69e84b0003792af3e03132e44bfaadc"
     },
     {
       "path": "scripts/build-admission-check.mjs",

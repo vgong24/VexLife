@@ -9,6 +9,12 @@
       "sha256": "30a67a574b9968c704e503f1ee1e2c28d8db570da3b16c9567c02a729d1efcc0"
     },
     {
+      "path": "platform/android/app/src/test/kotlin/vexlife/android/app/R2ArchitectureContractTest.kt",
+      "mode": "100644",
+      "bytes": 4832,
+      "sha256": "75932d81e137995e80d1073d47997321af778d718c7a91c54619a5aa5513b645"
+    },
+    {
       "path": "test/fcf05-purpose-workspace-draft-transaction.test.mjs",
       "mode": "100644",
       "bytes": 11993,

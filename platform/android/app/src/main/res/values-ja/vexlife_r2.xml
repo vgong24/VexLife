@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">VexLife</string>
+    <string name="r2_architecture_title">Android ランタイム アーキテクチャ</string>
+    <string name="r2_ready">R2 アーキテクチャ スケルトンは準備完了です</string>
+    <string name="r2_request_attention">会話への注意をリクエスト</string>
+    <string name="r2_attention_admitted">注意リクエストをローカルで受理しました</string>
+</resources>

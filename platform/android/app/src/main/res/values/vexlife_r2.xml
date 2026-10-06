@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">VexLife</string>
+    <string name="r2_architecture_title">Android Runtime Architecture</string>
+    <string name="r2_ready">R2 architecture skeleton ready</string>
+    <string name="r2_request_attention">Request conversation attention</string>
+    <string name="r2_attention_admitted">Attention request admitted locally</string>
+</resources>

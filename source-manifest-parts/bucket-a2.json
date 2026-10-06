@@ -9,6 +9,12 @@
       "sha256": "fa36b57f114dc6e8e1cb0db7ec6e9ff8b5124baa9a841d54403a862e64897d63"
     },
     {
+      "path": "platform/android/app/src/main/kotlin/vexlife/android/app/VexAppViewModel.kt",
+      "mode": "100644",
+      "bytes": 1704,
+      "sha256": "a41db9ffdeb2e981c52af4a82306107f65a99c53f65aff190305c7b4159771e5"
+    },
+    {
       "path": "reference/browser/modules/living-journal-controller.js",
       "mode": "100644",
       "bytes": 37941,

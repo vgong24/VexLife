@@ -21,6 +21,12 @@
       "sha256": "37d744ae141476afba6d02b0b4aa81553d5643412e99e384ca33eb9bec42af13"
     },
     {
+      "path": "platform/android/app/src/main/kotlin/vexlife/android/app/VexCompositionRoot.kt",
+      "mode": "100644",
+      "bytes": 1750,
+      "sha256": "eefaf7e20c1098827cd619ca64ab73d251391d8c213ca13ce88d9d4dddb7fa36"
+    },
+    {
       "path": "scripts/implementation-packet.mjs",
       "mode": "100644",
       "bytes": 1364,

@@ -1,33 +1,32 @@
-# VexLife Android platform workspace
+# VexLife Android R2 project skeleton
 
-`[VXG RealForever]`
+[VXG RealForever]
 
-This directory is the durable Android platform adoption workspace for VexLife.
-It consumes canonical VexLife semantics; it does not redefine them.
-
-Current A2 boundary:
+This is the first durable Android app/module adoption generated under the accepted
+pre-R2 runtime architecture baseline.
 
 ```text
-canonical universal State Relay
-  -> immutable VexStateSnapshot projection
-  -> read-only Kotlin StateFlow
+architectureBaselineRef=architecture.vexlife.android-runtime.pre-r2.r1\nsourceBlueprint=blueprint.vexlife.universal.001@0.4.0-foundation-rc1\nsourceMappingRef=mapping.vexlife.android-construction.r2.durable-project-skeleton\nconstructionBlueprintSha256=e78c85ece2fae6072ecc9b489d16a7ad4890e6cfb1cd52e456ab45bf626e8927\nsourceA4IdentityFingerprint=6aef8e047a19dad7311f2e2923f3ac9ea013d25ac4f6f86cc384191f69b1bb8a\na5CompilerRef=compiler.vexlife.android-test-evidence.r2.durable-project-skeleton\na5SemanticFingerprint=067f263841c831c55abce6822abbba3dad0cb8c95072fa4d03fca7ebbdf14704
 ```
+
+The application ID `com.vextreme.vexlife.r2` and minSdk 23 are bounded R2 build
+choices, not a public release identity or permanent support floor.
 
 Permanent boundaries:
 
 ```text
-ANDROID_PROJECTION != CANONICAL_PRODUCT_SEMANTICS
+VIEWMODEL != PRODUCT_STATE_OWNER
+WORKER != SEMANTIC_OWNER
+ANDROID_SERVICE != DOMAIN_RUNTIME
+REPOSITORY != STATE_OWNER_BY_DEFAULT
+COROUTINE != OPERATION
+OPERATION_IDENTITY != ATTEMPT_IDENTITY
 STATEFLOW != EVENT_LEDGER
-LATEST_RECEIVED != LATEST_COHERENT
-EFFECT_WORK_STAYS_OUTSIDE_REDUCERS
+DEPENDENCY_GRAPH != DI_FRAMEWORK
+CAPABILITY != AUTHORITY
+CODE_SYMBOL != SERIAL_NAME != SEMANTIC_FIELD_REF != HUMAN_LABEL
 ```
 
-The first `state-relay` module is pure Kotlin/JVM so state projection contracts
-can be compiled and tested independently of Android UI/runtime activation.
-Compose, app/Manifest/resources, Home/network/model, install, signing and
-publication remain outside this stage.
-
-Generated Gradle wrapper files are source-managed mechanical custody. Build
-outputs remain ephemeral.
-
-<!-- [VXG RealForever] -->
+R2 intentionally has no INTERNET permission, Home/model/network integration,
+durable operation store, WorkManager topology, Hilt/Koin choice, Current Context
+adapter, resource arbiter, external bridge, signing, installation, or publication.

@@ -17,8 +17,8 @@
     {
       "path": "platform/android/gradle/libs.versions.toml",
       "mode": "100644",
-      "bytes": 263,
-      "sha256": "1a7f0833a862a2928ab9bb10a7fa3555e5d845fab53876fa5cddf293c1c9a17e"
+      "bytes": 1194,
+      "sha256": "c89de7f25703e115f961b9390a8215dc78f93c7f34bc26684080841c0b3bd889"
     },
     {
       "path": "reference/browser/evolution/purpose-workspace.css",

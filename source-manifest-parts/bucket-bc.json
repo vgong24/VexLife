@@ -15,6 +15,12 @@
       "sha256": "1b7f09b2867a11b8a4f64f275067665128f64dca9a8c032ad94e827b5bfae746"
     },
     {
+      "path": "scripts/generate-android-r2.mjs",
+      "mode": "100755",
+      "bytes": 5501,
+      "sha256": "dc75f0752ba254a6a1d1f5f76a7f1b15c4938ec0ed3890ee4403d46958af76ac"
+    },
+    {
       "path": "test/macos-lifecycle.test.mjs",
       "mode": "100755",
       "bytes": 27454,
