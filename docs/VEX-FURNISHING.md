@@ -404,21 +404,23 @@ Relationships carries one source-bound `CONTEXTUAL_PROJECTION` addressability li
 
 ### Current-source reference universe
 
-Once the registry is populated, `knownRefs` is no longer a test-only input. The CLI derives the reference universe from current canonical source:
+Once the registry is populated, `knownRefs` is no longer a test-only input. The CLI derives the reference universe from **typed current identity sources**:
 
 ```text
 loadBlueprint()
 -> compileRegistryPack(bundle).entries + aliases
--> explicit *Ref / *Refs / *RefOrNull values in the validated Blueprint bundle
+-> STATE_DOMAIN.ownerRef values carried by typed registry entries
 
 blueprint/presentation-graph-registry.json
--> explicit ref fields
+-> registry/foundation/owner identities
+-> typed presentation-node identities/owners/source refs
+-> typed reachability identities/steps
 
 union
 -> Furnishing knownRefs
 ```
 
-Only source fields with explicit reference semantics are collected. Human labels, docs prose and arbitrary strings are never promoted into reference authority. Reference extraction is projection-only: a canonical source field with `null` contributes no identity, while any non-null singular `*Ref` / `*RefOrNull` value must be a non-empty string and any non-null `*Refs` value must be an array of non-empty strings. Required-vs-optional source validity remains owned by the canonical source validators; Furnishing does not reinterpret a legitimate `parentRef=null` as a broken identity.
+There is deliberately no recursive `*Ref` / `*Refs` suffix scan. A key such as `inputSchema.pathRefs` describes future input shape and is not current reference-bearing data merely because its name ends in `Refs`. Likewise arbitrary nested config/prose and runtime binding strings never become identity authority. Typed nullable source refs contribute no identity when `null`; malformed non-null values in the bounded typed adapters still fail closed. Required-vs-optional validity remains owned by each canonical source validator.
 
 ```text
 FURNISHING_KNOWN_REFS != SECOND_IDENTITY_REGISTRY
