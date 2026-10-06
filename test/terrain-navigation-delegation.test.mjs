@@ -201,6 +201,55 @@ test('TND-00..12 real Terrain request delegation preserves performer/default bou
     } catch (error) { return {name:error.name,message:error.message}; }
   }, { fixtureHtml, blueprint });
   assert.deepEqual(invalid, { name:'Error', message:'E2.8 Terrain requestSemanticTravel must be a function or null' });
+  const supplementPage = await browser.newPage();
+  await supplementPage.emulateMedia({ reducedMotion: 'reduce' });
+  await supplementPage.goto(base);
+  const supplement = await supplementPage.evaluate(async ({ fixtureHtml, blueprint }) => {
+    document.body.innerHTML = fixtureHtml;
+    const { createTerrainController } = await import('/reference/browser/modules/terrain-controller.js');
+    const state = { terrain:{ selected:'root' } };
+    const navigationEvents = [];
+    const calls = [];
+    const navigation = {
+      fullJourney:()=>[],
+      semanticFrame:()=>({ screenRef:'screen.vexlife.terrain', routeRef:'route.terrain', contextProjection:null, selectedNodeRef:state.terrain.selected }),
+      navigate:(elementRef,patch,actionRef)=>{ navigationEvents.push({elementRef,patch,actionRef}); return null; }
+    };
+    createTerrainController({
+      state, blueprint, t:(ref)=>ref, navigation,
+      semanticPatchForNode:(ref)=>({ selectedNodeRef:ref }),
+      renderCurrentContextSupplement:(host,facts)=>{
+        calls.push(structuredClone(facts));
+        host.textContent='CURRENT CONTEXT SUPPLEMENT';
+        host.dataset.proof='PRESENTATION_ONLY';
+      }
+    });
+    return {
+      calls,
+      text:document.querySelector('#terrainCurrentContextSupplement')?.textContent ?? null,
+      proof:document.querySelector('#terrainCurrentContextSupplement')?.dataset.proof ?? null,
+      currentRef:state.terrain.selected,
+      navigationEvents
+    };
+  }, { fixtureHtml, blueprint });
+  assert.equal(supplement.text, 'CURRENT CONTEXT SUPPLEMENT');
+  assert.equal(supplement.proof, 'PRESENTATION_ONLY');
+  assert.equal(supplement.currentRef, 'root');
+  assert.equal(supplement.navigationEvents.length, 0);
+  assert.equal(supplement.calls.length, 1);
+  assert.equal(supplement.calls[0].terrainNodeRef, 'root');
+  assert.equal(supplement.calls[0].semanticFrame.selectedNodeRef, 'root');
+
+  const invalidSupplement = await supplementPage.evaluate(async ({ fixtureHtml, blueprint }) => {
+    document.body.innerHTML = fixtureHtml;
+    const { createTerrainController } = await import('/reference/browser/modules/terrain-controller.js');
+    try {
+      createTerrainController({state:{terrain:{selected:'root'}},blueprint,t:(x)=>x,navigation:{fullJourney:()=>[],semanticFrame:()=>({}),navigate:()=>null},renderCurrentContextSupplement:{}});
+      return null;
+    } catch (error) { return {name:error.name,message:error.message}; }
+  }, { fixtureHtml, blueprint });
+  assert.deepEqual(invalidSupplement, { name:'Error', message:'E2.9 Terrain renderCurrentContextSupplement must be a function or null' });
+
 
   const defaultPage = await browser.newPage();
   await defaultPage.emulateMedia({ reducedMotion: 'reduce' });
