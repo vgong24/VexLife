@@ -418,7 +418,7 @@ union
 -> Furnishing knownRefs
 ```
 
-Only source fields with explicit reference semantics are collected. Human labels, docs prose and arbitrary strings are never promoted into reference authority.
+Only source fields with explicit reference semantics are collected. Human labels, docs prose and arbitrary strings are never promoted into reference authority. Reference extraction is projection-only: a canonical source field with `null` contributes no identity, while any non-null singular `*Ref` / `*RefOrNull` value must be a non-empty string and any non-null `*Refs` value must be an array of non-empty strings. Required-vs-optional source validity remains owned by the canonical source validators; Furnishing does not reinterpret a legitimate `parentRef=null` as a broken identity.
 
 ```text
 FURNISHING_KNOWN_REFS != SECOND_IDENTITY_REGISTRY
