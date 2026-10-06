@@ -4,4 +4,6 @@
     <string name="r2_ready">R2 アーキテクチャ スケルトンは準備完了です</string>
     <string name="r2_request_attention">会話への注意をリクエスト</string>
     <string name="r2_attention_admitted">注意リクエストをローカルで受理しました</string>
+    <string name="r4_remote_vessel_title">Android優先</string>
+    <string name="r4_remote_vessel_status">プレビュー — セキュリティランタイム未接続</string>
 </resources>

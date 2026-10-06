@@ -30,3 +30,21 @@ CODE_SYMBOL != SERIAL_NAME != SEMANTIC_FIELD_REF != HUMAN_LABEL
 R2 intentionally has no INTERNET permission, Home/model/network integration,
 durable operation store, WorkManager topology, Hilt/Koin choice, Current Context
 adapter, resource arbiter, external bridge, signing, installation, or publication.
+
+## R4 — native Android Remote Vessel reference surface
+
+R4 projects the accepted Android Remote Vessel reference into the native Compose host without
+creating pairing, authentication, authorization, Home, network, credential or model authority.
+
+```text
+presentationRef=presentation.vexlife.security-access.android-remote-vessel
+referenceState=UNPAIRED
+canonicalWriter=DESKTOP_HOME_NODE
+remoteWriterGranted=false
+productSemanticOwnership=false
+physicalDeviceEffect=false
+```
+
+The surface is presentation-only: it has no action callback, route, network adapter, Home adapter,
+or mutable product-state owner. The accepted A2 StateFlow projection and R2 runtime ownership
+boundaries remain unchanged.
