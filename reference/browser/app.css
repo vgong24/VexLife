@@ -166,3 +166,15 @@ html[data-theme="light"]{--bg:#f2f2f0;--surface:#fff;--raised:#f5f5f3;--overlay:
 }
 /* [VXG RealForever] */
 
+
+
+/* VF-03B compact current-context secondary-control clearance */
+@media(max-width:760px){
+  #view-terrain{--terrain-secondary-controls-top:320px}
+  .e27-zoom-rail{left:8px;right:132px;top:var(--terrain-secondary-controls-top);width:auto;display:flex;align-items:center;justify-content:flex-start;gap:6px;transform:none}
+  .e27-zoom-track,.e27-zoom-percent,.e28-auto-entry-state{display:none}
+  .e27-zoom-button{width:44px;height:44px;flex:0 0 44px}
+  .e27-auto-entry{width:auto;min-width:0;flex:1;min-height:44px;display:flex;align-items:center;padding:6px 8px}
+  .e27-auto-entry label:first-child{margin:0;white-space:normal}
+  .e28-terrain-instrumentation{left:auto;right:8px;top:var(--terrain-secondary-controls-top);width:116px;max-height:58vh}
+}
