@@ -437,6 +437,8 @@ test('VF03A-00 canonical reference universe accepts explicit refs but not arbitr
     sourceObjects: [{
       ownerRef:'service.relationships',
       sourceRefs:['state.relationships'],
+      parentRef:null,
+      optionalRefs:null,
       label:'service.relationships SHOULD_NOT_ENTER_FROM_PROSE',
       nested:{ presentationRefOrNull:'presentation.vexlife.relationships.active-surface' }
     }]
@@ -447,6 +449,14 @@ test('VF03A-00 canonical reference universe accepts explicit refs but not arbitr
   assert.equal(universe.has('state.relationships'), true);
   assert.equal(universe.has('presentation.vexlife.relationships.active-surface'), true);
   assert.equal(universe.has('service.relationships SHOULD_NOT_ENTER_FROM_PROSE'), false);
+  assert.equal(universe.has(null), false);
+
+  assert.throws(() => buildFurnishingReferenceUniverse({
+    sourceObjects:[{ ownerRef:42 }]
+  }), /must be null or a non-empty ref string/u);
+  assert.throws(() => buildFurnishingReferenceUniverse({
+    sourceObjects:[{ sourceRefs:'state.relationships' }]
+  }), /must be null or an array of ref strings/u);
 });
 
 test('VF03A-01 current source registry contains exactly the first two accepted lived furnishings', () => {
