@@ -207,6 +207,109 @@
       ]
     },
     {
+      "regionRef": "region.shell.home-furnishings",
+      "conceptRef": "concept.region.shell.home-furnishings",
+      "navigationNodeRef": "nav.region.shell.home-furnishings",
+      "labelStringRef": "home.furnishings.label",
+      "presentationClass": "HOME_FURNISHINGS",
+      "defaultVisible": true,
+      "persistentCanvasConsumer": false,
+      "elements": [
+        {
+          "elementRef": "element.vex.current-companion.status",
+          "conceptRef": "concept.element.vex.current-companion.status",
+          "interactionRef": "interaction.vex.current-companion.status",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.vex-presence",
+          "kind": "CURRENT_COMPANION_STATUS",
+          "presentationClass": "SOURCE_BOUND_COMPANION_STATUS",
+          "defaultVisible": true,
+          "labelStringRef": "home.vex.status.label",
+          "actionRef": null,
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "status",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.vex.current-companion.status"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.vex.current-companion.open",
+          "conceptRef": "concept.element.vex.current-companion.open",
+          "interactionRef": "interaction.vex.current-companion.open",
+          "navigationRef": "navpath.shell.current-vex",
+          "journeyEventTypeRef": "journey.view-select",
+          "kind": "CURRENT_COMPANION_ENTRY",
+          "presentationClass": "HUMAN_PRIMARY_COMPANION_ENTRY",
+          "defaultVisible": true,
+          "labelStringRef": "home.vex.talk",
+          "actionRef": "action.view.select",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.vex.current-companion.open"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.furnishing.continue.open-current",
+          "conceptRef": "concept.element.furnishing.continue.open-current",
+          "interactionRef": "interaction.furnishing.continue.open-current",
+          "navigationRef": "navpath.shell.continue-current",
+          "journeyEventTypeRef": "journey.view-select",
+          "kind": "FURNISHING_CONTINUE_ENTRY",
+          "presentationClass": "DERIVED_CURRENT_CONTEXT_ENTRY",
+          "defaultVisible": true,
+          "labelStringRef": "home.continue.open",
+          "actionRef": "action.view.select",
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "button",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.furnishing.continue.open-current"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        },
+        {
+          "elementRef": "element.furnishing.library.status",
+          "conceptRef": "concept.element.furnishing.library.status",
+          "interactionRef": "interaction.furnishing.library.status",
+          "navigationRef": null,
+          "journeyEventTypeRef": "journey.library-index",
+          "kind": "FURNISHING_LIBRARY_INDEX",
+          "presentationClass": "CONTEXTUAL_INDEX_STATUS",
+          "defaultVisible": true,
+          "labelStringRef": "home.library.title",
+          "actionRef": null,
+          "permissionRef": null,
+          "selectionGroupRef": null,
+          "terrainNodeRef": null,
+          "accessibility": {
+            "role": "region",
+            "minimumTargetPx": 44,
+            "stableIdentifierRef": "element.furnishing.library.status"
+          },
+          "testRefs": [
+            "test.navigation.screen-frame"
+          ]
+        }
+      ]
+    },
+    {
       "regionRef": "region.shell.contextual-workspace",
       "conceptRef": "concept.region.shell.contextual-workspace",
       "navigationNodeRef": "nav.region.shell.contextual-workspace",
