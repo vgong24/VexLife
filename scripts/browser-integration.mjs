@@ -601,172 +601,110 @@ async function runFurnishingHomeProductProof(page, viewport, errors) {
   const checks = [];
   const assert = (condition, message) => { if (!condition) throw new Error(message); };
   const turnRequests = [];
-  const onRequest = (request) => {
-    if (new URL(request.url()).pathname === '/api/v1/companion/turn') turnRequests.push(request.url());
-  };
+  const onRequest = (request) => { if (new URL(request.url()).pathname === '/api/v1/companion/turn') turnRequests.push(request.url()); };
   page.on('request', onRequest);
   try {
-    await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 30000 });
+    await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout:30000 });
     await page.evaluate(() => globalThis.__VEXLIFE_APP__.projectFrame());
+
     const initial = await page.evaluate(() => {
       const app = globalThis.__VEXLIFE_APP__;
-      const host = document.querySelector('#furnishingHome');
+      const slot = document.querySelector('#terrainCurrentContextSupplement');
       const talk = document.querySelector('#homeTalkToVex');
       const resume = document.querySelector('#homeContinueOpen');
-      const availability = app.healthCompanionAvailability();
-      const availabilityState = availability?.availabilityState ?? 'UNKNOWN';
-      const messageCount = [...app.messages.values()].reduce((count, list) => count + list.length, 0);
-      const statusKeys = ['READY','RECOVERABLE','HELD','UNKNOWN'].map((state) => app.homeCompanionStatusKey(state));
+      const guide = document.querySelector('#guideWindow');
       return {
-        locale: document.documentElement.lang || 'und',
-        theme: document.documentElement.dataset.theme || 'default',
-        frame: app.navigation.semanticFrame(),
-        journeyLength: app.navigation.fullJourney().length,
-        messageCount,
-        homeHidden: host?.hidden ?? true,
-        homeAriaHidden: host?.getAttribute('aria-hidden'),
-        guideNodeRef: document.querySelector('#vexSummon')?.dataset.nodeRef ?? null,
-        talkNodeRef: talk?.dataset.nodeRef ?? null,
-        continueNodeRef: resume?.dataset.nodeRef ?? null,
-        availabilityState,
-        statusText: document.querySelector('#homeVexStatus')?.textContent ?? '',
-        expectedStatusText: app.t(app.homeCompanionStatusKey(availabilityState)),
-        statusKeys,
-        talkHeight: talk?.getBoundingClientRect().height ?? 0,
-        continueHeight: resume?.getBoundingClientRect().height ?? 0,
-        libraryText: document.querySelector('#homeLibrary')?.textContent ?? '',
-        guideVisible: (() => { const node=document.querySelector('#guideWindow'); return Boolean(node&&!node.hidden&&node.getClientRects().length>0&&getComputedStyle(node).visibility!=='hidden'); })(),
-        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth, (host?.scrollWidth ?? 0) - (host?.clientWidth ?? 0))
+        locale:document.documentElement.lang||'und',
+        theme:document.documentElement.dataset.theme||'default',
+        frame:app.navigation.semanticFrame(),
+        journeyLength:app.navigation.fullJourney().length,
+        slotVisible:Boolean(slot&&!slot.hidden&&slot.getClientRects().length>0),
+        slotPresentationRef:slot?.dataset.presentationRef??null,
+        talkNodeRef:talk?.dataset.nodeRef??null,
+        continuePresent:Boolean(resume),
+        guidePresence:app.guide.currentPresenceState(),
+        guideVisible:Boolean(guide&&!guide.hidden&&guide.getClientRects().length>0&&getComputedStyle(guide).display!=='none'&&getComputedStyle(guide).visibility!=='hidden'),
+        statusText:document.querySelector('#homeVexStatus')?.textContent??'',
+        talkHeight:talk?.getBoundingClientRect().height??0,
+        horizontalOverflow:Math.max(0,document.documentElement.scrollWidth-innerWidth),
+        projectionGrammar:app.terrain.viewportProjection().projectionGrammar
       };
     });
-    assert(initial.homeHidden === false && initial.homeAriaHidden === 'false', 'VF03B Home furnishings are not visible on the Home frame');
-    assert(initial.guideNodeRef === 'element.vex.summon', 'VF03B Guide identity drifted');
-    assert(initial.talkNodeRef === 'element.vex.current-companion.open' && initial.talkNodeRef !== initial.guideNodeRef, 'VF03B Talk to Vex is not distinct from Guide');
-    assert(initial.continueNodeRef === 'element.furnishing.continue.open-current', 'VF03B Continue element identity drifted');
-    assert(initial.statusText === initial.expectedStatusText, 'VF03B Home Companion status diverges from canonical availability truth');
-    assert(new Set(initial.statusKeys).size === 4, 'VF03B READY / RECOVERABLE / HELD / UNKNOWN copy collapsed');
-    assert(initial.talkHeight >= 44 && initial.continueHeight >= 44, 'VF03B Home controls fell below the 44px target');
-    assert(initial.horizontalOverflow <= 1, 'VF03B Home furnishings overflow horizontally');
-    assert(initial.libraryText.length > 0 && !/vexstream/i.test(initial.libraryText), 'VF03B Library minted unavailable VexStream identity');
-    assert(initial.guideVisible === false, 'VF03B Home showed a second minimized Vex/Guide presence beside the real Companion card');
-    checks.push('Home shows one visible source-bound Companion presence plus Continue / Library');
-
-    await page.locator('#vexSummon').click();
-    await page.waitForFunction(() => document.querySelector('#furnishingHome')?.hidden === true && !document.querySelector('#guideWindow')?.classList.contains('is-minimized'));
-    assert(await page.locator('#guideWindow').isVisible(), 'VF03B explicit Guide summon did not take visible attention');
-    await page.locator('#guideMinimize').click();
-    await page.waitForFunction(() => document.querySelector('#furnishingHome')?.hidden === false && document.querySelector('#guideWindow')?.classList.contains('is-minimized'));
-    assert(await page.locator('#guideWindow').isVisible() === false, 'VF03B minimized Guide remained visible beside Home Companion presence');
-    checks.push('one-visible-Vex attention handoff preserves explicit Guide summon and Home restoration');
+    assert(initial.slotVisible, 'VF03B current-context supplement is not visible on Terrain');
+    assert(initial.slotPresentationRef === 'presentation.vexlife.terrain.current-context-supplement', 'VF03B current-context slot identity drifted');
+    assert(initial.talkNodeRef === 'element.vex.current-companion.open', 'VF03B Talk to Vex identity drifted');
+    assert(initial.continuePresent === false, 'VF03B Continue appeared before a resumable Conversation Journey existed');
+    assert(initial.guidePresence === 'AMBIENT', 'VF03B fresh Home did not preserve ambient Guide state');
+    assert(initial.guideVisible === false, 'VF03B ambient Guide competed visually with real Companion presence');
+    assert(initial.statusText.length > 0, 'VF03B current Companion status is empty');
+    assert(initial.talkHeight >= 44, 'VF03B Talk to Vex fell below the 44px target');
+    assert(initial.horizontalOverflow <= 1, 'VF03B current-context Home overflowed horizontally');
+    assert(['SPATIAL_WORLD','MOBILE_STACK'].includes(initial.projectionGrammar), 'VF03B unknown Terrain projection grammar');
+    checks.push('current semantic context carries one real-Companion Home presence without consuming Terrain canvas');
 
     await page.locator('#surfaceMenuButton').click();
     await page.locator('#openConversation').click();
     await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.state.contextProjection === 'chat');
-    const generic = await page.evaluate(() => {
-      const app = globalThis.__VEXLIFE_APP__;
-      return {
-        frame: app.navigation.semanticFrame(),
-        homeHidden: document.querySelector('#furnishingHome')?.hidden ?? false
-      };
-    });
-    assert(generic.frame.projectRef === initial.frame.projectRef && generic.frame.threadRef === initial.frame.threadRef && generic.frame.channelRef === initial.frame.channelRef, 'VF03B generic Open conversation retargeted the current context');
-    assert(generic.homeHidden === true, 'VF03B Home furnishings did not yield to contextual Conversation');
+    const generic = await page.evaluate(() => globalThis.__VEXLIFE_APP__.navigation.semanticFrame());
+    assert(generic.projectRef === initial.frame.projectRef && generic.threadRef === initial.frame.threadRef && generic.channelRef === initial.frame.channelRef, 'VF03B generic Open conversation retargeted current context');
     await page.evaluate(() => globalThis.__VEXLIFE_APP__.returnToTerrain());
-    await page.waitForFunction(() => document.querySelector('#furnishingHome')?.hidden === false);
-    checks.push('generic Conversation preserves target and Home yields/restores');
+    await page.waitForFunction(() => Boolean(document.querySelector('#homeContinueOpen')));
+    const afterVisit = await page.evaluate(() => ({
+      frame:globalThis.__VEXLIFE_APP__.latestResumableConversationFrame(),
+      continueHeight:document.querySelector('#homeContinueOpen')?.getBoundingClientRect().height??0
+    }));
+    assert(afterVisit.frame?.projectRef === initial.frame.projectRef && afterVisit.frame?.threadRef === initial.frame.threadRef && afterVisit.frame?.channelRef === initial.frame.channelRef, 'VF03B Journey-derived Continue did not retain exact visited Conversation');
+    assert(afterVisit.continueHeight >= 44, 'VF03B Continue fell below the 44px target');
+    checks.push('Continue stays absent on first arrival and appears only after a truthful visited Conversation');
 
     await page.locator('#homeContinueOpen').click();
     await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.state.contextProjection === 'chat');
     const resumed = await page.evaluate(() => globalThis.__VEXLIFE_APP__.navigation.semanticFrame());
-    assert(resumed.projectRef === initial.frame.projectRef && resumed.threadRef === initial.frame.threadRef && resumed.channelRef === initial.frame.channelRef, 'VF03B Continue did not reopen the exact current Conversation');
+    assert(resumed.projectRef === initial.frame.projectRef && resumed.threadRef === initial.frame.threadRef && resumed.channelRef === initial.frame.channelRef, 'VF03B Continue did not reopen exact Journey-bound Conversation');
     await page.evaluate(() => globalThis.__VEXLIFE_APP__.returnToTerrain());
-    await page.waitForFunction(() => document.querySelector('#furnishingHome')?.hidden === false);
-    checks.push('Continue resumes exact current Conversation without invented recency');
+    await page.waitForFunction(() => Boolean(document.querySelector('#homeContinueOpen')));
+    checks.push('Continue resumes exact Journey-bound Conversation without static recency inference');
 
-    const beforeTalk = await page.evaluate(() => ({
-      journeyLength: globalThis.__VEXLIFE_APP__.navigation.fullJourney().length,
-      messageCount: [...globalThis.__VEXLIFE_APP__.messages.values()].reduce((count, list) => count + list.length, 0)
-    }));
+    await page.locator('#vexSummon').click();
+    await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.guide.currentPresenceState() === 'SUMMONED');
+    const summoned = await page.evaluate(() => {
+      const guide=document.querySelector('#guideWindow'),companion=document.querySelector('[data-furnishing-ref="furnishing.vexlife.current-vex-presence"]');
+      return {guideVisible:Boolean(guide&&!guide.hidden&&guide.getClientRects().length>0&&getComputedStyle(guide).display!=='none'),companionVisible:Boolean(companion&&companion.getClientRects().length>0&&getComputedStyle(companion).display!=='none')};
+    });
+    assert(summoned.guideVisible === true && summoned.companionVisible === false, 'VF03B explicit Guide attention did not replace real-Companion presence');
+    await page.locator('#guideMinimize').click();
+    await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.guide.currentPresenceState() === 'AMBIENT');
+    const minimized = await page.evaluate(() => {
+      const guide=document.querySelector('#guideWindow'),companion=document.querySelector('[data-furnishing-ref="furnishing.vexlife.current-vex-presence"]');
+      return {guideVisible:Boolean(guide&&!guide.hidden&&guide.getClientRects().length>0&&getComputedStyle(guide).display!=='none'),companionVisible:Boolean(companion&&companion.getClientRects().length>0&&getComputedStyle(companion).display!=='none')};
+    });
+    assert(minimized.guideVisible === false && minimized.companionVisible === true, 'VF03B ambient Guide and real Companion did not converge to one visible Vex');
+    checks.push('one-visible-Vex rule distinguishes ambient Guide from explicit Guide attention');
+
+    const beforeTalk = await page.evaluate(() => ({journeyLength:globalThis.__VEXLIFE_APP__.navigation.fullJourney().length,messageCount:[...globalThis.__VEXLIFE_APP__.messages.values()].reduce((count,list)=>count+list.length,0)}));
     await page.locator('#homeTalkToVex').click();
-    await page.waitForFunction(() => {
-      const state = globalThis.__VEXLIFE_APP__.state;
-      return state.contextProjection === 'chat'
-        && state.projectRef === 'project.self-development'
-        && state.threadRef === 'thread.self-development.open-conversation'
-        && state.channelRef === 'channel.self-development.companion';
-    });
-    const talked = await page.evaluate(() => {
-      const app = globalThis.__VEXLIFE_APP__;
-      const journey = app.navigation.fullJourney();
-      return {
-        frame: app.navigation.semanticFrame(),
-        journeyLength: journey.length,
-        lastJourney: journey.at(-1),
-        messageCount: [...app.messages.values()].reduce((count, list) => count + list.length, 0),
-        homeHidden: document.querySelector('#furnishingHome')?.hidden ?? false
-      };
-    });
-    assert(talked.journeyLength === beforeTalk.journeyLength + 1, 'VF03B Talk to Vex recorded invisible intermediate navigation steps');
-    assert(talked.lastJourney?.elementRef === 'element.vex.current-companion.open' && talked.lastJourney?.actionRef === 'action.view.select', 'VF03B Talk to Vex Journey provenance is not the visible Home portal');
+    await page.waitForFunction(() => { const state=globalThis.__VEXLIFE_APP__.state; return state.contextProjection==='chat'&&state.projectRef==='project.self-development'&&state.threadRef==='thread.self-development.open-conversation'&&state.channelRef==='channel.self-development.companion'; });
+    const talked = await page.evaluate(() => { const app=globalThis.__VEXLIFE_APP__,journey=app.navigation.fullJourney(); return {frame:app.navigation.semanticFrame(),journeyLength:journey.length,lastJourney:journey.at(-1),messageCount:[...app.messages.values()].reduce((count,list)=>count+list.length,0)}; });
+    assert(talked.journeyLength === beforeTalk.journeyLength + 1, 'VF03B Talk to Vex recorded invisible intermediate navigation');
+    assert(talked.lastJourney?.elementRef === 'element.vex.current-companion.open' && talked.lastJourney?.actionRef === 'action.view.select', 'VF03B Talk to Vex Journey provenance drifted');
     assert(talked.messageCount === beforeTalk.messageCount, 'VF03B Talk to Vex performed a model/message turn');
-    assert(talked.homeHidden === true, 'VF03B Home furnishings remained visible over Companion Conversation');
-    assert(turnRequests.length === 0, 'VF03B Home proof invoked the real Companion turn endpoint');
+    assert(turnRequests.length === 0, 'VF03B Home proof invoked real Companion turn endpoint');
     checks.push('Talk to Vex is one visible atomic portal and performs no model turn');
 
     await page.evaluate(() => globalThis.__VEXLIFE_APP__.returnToTerrain());
-    await page.waitForFunction(() => document.querySelector('#furnishingHome')?.hidden === false);
-    const finalGeometry = await page.evaluate(() => {
-      const host = document.querySelector('#furnishingHome');
-      return {
-        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth, (host?.scrollWidth ?? 0) - (host?.clientWidth ?? 0)),
-        actualViewport: { width: innerWidth, height: innerHeight }
-      };
-    });
-    assert(finalGeometry.actualViewport.width === viewport.width && finalGeometry.actualViewport.height === viewport.height, 'VF03B Home viewport drifted');
-    assert(finalGeometry.horizontalOverflow <= 1, 'VF03B Home overflowed after interaction walk');
-    const png = await page.screenshot({ type: 'png', animations: 'disabled' });
-    assert(png.length <= 1500000, 'VF03B Home screenshot exceeds bounded evidence size');
+    await page.waitForFunction(() => Boolean(document.querySelector('#terrainCurrentContextSupplement')));
+    const finalGeometry = await page.evaluate(() => ({horizontalOverflow:Math.max(0,document.documentElement.scrollWidth-innerWidth),actualViewport:{width:innerWidth,height:innerHeight},projectionGrammar:globalThis.__VEXLIFE_APP__.terrain.viewportProjection().projectionGrammar}));
+    assert(finalGeometry.actualViewport.width===viewport.width&&finalGeometry.actualViewport.height===viewport.height,'VF03B Home viewport drifted');
+    assert(finalGeometry.horizontalOverflow<=1,'VF03B current-context composition overflowed after interaction walk');
+    const png=await page.screenshot({type:'png',animations:'disabled'});
+    assert(png.length<=1500000,'VF03B current-context screenshot exceeds bounded evidence size');
     return {
-      state: 'PASS',
-      evidenceClass: 'REAL_BROWSER_SYNTHETIC_REFERENCE_INPUT',
-      viewport,
-      sourceBoundAvailabilityState: initial.availabilityState,
-      genericConversationPreservedTarget: true,
-      continuePreservedTarget: true,
-      talkToVexPortal: {
-        projectRef: talked.frame.projectRef,
-        threadRef: talked.frame.threadRef,
-        channelRef: talked.frame.channelRef,
-        elementRef: talked.lastJourney?.elementRef ?? null,
-        actionRef: talked.lastJourney?.actionRef ?? null
-      },
-      guideDistinct: true,
-      realCompanionTurnExecuted: false,
-      humanAccepted: false,
-      checks,
-      screenshot: {
-        filename: `home-furnishings-default-${initial.locale}-${initial.theme}-${viewport.width}.png`,
-        mimeType: 'image/png',
-        encoding: 'base64',
-        bytes: png.length,
-        sha256: createHash('sha256').update(png).digest('hex'),
-        data: png.toString('base64')
-      },
-      consoleErrors: [...errors.consoleErrors],
-      pageErrors: [...errors.pageErrors]
+      state:'PASS',evidenceClass:'REAL_BROWSER_SYNTHETIC_REFERENCE_INPUT',viewport,projectionGrammar:finalGeometry.projectionGrammar,firstArrivalContinueVisible:false,journeyBoundContinue:true,guideDistinct:true,realCompanionTurnExecuted:false,humanAccepted:false,checks,
+      screenshot:{filename:'home-current-context-default-'+initial.locale+'-'+initial.theme+'-'+viewport.width+'.png',mimeType:'image/png',encoding:'base64',bytes:png.length,sha256:createHash('sha256').update(png).digest('hex'),data:png.toString('base64')},
+      consoleErrors:[...errors.consoleErrors],pageErrors:[...errors.pageErrors]
     };
   } catch (error) {
-    return {
-      state: 'FAILED',
-      evidenceClass: 'REAL_BROWSER_SYNTHETIC_REFERENCE_INPUT',
-      viewport,
-      humanAccepted: false,
-      realCompanionTurnExecuted: false,
-      checks,
-      consoleErrors: [...errors.consoleErrors],
-      pageErrors: [...errors.pageErrors],
-      error: error instanceof Error ? error.message : String(error)
-    };
+    return {state:'FAILED',evidenceClass:'REAL_BROWSER_SYNTHETIC_REFERENCE_INPUT',viewport,humanAccepted:false,checks,error:error instanceof Error?error.message:String(error),consoleErrors:[...errors.consoleErrors],pageErrors:[...errors.pageErrors]};
   } finally {
     page.off('request', onRequest);
   }

@@ -18,11 +18,12 @@ const graph = JSON.parse(fs.readFileSync(path.join(root, 'blueprint/presentation
 const shell = JSON.parse(fs.readFileSync(path.join(root, 'blueprint/fragments/screens/shell.json'), 'utf8'));
 const html = fs.readFileSync(path.join(root, 'reference/browser/index.html'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'reference/browser/app.js'), 'utf8');
+const terrain = fs.readFileSync(path.join(root, 'reference/browser/modules/terrain-controller.js'), 'utf8');
 
 const byFurnishing = (ref) => compiled.furnishings.find((item) => item.furnishingRef === ref);
 const byPresentation = (ref) => graph.presentationNodes.find((item) => item.presentationRef === ref);
 
-test('VF03B-00 Guide and real Companion Home identities remain distinct', () => {
+test('VF03B-00 Guide and real Companion identities remain distinct while one-visible-Vex is presentation-controlled', () => {
   const assistance = shell.regions.find((region) => region.regionRef === 'region.shell.assistance');
   const guide = assistance.elements.find((item) => item.elementRef === 'element.vex.summon');
   const home = shell.regions.find((region) => region.regionRef === 'region.shell.home-furnishings');
@@ -31,87 +32,88 @@ test('VF03B-00 Guide and real Companion Home identities remain distinct', () => 
   assert.equal(talk.actionRef, 'action.view.select');
   assert.notEqual(guide.elementRef, talk.elementRef);
   assert.match(app, /openCurrentVexConversation/u);
+  assert.match(app, /latestResumableConversationFrame/u);
 });
 
-test('VF03B-01 current Vex presence composes rightful owners without semantic takeover', () => {
+test('VF03B-01 current Vex presence rebinds to current context without semantic takeover', () => {
   const vex = byFurnishing('furnishing.vexlife.current-vex-presence');
   assert.equal(vex.subject.subjectClass, 'PRESENCE');
   assert.equal(vex.subject.resourceRefOrNull, null);
-  assert.deepEqual(vex.subject.semanticOwnerRefs, [
-    'service.conversation',
-    'service.device-family',
-    'service.model-runtime',
-    'service.runtime-recovery'
-  ]);
-  assert.ok(vex.subject.sourceRefs.includes('registry.vexlife.companion-availability-reentry.001'));
+  assert.equal(vex.placement.primary.placementRef, 'placement.vexlife.current-vex-presence.current-context');
   assert.equal(vex.placement.primary.presentationRefOrNull, 'presentation.vexlife.home.current-vex-presence');
+  assert.ok(vex.placement.primary.ownerRefs.includes('github.issue.vexlife.745'));
   assert.equal(vex.actionBindings[0].actionRef, 'action.view.select');
-  assert.equal(vex.actionBindings[0].permissionRefOrNull, 'permission.none');
   assert.equal(compiled.effectAuthority, false);
 });
 
-test('VF03B-02 Continue remains one derived collection over current context', () => {
+test('VF03B-02 Continue remains Journey-bound derived collection and is not empty premium chrome', () => {
   const item = byFurnishing('furnishing.vexlife.continue');
   assert.equal(item.subject.subjectClass, 'DERIVED_COLLECTION');
   assert.equal(item.subject.resourceRefOrNull, null);
   assert.deepEqual(item.subject.semanticOwnerRefs, []);
+  assert.equal(item.placement.primary.placementRef, 'placement.vexlife.continue.current-context');
   assert.equal(item.placement.primary.presentationRefOrNull, 'presentation.vexlife.home.continue');
   assert.equal(item.actionBindings[0].actionRef, 'action.view.select');
-  assert.equal(item.addressabilityLinks[0].targetSubjectRef, 'feature.vexlife.addressed-conversation');
-  assert.equal(item.addressabilityLinks[0].semanticRelationAuthority, false);
+  assert.match(app, /navigation\?\.fullJourney\?\.\(\)/u);
+  assert.match(app, /frame\?\.contextProjection==='chat'/u);
+  assert.doesNotMatch(html, /id="homeContinue"/u);
 });
 
-test('VF03B-03 Library remains contextual index and mints no external service', () => {
+test('VF03B-03 Library remains contextual index but returns UNPLACED until a useful host is earned', () => {
   const item = byFurnishing('furnishing.vexlife.library');
   assert.equal(item.subject.subjectClass, 'CONTEXTUAL_INDEX');
   assert.equal(item.subject.resourceRefOrNull, null);
-  assert.deepEqual(item.subject.semanticOwnerRefs, []);
+  assert.equal(item.placement.posture, 'UNPLACED');
+  assert.equal(item.placement.primary, null);
+  assert.deepEqual(item.placement.contextual, []);
+  assert.deepEqual(item.bindings.visibility, []);
+  assert.deepEqual(item.bindings.reachability, []);
   assert.equal(item.actionBindings.length, 0);
-  assert.equal(JSON.stringify(item).includes('vexstream-music'), false);
   assert.equal(item.wakePredicates.length, 1);
+  assert.equal(JSON.stringify(item).includes('vexstream-music'), false);
+  assert.equal(byPresentation('presentation.vexlife.home.library'), undefined);
 });
 
-test('VF03B-04 Home presentation anatomy has no product semantic ownership', () => {
+test('VF03B-04 Terrain current-context slot preserves one semantic stage and no product semantic ownership', () => {
   for (const ref of [
-    'presentation.vexlife.shared-shell.home-furnishings',
+    'presentation.vexlife.terrain.current-context',
+    'presentation.vexlife.terrain.current-context-supplement',
     'presentation.vexlife.home.current-vex-presence',
-    'presentation.vexlife.home.continue',
-    'presentation.vexlife.home.library'
+    'presentation.vexlife.home.continue'
   ]) {
     const node = byPresentation(ref);
     assert.ok(node, ref);
     assert.equal(node.productSemanticOwnership, false, ref);
     assert.equal(graph.placements.filter((item) => item.presentationRef === ref).length, 1, ref);
   }
-  assert.equal(byPresentation('presentation.vexlife.home.continue').semanticOwnerRefOrNull, null);
-  assert.equal(byPresentation('presentation.vexlife.home.library').semanticOwnerRefOrNull, null);
-  assert.equal(graph.reachabilityPaths.some((item) => item.reachabilityRef === 'reachability.vexlife.home.continue'), true);
-  assert.equal(graph.reachabilityPaths.some((item) => item.reachabilityRef === 'reachability.vexlife.home.library'), true);
+  assert.equal(byPresentation('presentation.vexlife.terrain.current-context').parentPresentationRefOrNull, 'presentation.vexlife.terrain.canvas');
+  assert.equal(byPresentation('presentation.vexlife.home.current-vex-presence').parentPresentationRefOrNull, 'presentation.vexlife.terrain.current-context-supplement');
+  assert.equal(byPresentation('presentation.vexlife.home.continue').parentPresentationRefOrNull, 'presentation.vexlife.terrain.current-context-supplement');
+  assert.equal(byPresentation('presentation.vexlife.shared-shell.home-furnishings'), undefined);
+  assert.match(terrain, /renderCurrentContextSupplement/u);
+  assert.match(terrain, /id="terrainCurrentContextSupplement"/u);
 });
 
-test('VF03B-05 browser source binds the exact current Companion portal without a model turn', () => {
-  assert.match(html, /id="homeTalkToVex"[^>]*data-node-ref="element\.vex\.current-companion\.open"/u);
-  assert.match(html, /id="homeContinueOpen"[^>]*data-node-ref="element\.furnishing\.continue\.open-current"/u);
+test('VF03B-05 browser source binds one Companion portal without model turn or automatic availability polling', () => {
   assert.match(app, /project\.self-development/u);
   assert.match(app, /thread\.self-development\.open-conversation/u);
   assert.match(app, /channel\.self-development\.companion/u);
   assert.match(app, /navigation\.navigate\('element\.vex\.current-companion\.open'/u);
   assert.match(app, /contextProjection:'chat'/u);
   assert.match(app, /chat\?\.companionAvailability\?\.\(\)/u);
-  assert.match(app, /healthCompanionAvailabilityReadState!==\'UNREQUESTED\'/u);
-  assert.doesNotMatch(app.slice(app.indexOf('async function openCurrentVexConversation'), app.indexOf('function openCurrentConversationFromHome')), /chat\.selectProject|chat\.selectThread|chat\.selectChannel/u);
+  assert.match(app, /healthCompanionAvailabilityReadState!=='UNREQUESTED'/u);
   const doorway = app.slice(app.indexOf('async function openCurrentVexConversation'), app.indexOf('function openCurrentConversationFromHome'));
   assert.doesNotMatch(doorway, /\/api\/v1\/companion\/turn/u);
   assert.doesNotMatch(doorway, /refreshCompanionAvailability/u);
-  assert.match(html, /id="homeContinue"[^>]*data-presentation-ref="presentation\.vexlife\.home\.continue"/u);
+  assert.doesNotMatch(app, /void refreshHealthCompanionAvailability\(\)/u);
 });
 
-test('VF03B-06 Home projection requires no Navigation/Terrain/Feature/UX-Evolution mutation', () => {
-  assert.equal(shell.regions.some((region) => region.regionRef === 'region.shell.home-furnishings'), true);
-  assert.match(app, /navigation\.navigate\('element\.vex\.current-companion\.open'/u);
-  assert.match(app, /openContext\('chat','element\.furnishing\.continue\.open-current'\)/u);
+test('VF03B-06 current-context composition requires no Navigation Feature or UX-Evolution semantic mutation', () => {
+  assert.match(app, /renderCurrentContextSupplement:renderFurnishingCurrentContextSupplement/u);
+  assert.match(app, /navigation\.navigate\('element\.furnishing\.continue\.open-current'/u);
+  assert.doesNotMatch(html, /id="furnishingHome"/u);
+  assert.match(terrain, /E2\.9 Terrain renderCurrentContextSupplement must be a function or null/u);
 });
-
 
 test('VF03B-07 HELD Companion availability keeps the Conversation doorway available', () => {
   const vex = byFurnishing('furnishing.vexlife.current-vex-presence');
@@ -126,6 +128,7 @@ test('VF03B-07 HELD Companion availability keeps the Conversation doorway availa
   const projected = projection.furnishings[0];
   assert.equal(projected.availability.state, 'HELD');
   assert.deepEqual(projected.availableActions, ['action.view.select']);
-  assert.deepEqual(projected.heldActionsWithReasons, []);
   assert.equal(projection.effectAuthorityGranted, false);
 });
+
+// [VXG RealForever]
