@@ -17,8 +17,8 @@
     {
       "path": "reference/browser/index.html",
       "mode": "100644",
-      "bytes": 31364,
-      "sha256": "60741602e6c64f686e805e2adbce3514d32c127887b70d02ba22ff53f65f727e"
+      "bytes": 29721,
+      "sha256": "b0635e262cc6c2649851d8c768ee6dfbfaffe6764ca75b046cb372712efaf93d"
     },
     {
       "path": "src/core/blueprint-base.mjs",
