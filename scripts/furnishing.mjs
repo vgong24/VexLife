@@ -336,49 +336,91 @@ export function loadFurnishingRegistry(root = ROOT) {
   return JSON.parse(fs.readFileSync(path.join(root, 'blueprint/furnishing-registry.json'), 'utf8'));
 }
 
-function collectExplicitReferenceFields(value, refs, label = 'source') {
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => collectExplicitReferenceFields(item, refs, `${label}[${index}]`));
-    return refs;
+function addReference(refs, value, label, { nullable = false } = {}) {
+  if (value === null && nullable) return;
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error(`${label} must be ${nullable ? 'null or ' : ''}a non-empty ref string`);
   }
-  if (!value || typeof value !== 'object') return refs;
-  for (const [key, child] of Object.entries(value)) {
-    const childLabel = `${label}.${key}`;
-    if (/(?:Ref|RefOrNull)$/u.test(key)) {
-      if (child === null) continue;
-      if (typeof child !== 'string' || !child.trim()) throw new Error(`${childLabel} must be null or a non-empty ref string`);
-      refs.add(child);
-      continue;
-    }
-    if (/Refs$/u.test(key)) {
-      if (child === null) continue;
-      if (!Array.isArray(child)) throw new Error(`${childLabel} must be null or an array of ref strings`);
-      child.forEach((item, index) => {
-        if (typeof item !== 'string' || !item.trim()) throw new Error(`${childLabel}[${index}] must be a non-empty ref string`);
-        refs.add(item);
-      });
-      continue;
-    }
-    collectExplicitReferenceFields(child, refs, childLabel);
-  }
-  return refs;
+  refs.add(value);
 }
 
-export function buildFurnishingReferenceUniverse({ identityRegistry = null, sourceObjects = [] } = {}) {
-  if (!Array.isArray(sourceObjects)) throw new Error('sourceObjects must be an array');
-  const refs = new Set();
-  if (identityRegistry !== null) {
-    if (!(identityRegistry.entries instanceof Map)) throw new Error('identityRegistry.entries must be a Map');
-    for (const ref of identityRegistry.entries.keys()) refs.add(ref);
-    if (identityRegistry.aliases !== undefined) {
-      if (!(identityRegistry.aliases instanceof Map)) throw new Error('identityRegistry.aliases must be a Map');
-      for (const [alias, canonical] of identityRegistry.aliases.entries()) {
-        refs.add(alias);
-        refs.add(canonical);
-      }
+function addReferenceArray(refs, value, label, { nullable = false } = {}) {
+  if (value === null && nullable) return;
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} must be ${nullable ? 'null or ' : ''}an array of ref strings`);
+  }
+  value.forEach((item, index) => addReference(refs, item, `${label}[${index}]`));
+}
+
+function collectIdentityRegistryReferences(identityRegistry, refs) {
+  if (identityRegistry === null) return;
+  if (!(identityRegistry.entries instanceof Map)) throw new Error('identityRegistry.entries must be a Map');
+  for (const [ref, entry] of identityRegistry.entries.entries()) {
+    addReference(refs, ref, 'identityRegistry.entries key');
+    if (entry?.kind === 'STATE_DOMAIN') {
+      addReference(refs, entry.ownerRef, `identityRegistry.entries[${ref}].ownerRef`);
     }
   }
-  sourceObjects.forEach((value, index) => collectExplicitReferenceFields(value, refs, `sourceObjects[${index}]`));
+  if (identityRegistry.aliases !== undefined) {
+    if (!(identityRegistry.aliases instanceof Map)) throw new Error('identityRegistry.aliases must be a Map');
+    for (const [alias, canonical] of identityRegistry.aliases.entries()) {
+      addReference(refs, alias, 'identityRegistry.aliases alias');
+      addReference(refs, canonical, `identityRegistry.aliases[${alias}]`);
+    }
+  }
+}
+
+function collectPresentationGraphReferences(presentationGraph, refs) {
+  if (presentationGraph === null) return;
+  if (!presentationGraph || typeof presentationGraph !== 'object' || Array.isArray(presentationGraph)) {
+    throw new Error('presentationGraph must be an object');
+  }
+
+  for (const field of ['registryRef', 'foundationRef', 'ownerRef', 'parentRef']) {
+    if (Object.hasOwn(presentationGraph, field)) {
+      addReference(refs, presentationGraph[field], `presentationGraph.${field}`, { nullable: field === 'parentRef' });
+    }
+  }
+
+  if (presentationGraph.existingOwnerRefs !== undefined) {
+    const owners = presentationGraph.existingOwnerRefs;
+    if (!owners || typeof owners !== 'object' || Array.isArray(owners)) {
+      throw new Error('presentationGraph.existingOwnerRefs must be an object');
+    }
+    for (const [field, value] of Object.entries(owners)) {
+      addReference(refs, value, `presentationGraph.existingOwnerRefs.${field}`, { nullable: true });
+    }
+  }
+
+  if (!Array.isArray(presentationGraph.presentationNodes)) {
+    throw new Error('presentationGraph.presentationNodes must be an array');
+  }
+  presentationGraph.presentationNodes.forEach((node, index) => {
+    const label = `presentationGraph.presentationNodes[${index}]`;
+    if (!node || typeof node !== 'object' || Array.isArray(node)) throw new Error(`${label} must be an object`);
+    addReference(refs, node.presentationRef, `${label}.presentationRef`);
+    addReference(refs, node.parentPresentationRefOrNull, `${label}.parentPresentationRefOrNull`, { nullable: true });
+    addReference(refs, node.semanticOwnerRefOrNull, `${label}.semanticOwnerRefOrNull`, { nullable: true });
+    addReference(refs, node.presentationOwnerRef, `${label}.presentationOwnerRef`);
+    if (Object.hasOwn(node, 'sourceRef')) addReference(refs, node.sourceRef, `${label}.sourceRef`, { nullable: true });
+  });
+
+  if (!Array.isArray(presentationGraph.reachabilityPaths)) {
+    throw new Error('presentationGraph.reachabilityPaths must be an array');
+  }
+  presentationGraph.reachabilityPaths.forEach((pathSpec, index) => {
+    const label = `presentationGraph.reachabilityPaths[${index}]`;
+    if (!pathSpec || typeof pathSpec !== 'object' || Array.isArray(pathSpec)) throw new Error(`${label} must be an object`);
+    addReference(refs, pathSpec.reachabilityRef, `${label}.reachabilityRef`);
+    addReference(refs, pathSpec.targetRef, `${label}.targetRef`);
+    addReferenceArray(refs, pathSpec.steps, `${label}.steps`);
+  });
+}
+
+export function buildFurnishingReferenceUniverse({ identityRegistry = null, presentationGraph = null } = {}) {
+  const refs = new Set();
+  collectIdentityRegistryReferences(identityRegistry, refs);
+  collectPresentationGraphReferences(presentationGraph, refs);
   return refs;
 }
 
@@ -392,10 +434,7 @@ export async function loadFurnishingReferenceUniverse(root = ROOT) {
   const presentationGraph = JSON.parse(
     fs.readFileSync(path.join(root, 'blueprint/presentation-graph-registry.json'), 'utf8')
   );
-  return buildFurnishingReferenceUniverse({
-    identityRegistry,
-    sourceObjects: [bundle, presentationGraph]
-  });
+  return buildFurnishingReferenceUniverse({ identityRegistry, presentationGraph });
 }
 
 export function validateFurnishingRegistry(registry) {
