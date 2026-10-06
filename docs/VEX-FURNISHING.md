@@ -447,3 +447,33 @@ Static population does not make either furnishing current or executable. Until r
 The Conversation record may expose `action.channel.select` and `action.message.send` identities by reference, but `AVAILABLE` is still an observation, not a registry claim, and every projected action retains `effectAuthorityGranted=false`.
 
 Continue, Library, shell-level Companion presence and VexStream Music remain outside VF-03A until their separately requested owner/source seams converge.
+
+## VF-03B — Home Vex presence, Continue, and Library
+
+VF-03B keeps the first lived furnishing wave on the ordinary Home surface without creating new product semantics.
+
+```text
+current Vex presence
+  = PRESENCE composition over canonical device/model/recovery/conversation owners
+  != Guide/Ambient
+
+Continue
+  = DERIVED_COLLECTION
+  = current selected addressed Conversation in this bounded slice
+  != recency store
+  != second canonical content store
+
+Library
+  = CONTEXTUAL_INDEX
+  = truthful empty/held Home projection until a rightful service identity is accepted
+  != media store
+  != playback owner
+```
+
+The visible `Summon Vex` mark remains the deterministic Guide vessel. A distinct `Talk to Vex` Home action selects the exact canonical Self Development Companion context before opening Conversation; it performs no model turn itself.
+
+VF-03B adds no Navigation route or new contextual screen. The Home Furnishings region is part of the existing Shell/Home frame and disappears when a contextual surface takes primary attention.
+
+VexStream Music remains held to its own owner/currentness threshold. VF-03B does not mint a Music service identity merely to populate Library.
+
+<!-- [VXG RealForever][811][817][VEX-FURNISHING][VF03B] -->
