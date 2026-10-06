@@ -336,6 +336,66 @@ export function loadFurnishingRegistry(root = ROOT) {
   return JSON.parse(fs.readFileSync(path.join(root, 'blueprint/furnishing-registry.json'), 'utf8'));
 }
 
+function collectExplicitReferenceFields(value, refs, label = 'source') {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => collectExplicitReferenceFields(item, refs, `${label}[${index}]`));
+    return refs;
+  }
+  if (!value || typeof value !== 'object') return refs;
+  for (const [key, child] of Object.entries(value)) {
+    const childLabel = `${label}.${key}`;
+    if (/(?:Ref|RefOrNull)$/u.test(key)) {
+      if (child === null && key.endsWith('OrNull')) continue;
+      if (typeof child !== 'string' || !child.trim()) throw new Error(`${childLabel} must be a non-empty ref string`);
+      refs.add(child);
+      continue;
+    }
+    if (/Refs$/u.test(key) && Array.isArray(child) && child.every((item) => typeof item === 'string')) {
+      child.forEach((item, index) => {
+        if (!item.trim()) throw new Error(`${childLabel}[${index}] must be a non-empty ref string`);
+        refs.add(item);
+      });
+      continue;
+    }
+    collectExplicitReferenceFields(child, refs, childLabel);
+  }
+  return refs;
+}
+
+export function buildFurnishingReferenceUniverse({ identityRegistry = null, sourceObjects = [] } = {}) {
+  if (!Array.isArray(sourceObjects)) throw new Error('sourceObjects must be an array');
+  const refs = new Set();
+  if (identityRegistry !== null) {
+    if (!(identityRegistry.entries instanceof Map)) throw new Error('identityRegistry.entries must be a Map');
+    for (const ref of identityRegistry.entries.keys()) refs.add(ref);
+    if (identityRegistry.aliases !== undefined) {
+      if (!(identityRegistry.aliases instanceof Map)) throw new Error('identityRegistry.aliases must be a Map');
+      for (const [alias, canonical] of identityRegistry.aliases.entries()) {
+        refs.add(alias);
+        refs.add(canonical);
+      }
+    }
+  }
+  sourceObjects.forEach((value, index) => collectExplicitReferenceFields(value, refs, `sourceObjects[${index}]`));
+  return refs;
+}
+
+export async function loadFurnishingReferenceUniverse(root = ROOT) {
+  const [{ loadBlueprint }, { compileRegistryPack }] = await Promise.all([
+    import('../src/core/blueprint.mjs'),
+    import('../src/core/registry.mjs')
+  ]);
+  const bundle = loadBlueprint(root);
+  const identityRegistry = compileRegistryPack(bundle);
+  const presentationGraph = JSON.parse(
+    fs.readFileSync(path.join(root, 'blueprint/presentation-graph-registry.json'), 'utf8')
+  );
+  return buildFurnishingReferenceUniverse({
+    identityRegistry,
+    sourceObjects: [bundle, presentationGraph]
+  });
+}
+
 export function validateFurnishingRegistry(registry) {
   exact(registry, [
     'schemaVersion', 'registryRef', 'registryVersion', 'ownerRef', 'parentRef', 'sourcePlacementRef',
@@ -696,7 +756,11 @@ export function projectFurnishings(compiled, {
 }
 
 async function main() {
-  const compiled = compileFurnishingRegistry(loadFurnishingRegistry(ROOT));
+  const registry = loadFurnishingRegistry(ROOT);
+  const knownRefs = registry.furnishings.length > 0
+    ? await loadFurnishingReferenceUniverse(ROOT)
+    : null;
+  const compiled = compileFurnishingRegistry(registry, { knownRefs });
   process.stdout.write(`${JSON.stringify({
     schemaVersion: 'vexlife.furnishing-compiler-result/v0',
     state: 'PASS',
