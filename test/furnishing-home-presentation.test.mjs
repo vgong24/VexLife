@@ -103,6 +103,6 @@ test('VF03B-05 browser source binds the exact current Companion portal without a
 
 test('VF03B-06 Home projection requires no Navigation/Terrain/Feature/UX-Evolution mutation', () => {
   assert.equal(shell.regions.some((region) => region.regionRef === 'region.shell.home-furnishings'), true);
-  assert.match(app, /openContext\('chat','element\.vex\.current-companion\.open'\)/u);
+  assert.match(app, /navigation\.navigate\('element\.vex\.current-companion\.open'/u);
   assert.match(app, /openContext\('chat','element\.furnishing\.continue\.open-current'\)/u);
 });
