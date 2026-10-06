@@ -635,6 +635,7 @@ async function runFurnishingHomeProductProof(page, viewport, errors) {
         talkHeight: talk?.getBoundingClientRect().height ?? 0,
         continueHeight: resume?.getBoundingClientRect().height ?? 0,
         libraryText: document.querySelector('#homeLibrary')?.textContent ?? '',
+        guideVisible: (() => { const node=document.querySelector('#guideWindow'); return Boolean(node&&!node.hidden&&node.getClientRects().length>0&&getComputedStyle(node).visibility!=='hidden'); })(),
         horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth, (host?.scrollWidth ?? 0) - (host?.clientWidth ?? 0))
       };
     });
@@ -647,7 +648,16 @@ async function runFurnishingHomeProductProof(page, viewport, errors) {
     assert(initial.talkHeight >= 44 && initial.continueHeight >= 44, 'VF03B Home controls fell below the 44px target');
     assert(initial.horizontalOverflow <= 1, 'VF03B Home furnishings overflow horizontally');
     assert(initial.libraryText.length > 0 && !/vexstream/i.test(initial.libraryText), 'VF03B Library minted unavailable VexStream identity');
-    checks.push('Home shows distinct source-bound Companion / Continue / Library furnishing controls');
+    assert(initial.guideVisible === false, 'VF03B Home showed a second minimized Vex/Guide presence beside the real Companion card');
+    checks.push('Home shows one visible source-bound Companion presence plus Continue / Library');
+
+    await page.locator('#vexSummon').click();
+    await page.waitForFunction(() => document.querySelector('#furnishingHome')?.hidden === true && !document.querySelector('#guideWindow')?.classList.contains('is-minimized'));
+    assert(await page.locator('#guideWindow').isVisible(), 'VF03B explicit Guide summon did not take visible attention');
+    await page.locator('#guideMinimize').click();
+    await page.waitForFunction(() => document.querySelector('#furnishingHome')?.hidden === false && document.querySelector('#guideWindow')?.classList.contains('is-minimized'));
+    assert(await page.locator('#guideWindow').isVisible() === false, 'VF03B minimized Guide remained visible beside Home Companion presence');
+    checks.push('one-visible-Vex attention handoff preserves explicit Guide summon and Home restoration');
 
     await page.locator('#surfaceMenuButton').click();
     await page.locator('#openConversation').click();
