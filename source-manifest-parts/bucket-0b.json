@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "0b",
+  "files": [
+    {
+      "path": "scripts/furnishing.mjs",
+      "mode": "100644",
+      "bytes": 35820,
+      "sha256": "66cd48a69b1993c77a076481a29f54abd40113a281814cbbc3818fdc25fdb284"
+    }
+  ]
+}
