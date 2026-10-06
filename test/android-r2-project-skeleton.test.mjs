@@ -104,6 +104,9 @@ test('R2 has no INTERNET permission and explicit identities are not class or loc
   const refs = source(rendered, 'app/src/main/kotlin/vexlife/android/identity/GeneratedCanonicalRefs.kt');
   assert.doesNotMatch(manifest, /android\.permission\.INTERNET/);
   assert.match(runtime, /intention\.vexlife\.conversation\.request-attention\/v1/);
+  assert.match(runtime, /result-admission\.vexlife\.admit-current\/v1/);
+  assert.match(runtime, /lastAdmissionOrNull\?\.semanticRef\?\.value/);
+  assert.doesNotMatch(runtime, /lastAdmissionOrNull\?\.name/);
   assert.match(refs, /surface\.vexlife\.android\.r2\.architecture/);
   assert.doesNotMatch(runtime, /::class|simpleName|toString\(\)/);
 });

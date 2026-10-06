@@ -379,13 +379,13 @@ sealed interface EffectResult {
     ) : EffectResult
 }
 
-enum class ResultAdmission {
-    ADMIT_CURRENT,
-    IGNORE_STALE,
-    IGNORE_DUPLICATE,
-    SUPERSEDED,
-    HOLD_CONFLICT,
-    FAIL_CONTRACT,
+enum class ResultAdmission(val semanticRef: SemanticRef) {
+    ADMIT_CURRENT(SemanticRef("result-admission.vexlife.admit-current/v1")),
+    IGNORE_STALE(SemanticRef("result-admission.vexlife.ignore-stale/v1")),
+    IGNORE_DUPLICATE(SemanticRef("result-admission.vexlife.ignore-duplicate/v1")),
+    SUPERSEDED(SemanticRef("result-admission.vexlife.superseded/v1")),
+    HOLD_CONFLICT(SemanticRef("result-admission.vexlife.hold-conflict/v1")),
+    FAIL_CONTRACT(SemanticRef("result-admission.vexlife.fail-contract/v1")),
 }
 
 fun interface OperationExecutor {
@@ -512,7 +512,7 @@ class VexRuntimeWitness(
         revision = revision,
         transitionRefOrNull = transitionRefOrNull,
         observation = VexObservation.PRESENT,
-        semanticHash = "\${output.statusRef.value}|\${output.operationRefOrNull?.value ?: "none"}|\${output.lastAdmissionOrNull?.name ?: "none"}",
+        semanticHash = "\${output.statusRef.value}|\${output.operationRefOrNull?.value ?: "none"}|\${output.lastAdmissionOrNull?.semanticRef?.value ?: "none"}",
         valueOrNull = output,
     )
 
@@ -792,6 +792,10 @@ class R2ArchitectureContractTest {
         assertEquals(
             "action.vexlife.conversation.request-attention",
             GeneratedCanonicalRefs.requestAttentionAction.value,
+        )
+        assertEquals(
+            "result-admission.vexlife.admit-current/v1",
+            ResultAdmission.ADMIT_CURRENT.semanticRef.value,
         )
         assertTrue(GeneratedCanonicalRefs.ARCHITECTURE_BASELINE_REF.startsWith("architecture.vexlife."))
     }

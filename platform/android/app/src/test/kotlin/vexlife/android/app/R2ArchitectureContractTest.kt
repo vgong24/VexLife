@@ -83,6 +83,10 @@ class R2ArchitectureContractTest {
             "action.vexlife.conversation.request-attention",
             GeneratedCanonicalRefs.requestAttentionAction.value,
         )
+        assertEquals(
+            "result-admission.vexlife.admit-current/v1",
+            ResultAdmission.ADMIT_CURRENT.semanticRef.value,
+        )
         assertTrue(GeneratedCanonicalRefs.ARCHITECTURE_BASELINE_REF.startsWith("architecture.vexlife."))
     }
 

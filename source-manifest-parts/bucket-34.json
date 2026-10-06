@@ -23,8 +23,8 @@
     {
       "path": "src/core/android-r2-project-skeleton.mjs",
       "mode": "100644",
-      "bytes": 36852,
-      "sha256": "8eaa6ce218bd59b8647ca14cc1bf56b89439fbceb9b5b70e7e8cb7cd8805234b"
+      "bytes": 37393,
+      "sha256": "8d7eca68325bcc6a5aa12c281f683760ea4d1d5aacfa8a7e269011677d150758"
     },
     {
       "path": "src/core/browser-relationships-invitation-product-bridge.mjs",
