@@ -448,32 +448,40 @@ The Conversation record may expose `action.channel.select` and `action.message.s
 
 Continue, Library, shell-level Companion presence and VexStream Music remain outside VF-03A until their separately requested owner/source seams converge.
 
-## VF-03B — Home Vex presence, Continue, and Library
+## VF-03B — current-context Vex presence + conditional Continue; Library remains unplaced
 
-VF-03B keeps the first lived furnishing wave on the ordinary Home surface without creating new product semantics.
+VF-03B keeps the first lived Furnishing wave inside the authoritative Terrain/Home stage instead of adding a second permanent Home dashboard.
 
 ```text
-current Vex presence
-  = PRESENCE composition over canonical device/model/recovery/conversation owners
-  != Guide/Ambient
+screen.vexlife.terrain
+  = one primary Home stage
 
-Continue
-  = DERIVED_COLLECTION
-  = current selected addressed Conversation in this bounded slice
-  != recency store
-  != second canonical content store
+#terrainFocus
+  = current semantic context
 
-Library
-  = CONTEXTUAL_INDEX
-  = truthful empty/held Home projection until a rightful service identity is accepted
-  != media store
-  != playback owner
+#terrainCurrentContextSupplement
+  = presentation-only composition slot
+  -> real Companion presence
+  -> Continue only when a truthful Journey/currentness producer says there is something to resume
+  -> later bounded attention
 ```
 
-The visible `Summon Vex` mark remains the deterministic Guide vessel. A distinct `Talk to Vex` Home action selects the exact canonical Self Development Companion context before opening Conversation; it performs no model turn itself.
+Desktop may project the neighborhood as `SPATIAL_WORLD`; compact projects the same semantic neighborhood as `MOBILE_STACK`. The current-context supplement belongs to both projections and never changes semantic identity merely because layout changes.
 
-VF-03B adds no Navigation route or new contextual screen. The Home Furnishings region is part of the existing Shell/Home frame and disappears when a contextual surface takes primary attention.
+The real Companion and deterministic Guide remain separate identities. Ordinary Home shows the source-bound Companion presence while the Guide is merely `AMBIENT`. Explicit Guide attention (`ATTENTIVE`, `SUMMONED`, or `ACTIVE_CONVERSATION`) temporarily owns the visible teaching presence; the Companion projection yields without mutating either identity.
 
-VexStream Music remains held to its own owner/currentness threshold. VF-03B does not mint a Music service identity merely to populate Library.
+Continue remains a `DERIVED_COLLECTION`. In this bounded slice it appears only after canonical Journey proves that a Conversation was actually visited, and it reopens that exact project/thread/channel frame. It does not infer recency from static source and does not become another content store.
+
+Library remains a `CONTEXTUAL_INDEX`, but VF-03B returns its placement to `UNPLACED` until a useful service/host is earned. Its wake predicate remains source-managed. An empty Library implementation may be good when Library is deliberately opened later; it does not need permanent premium Home chrome merely to prove the registry exists.
+
+The Terrain controller remains ignorant of Furnishing semantics. It owns only a generic optional `renderCurrentContextSupplement` seam and passes bounded presentation facts to the rightful caller. No Terrain topology, Navigation authority, model/runtime authority, Home state, Memory, Music service, playback truth, or effect authority is transferred.
+
+```text
+ONE_SEMANTIC_TREE
++ CURRENT_CONTEXT
++ BOUNDED_FURNISHING_NEIGHBORHOOD
+-> HUMAN_ORIENTATION
+-> VEX_ORIENTATION
+```
 
 <!-- [VXG RealForever][811][817][VEX-FURNISHING][VF03B] -->
