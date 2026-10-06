@@ -408,8 +408,8 @@
           "permissionRefOrNull": "permission.none",
           "actionSourceRef": "element.vex.current-companion.open",
           "availabilityBindingRef": "binding.current-vex-presence.action.open.availability",
-          "availabilityOwnerRef": "github.issue.vexlife.634",
-          "availabilitySourceRef": "registry.vexlife.companion-availability-reentry.001",
+          "availabilityOwnerRef": "service.conversation",
+          "availabilitySourceRef": "state.channels",
           "required": true
         }
       ],

@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 import {
   loadFurnishingRegistry,
   loadFurnishingReferenceUniverse,
-  compileFurnishingRegistry
+  compileFurnishingRegistry,
+  projectFurnishings
 } from '../scripts/furnishing.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -107,4 +108,22 @@ test('VF03B-06 Home projection requires no Navigation/Terrain/Feature/UX-Evoluti
   assert.equal(shell.regions.some((region) => region.regionRef === 'region.shell.home-furnishings'), true);
   assert.match(app, /navigation\.navigate\('element\.vex\.current-companion\.open'/u);
   assert.match(app, /openContext\('chat','element\.furnishing\.continue\.open-current'\)/u);
+});
+
+
+test('VF03B-07 HELD Companion availability keeps the Conversation doorway available', () => {
+  const vex = byFurnishing('furnishing.vexlife.current-vex-presence');
+  const open = vex.actionBindings.find((item) => item.actionBindingRef === 'action-binding.current-vex-presence.open');
+  assert.equal(open.availabilityOwnerRef, 'service.conversation');
+  assert.equal(open.availabilitySourceRef, 'state.channels');
+  const observation = (bindingRef, ownerRef, sourceRef, state, reasonRefs = []) => ({ bindingRef, ownerRef, sourceRef, state, reasonRefs, evidenceRefs: [], effectAuthorityGranted: false });
+  const projection = projectFurnishings(compiled, { includeFurnishingRefsOrNull: ['furnishing.vexlife.current-vex-presence'], observations: [
+    observation('binding.current-vex-presence.availability', 'github.issue.vexlife.634', 'registry.vexlife.companion-availability-reentry.001', 'HELD', ['reason.vex.not-ready']),
+    observation('binding.current-vex-presence.action.open.availability', 'service.conversation', 'state.channels', 'AVAILABLE')
+  ] });
+  const projected = projection.furnishings[0];
+  assert.equal(projected.availability.state, 'HELD');
+  assert.deepEqual(projected.availableActions, ['action.view.select']);
+  assert.deepEqual(projected.heldActionsWithReasons, []);
+  assert.equal(projection.effectAuthorityGranted, false);
 });
