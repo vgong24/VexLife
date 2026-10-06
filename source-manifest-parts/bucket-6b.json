@@ -11,8 +11,8 @@
     {
       "path": "platform/android/build.gradle.kts",
       "mode": "100644",
-      "bytes": 234,
-      "sha256": "1db291a6efd53cd9396c8f08e31afa31e8bee114d253363a14ce44de719c8fb1"
+      "bytes": 383,
+      "sha256": "126f8bd15993aadfcb73144d529c2b4173964889866032eae6ee0a5b798d0cde"
     },
     {
       "path": "reference/browser/modules/experience-guidance-human-projection.js",

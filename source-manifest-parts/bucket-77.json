@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 12873,
       "sha256": "dd36d9eadcbaba63d6470c3df7991a83f68b33d2708f41abe2fd5c1f41cab134"
+    },
+    {
+      "path": "platform/android/app/src/main/res/values-zh-rCN/vexlife_r2.xml",
+      "mode": "100644",
+      "bytes": 355,
+      "sha256": "5f4c28bfc2bb2947d0daa2f4d08d372a289fca8c67969ac901221e6ac66db15f"
     }
   ]
 }

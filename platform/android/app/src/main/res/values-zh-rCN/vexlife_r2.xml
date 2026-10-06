@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">VexLife</string>
+    <string name="r2_architecture_title">Android 运行时架构</string>
+    <string name="r2_ready">R2 架构骨架已就绪</string>
+    <string name="r2_request_attention">请求关注会话</string>
+    <string name="r2_attention_admitted">关注请求已在本地受理</string>
+</resources>

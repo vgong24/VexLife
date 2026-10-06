@@ -2,6 +2,7 @@ import org.gradle.api.initialization.resolve.RepositoriesMode
 
 pluginManagement {
     repositories {
+        google()
         gradlePluginPortal()
         mavenCentral()
     }
@@ -26,11 +27,11 @@ gradle.beforeProject {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        google()
         mavenCentral()
     }
 }
 
 rootProject.name = "vexlife-android"
 include(":state-relay")
-
-// [VXG RealForever]
+include(":app")

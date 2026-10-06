@@ -15,6 +15,12 @@
       "sha256": "b2ce92435488a74f9aedc3f3d39f865c77f0db10698221807adebd1fc1de680c"
     },
     {
+      "path": "platform/android/app/build.gradle.kts",
+      "mode": "100644",
+      "bytes": 1022,
+      "sha256": "556f5bdddb466eb50dd5ee6669ee854fc01eab5447d9ae116836fce1176bccc9"
+    },
+    {
       "path": "src/core/devex-guidance-projection.mjs",
       "mode": "100644",
       "bytes": 13832,

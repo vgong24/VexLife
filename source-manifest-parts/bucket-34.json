@@ -21,6 +21,12 @@
       "sha256": "9e7a4a077729cef00b6230aa5ce2f65208c95132400f118b0c2c5bd6f243c105"
     },
     {
+      "path": "src/core/android-r2-project-skeleton.mjs",
+      "mode": "100644",
+      "bytes": 36852,
+      "sha256": "8eaa6ce218bd59b8647ca14cc1bf56b89439fbceb9b5b70e7e8cb7cd8805234b"
+    },
+    {
       "path": "src/core/browser-relationships-invitation-product-bridge.mjs",
       "mode": "100644",
       "bytes": 15063,

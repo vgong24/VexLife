@@ -9,6 +9,12 @@
       "sha256": "a042bbb08b039e4c6c9eb1f0a682ccbe845c0641f9b841c9632c38c0be45355d"
     },
     {
+      "path": "platform/android/app/src/main/kotlin/vexlife/android/architecture/VexRuntimeContracts.kt",
+      "mode": "100644",
+      "bytes": 8216,
+      "sha256": "5c19e12184c552c922b229c2951ff79a153ba95db779df0b4394287b584c5da2"
+    },
+    {
       "path": "test/capability-assimilation-scheduler-authority.test.mjs",
       "mode": "100644",
       "bytes": 6322,
