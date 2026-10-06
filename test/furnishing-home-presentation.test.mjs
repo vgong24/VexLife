@@ -94,9 +94,9 @@ test('VF03B-05 browser source binds the exact current Companion portal without a
   assert.match(app, /project\.self-development/u);
   assert.match(app, /thread\.self-development\.open-conversation/u);
   assert.match(app, /channel\.self-development\.companion/u);
-  assert.match(app, /chat\.selectProject/u);
-  assert.match(app, /chat\.selectThread/u);
-  assert.match(app, /chat\.selectChannel/u);
+  assert.match(app, /navigation\.navigate\('element\.vex\.current-companion\.open'/u);
+  assert.match(app, /contextProjection:'chat'/u);
+  assert.doesNotMatch(app.slice(app.indexOf('async function openCurrentVexConversation'), app.indexOf('function openCurrentConversationFromHome')), /chat\.selectProject|chat\.selectThread|chat\.selectChannel/u);
   const doorway = app.slice(app.indexOf('async function openCurrentVexConversation'), app.indexOf('function openCurrentConversationFromHome'));
   assert.doesNotMatch(doorway, /\/api\/v1\/companion\/turn/u);
 });
