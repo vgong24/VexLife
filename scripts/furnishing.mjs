@@ -289,17 +289,31 @@ function normalizedRecord(record, label) {
 }
 
 function checkKnown(record, knownRefs, internalSubjectRefs) {
-  const check = (refValue, label) => {
-    if (!knownRefs.has(refValue)) throw new Error(`${record.furnishingRef} ${label} references unknown ref ${refValue}`);
+  const kindMap = knownRefs?.kinds;
+  if (!(kindMap instanceof Map)) {
+    throw new Error('knownRefs.kinds must be a Map for a non-empty Furnishing registry');
+  }
+  const check = (refValue, label, expectedKindOrNull = null) => {
+    if (!knownRefs.has(refValue)) {
+      throw new Error(`${record.furnishingRef} ${label} references unknown ref ${refValue}`);
+    }
+    if (expectedKindOrNull !== null) {
+      const kinds = kindMap.get(refValue);
+      if (!(kinds instanceof Set) || !kinds.has(expectedKindOrNull)) {
+        const observed = kinds instanceof Set ? [...kinds].sort(compareText).join(',') : 'NONE';
+        throw new Error(`${record.furnishingRef} ${label} requires ${expectedKindOrNull} ref ${refValue}; observed kinds=${observed}`);
+      }
+    }
   };
   if (record.subject.subjectClass === 'RESOURCE_PLACEMENT') check(record.subject.subjectRef, 'subjectRef');
   if (record.subject.resourceRefOrNull) check(record.subject.resourceRefOrNull, 'resourceRefOrNull');
   record.subject.semanticOwnerRefs.forEach((value) => check(value, 'semanticOwnerRef'));
   record.subject.sourceRefs.forEach((value) => check(value, 'subject sourceRef'));
   for (const item of [record.placement.primary, ...record.placement.contextual].filter(Boolean)) {
-    for (const value of [item.terrainNodeRefOrNull, item.presentationRefOrNull, item.routeRefOrNull, item.experienceDispositionRefOrNull].filter(Boolean)) {
-      check(value, 'placement identity');
-    }
+    if (item.terrainNodeRefOrNull) check(item.terrainNodeRefOrNull, 'terrainNodeRefOrNull', 'TERRAIN');
+    if (item.presentationRefOrNull) check(item.presentationRefOrNull, 'presentationRefOrNull', 'PRESENTATION');
+    if (item.routeRefOrNull) check(item.routeRefOrNull, 'routeRefOrNull', 'ROUTE');
+    if (item.experienceDispositionRefOrNull) check(item.experienceDispositionRefOrNull, 'experienceDispositionRefOrNull');
     item.ownerRefs.forEach((value) => check(value, 'placement ownerRef'));
     item.sourceRefs.forEach((value) => check(value, 'placement sourceRef'));
   }
@@ -310,8 +324,8 @@ function checkKnown(record, knownRefs, internalSubjectRefs) {
     }
   }
   for (const item of record.actionBindings) {
-    check(item.actionRef, 'actionRef');
-    if (item.permissionRefOrNull) check(item.permissionRefOrNull, 'permissionRefOrNull');
+    check(item.actionRef, 'actionRef', 'ACTION');
+    if (item.permissionRefOrNull) check(item.permissionRefOrNull, 'permissionRefOrNull', 'PERMISSION');
     check(item.actionSourceRef, 'action sourceRef');
     check(item.availabilityOwnerRef, 'action availability ownerRef');
     check(item.availabilitySourceRef, 'action availability sourceRef');
@@ -322,7 +336,7 @@ function checkKnown(record, knownRefs, internalSubjectRefs) {
     check(item.sourceRef, 'addressability sourceRef');
   }
   for (const item of record.platformProjections) {
-    check(item.platformRef, 'platformRef');
+    check(item.platformRef, 'platformRef', 'PLATFORM');
     check(item.ownerRef, 'platform ownerRef');
     check(item.sourceRef, 'platform sourceRef');
   }
@@ -336,49 +350,76 @@ export function loadFurnishingRegistry(root = ROOT) {
   return JSON.parse(fs.readFileSync(path.join(root, 'blueprint/furnishing-registry.json'), 'utf8'));
 }
 
-function addReference(refs, value, label, { nullable = false } = {}) {
+function ensureKindSet(kindMap, refValue) {
+  const existing = kindMap.get(refValue);
+  if (existing instanceof Set) return existing;
+  const created = new Set();
+  kindMap.set(refValue, created);
+  return created;
+}
+
+function addReference(refs, kindMap, value, label, { nullable = false, kind = null } = {}) {
   if (value === null && nullable) return;
   if (typeof value !== 'string' || !value.trim()) {
     throw new Error(`${label} must be ${nullable ? 'null or ' : ''}a non-empty ref string`);
   }
   refs.add(value);
+  if (kind !== null) ensureKindSet(kindMap, value).add(kind);
 }
 
-function addReferenceArray(refs, value, label, { nullable = false } = {}) {
+function addReferenceArray(refs, kindMap, value, label, { nullable = false, kind = null } = {}) {
   if (value === null && nullable) return;
   if (!Array.isArray(value)) {
     throw new Error(`${label} must be ${nullable ? 'null or ' : ''}an array of ref strings`);
   }
-  value.forEach((item, index) => addReference(refs, item, `${label}[${index}]`));
+  value.forEach((item, index) => addReference(refs, kindMap, item, `${label}[${index}]`, { kind }));
 }
 
-function collectIdentityRegistryReferences(identityRegistry, refs) {
+function collectIdentityRegistryReferences(identityRegistry, refs, kindMap) {
   if (identityRegistry === null) return;
   if (!(identityRegistry.entries instanceof Map)) throw new Error('identityRegistry.entries must be a Map');
   for (const [ref, entry] of identityRegistry.entries.entries()) {
-    addReference(refs, ref, 'identityRegistry.entries key');
+    const kind = typeof entry?.kind === 'string' && entry.kind.trim() ? entry.kind : null;
+    addReference(refs, kindMap, ref, 'identityRegistry.entries key', { kind });
     if (entry?.kind === 'STATE_DOMAIN') {
-      addReference(refs, entry.ownerRef, `identityRegistry.entries[${ref}].ownerRef`);
+      addReference(refs, kindMap, entry.ownerRef, `identityRegistry.entries[${ref}].ownerRef`, { kind: 'STATE_DOMAIN_OWNER' });
     }
   }
   if (identityRegistry.aliases !== undefined) {
     if (!(identityRegistry.aliases instanceof Map)) throw new Error('identityRegistry.aliases must be a Map');
     for (const [alias, canonical] of identityRegistry.aliases.entries()) {
-      addReference(refs, alias, 'identityRegistry.aliases alias');
-      addReference(refs, canonical, `identityRegistry.aliases[${alias}]`);
+      addReference(refs, kindMap, alias, 'identityRegistry.aliases alias');
+      addReference(refs, kindMap, canonical, `identityRegistry.aliases[${alias}]`);
+      const canonicalKinds = kindMap.get(canonical);
+      if (canonicalKinds instanceof Set) {
+        const aliasKinds = ensureKindSet(kindMap, alias);
+        canonicalKinds.forEach((kind) => aliasKinds.add(kind));
+      }
     }
   }
 }
 
-function collectPresentationGraphReferences(presentationGraph, refs) {
+function collectPresentationGraphReferences(presentationGraph, refs, kindMap) {
   if (presentationGraph === null) return;
   if (!presentationGraph || typeof presentationGraph !== 'object' || Array.isArray(presentationGraph)) {
     throw new Error('presentationGraph must be an object');
   }
 
+  const topKinds = {
+    registryRef: 'PRESENTATION_GRAPH_REGISTRY',
+    foundationRef: 'FOUNDATION',
+    ownerRef: 'OWNER',
+    parentRef: 'OWNER'
+  };
   for (const field of ['registryRef', 'foundationRef', 'ownerRef', 'parentRef']) {
     if (Object.hasOwn(presentationGraph, field)) {
-      addReference(refs, presentationGraph[field], `presentationGraph.${field}`, { nullable: field === 'parentRef' });
+      addReference(
+        refs,
+        kindMap,
+        presentationGraph[field],
+        `presentationGraph.${field}`,
+        { nullable: field === 'parentRef', kind: topKinds[field] }
+      );
     }
   }
 
@@ -388,7 +429,7 @@ function collectPresentationGraphReferences(presentationGraph, refs) {
       throw new Error('presentationGraph.existingOwnerRefs must be an object');
     }
     for (const [field, value] of Object.entries(owners)) {
-      addReference(refs, value, `presentationGraph.existingOwnerRefs.${field}`, { nullable: true });
+      addReference(refs, kindMap, value, `presentationGraph.existingOwnerRefs.${field}`, { nullable: true, kind: 'OWNER' });
     }
   }
 
@@ -398,11 +439,11 @@ function collectPresentationGraphReferences(presentationGraph, refs) {
   presentationGraph.presentationNodes.forEach((node, index) => {
     const label = `presentationGraph.presentationNodes[${index}]`;
     if (!node || typeof node !== 'object' || Array.isArray(node)) throw new Error(`${label} must be an object`);
-    addReference(refs, node.presentationRef, `${label}.presentationRef`);
-    addReference(refs, node.parentPresentationRefOrNull, `${label}.parentPresentationRefOrNull`, { nullable: true });
-    addReference(refs, node.semanticOwnerRefOrNull, `${label}.semanticOwnerRefOrNull`, { nullable: true });
-    addReference(refs, node.presentationOwnerRef, `${label}.presentationOwnerRef`);
-    if (Object.hasOwn(node, 'sourceRef')) addReference(refs, node.sourceRef, `${label}.sourceRef`, { nullable: true });
+    addReference(refs, kindMap, node.presentationRef, `${label}.presentationRef`, { kind: 'PRESENTATION' });
+    addReference(refs, kindMap, node.parentPresentationRefOrNull, `${label}.parentPresentationRefOrNull`, { nullable: true, kind: 'PRESENTATION' });
+    addReference(refs, kindMap, node.semanticOwnerRefOrNull, `${label}.semanticOwnerRefOrNull`, { nullable: true });
+    addReference(refs, kindMap, node.presentationOwnerRef, `${label}.presentationOwnerRef`, { kind: 'OWNER' });
+    if (Object.hasOwn(node, 'sourceRef')) addReference(refs, kindMap, node.sourceRef, `${label}.sourceRef`, { nullable: true });
   });
 
   if (!Array.isArray(presentationGraph.reachabilityPaths)) {
@@ -411,16 +452,23 @@ function collectPresentationGraphReferences(presentationGraph, refs) {
   presentationGraph.reachabilityPaths.forEach((pathSpec, index) => {
     const label = `presentationGraph.reachabilityPaths[${index}]`;
     if (!pathSpec || typeof pathSpec !== 'object' || Array.isArray(pathSpec)) throw new Error(`${label} must be an object`);
-    addReference(refs, pathSpec.reachabilityRef, `${label}.reachabilityRef`);
-    addReference(refs, pathSpec.targetRef, `${label}.targetRef`);
-    addReferenceArray(refs, pathSpec.steps, `${label}.steps`);
+    addReference(refs, kindMap, pathSpec.reachabilityRef, `${label}.reachabilityRef`, { kind: 'REACHABILITY' });
+    addReference(refs, kindMap, pathSpec.targetRef, `${label}.targetRef`);
+    addReferenceArray(refs, kindMap, pathSpec.steps, `${label}.steps`);
   });
 }
 
 export function buildFurnishingReferenceUniverse({ identityRegistry = null, presentationGraph = null } = {}) {
   const refs = new Set();
-  collectIdentityRegistryReferences(identityRegistry, refs);
-  collectPresentationGraphReferences(presentationGraph, refs);
+  const kindMap = new Map();
+  Object.defineProperty(refs, 'kinds', {
+    value: kindMap,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+  collectIdentityRegistryReferences(identityRegistry, refs, kindMap);
+  collectPresentationGraphReferences(presentationGraph, refs, kindMap);
   return refs;
 }
 
