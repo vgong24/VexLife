@@ -631,8 +631,7 @@ async function runFurnishingHomeProductProof(page, viewport, errors) {
         talkHeight:talk?.getBoundingClientRect().height??0,
         horizontalOverflow:Math.max(0,document.documentElement.scrollWidth-innerWidth),
         projectionGrammar:app.terrain.viewportProjection().projectionGrammar,
-        guideActionText:document.querySelector('[data-focus-action="vex"]')?.textContent?.trim()??'',
-        expectedGuideActionText:app.t('guide.ask.current'),
+        inlineGuideActionPresent:Boolean(document.querySelector('[data-focus-action="vex"]')),
         currentContextBounds:(()=>{const rect=document.querySelector('#terrainFocus')?.getBoundingClientRect();return rect?{left:rect.left,top:rect.top,right:rect.right,bottom:rect.bottom,width:rect.width,height:rect.height}:null;})(),
         zoomBounds:(()=>{const rect=document.querySelector('.e27-zoom-rail')?.getBoundingClientRect();return rect?{left:rect.left,top:rect.top,right:rect.right,bottom:rect.bottom,width:rect.width,height:rect.height}:null;})(),
         instrumentationBounds:(()=>{const rect=document.querySelector('#terrainInstrumentation')?.getBoundingClientRect();return rect?{left:rect.left,top:rect.top,right:rect.right,bottom:rect.bottom,width:rect.width,height:rect.height}:null;})()
@@ -652,7 +651,7 @@ async function runFurnishingHomeProductProof(page, viewport, errors) {
     assert(initial.talkHeight >= 44, 'VF03B Talk to Vex fell below the 44px target');
     assert(initial.horizontalOverflow <= 1, 'VF03B current-context Home overflowed horizontally');
     assert(['SPATIAL_WORLD','MOBILE_STACK'].includes(initial.projectionGrammar), 'VF03B unknown Terrain projection grammar');
-    assert(initial.guideActionText === initial.expectedGuideActionText && !/Vex/iu.test(initial.guideActionText), 'VF03B Guide action copy still competes with the real-Companion relationship doorway');
+    assert(initial.inlineGuideActionPresent === false, 'VF03B current context exposed a second inline Guide doorway beside the neutral Guide disclosure');
     if(initial.projectionGrammar==='MOBILE_STACK'){
       assert(initial.currentContextBounds&&initial.zoomBounds&&initial.instrumentationBounds,'VF03B compact geometry evidence is incomplete');
       assert(initial.zoomBounds.top>=initial.currentContextBounds.bottom+4,'VF03B compact zoom/auto-entry controls overlap the current-context card');
@@ -660,7 +659,7 @@ async function runFurnishingHomeProductProof(page, viewport, errors) {
       assert(initial.zoomBounds.right<=initial.instrumentationBounds.left-4,'VF03B compact secondary Terrain controls collide horizontally');
     }
     checks.push('current semantic context carries one real-Companion Home presence without consuming Terrain canvas');
-    checks.push('Guide help language stays distinct from Talk to Vex and compact secondary controls clear current context');
+    checks.push('current context keeps Guide help in the neutral disclosure instead of a competing inline Vex doorway; compact secondary controls clear current context');
 
     await page.locator('#surfaceMenuButton').click();
     await page.locator('#openConversation').click();
