@@ -96,12 +96,14 @@ test('VF03B-05 browser source binds the exact current Companion portal without a
   assert.match(app, /thread\.self-development\.open-conversation/u);
   assert.match(app, /channel\.self-development\.companion/u);
   assert.match(app, /navigation\.navigate\('element\.vex\.current-companion\.open'/u);
-  assert.match(app, /HOME_COMPANION_AVAILABILITY_TIMEOUT_MS=5000/u);
-  assert.match(app, /signal:AbortSignal\.timeout\(HOME_COMPANION_AVAILABILITY_TIMEOUT_MS\)/u);
   assert.match(app, /contextProjection:'chat'/u);
+  assert.match(app, /chat\?\.companionAvailability\?\.\(\)/u);
+  assert.match(app, /healthCompanionAvailabilityReadState!==\'UNREQUESTED\'/u);
   assert.doesNotMatch(app.slice(app.indexOf('async function openCurrentVexConversation'), app.indexOf('function openCurrentConversationFromHome')), /chat\.selectProject|chat\.selectThread|chat\.selectChannel/u);
   const doorway = app.slice(app.indexOf('async function openCurrentVexConversation'), app.indexOf('function openCurrentConversationFromHome'));
   assert.doesNotMatch(doorway, /\/api\/v1\/companion\/turn/u);
+  assert.doesNotMatch(doorway, /refreshCompanionAvailability/u);
+  assert.match(html, /id="homeContinue"[^>]*data-presentation-ref="presentation\.vexlife\.home\.continue"/u);
 });
 
 test('VF03B-06 Home projection requires no Navigation/Terrain/Feature/UX-Evolution mutation', () => {
