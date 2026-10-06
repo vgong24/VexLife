@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.furnishing-registry/v0",
   "registryRef": "registry.vexlife.furnishing.001",
-  "registryVersion": 2,
+  "registryVersion": 3,
   "ownerRef": "github.issue.vexlife.811",
   "parentRef": "github.issue.vexlife.624",
   "sourcePlacementRef": "github.issue.vexlife.811.comment.6008774332",
@@ -325,6 +325,266 @@
       "addressabilityLinks": [],
       "platformProjections": [],
       "wakePredicates": []
+    },
+    {
+      "furnishingRef": "furnishing.vexlife.current-vex-presence",
+      "subject": {
+        "subjectClass": "PRESENCE",
+        "subjectRef": "projection.furnishing.current-vex-presence",
+        "resourceRefOrNull": null,
+        "semanticOwnerRefs": [
+          "service.device-family",
+          "service.model-runtime",
+          "service.runtime-recovery",
+          "service.conversation"
+        ],
+        "sourceRefs": [
+          "state.device-family",
+          "state.model",
+          "state.runtime-recovery",
+          "state.channels",
+          "registry.vexlife.companion-availability-reentry.001"
+        ]
+      },
+      "placement": {
+        "posture": "PLACED",
+        "primary": {
+          "placementRef": "placement.vexlife.current-vex-presence.home",
+          "terrainNodeRefOrNull": null,
+          "presentationRefOrNull": "presentation.vexlife.home.current-vex-presence",
+          "routeRefOrNull": null,
+          "experienceDispositionRefOrNull": null,
+          "ownerRefs": [
+            "github.issue.vexlife.703",
+            "github.issue.vexlife.634"
+          ],
+          "sourceRefs": [
+            "registry.vexlife.companion-availability-reentry.001",
+            "presentation.vexlife.home.current-vex-presence"
+          ]
+        },
+        "contextual": []
+      },
+      "bindings": {
+        "currentness": [
+          {
+            "bindingRef": "binding.current-vex-presence.currentness",
+            "ownerRef": "github.issue.vexlife.634",
+            "sourceRef": "registry.vexlife.companion-availability-reentry.001",
+            "required": true
+          }
+        ],
+        "visibility": [
+          {
+            "bindingRef": "binding.current-vex-presence.visibility",
+            "ownerRef": "github.issue.vexlife.811",
+            "sourceRef": "presentation.vexlife.home.current-vex-presence",
+            "required": true
+          }
+        ],
+        "reachability": [
+          {
+            "bindingRef": "binding.current-vex-presence.reachability",
+            "ownerRef": "github.issue.vexlife.719",
+            "sourceRef": "reachability.vexlife.home.current-vex-presence",
+            "required": true
+          }
+        ],
+        "availability": [
+          {
+            "bindingRef": "binding.current-vex-presence.availability",
+            "ownerRef": "github.issue.vexlife.634",
+            "sourceRef": "registry.vexlife.companion-availability-reentry.001",
+            "required": true
+          }
+        ],
+        "attention": [],
+        "recovery": []
+      },
+      "actionBindings": [
+        {
+          "actionBindingRef": "action-binding.current-vex-presence.open",
+          "actionRef": "action.view.select",
+          "permissionRefOrNull": "permission.none",
+          "actionSourceRef": "element.vex.current-companion.open",
+          "availabilityBindingRef": "binding.current-vex-presence.action.open.availability",
+          "availabilityOwnerRef": "github.issue.vexlife.634",
+          "availabilitySourceRef": "registry.vexlife.companion-availability-reentry.001",
+          "required": true
+        }
+      ],
+      "addressabilityLinks": [],
+      "platformProjections": [],
+      "wakePredicates": []
+    },
+    {
+      "furnishingRef": "furnishing.vexlife.continue",
+      "subject": {
+        "subjectClass": "DERIVED_COLLECTION",
+        "subjectRef": "projection.furnishing.continue",
+        "resourceRefOrNull": null,
+        "semanticOwnerRefs": [],
+        "sourceRefs": [
+          "projection.furnishing.continue"
+        ]
+      },
+      "placement": {
+        "posture": "PLACED",
+        "primary": {
+          "placementRef": "placement.vexlife.continue.home",
+          "terrainNodeRefOrNull": null,
+          "presentationRefOrNull": "presentation.vexlife.home.continue",
+          "routeRefOrNull": null,
+          "experienceDispositionRefOrNull": null,
+          "ownerRefs": [
+            "github.issue.vexlife.811",
+            "github.issue.vexlife.703"
+          ],
+          "sourceRefs": [
+            "projection.furnishing.continue",
+            "presentation.vexlife.home.continue"
+          ]
+        },
+        "contextual": []
+      },
+      "bindings": {
+        "currentness": [
+          {
+            "bindingRef": "binding.continue.currentness",
+            "ownerRef": "github.issue.vexlife.811",
+            "sourceRef": "projection.furnishing.continue",
+            "required": true
+          }
+        ],
+        "visibility": [
+          {
+            "bindingRef": "binding.continue.visibility",
+            "ownerRef": "github.issue.vexlife.811",
+            "sourceRef": "presentation.vexlife.home.continue",
+            "required": true
+          }
+        ],
+        "reachability": [
+          {
+            "bindingRef": "binding.continue.reachability",
+            "ownerRef": "github.issue.vexlife.719",
+            "sourceRef": "reachability.vexlife.home.continue",
+            "required": true
+          }
+        ],
+        "availability": [
+          {
+            "bindingRef": "binding.continue.availability",
+            "ownerRef": "github.issue.vexlife.811",
+            "sourceRef": "projection.furnishing.continue",
+            "required": true
+          }
+        ],
+        "attention": [],
+        "recovery": []
+      },
+      "actionBindings": [
+        {
+          "actionBindingRef": "action-binding.continue.open-current",
+          "actionRef": "action.view.select",
+          "permissionRefOrNull": "permission.none",
+          "actionSourceRef": "element.furnishing.continue.open-current",
+          "availabilityBindingRef": "binding.continue.action.open-current.availability",
+          "availabilityOwnerRef": "github.issue.vexlife.811",
+          "availabilitySourceRef": "projection.furnishing.continue",
+          "required": true
+        }
+      ],
+      "addressabilityLinks": [
+        {
+          "linkRef": "addressability.continue.addressed-conversation",
+          "linkClass": "CONTINUATION_ENTRY",
+          "targetSubjectRef": "feature.vexlife.addressed-conversation",
+          "ownerRef": "service.conversation",
+          "sourceRef": "feature.vexlife.addressed-conversation",
+          "semanticRelationAuthority": false
+        }
+      ],
+      "platformProjections": [],
+      "wakePredicates": []
+    },
+    {
+      "furnishingRef": "furnishing.vexlife.library",
+      "subject": {
+        "subjectClass": "CONTEXTUAL_INDEX",
+        "subjectRef": "projection.furnishing.library",
+        "resourceRefOrNull": null,
+        "semanticOwnerRefs": [],
+        "sourceRefs": [
+          "projection.furnishing.library"
+        ]
+      },
+      "placement": {
+        "posture": "PLACED",
+        "primary": {
+          "placementRef": "placement.vexlife.library.home",
+          "terrainNodeRefOrNull": null,
+          "presentationRefOrNull": "presentation.vexlife.home.library",
+          "routeRefOrNull": null,
+          "experienceDispositionRefOrNull": null,
+          "ownerRefs": [
+            "github.issue.vexlife.811",
+            "github.issue.vexlife.703"
+          ],
+          "sourceRefs": [
+            "projection.furnishing.library",
+            "presentation.vexlife.home.library"
+          ]
+        },
+        "contextual": []
+      },
+      "bindings": {
+        "currentness": [
+          {
+            "bindingRef": "binding.library.currentness",
+            "ownerRef": "github.issue.vexlife.811",
+            "sourceRef": "projection.furnishing.library",
+            "required": true
+          }
+        ],
+        "visibility": [
+          {
+            "bindingRef": "binding.library.visibility",
+            "ownerRef": "github.issue.vexlife.811",
+            "sourceRef": "presentation.vexlife.home.library",
+            "required": true
+          }
+        ],
+        "reachability": [
+          {
+            "bindingRef": "binding.library.reachability",
+            "ownerRef": "github.issue.vexlife.719",
+            "sourceRef": "reachability.vexlife.home.library",
+            "required": true
+          }
+        ],
+        "availability": [
+          {
+            "bindingRef": "binding.library.availability",
+            "ownerRef": "github.issue.vexlife.811",
+            "sourceRef": "projection.furnishing.library",
+            "required": true
+          }
+        ],
+        "attention": [],
+        "recovery": []
+      },
+      "actionBindings": [],
+      "addressabilityLinks": [],
+      "platformProjections": [],
+      "wakePredicates": [
+        {
+          "predicateRef": "wake.vexlife.library.accepted-external-service",
+          "ownerRef": "github.issue.vexlife.811",
+          "sourceRef": "projection.furnishing.library",
+          "condition": "ACCEPTED_EXTERNAL_SERVICE_IDENTITY_AND_CURRENTNESS_AVAILABLE"
+        }
+      ]
     }
   ]
 }
