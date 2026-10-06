@@ -409,6 +409,9 @@ export function compileFurnishingRegistry(registry, { knownRefs = null } = {}) {
   const internalSubjectRefs = new Set(furnishings.map((value) => value.subject.subjectRef));
   if (internalSubjectRefs.size !== furnishings.length) throw new Error('duplicate subjectRef');
   if (knownRefs !== null && !(knownRefs instanceof Set)) throw new Error('knownRefs must be a Set');
+  if (furnishings.length > 0 && knownRefs === null) {
+    throw new Error('knownRefs is required for a non-empty Furnishing registry');
+  }
   if (knownRefs) furnishings.forEach((record) => checkKnown(record, knownRefs, internalSubjectRefs));
 
   const core = {
