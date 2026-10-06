@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   loadFurnishingRegistry,
+  loadFurnishingReferenceUniverse,
   buildFurnishingReferenceUniverse,
   validateFurnishingRegistry,
   compileFurnishingRegistry,
@@ -21,6 +22,7 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const foundation = loadFurnishingRegistry(root);
+const currentKnownRefs = await loadFurnishingReferenceUniverse(root);
 const emptyFoundation = { ...structuredClone(foundation), furnishings: [] };
 
 function registryWith(...records) {
@@ -482,30 +484,7 @@ test('VF03A-09 existing wrong-kind references fail closed at typed Furnishing fi
 // [VXG RealForever]
 
 function vf03aKnownRefs() {
-  return typedReferenceSet([
-    'feature.vexlife.relationships','state.relationships','service.relationships',
-    'terrain.resource.relationships','presentation.vexlife.relationships.active-surface',
-    'route.relationships','github.issue.vexlife.237','github.issue.vexlife.719',
-    'reachability.vexlife.relationships.active-surface',
-    'feature.vexlife.addressed-conversation','state.channels','state.messages','service.conversation',
-    'terrain.thread.open-conversation','presentation.vexlife.conversation.active-surface',
-    'route.chat','github.issue.vexlife.696','reachability.vexlife.conversation.active-surface',
-    'action.context.open','action.navigation.back','action.channel.select','action.message.send',
-    'permission.none','permission.conversation.send'
-  ], {
-    'terrain.resource.relationships':'TERRAIN',
-    'terrain.thread.open-conversation':'TERRAIN',
-    'presentation.vexlife.relationships.active-surface':'PRESENTATION',
-    'presentation.vexlife.conversation.active-surface':'PRESENTATION',
-    'route.relationships':'ROUTE',
-    'route.chat':'ROUTE',
-    'action.context.open':'ACTION',
-    'action.navigation.back':'ACTION',
-    'action.channel.select':'ACTION',
-    'action.message.send':'ACTION',
-    'permission.none':'PERMISSION',
-    'permission.conversation.send':'PERMISSION'
-  });
+  return currentKnownRefs;
 }
 
 
@@ -578,12 +557,11 @@ test('VF03A-00 canonical reference universe uses typed current sources and ignor
       }] }
   }), /steps must be an array of ref strings/u);
 });
-test('VF03A-01 current source registry contains exactly the first two accepted lived furnishings', () => {
+test('VF03A-01 current source registry retains the first two accepted lived furnishings after later population', () => {
   const compiled = compileFurnishingRegistry(foundation, { knownRefs: vf03aKnownRefs() });
-  assert.deepEqual(compiled.furnishings.map((item)=>item.furnishingRef), [
-    'furnishing.vexlife.addressed-conversation',
-    'furnishing.vexlife.relationships'
-  ]);
+  const refs = new Set(compiled.furnishings.map((item)=>item.furnishingRef));
+  assert.equal(refs.has('furnishing.vexlife.addressed-conversation'), true);
+  assert.equal(refs.has('furnishing.vexlife.relationships'), true);
 });
 
 test('VF03A-02 Relationships reuses canonical state owner and current Self Development placement', () => {
