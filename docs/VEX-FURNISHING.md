@@ -180,6 +180,8 @@ recovery    = AVAILABLE | UNAVAILABLE | HELD | UNKNOWN
 
 Missing required source input becomes `UNKNOWN`. Conflicting source observations become `UNKNOWN`. Furnishing never resolves disagreement by voting or by preferring whichever source is convenient.
 
+Reference validation also fails closed. The inert VF-02A registry may compile without a `knownRefs` universe only while `furnishings=[]`. Any non-empty registry requires an explicit `knownRefs` `Set`; omitting it is an error, and every external subject/owner/source/Terrain/Presentation/route/action/permission/platform/wake reference must resolve before compilation succeeds. This prevents later Furnishing population from silently accepting typoed or stale cross-owner refs merely because the registry became non-empty.
+
 ```text
 VISIBLE != REACHABLE
 REACHABLE != AVAILABLE
