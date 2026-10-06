@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.furnishing-registry/v0",
   "registryRef": "registry.vexlife.furnishing.001",
-  "registryVersion": 3,
+  "registryVersion": 4,
   "ownerRef": "github.issue.vexlife.811",
   "parentRef": "github.issue.vexlife.624",
   "sourcePlacementRef": "github.issue.vexlife.811.comment.6008774332",
@@ -349,14 +349,15 @@
       "placement": {
         "posture": "PLACED",
         "primary": {
-          "placementRef": "placement.vexlife.current-vex-presence.home",
+          "placementRef": "placement.vexlife.current-vex-presence.current-context",
           "terrainNodeRefOrNull": null,
           "presentationRefOrNull": "presentation.vexlife.home.current-vex-presence",
           "routeRefOrNull": null,
           "experienceDispositionRefOrNull": null,
           "ownerRefs": [
-            "github.issue.vexlife.703",
-            "github.issue.vexlife.634"
+            "github.issue.vexlife.634",
+            "github.issue.vexlife.745",
+            "github.issue.vexlife.811"
           ],
           "sourceRefs": [
             "registry.vexlife.companion-availability-reentry.001",
@@ -431,14 +432,14 @@
       "placement": {
         "posture": "PLACED",
         "primary": {
-          "placementRef": "placement.vexlife.continue.home",
+          "placementRef": "placement.vexlife.continue.current-context",
           "terrainNodeRefOrNull": null,
           "presentationRefOrNull": "presentation.vexlife.home.continue",
           "routeRefOrNull": null,
           "experienceDispositionRefOrNull": null,
           "ownerRefs": [
-            "github.issue.vexlife.811",
-            "github.issue.vexlife.703"
+            "github.issue.vexlife.745",
+            "github.issue.vexlife.811"
           ],
           "sourceRefs": [
             "projection.furnishing.continue",
@@ -520,22 +521,8 @@
         ]
       },
       "placement": {
-        "posture": "PLACED",
-        "primary": {
-          "placementRef": "placement.vexlife.library.home",
-          "terrainNodeRefOrNull": null,
-          "presentationRefOrNull": "presentation.vexlife.home.library",
-          "routeRefOrNull": null,
-          "experienceDispositionRefOrNull": null,
-          "ownerRefs": [
-            "github.issue.vexlife.811",
-            "github.issue.vexlife.703"
-          ],
-          "sourceRefs": [
-            "projection.furnishing.library",
-            "presentation.vexlife.home.library"
-          ]
-        },
+        "posture": "UNPLACED",
+        "primary": null,
         "contextual": []
       },
       "bindings": {
@@ -547,22 +534,8 @@
             "required": true
           }
         ],
-        "visibility": [
-          {
-            "bindingRef": "binding.library.visibility",
-            "ownerRef": "github.issue.vexlife.811",
-            "sourceRef": "presentation.vexlife.home.library",
-            "required": true
-          }
-        ],
-        "reachability": [
-          {
-            "bindingRef": "binding.library.reachability",
-            "ownerRef": "github.issue.vexlife.719",
-            "sourceRef": "reachability.vexlife.home.library",
-            "required": true
-          }
-        ],
+        "visibility": [],
+        "reachability": [],
         "availability": [
           {
             "bindingRef": "binding.library.availability",

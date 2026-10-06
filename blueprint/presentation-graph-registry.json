@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.presentation-graph-registry/v1",
   "registryRef": "registry.vexlife.presentation-graph.001",
-  "registryVersion": 12,
+  "registryVersion": 13,
   "foundationRef": "foundation.vexlife.presentation-graph.001",
   "canonicalSourceRef": "source.blueprint.presentation-graph-registry",
   "canonicalSource": {
@@ -624,6 +624,50 @@
       }
     },
     {
+      "presentationRef": "presentation.vexlife.terrain.current-context",
+      "presentationKind": "TERRAIN_CURRENT_CONTEXT",
+      "parentPresentationRefOrNull": "presentation.vexlife.terrain.canvas",
+      "semanticOwnerRefOrNull": "screen.vexlife.terrain",
+      "presentationOwnerRef": "github.issue.vexlife.745",
+      "sourceRef": "screen.vexlife.terrain",
+      "runtimeBindingRef": "#terrainFocus",
+      "productSemanticOwnership": false,
+      "boundedRuntimeEventClasses": [
+        "STATE_PROJECTION_CHANGE",
+        "LAYOUT_SETTLED",
+        "VIEWPORT_CHANGED"
+      ],
+      "presentationContract": {
+        "canonicalTerrainOwnerReused": true,
+        "currentSemanticContextAuthority": "CANONICAL_NAVIGATION_AND_TERRAIN",
+        "semanticStateMutationAuthority": false,
+        "productSemanticOwnership": false
+      }
+    },
+    {
+      "presentationRef": "presentation.vexlife.terrain.current-context-supplement",
+      "presentationKind": "CURRENT_CONTEXT_PRESENTATION_SLOT",
+      "parentPresentationRefOrNull": "presentation.vexlife.terrain.current-context",
+      "semanticOwnerRefOrNull": null,
+      "presentationOwnerRef": "github.issue.vexlife.745",
+      "sourceRef": "screen.vexlife.terrain",
+      "runtimeBindingRef": "#terrainCurrentContextSupplement",
+      "productSemanticOwnership": false,
+      "boundedRuntimeEventClasses": [
+        "STATE_PROJECTION_CHANGE",
+        "ELEMENT_ACTIVATED",
+        "LAYOUT_SETTLED",
+        "VIEWPORT_CHANGED"
+      ],
+      "presentationContract": {
+        "terrainOwnsSlotStructure": true,
+        "childPresentationOwnersRetained": true,
+        "terrainSemanticOwnerMutation": false,
+        "effectAuthority": false,
+        "productSemanticOwnership": false
+      }
+    },
+    {
       "presentationRef": "presentation.vexlife.terrain.journey",
       "presentationKind": "CANONICAL_JOURNEY_PROJECTION",
       "parentPresentationRefOrNull": "presentation.vexlife.terrain.primary-stage",
@@ -917,36 +961,13 @@
       }
     },
     {
-      "presentationRef": "presentation.vexlife.shared-shell.home-furnishings",
-      "presentationKind": "HOME_FURNISHINGS_REGION",
-      "parentPresentationRefOrNull": null,
-      "semanticOwnerRefOrNull": "screen.vexlife.shell",
-      "presentationOwnerRef": "github.issue.vexlife.703",
-      "sourceRef": "screen.vexlife.shell",
-      "runtimeBindingRef": "#furnishingHome",
-      "productSemanticOwnership": false,
-      "boundedRuntimeEventClasses": [
-        "PRESENTATION_MOUNT",
-        "PRESENTATION_UNMOUNT",
-        "STATE_PROJECTION_CHANGE",
-        "LAYOUT_SETTLED",
-        "VIEWPORT_CHANGED"
-      ],
-      "presentationContract": {
-        "homeOnly": true,
-        "contextualSurfaceSuppresses": true,
-        "oneSemanticState": true,
-        "productSemanticOwnership": false
-      }
-    },
-    {
       "presentationRef": "presentation.vexlife.home.current-vex-presence",
-      "presentationKind": "HOME_COMPANION_PRESENCE",
-      "parentPresentationRefOrNull": "presentation.vexlife.shared-shell.home-furnishings",
+      "presentationKind": "CURRENT_CONTEXT_COMPANION_PRESENCE",
+      "parentPresentationRefOrNull": "presentation.vexlife.terrain.current-context-supplement",
       "semanticOwnerRefOrNull": null,
       "presentationOwnerRef": "github.issue.vexlife.811",
       "sourceRef": "registry.vexlife.companion-availability-reentry.001",
-      "runtimeBindingRef": "#homeVexPresence",
+      "runtimeBindingRef": "#terrainCurrentContextSupplement [data-furnishing-ref=\"furnishing.vexlife.current-vex-presence\"]",
       "productSemanticOwnership": false,
       "boundedRuntimeEventClasses": [
         "STATE_PROJECTION_CHANGE",
@@ -957,17 +978,19 @@
         "canonicalCompanionAvailabilityReused": true,
         "readyRecoverableHeldUnknownDistinct": true,
         "effectAuthority": false,
-        "modelRuntimeAuthority": false
+        "modelRuntimeAuthority": false,
+        "currentContextComposition": true,
+        "conditionalGuideAttentionYield": true
       }
     },
     {
       "presentationRef": "presentation.vexlife.home.continue",
-      "presentationKind": "HOME_DERIVED_COLLECTION",
-      "parentPresentationRefOrNull": "presentation.vexlife.shared-shell.home-furnishings",
+      "presentationKind": "CURRENT_CONTEXT_DERIVED_COLLECTION",
+      "parentPresentationRefOrNull": "presentation.vexlife.terrain.current-context-supplement",
       "semanticOwnerRefOrNull": null,
       "presentationOwnerRef": "github.issue.vexlife.811",
       "sourceRef": "projection.furnishing.continue",
-      "runtimeBindingRef": "#homeContinue",
+      "runtimeBindingRef": "#terrainCurrentContextSupplement [data-furnishing-ref=\"furnishing.vexlife.continue\"]",
       "productSemanticOwnership": false,
       "boundedRuntimeEventClasses": [
         "STATE_PROJECTION_CHANGE",
@@ -978,27 +1001,10 @@
         "canonicalStore": false,
         "currentContextOnly": true,
         "staticRecencyInference": false,
-        "effectAuthority": false
-      }
-    },
-    {
-      "presentationRef": "presentation.vexlife.home.library",
-      "presentationKind": "HOME_CONTEXTUAL_INDEX",
-      "parentPresentationRefOrNull": "presentation.vexlife.shared-shell.home-furnishings",
-      "semanticOwnerRefOrNull": null,
-      "presentationOwnerRef": "github.issue.vexlife.811",
-      "sourceRef": "projection.furnishing.library",
-      "runtimeBindingRef": "#homeLibrary",
-      "productSemanticOwnership": false,
-      "boundedRuntimeEventClasses": [
-        "STATE_PROJECTION_CHANGE"
-      ],
-      "presentationContract": {
-        "subjectClass": "CONTEXTUAL_INDEX",
-        "canonicalMediaStore": false,
-        "playbackAuthority": false,
-        "visibleDoesNotImplyAvailable": true,
-        "effectAuthority": false
+        "effectAuthority": false,
+        "currentContextComposition": true,
+        "journeyBoundResumability": true,
+        "emptyPrimaryChrome": false
       }
     }
   ],
@@ -1436,52 +1442,52 @@
       "presentationOwnerRef": "github.issue.vexlife.335"
     },
     {
-      "placementRef": "placement.vexlife.shared-shell.home-furnishings",
-      "presentationRef": "presentation.vexlife.shared-shell.home-furnishings",
-      "screenRef": "screen.vexlife.shell",
-      "parentPresentationRefOrNull": null,
-      "componentRefOrNull": null,
-      "slotRefOrNull": null,
-      "elementRefOrNull": null,
-      "styleRefOrNull": "#furnishingHome",
-      "primaryChrome": false,
-      "presentationOwnerRef": "github.issue.vexlife.703"
-    },
-    {
       "placementRef": "placement.vexlife.home.current-vex-presence",
       "presentationRef": "presentation.vexlife.home.current-vex-presence",
-      "screenRef": "screen.vexlife.shell",
-      "parentPresentationRefOrNull": "presentation.vexlife.shared-shell.home-furnishings",
+      "screenRef": "screen.vexlife.terrain",
+      "parentPresentationRefOrNull": "presentation.vexlife.terrain.current-context-supplement",
       "componentRefOrNull": null,
       "slotRefOrNull": null,
       "elementRefOrNull": null,
-      "styleRefOrNull": "#homeVexPresence",
+      "styleRefOrNull": "#terrainCurrentContextSupplement [data-furnishing-ref=\"furnishing.vexlife.current-vex-presence\"]",
       "primaryChrome": false,
       "presentationOwnerRef": "github.issue.vexlife.811"
     },
     {
       "placementRef": "placement.vexlife.home.continue",
       "presentationRef": "presentation.vexlife.home.continue",
-      "screenRef": "screen.vexlife.shell",
-      "parentPresentationRefOrNull": "presentation.vexlife.shared-shell.home-furnishings",
+      "screenRef": "screen.vexlife.terrain",
+      "parentPresentationRefOrNull": "presentation.vexlife.terrain.current-context-supplement",
       "componentRefOrNull": null,
       "slotRefOrNull": null,
       "elementRefOrNull": null,
-      "styleRefOrNull": "#homeContinue",
+      "styleRefOrNull": "#terrainCurrentContextSupplement [data-furnishing-ref=\"furnishing.vexlife.continue\"]",
       "primaryChrome": false,
       "presentationOwnerRef": "github.issue.vexlife.811"
     },
     {
-      "placementRef": "placement.vexlife.home.library",
-      "presentationRef": "presentation.vexlife.home.library",
-      "screenRef": "screen.vexlife.shell",
-      "parentPresentationRefOrNull": "presentation.vexlife.shared-shell.home-furnishings",
+      "placementRef": "placement.vexlife.terrain.current-context",
+      "presentationRef": "presentation.vexlife.terrain.current-context",
+      "screenRef": "screen.vexlife.terrain",
+      "parentPresentationRefOrNull": "presentation.vexlife.terrain.canvas",
       "componentRefOrNull": null,
       "slotRefOrNull": null,
       "elementRefOrNull": null,
-      "styleRefOrNull": "#homeLibrary",
+      "styleRefOrNull": "#terrainFocus",
       "primaryChrome": false,
-      "presentationOwnerRef": "github.issue.vexlife.811"
+      "presentationOwnerRef": "github.issue.vexlife.745"
+    },
+    {
+      "placementRef": "placement.vexlife.terrain.current-context-supplement",
+      "presentationRef": "presentation.vexlife.terrain.current-context-supplement",
+      "screenRef": "screen.vexlife.terrain",
+      "parentPresentationRefOrNull": "presentation.vexlife.terrain.current-context",
+      "componentRefOrNull": null,
+      "slotRefOrNull": null,
+      "elementRefOrNull": null,
+      "styleRefOrNull": "#terrainCurrentContextSupplement",
+      "primaryChrome": false,
+      "presentationOwnerRef": "github.issue.vexlife.745"
     }
   ],
   "reachabilityPaths": [
@@ -1774,30 +1780,42 @@
       ]
     },
     {
-      "reachabilityRef": "reachability.vexlife.home.current-vex-presence",
-      "targetRef": "presentation.vexlife.home.current-vex-presence",
+      "reachabilityRef": "reachability.vexlife.terrain.current-context",
+      "targetRef": "presentation.vexlife.terrain.current-context",
       "state": "CURRENTLY_RENDERED",
       "steps": [
-        "presentation.vexlife.shared-shell.home-furnishings",
+        "presentation.vexlife.terrain.primary-stage",
+        "presentation.vexlife.terrain.canvas",
+        "presentation.vexlife.terrain.current-context"
+      ]
+    },
+    {
+      "reachabilityRef": "reachability.vexlife.terrain.current-context-supplement",
+      "targetRef": "presentation.vexlife.terrain.current-context-supplement",
+      "state": "CURRENTLY_RENDERED",
+      "steps": [
+        "presentation.vexlife.terrain.primary-stage",
+        "presentation.vexlife.terrain.canvas",
+        "presentation.vexlife.terrain.current-context",
+        "presentation.vexlife.terrain.current-context-supplement"
+      ]
+    },
+    {
+      "reachabilityRef": "reachability.vexlife.home.current-vex-presence",
+      "targetRef": "presentation.vexlife.home.current-vex-presence",
+      "state": "REACHABLE_VIA_SECONDARY_PATH",
+      "steps": [
+        "presentation.vexlife.terrain.current-context-supplement",
         "presentation.vexlife.home.current-vex-presence"
       ]
     },
     {
       "reachabilityRef": "reachability.vexlife.home.continue",
       "targetRef": "presentation.vexlife.home.continue",
-      "state": "CURRENTLY_RENDERED",
+      "state": "REACHABLE_VIA_SECONDARY_PATH",
       "steps": [
-        "presentation.vexlife.shared-shell.home-furnishings",
+        "presentation.vexlife.terrain.current-context-supplement",
         "presentation.vexlife.home.continue"
-      ]
-    },
-    {
-      "reachabilityRef": "reachability.vexlife.home.library",
-      "targetRef": "presentation.vexlife.home.library",
-      "state": "CURRENTLY_RENDERED",
-      "steps": [
-        "presentation.vexlife.shared-shell.home-furnishings",
-        "presentation.vexlife.home.library"
       ]
     }
   ],

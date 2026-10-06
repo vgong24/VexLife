@@ -211,8 +211,8 @@
       "conceptRef": "concept.region.shell.home-furnishings",
       "navigationNodeRef": "nav.region.shell.home-furnishings",
       "labelStringRef": "home.furnishings.label",
-      "presentationClass": "HOME_FURNISHINGS",
-      "defaultVisible": true,
+      "presentationClass": "CURRENT_CONTEXT_FURNISHING_IDENTITIES",
+      "defaultVisible": false,
       "persistentCanvasConsumer": false,
       "elements": [
         {
@@ -279,29 +279,6 @@
             "role": "button",
             "minimumTargetPx": 44,
             "stableIdentifierRef": "element.furnishing.continue.open-current"
-          },
-          "testRefs": [
-            "test.navigation.screen-frame"
-          ]
-        },
-        {
-          "elementRef": "element.furnishing.library.status",
-          "conceptRef": "concept.element.furnishing.library.status",
-          "interactionRef": "interaction.furnishing.library.status",
-          "navigationRef": null,
-          "journeyEventTypeRef": "journey.view-select",
-          "kind": "FURNISHING_LIBRARY_INDEX",
-          "presentationClass": "CONTEXTUAL_INDEX_STATUS",
-          "defaultVisible": true,
-          "labelStringRef": "home.library.title",
-          "actionRef": null,
-          "permissionRef": null,
-          "selectionGroupRef": null,
-          "terrainNodeRef": null,
-          "accessibility": {
-            "role": "region",
-            "minimumTargetPx": 44,
-            "stableIdentifierRef": "element.furnishing.library.status"
           },
           "testRefs": [
             "test.navigation.screen-frame"
