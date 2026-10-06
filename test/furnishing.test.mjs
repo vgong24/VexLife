@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   loadFurnishingRegistry,
+  buildFurnishingReferenceUniverse,
   validateFurnishingRegistry,
   compileFurnishingRegistry,
   validateMovement,
@@ -20,6 +21,7 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const foundation = loadFurnishingRegistry(root);
+const emptyFoundation = { ...structuredClone(foundation), furnishings: [] };
 
 function registryWith(...records) {
   return { ...structuredClone(foundation), furnishings: records };
@@ -199,12 +201,12 @@ function observation(bindingRef, ownerRef, sourceRef, state, reasonRefs = [], ev
   return { bindingRef, ownerRef, sourceRef, state, reasonRefs, evidenceRefs, effectAuthorityGranted: false };
 }
 
-test('VF02A-00 foundation is inert and owns no semantic/current/effect authority', () => {
-  const validated = validateFurnishingRegistry(foundation);
+test('VF02A-00 empty foundation is inert and owns no semantic/current/effect authority', () => {
+  const validated = validateFurnishingRegistry(emptyFoundation);
   assert.equal(validated.ok, true);
   assert.equal(validated.furnishingCount, 0);
-  assert.ok(Object.values(foundation.effects).every((value) => value === false));
-  const compiled = compileFurnishingRegistry(foundation);
+  assert.ok(Object.values(emptyFoundation.effects).every((value) => value === false));
+  const compiled = compileFurnishingRegistry(emptyFoundation);
   assert.equal(compiled.semanticAuthority, false);
   assert.equal(compiled.semanticRelationAuthority, false);
   assert.equal(compiled.currentStateAuthority, false);
@@ -410,3 +412,134 @@ test('VF02A-15 action discoverability remains descriptive and all protected/doma
 });
 
 // [VXG RealForever]
+
+function vf03aKnownRefs() {
+  return new Set([
+    'feature.vexlife.relationships','state.relationships','service.relationships',
+    'terrain.resource.relationships','presentation.vexlife.relationships.active-surface',
+    'route.relationships','github.issue.vexlife.237','github.issue.vexlife.719',
+    'reachability.vexlife.relationships.active-surface',
+    'feature.vexlife.addressed-conversation','state.channels','state.messages','service.conversation',
+    'terrain.thread.open-conversation','presentation.vexlife.conversation.active-surface',
+    'route.chat','github.issue.vexlife.696','reachability.vexlife.conversation.active-surface',
+    'action.context.open','action.navigation.back','action.channel.select','action.message.send',
+    'permission.none','permission.conversation.send'
+  ]);
+}
+
+test('VF03A-00 canonical reference universe accepts explicit refs but not arbitrary prose strings', () => {
+  const identityRegistry = {
+    entries: new Map([['feature.vexlife.relationships', { ref:'feature.vexlife.relationships' }]]),
+    aliases: new Map([['feature.relationships.alias','feature.vexlife.relationships']])
+  };
+  const universe = buildFurnishingReferenceUniverse({
+    identityRegistry,
+    sourceObjects: [{
+      ownerRef:'service.relationships',
+      sourceRefs:['state.relationships'],
+      label:'service.relationships SHOULD_NOT_ENTER_FROM_PROSE',
+      nested:{ presentationRefOrNull:'presentation.vexlife.relationships.active-surface' }
+    }]
+  });
+  assert.equal(universe.has('feature.vexlife.relationships'), true);
+  assert.equal(universe.has('feature.relationships.alias'), true);
+  assert.equal(universe.has('service.relationships'), true);
+  assert.equal(universe.has('state.relationships'), true);
+  assert.equal(universe.has('presentation.vexlife.relationships.active-surface'), true);
+  assert.equal(universe.has('service.relationships SHOULD_NOT_ENTER_FROM_PROSE'), false);
+});
+
+test('VF03A-01 current source registry contains exactly the first two accepted lived furnishings', () => {
+  const compiled = compileFurnishingRegistry(foundation, { knownRefs: vf03aKnownRefs() });
+  assert.deepEqual(compiled.furnishings.map((item)=>item.furnishingRef), [
+    'furnishing.vexlife.addressed-conversation',
+    'furnishing.vexlife.relationships'
+  ]);
+});
+
+test('VF03A-02 Relationships reuses canonical state owner and current Self Development placement', () => {
+  const compiled = compileFurnishingRegistry(foundation, { knownRefs: vf03aKnownRefs() });
+  const rel = compiled.furnishings.find((item)=>item.furnishingRef==='furnishing.vexlife.relationships');
+  assert.equal(rel.subject.subjectRef,'feature.vexlife.relationships');
+  assert.equal(rel.subject.resourceRefOrNull,'state.relationships');
+  assert.deepEqual(rel.subject.semanticOwnerRefs,['service.relationships']);
+  assert.equal(rel.placement.posture,'PLACED');
+  assert.equal(rel.placement.primary.terrainNodeRefOrNull,'terrain.resource.relationships');
+  assert.equal(rel.placement.primary.presentationRefOrNull,'presentation.vexlife.relationships.active-surface');
+  assert.equal(rel.placement.primary.routeRefOrNull,'route.relationships');
+  assert.deepEqual(rel.placement.contextual,[]);
+});
+
+test('VF03A-03 addressed Conversation reuses canonical conversation owner and current active surface', () => {
+  const compiled = compileFurnishingRegistry(foundation, { knownRefs: vf03aKnownRefs() });
+  const convo = compiled.furnishings.find((item)=>item.furnishingRef==='furnishing.vexlife.addressed-conversation');
+  assert.equal(convo.subject.subjectRef,'feature.vexlife.addressed-conversation');
+  assert.deepEqual(convo.subject.semanticOwnerRefs,['service.conversation']);
+  assert.equal(convo.placement.primary.terrainNodeRefOrNull,'terrain.thread.open-conversation');
+  assert.equal(convo.placement.primary.presentationRefOrNull,'presentation.vexlife.conversation.active-surface');
+  assert.equal(convo.placement.primary.routeRefOrNull,'route.chat');
+});
+
+test('VF03A-04 Relationships to Conversation is addressability only, not relationship truth', () => {
+  const compiled = compileFurnishingRegistry(foundation, { knownRefs: vf03aKnownRefs() });
+  const rel = compiled.furnishings.find((item)=>item.furnishingRef==='furnishing.vexlife.relationships');
+  assert.equal(rel.addressabilityLinks.length,1);
+  assert.equal(rel.addressabilityLinks[0].targetSubjectRef,'feature.vexlife.addressed-conversation');
+  assert.equal(rel.addressabilityLinks[0].semanticRelationAuthority,false);
+  const neighborhood = selectFurnishingNeighborhood(compiled,{
+    seedFurnishingRefs:['furnishing.vexlife.relationships'],
+    maxHops:1
+  });
+  assert.deepEqual(neighborhood,[
+    { furnishingRef:'furnishing.vexlife.relationships', hops:0 },
+    { furnishingRef:'furnishing.vexlife.addressed-conversation', hops:1 }
+  ]);
+});
+
+test('VF03A-05 current lived records do not collapse Friend, relationship and conversation identities', () => {
+  const serialized = JSON.stringify(foundation.furnishings);
+  assert.equal(serialized.includes('friendship'), false);
+  const rel = foundation.furnishings.find((item)=>item.furnishingRef==='furnishing.vexlife.relationships');
+  const convo = foundation.furnishings.find((item)=>item.furnishingRef==='furnishing.vexlife.addressed-conversation');
+  assert.notEqual(rel.subject.subjectRef,convo.subject.subjectRef);
+  assert.notEqual(rel.subject.resourceRefOrNull,convo.subject.resourceRefOrNull);
+});
+
+test('VF03A-06 action discoverability remains source-bound and grants no effect authority', () => {
+  const compiled = compileFurnishingRegistry(foundation, { knownRefs: vf03aKnownRefs() });
+  const projection = projectFurnishings(compiled,{
+    observations:[
+      observation('binding.relationships.action.open.availability','service.relationships','state.relationships','AVAILABLE'),
+      observation('binding.addressed-conversation.action.channel-select.availability','service.conversation','state.channels','AVAILABLE'),
+      observation('binding.addressed-conversation.action.message-send.availability','service.conversation','state.channels','HELD',['reason.companion-or-recipient-not-ready'])
+    ]
+  });
+  assert.equal(projection.effectAuthorityGranted,false);
+  assert.deepEqual(projection.availableActions,[
+    { furnishingRef:'furnishing.vexlife.addressed-conversation', actionRef:'action.channel.select' },
+    { furnishingRef:'furnishing.vexlife.relationships', actionRef:'action.context.open' }
+  ]);
+  assert.deepEqual(projection.heldActionsWithReasons,[
+    { furnishingRef:'furnishing.vexlife.addressed-conversation', actionRef:'action.message.send', state:'HELD', reasonRefs:['reason.companion-or-recipient-not-ready'] }
+  ]);
+});
+
+test('VF03A-07 missing lived runtime observations stay UNKNOWN rather than becoming current', () => {
+  const compiled = compileFurnishingRegistry(foundation, { knownRefs: vf03aKnownRefs() });
+  const projection = projectFurnishings(compiled,{ observations:[] });
+  for(const item of projection.furnishings){
+    assert.equal(item.currentness.state,'UNKNOWN');
+    assert.equal(item.visibility.state,'UNKNOWN');
+    assert.equal(item.reachability.state,'UNKNOWN');
+    assert.equal(item.availability.state,'UNKNOWN');
+  }
+  assert.equal(projection.availableActions.length,0);
+  assert.ok(projection.unknownActions.length >= 4);
+});
+
+test('VF03A-08 populated registry compilation is deterministic', () => {
+  const a=compileFurnishingRegistry(foundation,{knownRefs:vf03aKnownRefs()});
+  const b=compileFurnishingRegistry(structuredClone(foundation),{knownRefs:vf03aKnownRefs()});
+  assert.equal(a.registryRevision,b.registryRevision);
+  assert.deepEqual(a.furnishings,b.furnishings);
+});
