@@ -623,7 +623,10 @@ async function runFurnishingHomeProductProof(page, viewport, errors) {
         talkNodeRef:talk?.dataset.nodeRef??null,
         continuePresent:Boolean(resume),
         guidePresence:app.guide.currentPresenceState(),
-        guideVisible:Boolean(guide&&!guide.hidden&&guide.getClientRects().length>0&&getComputedStyle(guide).display!=='none'&&getComputedStyle(guide).visibility!=='hidden'),
+        guideDisclosureVisible:(()=>{const node=document.querySelector('#guideMinimize');return Boolean(node&&node.getClientRects().length>0&&getComputedStyle(node).display!=='none'&&getComputedStyle(node).visibility!=='hidden');})(),
+        guideIdentityChromeVisible:(()=>{const nodes=[guide?.querySelector('.e27-vex-head>svg'),guide?.querySelector('.e27-vex-head>strong'),document.querySelector('#vexPresenceState')];return nodes.some((node)=>Boolean(node&&node.getClientRects().length>0&&getComputedStyle(node).display!=='none'&&getComputedStyle(node).visibility!=='hidden'));})(),
+        guideDisclosureBounds:(()=>{const node=document.querySelector('#guideMinimize'),rect=node?.getBoundingClientRect();return rect?{width:rect.width,height:rect.height}:null;})(),
+        guideDisclosureLabel:document.querySelector('#guideMinimize')?.getAttribute('aria-label')??'',
         statusText:document.querySelector('#homeVexStatus')?.textContent??'',
         talkHeight:talk?.getBoundingClientRect().height??0,
         horizontalOverflow:Math.max(0,document.documentElement.scrollWidth-innerWidth),
@@ -635,7 +638,11 @@ async function runFurnishingHomeProductProof(page, viewport, errors) {
     assert(initial.talkNodeRef === 'element.vex.current-companion.open', 'VF03B Talk to Vex identity drifted');
     assert(initial.continuePresent === false, 'VF03B Continue appeared before a resumable Conversation Journey existed');
     assert(initial.guidePresence === 'AMBIENT', 'VF03B fresh Home did not preserve ambient Guide state');
-    assert(initial.guideVisible === false, 'VF03B ambient Guide competed visually with real Companion presence');
+    assert(initial.guideDisclosureVisible === true, 'VF03B stable ambient Guide disclosure was not reachable');
+    assert(initial.guideIdentityChromeVisible === false, 'VF03B ambient Guide exposed a second visible Vex identity');
+    assert(initial.guideDisclosureBounds?.width >= 44 && initial.guideDisclosureBounds?.height >= 44, 'VF03B ambient Guide disclosure fell below the 44px target');
+    assert(initial.guideDisclosureBounds?.width <= 52 && initial.guideDisclosureBounds?.height <= 52, 'VF03B ambient Guide disclosure expanded into competing vessel chrome');
+    assert(initial.guideDisclosureLabel.length > 0, 'VF03B ambient Guide disclosure lost its accessible name');
     assert(initial.statusText.length > 0, 'VF03B current Companion status is empty');
     assert(initial.talkHeight >= 44, 'VF03B Talk to Vex fell below the 44px target');
     assert(initial.horizontalOverflow <= 1, 'VF03B current-context Home overflowed horizontally');
@@ -668,18 +675,18 @@ async function runFurnishingHomeProductProof(page, viewport, errors) {
     await page.locator('#vexSummon').click();
     await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.guide.currentPresenceState() === 'SUMMONED');
     const summoned = await page.evaluate(() => {
-      const guide=document.querySelector('#guideWindow'),companion=document.querySelector('[data-furnishing-ref="furnishing.vexlife.current-vex-presence"]');
-      return {guideVisible:Boolean(guide&&!guide.hidden&&guide.getClientRects().length>0&&getComputedStyle(guide).display!=='none'),companionVisible:Boolean(companion&&companion.getClientRects().length>0&&getComputedStyle(companion).display!=='none')};
+      const guide=document.querySelector('#guideWindow'),companion=document.querySelector('[data-furnishing-ref="furnishing.vexlife.current-vex-presence"]'),title=guide?.querySelector('.e27-vex-head>strong');
+      return {guideVisible:Boolean(guide&&!guide.hidden&&guide.getClientRects().length>0&&getComputedStyle(guide).display!=='none'),guideIdentityChromeVisible:Boolean(title&&title.getClientRects().length>0&&getComputedStyle(title).display!=='none'),companionVisible:Boolean(companion&&companion.getClientRects().length>0&&getComputedStyle(companion).display!=='none')};
     });
-    assert(summoned.guideVisible === true && summoned.companionVisible === false, 'VF03B explicit Guide attention did not replace real-Companion presence');
+    assert(summoned.guideVisible === true && summoned.guideIdentityChromeVisible === true && summoned.companionVisible === false, 'VF03B explicit Guide attention did not replace real-Companion presence');
     await page.locator('#guideMinimize').click();
     await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.guide.currentPresenceState() === 'AMBIENT');
     const minimized = await page.evaluate(() => {
-      const guide=document.querySelector('#guideWindow'),companion=document.querySelector('[data-furnishing-ref="furnishing.vexlife.current-vex-presence"]');
-      return {guideVisible:Boolean(guide&&!guide.hidden&&guide.getClientRects().length>0&&getComputedStyle(guide).display!=='none'),companionVisible:Boolean(companion&&companion.getClientRects().length>0&&getComputedStyle(companion).display!=='none')};
+      const guide=document.querySelector('#guideWindow'),companion=document.querySelector('[data-furnishing-ref="furnishing.vexlife.current-vex-presence"]'),disclosure=document.querySelector('#guideMinimize'),title=guide?.querySelector('.e27-vex-head>strong');
+      return {guideDisclosureVisible:Boolean(disclosure&&disclosure.getClientRects().length>0&&getComputedStyle(disclosure).display!=='none'),guideIdentityChromeVisible:Boolean(title&&title.getClientRects().length>0&&getComputedStyle(title).display!=='none'),companionVisible:Boolean(companion&&companion.getClientRects().length>0&&getComputedStyle(companion).display!=='none')};
     });
-    assert(minimized.guideVisible === false && minimized.companionVisible === true, 'VF03B ambient Guide and real Companion did not converge to one visible Vex');
-    checks.push('one-visible-Vex rule distinguishes ambient Guide from explicit Guide attention');
+    assert(minimized.guideDisclosureVisible === true && minimized.guideIdentityChromeVisible === false && minimized.companionVisible === true, 'VF03B ambient Guide disclosure and real Companion did not preserve one visible Vex');
+    checks.push('one-visible-Vex rule preserves a neutral Guide disclosure while explicit Guide attention replaces Companion presence');
 
     const beforeTalk = await page.evaluate(() => ({journeyLength:globalThis.__VEXLIFE_APP__.navigation.fullJourney().length,messageCount:[...globalThis.__VEXLIFE_APP__.messages.values()].reduce((count,list)=>count+list.length,0)}));
     await page.locator('#homeTalkToVex').click();
