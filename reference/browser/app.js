@@ -58,6 +58,7 @@ let healthCompanionAvailability=null;
 let healthCompanionAvailabilityReadState='UNREQUESTED';
 let healthCompanionAvailabilityFailureCode=null;
 const healthCompanionAvailabilitySnapshot=()=>healthCompanionAvailability?structuredClone(healthCompanionAvailability):null;
+const HOME_COMPANION_AVAILABILITY_TIMEOUT_MS=5000;
 const UX_REFERENCE_PROJECTION='REFERENCE_PROJECTION',UX_EVOLUTION_PROJECTION='EVOLUTION_PROJECTION';
 const UX_EVOLUTION_LIFECYCLE_STATES=new Set(uxEvolutionShellScaffold.evolutionEnablement.acceptedLifecycleStates);
 const uxEvolutionAdapters=new Map();
@@ -199,7 +200,7 @@ async function refreshHealthCompanionAvailability(){
   healthCompanionAvailabilityFailureCode=null;
   renderHealth();
   try{
-    const response=await fetch(BROWSER_COMPANION_AVAILABILITY_PATH,{method:'GET',cache:'no-store'});
+    const response=await fetch(BROWSER_COMPANION_AVAILABILITY_PATH,{method:'GET',cache:'no-store',signal:AbortSignal.timeout(HOME_COMPANION_AVAILABILITY_TIMEOUT_MS)});
     if(!response.ok){
       healthCompanionAvailabilityFailureCode=`COMPANION_AVAILABILITY_HTTP_${response.status}`;
       throw new Error(healthCompanionAvailabilityFailureCode);

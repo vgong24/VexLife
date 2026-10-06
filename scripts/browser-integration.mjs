@@ -867,7 +867,8 @@ if (playwright) {
       if (message.type() === 'error') consoleErrors.push(message.text());
     });
     page.on('pageerror', (error) => pageErrors.push(error.message));
-    await page.goto(`${serverUrl}/reference/browser/?integration=1`, { waitUntil: 'networkidle', timeout: 30000 });
+    // The page starts the full integration suite itself; DOM readiness is the navigation predicate and the explicit integration promise is the completion predicate.
+    await page.goto(`${serverUrl}/reference/browser/?integration=1`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_INTEGRATION_PROMISE__), null, { timeout: 30000 });
     const integration = await page.evaluate(async () => globalThis.__VEXLIFE_INTEGRATION_PROMISE__);
     const compactConsoleErrors=[];const compactPageErrors=[];const compactPage=await browser.newPage({viewport:{width:390,height:844}});
