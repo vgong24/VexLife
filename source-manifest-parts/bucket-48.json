@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "48",
+  "files": [
+    {
+      "path": "test/android-r4-presentation-surface.test.mjs",
+      "mode": "100644",
+      "bytes": 8689,
+      "sha256": "e0c118cba4d3b331636473f595244c5f937fe3f6580db0f0219e5f04cd6c1169"
+    }
+  ]
+}

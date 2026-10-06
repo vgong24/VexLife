@@ -13,4 +13,13 @@ object GeneratedCanonicalRefs {
     val statusElement = SemanticRef("element.vexlife.android.r2.architecture.status")
     val localPrincipal = SemanticRef("principal.vexlife.android.r2.local")
     val presentationSession = SemanticRef("session.vexlife.android.r2.presentation")
+    const val REMOTE_VESSEL_PRESENTATION_REF: String = "presentation.vexlife.security-access.android-remote-vessel"
+    const val REMOTE_VESSEL_REGISTRY_REF: String = "registry.vexlife.android-remote-vessel.001"
+    const val REMOTE_VESSEL_HOME_BRIDGE_REF: String = "bridge.vexlife.personal-home.001"
+    const val REMOTE_VESSEL_REFERENCE_STATE: String = "UNPAIRED"
+    const val REMOTE_VESSEL_CANONICAL_WRITER: String = "DESKTOP_HOME_NODE"
+
+    val remoteVesselPresentation = SemanticRef(REMOTE_VESSEL_PRESENTATION_REF)
+    val remoteVesselTitleElement = SemanticRef("element.vexlife.android.remote-vessel.title")
+    val remoteVesselStatusElement = SemanticRef("element.vexlife.android.remote-vessel.status")
 }

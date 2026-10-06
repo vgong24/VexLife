@@ -4,4 +4,6 @@
     <string name="r2_ready">R2 architecture skeleton ready</string>
     <string name="r2_request_attention">Request conversation attention</string>
     <string name="r2_attention_admitted">Attention request admitted locally</string>
+    <string name="r4_remote_vessel_title">Android-first</string>
+    <string name="r4_remote_vessel_status">Preview — security runtime not connected</string>
 </resources>

@@ -11,8 +11,8 @@
     {
       "path": "platform/android/app/src/main/res/values/vexlife_r2.xml",
       "mode": "100644",
-      "bytes": 382,
-      "sha256": "f6c80d67cdc8a49e268278071347baeeeeb3be7e8853e119e99c8147af369359"
+      "bytes": 542,
+      "sha256": "c6e61de99bdc54854fe84840975d1d383d5d4db27f89d370737db935ca6cd7e0"
     },
     {
       "path": "reference/browser/public-learning/app.js",

@@ -3,6 +3,12 @@
   "bucketId": "7b",
   "files": [
     {
+      "path": "platform/android/app/src/main/kotlin/vexlife/android/presentation/AndroidRemoteVesselSurface.kt",
+      "mode": "100644",
+      "bytes": 1930,
+      "sha256": "85c2a59870258c92d36d0f707955d6dd3b916bce84f683ca65ee47526221d372"
+    },
+    {
       "path": "src/core/model-connection-turn-composer.mjs",
       "mode": "100644",
       "bytes": 6265,

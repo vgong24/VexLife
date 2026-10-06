@@ -5,8 +5,8 @@
     {
       "path": "platform/android/app/src/main/kotlin/vexlife/android/identity/GeneratedCanonicalRefs.kt",
       "mode": "100644",
-      "bytes": 975,
-      "sha256": "b0986d068be9808a8b92aaa29d9b208457caa8ab757b4a53947369e835c5ca79"
+      "bytes": 1686,
+      "sha256": "4d0c48dd9fa64c24fb16ee2db7a1ad52c5bbfc91a38df90d91d8096355a0f785"
     },
     {
       "path": "scripts/lived-companion.mjs",

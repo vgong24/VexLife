@@ -17,8 +17,8 @@
     {
       "path": "platform/android/app/src/main/res/values-ja/vexlife_r2.xml",
       "mode": "100644",
-      "bytes": 459,
-      "sha256": "52f60679eb62ac40936b4638fc73f9115f6cfca1cb9075cdfacc2b831ff8a486"
+      "bytes": 639,
+      "sha256": "f5afcc6f08a2b11f1668db94e148e271bef91208360bab99bc666fab3f6208cf"
     },
     {
       "path": "src/core/scheduler-runtime-trust.mjs",

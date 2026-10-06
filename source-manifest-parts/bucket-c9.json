@@ -15,6 +15,12 @@
       "sha256": "0115261bffc2d8bf7746c7ce990f2b6846db1a1013bf17ab18f58a69fbd978fe"
     },
     {
+      "path": "scripts/generate-android-r4.mjs",
+      "mode": "100644",
+      "bytes": 4584,
+      "sha256": "691f82c3d74bddc6fe1194a420c82c9b4057a1f24225fc8fd525af0a8668c554"
+    },
+    {
       "path": "src/core/home-bridge-authenticated-session.mjs",
       "mode": "100644",
       "bytes": 14875,

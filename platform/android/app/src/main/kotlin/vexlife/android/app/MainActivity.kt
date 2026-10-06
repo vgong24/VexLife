@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import vexlife.android.identity.GeneratedCanonicalRefs
+import vexlife.android.presentation.AndroidRemoteVesselSurface
 import vexlife.android.architecture.SemanticRef
 import vexlife.android.architecture.VexRuntimeWitness
 
@@ -50,6 +51,7 @@ private fun R2Witness(viewModel: VexAppViewModel) {
                 modifier = Modifier.testTag(GeneratedCanonicalRefs.architectureTitleElement.value),
             )
             Text(statusText(view.statusRef), Modifier.testTag(view.testRef.value))
+            AndroidRemoteVesselSurface()
             Button(
                 onClick = viewModel::requestConversationAttention,
                 modifier = Modifier.testTag(GeneratedCanonicalRefs.requestAttentionAction.value),
