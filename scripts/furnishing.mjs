@@ -345,14 +345,16 @@ function collectExplicitReferenceFields(value, refs, label = 'source') {
   for (const [key, child] of Object.entries(value)) {
     const childLabel = `${label}.${key}`;
     if (/(?:Ref|RefOrNull)$/u.test(key)) {
-      if (child === null && key.endsWith('OrNull')) continue;
-      if (typeof child !== 'string' || !child.trim()) throw new Error(`${childLabel} must be a non-empty ref string`);
+      if (child === null) continue;
+      if (typeof child !== 'string' || !child.trim()) throw new Error(`${childLabel} must be null or a non-empty ref string`);
       refs.add(child);
       continue;
     }
-    if (/Refs$/u.test(key) && Array.isArray(child) && child.every((item) => typeof item === 'string')) {
+    if (/Refs$/u.test(key)) {
+      if (child === null) continue;
+      if (!Array.isArray(child)) throw new Error(`${childLabel} must be null or an array of ref strings`);
       child.forEach((item, index) => {
-        if (!item.trim()) throw new Error(`${childLabel}[${index}] must be a non-empty ref string`);
+        if (typeof item !== 'string' || !item.trim()) throw new Error(`${childLabel}[${index}] must be a non-empty ref string`);
         refs.add(item);
       });
       continue;
