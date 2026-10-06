@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "vexlife.furnishing-registry/v0",
+  "registryRef": "registry.vexlife.furnishing.001",
+  "registryVersion": 1,
+  "ownerRef": "github.issue.vexlife.811",
+  "parentRef": "github.issue.vexlife.624",
+  "sourcePlacementRef": "github.issue.vexlife.811.comment.6008774332",
+  "purpose": "Compose source-bound addressability, placement intent, bounded semantic neighborhoods, currentness/visibility/attention/recovery inputs, and platform posture without acquiring semantic or effect authority.",
+  "effects": {
+    "network": false,
+    "provider": false,
+    "publication": false,
+    "Home": false,
+    "Memory": false,
+    "training": false,
+    "modelWeights": false,
+    "sensorActivation": false,
+    "relationshipMutation": false,
+    "conversationMutation": false,
+    "libraryMutation": false,
+    "semanticMutation": false,
+    "effectAuthority": false
+  },
+  "nonCollapseRules": [
+    "VEX_FURNISHING != SEMANTIC_OWNER",
+    "RESOURCE_IDENTITY != CURRENT_PLACEMENT",
+    "PLACEMENT_MOVE != RESOURCE_MIGRATION",
+    "GEOMETRY_MOVE != SEMANTIC_MOVE",
+    "MULTI_HOME_PROJECTION != DUPLICATE_RESOURCE",
+    "FURNISHING_REGISTRY != CURRENT_STATE_STORE",
+    "FURNISHING_PROJECTION != PRODUCT_TRUTH",
+    "PRESENTATION_GRAPH != SEMANTIC_OWNER",
+    "NAVIGATION_ROUTE != EFFECT_AUTHORITY",
+    "ANDROID_PROJECTION != ANDROID_SEMANTIC_FORK",
+    "VEX_PERCEPTION != EFFECT_AUTHORITY"
+  ],
+  "contract": {
+    "subjectClasses": [
+      "RESOURCE_PLACEMENT",
+      "DERIVED_COLLECTION",
+      "PRESENCE",
+      "CONTEXTUAL_INDEX",
+      "EXTERNAL_SERVICE"
+    ],
+    "movementClasses": ["G", "P", "V", "A", "S"],
+    "placementPostures": ["PLACED", "UNPLACED", "HELD"],
+    "orientationRelationClasses": [
+      "ORIENTATION_NEIGHBOR",
+      "CONTEXTUAL_ASSOCIATION",
+      "CONTINUATION_ENTRY",
+      "ORIENTATION_RELATED"
+    ],
+    "platformPostures": [
+      "SHARED_IDENTITY",
+      "ADAPTER_REQUIRED",
+      "HELD",
+      "NOT_APPLICABLE"
+    ],
+    "derivedStateVocabularies": {
+      "currentness": ["CURRENT", "HELD", "UNKNOWN"],
+      "visibility": ["VISIBLE", "HIDDEN", "HELD", "UNKNOWN"],
+      "attention": ["ATTENTION", "NONE", "HELD", "UNKNOWN"],
+      "recovery": ["AVAILABLE", "UNAVAILABLE", "HELD", "UNKNOWN"]
+    },
+    "projectionPolicy": {
+      "registryStoresDynamicTruth": false,
+      "missingRequiredBindingState": "UNKNOWN",
+      "conflictingSourceObservationsState": "UNKNOWN",
+      "semanticRelationAuthority": false,
+      "effectAuthorityGranted": false,
+      "boundedNeighborhoods": true,
+      "rawHistoryRequired": false
+    }
+  },
+  "furnishings": []
+}
