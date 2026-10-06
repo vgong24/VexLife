@@ -23,8 +23,8 @@
     {
       "path": "test/furnishing-home-presentation.test.mjs",
       "mode": "100644",
-      "bytes": 7877,
-      "sha256": "28c73191cdaeefca06df2371e9adb82e68626887b7207da778ce7f33a542502c"
+      "bytes": 8031,
+      "sha256": "7216c2ddcb9531ea3ecf5ca8301df8b59e228cbce992bb3a01eb615b4137040f"
     },
     {
       "path": "test/vex-family-companion-runtime.test.mjs",
