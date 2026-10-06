@@ -607,11 +607,7 @@ async function runFurnishingHomeProductProof(page, viewport, errors) {
   page.on('request', onRequest);
   try {
     await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 30000 });
-    await page.evaluate(async () => {
-      const app = globalThis.__VEXLIFE_APP__;
-      await app.refreshHealthCompanionAvailability();
-      app.projectFrame();
-    });
+    await page.evaluate(() => globalThis.__VEXLIFE_APP__.projectFrame());
     const initial = await page.evaluate(() => {
       const app = globalThis.__VEXLIFE_APP__;
       const host = document.querySelector('#furnishingHome');
