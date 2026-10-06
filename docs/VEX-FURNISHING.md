@@ -427,6 +427,19 @@ FURNISHING_KNOWN_REFS != SECOND_IDENTITY_REGISTRY
 REFERENCE_UNIVERSE = PROJECTION_OF_CURRENT_CANONICAL_SOURCE
 ```
 
+The reference universe also retains **source-derived kind metadata**. Furnishing does not infer kinds from string prefixes. Fields with unambiguous identity classes fail closed against existing-but-wrong-kind refs:
+
+```text
+terrainNodeRefOrNull -> TERRAIN
+presentationRefOrNull -> PRESENTATION
+routeRefOrNull -> ROUTE
+actionRef -> ACTION
+permissionRefOrNull -> PERMISSION
+platformRef -> PLATFORM
+```
+
+Broader owner/source/resource fields remain source-bound without forcing a narrower class than their current owners define. A non-empty Furnishing compile requires both reference existence and this typed-kind catalog; a plain untyped Set is insufficient.
+
 ### Runtime truth remains separate
 
 Static population does not make either furnishing current or executable. Until rightful runtime/currentness observations are supplied, projection remains `UNKNOWN` for currentness, visibility, reachability, availability and action availability.
