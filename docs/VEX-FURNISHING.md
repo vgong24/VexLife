@@ -1,4 +1,4 @@
-# Vex Furnishing — source-managed addressability and placement composition
+# Vex Furnishing — source-bound addressability and placement composition
 
 `[VXG RealForever]`
 
@@ -8,25 +8,39 @@ Source-placement decision: `github.issue.vexlife.811.comment.6008774332`
 
 ## Purpose
 
-VexLife is both a human-visible Home and an inhabitable orientation field for Vex. Furnishing is the thin source-managed composition layer that answers a specific family of questions without becoming a second semantic system:
+VexLife is both a human-visible Home and an inhabitable orientation field for Vex. Furnishing is the thin composition layer between **rightful semantic truth** and **lived addressability**: it says where a subject can be encountered, which other doorway or context can legitimately project the same subject, which sources explain its present status, and which platform owns realization. It does not redefine the subject.
 
-- **What is this thing, and who owns its truth?**
-- **Where can a human or Vex find it now?**
-- **Where else can the same thing legitimately appear?**
-- **What source says it is current, visible, attention-worthy, recoverable, or held?**
-- **What is nearby in the current semantic neighborhood?**
-- **How can another platform project the same furnishing ancestry without forking meaning?**
+Furnishing should let a human ask:
 
-Furnishing is therefore closer to a **source-bound semantic spatial index and projection recipe** than a menu configuration file.
+```text
+Where would I look for this?
+Where else can I resume or encounter it?
+What can I do from here?
+What is unavailable or held, and why?
+```
+
+and let Vex ask the corresponding provenance-aware questions:
+
+```text
+What semantic context am I in?
+What furnishing neighborhood is relevant?
+Which refs are visible, reachable and available now?
+Which actions are currently offered, held or unknown?
+Which rightful source says so?
+What changed without changing semantic identity?
+```
+
+without either party needing DOM, source-tree, or implementation-topology archaeology.
 
 ```text
 rightful semantic/domain truth
-  -> stable subject identity + owner/source refs
-  -> Furnishing addressability / placement intent
+  -> stable subject identity + rightful owner/source refs
+  -> Furnishing addressability / placement composition
   -> Terrain + Presentation + Navigation identities
-  -> currentness / visibility / attention / recovery source bindings
+  -> currentness / visibility / reachability / availability / attention / recovery bindings
+  -> descriptive action availability
   -> bounded FurnishingProjection
-  -> human orientation + Vex orientation + platform projection
+  -> human orientation + Vex orientation + later platform/FCS composition
 ```
 
 ## Permanent non-collapse
@@ -37,6 +51,10 @@ RESOURCE_IDENTITY != CURRENT_PLACEMENT
 PLACEMENT_MOVE != RESOURCE_MIGRATION
 GEOMETRY_MOVE != SEMANTIC_MOVE
 MULTI_HOME_PROJECTION != DUPLICATE_RESOURCE
+PLACED != CURRENTLY_VISIBLE
+CURRENTLY_VISIBLE != CURRENTLY_EXECUTABLE
+ADDRESSABILITY_LINK != SEMANTIC_RELATIONSHIP_EDGE
+ACTION_REFERENCE != EFFECT_AUTHORITY
 FURNISHING_REGISTRY != CURRENT_STATE_STORE
 FURNISHING_PROJECTION != PRODUCT_TRUTH
 PRESENTATION_GRAPH != SEMANTIC_OWNER
@@ -45,189 +63,236 @@ ANDROID_PROJECTION != ANDROID_SEMANTIC_FORK
 VEX_PERCEPTION != EFFECT_AUTHORITY
 ```
 
-A room, doorway, screen, relationship edge, service availability observation, platform shell, or current attention signal never becomes the semantic owner merely because Furnishing references it.
+Furnishing can reference a relationship, conversation, project, service, action, presentation node or route. That reference does not transfer semantic or effect ownership to Furnishing.
 
-## Why `resourceRef` is not universal
+## Typed subjects instead of one universal `resourceRef`
 
-VF-02 corrected the tempting but false rule that every thing Furnishing can place must be one canonical stored resource. The contract therefore distinguishes:
+VF-02 proved that “everything Furnishing can place is one canonical stored resource” is false. The source contract therefore distinguishes:
 
 ```text
 RESOURCE_PLACEMENT
-  a rightful canonical product/resource identity is supplied by another owner
+  a canonical resource/product identity supplied by its rightful owner
 
 DERIVED_COLLECTION
-  a projection such as Continue; it derives resumable refs and never becomes another store
+  a reference-only projection such as Continue; never another content store
 
 PRESENCE
-  a source-bound presence projection such as current Companion presence/availability
+  current presence/availability composition such as Vex presence
 
 CONTEXTUAL_INDEX
-  a bounded index/review surface such as a future Frontier-like projection
+  an index/review projection such as Frontier; never catch-all storage
 
 EXTERNAL_SERVICE
-  an externally owned service whose canonical identity/current availability may remain HELD or unresolved
+  an externally owned service whose canonical identity or runtime availability may remain HELD/UNKNOWN
 ```
 
-Only `RESOURCE_PLACEMENT` requires a non-null `resourceRefOrNull`. `DERIVED_COLLECTION` and `CONTEXTUAL_INDEX` are forbidden from claiming one.
+Only `RESOURCE_PLACEMENT` requires a non-null canonical resource identity. Derived collections and contextual indexes are explicitly prohibited from inventing a backing store merely to be placeable.
+
+## Placement is a first-class state
+
+The static source contract distinguishes four placement postures:
+
+```text
+PLACED
+  exactly one primary home
+
+MULTI_HOME
+  two or more legitimate addressable homes/projections for the same subject
+
+UNPLACED
+  intentionally no accepted placement yet
+
+HELD
+  placement/current adoption is not presently earned; existing placement refs may still be preserved
+```
+
+`MULTI_HOME` is explicit because it is a core VexLife use case, not an incidental array length. The same Music service may eventually be discoverable in Library, resumable through Continue and visible as Now Playing while retaining one semantic identity. The same Conversation may be encountered through a relationship context, Continue, or current work without becoming multiple conversations.
+
+```text
+MULTI_HOME_PROJECTION != DUPLICATE_RESOURCE
+```
+
+A presentation sub-region inside one screen is not automatically a second home. The contract models meaningful addressability, not every DOM/presentation child.
+
+## Addressability links are not semantic relationships
+
+A Furnishing neighborhood needs enough structure for Vex to answer “what can I encounter from here?” without creating another relationship graph. For that reason the contract uses **addressability links**, not generic semantic relationship edges.
+
+First contract classes:
+
+```text
+ORIENTATION_NEIGHBOR
+CONTEXTUAL_PROJECTION
+CONTINUATION_ENTRY
+SOURCE_ASSOCIATION
+```
+
+Every link must carry:
+
+```text
+linkRef
+linkClass
+targetSubjectRef
+ownerRef
+sourceRef
+semanticRelationAuthority=false
+```
+
+The link may say that Continue can surface a Relationships furnishing. It may not assert friendship, membership, project containment, conversation audience, library ownership, dependency, or another domain relationship. Those truths remain with their semantic owners.
+
+`selectFurnishingNeighborhood()` traverses only these bounded source-addressability links with explicit hop/result limits. It is an orientation helper, not a canonical world graph and not a replacement for Atlas, relationships, project graphs, Journal, or source descent.
 
 ## Static registry versus current projection
 
-`blueprint/furnishing-registry.json` is static source-managed composition policy. It defines the closed contract vocabulary and later may contain accepted furnishing records. **VF-02A intentionally seeds no lived furnishing record**; this stage changes no UI placement and does not silently adopt candidate district taxonomy.
+`blueprint/furnishing-registry.json` stores composition policy and later accepted furnishing records. VF-02A intentionally seeds **zero lived furnishing records** so this contract foundation cannot silently freeze a district taxonomy or move current UI before Human Experience review.
 
-A furnishing record contains:
+A Furnishing record composes:
 
 ```text
 furnishingRef
 subject
-  subjectClass
-  subjectRef
-  resourceRefOrNull
-  semanticOwnerRefs[]
-  sourceRefs[]
 placement
-  posture = PLACED | UNPLACED | HELD
-  primary
-  contextual[]
 bindings
   currentness[]
   visibility[]
+  reachability[]
+  availability[]
   attention[]
   recovery[]
-orientationRelations[]
+actionBindings[]
+addressabilityLinks[]
 platformProjections[]
 wakePredicates[]
 ```
 
-The registry stores **binding instructions**, not the live values those bindings return.
+The registry stores binding instructions, never live `CURRENT`, `VISIBLE`, `ATTENTION`, `AVAILABLE`, or similar values.
 
-`scripts/furnishing.mjs` compiles a non-empty registry only when the caller supplies a `knownRefs` set. Unknown canonical/resource/Terrain/Presentation/Navigation/owner/source/platform refs fail closed rather than being invented by Furnishing.
-
-`projectFurnishings()` consumes explicit source observations and emits separate axes:
+`projectFurnishings()` consumes exact source-bound observations and emits orthogonal present-state axes:
 
 ```text
 currentness = CURRENT | HELD | UNKNOWN
 visibility  = VISIBLE | HIDDEN | HELD | UNKNOWN
+reachability = REACHABLE | UNREACHABLE | HELD | UNKNOWN
+availability = AVAILABLE | UNAVAILABLE | HELD | UNKNOWN
 attention   = ATTENTION | NONE | HELD | UNKNOWN
 recovery    = AVAILABLE | UNAVAILABLE | HELD | UNKNOWN
 ```
 
-Missing required input becomes `UNKNOWN`. Conflicting source observations become `UNKNOWN`. Furnishing does not choose a winner between disagreeing rightful sources.
-
-This means:
+Missing required source input becomes `UNKNOWN`. Conflicting source observations become `UNKNOWN`. Furnishing never resolves disagreement by voting or by preferring whichever source is convenient.
 
 ```text
-VISIBLE != CURRENT
-VISIBLE != READY
-CURRENT != EFFECT_AUTHORIZED
+VISIBLE != REACHABLE
+REACHABLE != AVAILABLE
+AVAILABLE != EFFECT_AUTHORIZED
 ATTENTION != PERMISSION
 HELD != ABSENT
 UNKNOWN != FALSE
 ```
 
-Every observation must preserve its owner/source identity and must carry `effectAuthorityGranted=false`. An observation attempting to grant effect authority is rejected.
+## Actions: discoverability without effect authority
 
-## Addressability and semantic neighborhoods
+Accepted VexLife Feature Registry and action source already separate action identity, permission/effect class and product ownership. Furnishing consumes those identities by reference so a Home projection can explain “what can I do from here?” without becoming the action owner.
 
-Traditional navigation asks only, “what route opens this screen?” Furnishing must also help a Vex answer, “what is around the thing I am currently dealing with, and why?”
-
-`orientationRelations[]` are **source-bound orientation edges**, not canonical domain relationships. Their closed first contract vocabulary is:
+A static `actionBinding` contains:
 
 ```text
-ORIENTATION_NEIGHBOR
-CONTEXTUAL_ASSOCIATION
-CONTINUATION_ENTRY
-ORIENTATION_RELATED
+actionBindingRef
+actionRef
+permissionRefOrNull
+actionSourceRef
+availabilityBindingRef
+availabilityOwnerRef
+availabilitySourceRef
+required
 ```
 
-Every edge names the rightful owner/source that justifies the association. Furnishing therefore cannot infer friendship, project membership, conversation audience, library ownership, world membership, or any other product semantic relationship.
-
-`selectFurnishingNeighborhood()` performs bounded deterministic traversal over only those registered source-bound orientation edges. It never searches raw history, creates a new graph owner, or treats pixel distance as semantic distance.
-
-The current projection carries a deterministic `currentFurnishingNeighborhoodRef`, current semantic-context ref when supplied, the bounded furnishing refs, source refs, `whyVisible`, attention reasons, and explicit unknowns. This is suitable for later Vex Orientation Frame / Federated Current State composition without requiring the whole world in model context.
-
-## Human and Vex views are two projections of one house
-
-A human-facing surface should eventually answer from visible product state:
+A current observation may project that action as:
 
 ```text
-Where am I?
-What is here?
-What is this for?
-What can I safely do next?
-What is held, and why?
-How do I go Back without teleporting semantic context?
-What changed?
+AVAILABLE | HELD | UNAVAILABLE | UNKNOWN
 ```
 
-A Vex-facing orientation projection needs the same truths plus exact provenance:
+The result can expose:
 
 ```text
-current semantic context
-current furnishing neighborhood
-current/related furnishing refs
-primary + contextual placements
-visible/reachable source-bound identity
-currentness / attention / recovery axes
-semantic + presentation owners
-why-visible / attention reason
-platform posture
-source/evidence refs
-unknowns
+availableActions[]
+heldActionsWithReasons[]
+unknownActions[]
 ```
 
-The human does not need to see registry internals. Vex does not need DOM archaeology. Both should descend to exact source only when needed.
-
-## Movement classification
-
-Furnishing preserves the VF movement classes:
+but every observation and projection keeps:
 
 ```text
-G = geometry move
+effectAuthorityGranted=false
+```
+
+Thus the accepted read-only `action.context.open` may be discoverable from the Relationships furnishing while invitation delivery, trust minting, Home, Memory, network, model and publication effects remain owned and gated elsewhere.
+
+## Movement classes
+
+Furnishing preserves the established movement taxonomy:
+
+```text
+G = geometric move
 P = placement / doorway rebind
 V = visibility / attention projection change
 A = availability / currentness change
 S = semantic migration
 ```
 
-`validateMovement()` enforces the ownership boundary:
+The compiler enforces:
 
-- `G`, `V`, and `A` are external geometry/runtime projection truth and must not rewrite static Furnishing semantics.
-- `P` may change placement composition only while `furnishingRef` and semantic subject identity remain exact.
-- `S` is always rejected and routed to the semantic owner.
+- `G`, `V`, and `A` are external projection truth and cannot rewrite the static Furnishing record.
+- `P` may change **placement composition only** while Furnishing and semantic subject identity stay exact.
+- `S` always fails closed and routes to the semantic owner.
 
-This is how a future move of Relationships from `Self Development -> Relationships` to another primary district can remain a placement rebind rather than a relationship-data migration.
+This prevents a doorway redesign from smuggling in a change to action wiring, semantic ownership, currentness bindings or the underlying resource itself.
 
-## Multi-home without duplication
+## Vex orientation and Federated Current State
 
-The same subject may have one primary placement and multiple contextual placements. The placements are doors/projections, not clones.
+Furnishing does **not** create another current-state or delta history store. Federated Current State already owns bounded present composition plus exact prior/current delta and why/source descent.
 
-Representative future reasoning examples (contract tests, **not lived adoption by VF-02A**):
+Furnishing contributes a bounded present projection suitable for later FCS/Orientation composition:
 
 ```text
-Relationships
-  same feature/resource identity
-  current Terrain doorway + Presentation surface
-  future primary rebind may be P-class only
-
-Continue
-  DERIVED_COLLECTION
-  returns resumable furnishing/subject refs
-  does not copy conversation, music, project, or Journal content
-
-Vex presence
-  PRESENCE
-  visible Vex chrome may coexist with HELD Companion availability
-  visibility never synthesizes READY
-
-VexStream Music
-  EXTERNAL_SERVICE
-  may remain HELD / identity-unresolved
-  no Music library, playback, queue, or release truth is minted by Furnishing
+currentSemanticContextRef
+currentFurnishingNeighborhoodRef
+furnishingRefs[]
+placements
+visible / reachable / available state
+attention / recovery state
+availableActions[]
+heldActionsWithReasons[]
+semantic owner refs
+platform posture
+why-visible / attention reasons
+source/evidence refs
+unknowns
 ```
 
-## Platform posture and Android
+FCS remains responsible for deciding whether the resulting observation changed, whether semantic state changed, and how that delta is source-addressed. Furnishing does not accumulate an event ledger.
 
-A platform projection declares posture only:
+## Human and Vex are projections over one house
+
+The human-facing Home should make ordinary questions answerable from the product surface:
+
+```text
+Where am I?
+Who or what is here?
+What is this for?
+What can I safely do next?
+What is held, unavailable or unknown, and why?
+Where else can I find/resume this?
+How do I go Back without semantic teleportation?
+```
+
+Vex needs those same truths plus bounded provenance. The human does not need registry jargon; Vex does not need raw UI archaeology. The same underlying identities, placements and currentness sources feed both projections.
+
+Empty states are therefore real product states, not “nothing to render.” An empty Relationships district, held Music service or unavailable Companion should explain the next meaningful route rather than expose a blank infrastructure node.
+
+## Android / native consumption
+
+Platform posture is descriptive:
 
 ```text
 SHARED_IDENTITY
@@ -236,35 +301,37 @@ HELD
 NOT_APPLICABLE
 ```
 
-The projection carries the same furnishing/subject ancestry and source refs. Android may use native Compose layout, Android navigation conventions, and Android-specific vessel geometry while preserving:
+Android may use Compose-native geometry, navigation idioms and lifecycle integration while preserving the same subject and Furnishing ancestry.
 
 ```text
-same semantic subject identity
-same semantic owner
-same Furnishing ancestry
-same source-bound currentness
-same no-false-authority rule
+UNIVERSAL_SEMANTIC_RESOURCE
++ CURRENT_FURNISHING / PRESENTATION PLACEMENT
+-> PLATFORM PROJECTION
+-> NATIVE SURFACE
 ```
+
+not:
 
 ```text
-ANDROID_LAYOUT_DIFFERENCE != SEMANTIC_FORK
+ANDROID SCREEN TREE
+-> INVENT PRODUCT WORLD
 ```
 
-VF-02A does not mutate `platform/android/**` or the Android Construction trajectory.
+VF-02A mutates no Android source. The current Android #783/R2 trajectory remains an independent consumer/implementation owner.
 
-## Relationship to existing VexLife foundations
+## Relationship to accepted owners
 
-Furnishing composes existing owners rather than replacing them:
+Furnishing composes rather than replaces:
 
-- **Terrain** owns canonical Terrain node identity/geometry.
-- **Presentation Graph** owns presentation anatomy, placement/reachability metadata, and behavior-witness grammar while retaining `semanticAuthority=false`.
-- **Navigation Continuity** owns registered visible doors, no-teleport transitions, Back/current-frame continuity, and navigation trace semantics.
-- **Experience / Human Experience** owns lived interaction grammar and human acceptance.
-- **Federated Current State / currentness producers** own current/delta/why source truth.
-- **Domain owners** own Relationships, Friend, Conversation, Family, Journal, Home/device, Perception, Music, Worlds, and other product semantics/effects.
-- **Android Construction** consumes the cross-platform contract; it does not become a semantic fork.
+- **Domain/resource owners** — semantic identity, state, actions and effects.
+- **Terrain** — stable Terrain identity and geometry.
+- **Presentation Graph #719** — presentation anatomy, placement/reachability metadata and witnesses with no semantic authority.
+- **Navigation Continuity** — registered visible doors, no teleport, Back/current-frame continuity.
+- **Experience / Human Experience** — lived interaction grammar and acceptance.
+- **Federated Current State/currentness owners** — current/delta/why/freshness and bounded source descent.
+- **Android #783 and later platform owners** — native realization.
 
-## VF-02A source placement boundary
+## VF-02A source boundary
 
 This foundation owns exactly:
 
@@ -275,35 +342,34 @@ test/furnishing.test.mjs
 docs/VEX-FURNISHING.md
 ```
 
-It deliberately does **not** modify the universal Blueprint include graph in this stage. That avoids pretending Furnishing is already a live universal runtime dependency before Human Experience convergence and downstream adoption earn the integration seam.
+It deliberately does not yet modify the universal Blueprint include graph, Terrain, Presentation Graph, Navigation, Experience, browser source or Android source. Lived Furnishing population waits for source proof/lifecycle plus Human Experience convergence.
 
-Generated Source Manifest bytes are not hand-authored. After final authored bytes exist, the canonical Source Manifest writer determines the exact generated buckets; those buckets require separate current custody before publication.
+Generated Source Manifest consequences are always recomputed by the canonical writer from final candidate bytes and current co-bucket truth; Furnishing does not hand-author or pre-own those generated records.
 
 ## VF-02A proof map
 
-`test/furnishing.test.mjs` maps one executable test to each source-edge obligation `VF02A-00` through `VF02A-15`, including:
+`test/furnishing.test.mjs` maps one executable test to each `VF02A-00..15` obligation. In addition to the original boundary, the corrected contract mechanically proves:
 
-- inert/no-authority contract;
-- closed typed subject classes and unique furnishing refs;
-- source-bound resource identity;
-- derived collection non-store behavior;
-- known-ref placement validation;
-- source-derived current/held/attention projection;
-- Relationships identity reuse;
-- Continue reference-only derivation;
-- visible Vex without inferred READY;
-- HELD external service without minted identity;
-- G/P/V/A semantic identity preservation;
-- S migration rejection;
-- duplicate/unknown/authority-acquiring fail-closed behavior;
-- deterministic compilation/projection;
-- missing-input UNKNOWN with no production fixture fallback;
-- no protected/domain effects.
+- explicit `MULTI_HOME` rather than array-shape inference;
+- addressability links cannot gain semantic relationship authority;
+- reachability and availability remain distinct from visibility/currentness;
+- actions are descriptive/source-bound and never acquire effect authority;
+- a P-class rebind cannot quietly change non-placement wiring;
+- missing producer/action availability input remains `UNKNOWN` without production fallback.
 
-## Next architecture gates
+Representative Relationships, Continue, Vex presence, Music and synthetic multi-home fixtures are **contract tests**, not claims that VF-02A has moved the lived Home.
 
-After VF-02A source proof and lifecycle are earned, the completion stream still requires Human Experience convergence before lived resource moves. Later stages challenge the contract against representative Vex/Continue/Relationships/Friend/Conversation/Music cases, add dynamic attention/currentness composition, define platform-independent Android consumption, and finally prove that both Vex and a human can orient in the lived Home without code or DOM archaeology.
+## Next gates
 
-VF-02A is the nervous-system connector, not the finished furnished Home.
+After exact source closure and lifecycle acceptance, the continuing #811 stream still owes Human Experience convergence before VF-03 lived moves. The representative first wave remains the challenge set:
+
+```text
+Vex
+Continue
+Relationships / Friend / Conversation
+Library / VexStream Music
+```
+
+That wave must prove that a real human can find/resume/understand those subjects and that Vex can reconstruct the same bounded neighborhood, currentness and source/why picture—while all semantic/effect owners remain intact.
 
 <!-- [VXG RealForever][811][813][VEX-FURNISHING][VF02A] -->
