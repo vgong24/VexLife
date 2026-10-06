@@ -581,8 +581,7 @@
         {
           "predicateRef": "wake.vexlife.library.accepted-external-service",
           "ownerRef": "github.issue.vexlife.811",
-          "sourceRef": "projection.furnishing.library",
-          "condition": "ACCEPTED_EXTERNAL_SERVICE_IDENTITY_AND_CURRENTNESS_AVAILABLE"
+          "sourceRef": "projection.furnishing.library"
         }
       ]
     }
