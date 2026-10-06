@@ -178,8 +178,24 @@ function multiHomeFixture() {
   return record;
 }
 
+function typedReferenceSet(values, kindAssignments = {}) {
+  const refs = new Set(values);
+  const kinds = new Map();
+  for (const [ref, kindOrKinds] of Object.entries(kindAssignments)) {
+    const list = Array.isArray(kindOrKinds) ? kindOrKinds : [kindOrKinds];
+    kinds.set(ref, new Set(list));
+  }
+  Object.defineProperty(refs, 'kinds', {
+    value: kinds,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+  return refs;
+}
+
 function knownRefs() {
-  return new Set([
+  return typedReferenceSet([
     'feature.vexlife.relationships',
     'github.issue.vexlife.237', 'github.issue.vexlife.719', 'github.issue.vexlife.811', 'github.issue.vexlife.634',
     'github.issue.localvex.8',
@@ -194,7 +210,16 @@ function knownRefs() {
     'feature.fixture.multi-home', 'owner.fixture.multi-home', 'source.fixture.multi-home',
     'terrain.fixture.primary', 'route.fixture.contextual',
     'source.fixture'
-  ]);
+  ], {
+    'terrain.resource.relationships': 'TERRAIN',
+    'presentation.vexlife.relationships.active-surface': 'PRESENTATION',
+    'route.relationships': 'ROUTE',
+    'action.context.open': 'ACTION',
+    'permission.none': 'PERMISSION',
+    'platform.browser': 'PLATFORM',
+    'terrain.fixture.primary': 'TERRAIN',
+    'route.fixture.contextual': 'ROUTE'
+  });
 }
 
 function observation(bindingRef, ownerRef, sourceRef, state, reasonRefs = [], evidenceRefs = []) {
@@ -411,10 +436,53 @@ test('VF02A-15 action discoverability remains descriptive and all protected/doma
   assert.equal(projected.furnishings[0].actions[0].effectAuthorityGranted, false);
 });
 
+test('VF03A-09 existing wrong-kind references fail closed at typed Furnishing fields', () => {
+  const badTerrain = structuredClone(foundation);
+  badTerrain.furnishings[0].placement.primary.terrainNodeRefOrNull = 'route.relationships';
+  assert.throws(
+    () => compileFurnishingRegistry(badTerrain,{ knownRefs:vf03aKnownRefs() }),
+    /terrainNodeRefOrNull requires TERRAIN ref route\.relationships/u
+  );
+
+  const badPresentation = structuredClone(foundation);
+  badPresentation.furnishings[0].placement.primary.presentationRefOrNull = 'action.context.open';
+  assert.throws(
+    () => compileFurnishingRegistry(badPresentation,{ knownRefs:vf03aKnownRefs() }),
+    /presentationRefOrNull requires PRESENTATION ref action\.context\.open/u
+  );
+
+  const badRoute = structuredClone(foundation);
+  badRoute.furnishings[0].placement.primary.routeRefOrNull = 'terrain.resource.relationships';
+  assert.throws(
+    () => compileFurnishingRegistry(badRoute,{ knownRefs:vf03aKnownRefs() }),
+    /routeRefOrNull requires ROUTE ref terrain\.resource\.relationships/u
+  );
+
+  const badAction = structuredClone(foundation);
+  badAction.furnishings[0].actionBindings[0].actionRef = 'permission.none';
+  assert.throws(
+    () => compileFurnishingRegistry(badAction,{ knownRefs:vf03aKnownRefs() }),
+    /actionRef requires ACTION ref permission\.none/u
+  );
+
+  const badPermission = structuredClone(foundation);
+  badPermission.furnishings[0].actionBindings[0].permissionRefOrNull = 'action.context.open';
+  assert.throws(
+    () => compileFurnishingRegistry(badPermission,{ knownRefs:vf03aKnownRefs() }),
+    /permissionRefOrNull requires PERMISSION ref action\.context\.open/u
+  );
+
+  const missingKinds = new Set(vf03aKnownRefs());
+  assert.throws(
+    () => compileFurnishingRegistry(foundation,{ knownRefs:missingKinds }),
+    /knownRefs\.kinds must be a Map/u
+  );
+});
+
 // [VXG RealForever]
 
 function vf03aKnownRefs() {
-  return new Set([
+  return typedReferenceSet([
     'feature.vexlife.relationships','state.relationships','service.relationships',
     'terrain.resource.relationships','presentation.vexlife.relationships.active-surface',
     'route.relationships','github.issue.vexlife.237','github.issue.vexlife.719',
@@ -424,8 +492,22 @@ function vf03aKnownRefs() {
     'route.chat','github.issue.vexlife.696','reachability.vexlife.conversation.active-surface',
     'action.context.open','action.navigation.back','action.channel.select','action.message.send',
     'permission.none','permission.conversation.send'
-  ]);
+  ], {
+    'terrain.resource.relationships':'TERRAIN',
+    'terrain.thread.open-conversation':'TERRAIN',
+    'presentation.vexlife.relationships.active-surface':'PRESENTATION',
+    'presentation.vexlife.conversation.active-surface':'PRESENTATION',
+    'route.relationships':'ROUTE',
+    'route.chat':'ROUTE',
+    'action.context.open':'ACTION',
+    'action.navigation.back':'ACTION',
+    'action.channel.select':'ACTION',
+    'action.message.send':'ACTION',
+    'permission.none':'PERMISSION',
+    'permission.conversation.send':'PERMISSION'
+  });
 }
+
 
 test('VF03A-00 canonical reference universe uses typed current sources and ignores schema/prose key spelling', () => {
   const identityRegistry = {
@@ -473,6 +555,12 @@ test('VF03A-00 canonical reference universe uses typed current sources and ignor
   assert.equal(universe.has('PROSE_SHAPED_FIELD_NOT_TYPED_BY_ADAPTER'), false);
   assert.equal(universe.has('#view-relationships'), false);
   assert.equal(universe.has(null), false);
+  assert.equal(universe.kinds.get('feature.vexlife.relationships').has('FEATURE'), true);
+  assert.equal(universe.kinds.get('state.relationships').has('STATE_DOMAIN'), true);
+  assert.equal(universe.kinds.get('service.relationships').has('STATE_DOMAIN_OWNER'), true);
+  assert.equal(universe.kinds.get('presentation.vexlife.relationships.active-surface').has('PRESENTATION'), true);
+  assert.equal(universe.kinds.get('reachability.vexlife.relationships.active-surface').has('REACHABILITY'), true);
+
 
   assert.throws(() => buildFurnishingReferenceUniverse({
     identityRegistry:{
