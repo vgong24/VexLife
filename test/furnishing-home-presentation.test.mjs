@@ -18,6 +18,7 @@ const graph = JSON.parse(fs.readFileSync(path.join(root, 'blueprint/presentation
 const shell = JSON.parse(fs.readFileSync(path.join(root, 'blueprint/fragments/screens/shell.json'), 'utf8'));
 const html = fs.readFileSync(path.join(root, 'reference/browser/index.html'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'reference/browser/app.js'), 'utf8');
+const css = fs.readFileSync(path.join(root, 'reference/browser/app.css'), 'utf8');
 const terrain = fs.readFileSync(path.join(root, 'reference/browser/modules/terrain-controller.js'), 'utf8');
 
 const byFurnishing = (ref) => compiled.furnishings.find((item) => item.furnishingRef === ref);
@@ -33,6 +34,9 @@ test('VF03B-00 Guide and real Companion identities remain distinct while one-vis
   assert.notEqual(guide.elementRef, talk.elementRef);
   assert.match(app, /openCurrentVexConversation/u);
   assert.match(app, /latestResumableConversationFrame/u);
+  assert.match(html, /id="guideMinimize"[^>]+data-i18n-aria-label="guide\.title"/u);
+  assert.match(css, /#guideMinimize::before\{content:"\?"/u);
+  assert.doesNotMatch(css, /#guideWindow\[data-vessel-presence-state="AMBIENT"\]\{display:none\}/u);
 });
 
 test('VF03B-01 current Vex presence rebinds to current context without semantic takeover', () => {
@@ -66,10 +70,16 @@ test('VF03B-03 Library remains contextual index but returns UNPLACED until a use
   assert.equal(item.placement.posture, 'UNPLACED');
   assert.equal(item.placement.primary, null);
   assert.deepEqual(item.placement.contextual, []);
+  assert.deepEqual(item.subject.sourceRefs, ['github.issue.vexlife.811']);
+  assert.deepEqual(item.bindings.currentness, []);
   assert.deepEqual(item.bindings.visibility, []);
   assert.deepEqual(item.bindings.reachability, []);
+  assert.deepEqual(item.bindings.availability, []);
+  assert.deepEqual(item.bindings.attention, []);
+  assert.deepEqual(item.bindings.recovery, []);
   assert.equal(item.actionBindings.length, 0);
   assert.equal(item.wakePredicates.length, 1);
+  assert.equal(item.wakePredicates[0].sourceRef, 'github.issue.vexlife.811');
   assert.equal(JSON.stringify(item).includes('vexstream-music'), false);
   assert.equal(byPresentation('presentation.vexlife.home.library'), undefined);
 });

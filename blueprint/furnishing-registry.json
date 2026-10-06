@@ -517,7 +517,7 @@
         "resourceRefOrNull": null,
         "semanticOwnerRefs": [],
         "sourceRefs": [
-          "projection.furnishing.library"
+          "github.issue.vexlife.811"
         ]
       },
       "placement": {
@@ -526,24 +526,10 @@
         "contextual": []
       },
       "bindings": {
-        "currentness": [
-          {
-            "bindingRef": "binding.library.currentness",
-            "ownerRef": "github.issue.vexlife.811",
-            "sourceRef": "projection.furnishing.library",
-            "required": true
-          }
-        ],
+        "currentness": [],
         "visibility": [],
         "reachability": [],
-        "availability": [
-          {
-            "bindingRef": "binding.library.availability",
-            "ownerRef": "github.issue.vexlife.811",
-            "sourceRef": "projection.furnishing.library",
-            "required": true
-          }
-        ],
+        "availability": [],
         "attention": [],
         "recovery": []
       },
@@ -554,7 +540,7 @@
         {
           "predicateRef": "wake.vexlife.library.accepted-external-service",
           "ownerRef": "github.issue.vexlife.811",
-          "sourceRef": "projection.furnishing.library"
+          "sourceRef": "github.issue.vexlife.811"
         }
       ]
     }
