@@ -132,3 +132,28 @@ Victor's repeated infrastructure concern was substantially correct and maps dire
 Index 10 resumes design from the canonical infrastructure map: simulate This Project through Purpose Workspace / Intent Workgraph, then source-map the exact Frontier/Home placement bridge without colliding with PR #818.
 
 <!-- [VXG RealForever] -->
+
+---
+
+## Index 10 — Form the first mergeable Assortment checkpoint
+
+VICTOR INTENT
+Continue from the recovered canonical process until the Assortment lane reaches a clean checkpoint that can be merged.
+
+PROCESS
+- froze Round 1 as a design/provenance checkpoint rather than beginning Home product implementation inside this PR;
+- re-grounded PR #825, current main, open Furnishing PR #818, workflow state and generated-source custody;
+- observed the first accepted-main preflight failure as Source Manifest drift, not a product-source defect;
+- regenerated only the Source Manifest buckets caused by Assortment docs;
+- detected a generated bucket collision with PR #818 for the original FRONTIER-TO-PROJECT.md path;
+- moved that design document to FRONTIER-PROJECT-MAP.md so the Assortment checkpoint does not compete for #818 generated custody;
+- confirmed no remaining open-PR authored/generated path overlap for the Assortment candidate;
+- retained product-source implementation, Reference cutover, visual-byte sync and the exact Frontier/Home bridge as held successor work.
+
+CHECKPOINT MEANING
+Round 1 is the canonical orientation/design-foundation checkpoint. If exact-head checks, Independent Assurance and lifecycle review clear, it may merge without claiming that Home/Terrain implementation has begun.
+
+NEXT AFTER MERGE
+Open the next Assortment design phase from fresh accepted main and continue the self-hosting This Project practicum through existing Purpose Workspace / Intent Workgraph / UX Evolution infrastructure.
+
+<!-- [VXG RealForever] -->
