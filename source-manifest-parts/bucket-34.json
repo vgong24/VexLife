@@ -9,6 +9,12 @@
       "sha256": "8b55244d3376d069602ccc1b9863dd92043c24851e7c78ff9e2b8f5d45c5ad11"
     },
     {
+      "path": "docs/vexlife-assortment/assets/MANIFEST.md",
+      "mode": "100644",
+      "bytes": 1348,
+      "sha256": "30096d4bad0d567ef7a37cbabd81d1788a541f95fbe3169788c18e109854b75b"
+    },
+    {
       "path": "reference/browser/integration/root-contract-suite.js",
       "mode": "100644",
       "bytes": 1862,
