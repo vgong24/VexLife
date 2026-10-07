@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "vexlife.capability-runtime-startup-policy/v1",
+  "policyRef": "policy.vexlife.capability-runtime.startup.001",
+  "acceptedModes": [
+    "DIRECT_SINGLE_TURN",
+    "ADOPTED_READ_ONLY",
+    "CANONICAL_E2_UNTAUGHT_G0"
+  ],
+  "defaultMode": "DIRECT_SINGLE_TURN",
+  "operationalProfileBindings": [
+    {
+      "operationalProfileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.windows-x64-nvidia.001",
+      "runtimeMode": "ADOPTED_READ_ONLY"
+    },
+    {
+      "operationalProfileRef": "profile.vexlife.operational.qwen3.5-4b.llama-cpp-b10107.macos-arm64-m4-pro-metal.001",
+      "runtimeMode": "ADOPTED_READ_ONLY"
+    }
+  ],
+  "explicitServerOverrideAllowed": true,
+  "selectionAuthority": {
+    "serverOwned": true,
+    "promptSelectable": false,
+    "browserRequestSelectable": false,
+    "modelSelectable": false
+  },
+  "effects": {
+    "filesystemWrite": false,
+    "network": false,
+    "process": false,
+    "Home": false,
+    "Memory": false,
+    "model": false,
+    "training": false,
+    "publication": false
+  },
+  "sourceRefs": [
+    "github.issue.vexlife.333",
+    "github.issue.vextreme-sdk.1796",
+    "github.issue.vexlife.820"
+  ]
+}

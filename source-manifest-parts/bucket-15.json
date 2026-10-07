@@ -9,6 +9,12 @@
       "sha256": "86362997a7b2ef0be60c1c0047e6f86b2dfc8c2e21241fd9c0efe7903ed1e97c"
     },
     {
+      "path": "docs/VEX-ASSEMBLY-CAPABILITY-RUNTIME-POLICY.md",
+      "mode": "100644",
+      "bytes": 2302,
+      "sha256": "a4d87d65eb24f112b7d7e70fd12810bccf8cf0491c5bffb9a57cfb23ae3a4789"
+    },
+    {
       "path": "test/fixtures/vex-reboot/vr07-cross-platform-current-model-matrix.json",
       "mode": "100644",
       "bytes": 3732,
