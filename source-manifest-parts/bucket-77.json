@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 512,
       "sha256": "2b70eb677d24d1da35eae3ebe7431479a61a6ea51de8a71f395376fd330f3c8d"
+    },
+    {
+      "path": "test/vex-assembly-capability-runtime-policy.test.mjs",
+      "mode": "100644",
+      "bytes": 5778,
+      "sha256": "5dde4c7b2ffd96ab85b8844a6e5a08e476599cdefb7a12acbd7494e7875b8f8e"
     }
   ]
 }
