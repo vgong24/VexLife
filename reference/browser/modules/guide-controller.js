@@ -152,11 +152,13 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     return node;
   }
   function projectCompanionTurnState() {
-    const node = companionTurnStateNode();
+    let node = $('#vexCompanionTurnState');
     state.guideCompanionTurnDisposition = companionTurnDisposition;
     if (!companionTurnProjection) {
-      node.hidden = true;
-      node.textContent = '';
+      if (node) {
+        node.hidden = true;
+        node.textContent = '';
+      }
       for (const key of [
         'companionTurnRef',
         'companionResponseMessageRef',
@@ -169,6 +171,7 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
       state.guideCompanionConversationHeadSha256 = null;
       return null;
     }
+    node ||= companionTurnStateNode();
     windowElement.dataset.companionTurnRef = companionTurnProjection.turnRef;
     windowElement.dataset.companionResponseMessageRef = companionTurnProjection.responseMessageRef;
     windowElement.dataset.companionConversationHeadSha256 = companionTurnProjection.conversationHeadSha256;
