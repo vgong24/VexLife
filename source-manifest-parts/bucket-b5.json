@@ -21,6 +21,12 @@
       "sha256": "b5ccc551bd09bbeb04d06f790b31765cbe87d4438533328d92bcf519ae1b5a1a"
     },
     {
+      "path": "test/browser-companion-vessel-binding.test.mjs",
+      "mode": "100644",
+      "bytes": 5852,
+      "sha256": "c907729f81210cd7d8d56f6eff76f0f3103b6408e97ff8f6738038d3a4cca529"
+    },
+    {
       "path": "test/review-composition.test.mjs",
       "mode": "100644",
       "bytes": 29570,
