@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import './capability-runtime-policy-bootstrap.mjs';
 import {
   createVexLifeBrowserServer as createCoreVexLifeBrowserServer,
 } from './serve-browser-core.mjs';
