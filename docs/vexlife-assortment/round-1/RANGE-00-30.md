@@ -157,3 +157,25 @@ NEXT AFTER MERGE
 Open the next Assortment design phase from fresh accepted main and continue the self-hosting This Project practicum through existing Purpose Workspace / Intent Workgraph / UX Evolution infrastructure.
 
 <!-- [VXG RealForever] -->
+
+
+---
+
+## Index 11 — Continue Round 1 to a mergeable checkpoint
+
+VICTOR INTENT
+Continue where the process left off so the canonical Assortment lane reaches a checkpoint that can merge.
+
+OPERATIONS / DESIGN DISPOSITION
+- keep Round 1 bounded as the canonical recovery + infrastructure reinterpretation checkpoint;
+- do not widen this PR into Home/Terrain product implementation;
+- close exact generated Source Manifest consequences for the docs candidate;
+- eliminate generated-bucket collision with active Furnishing PR #818;
+- bind a discoverable canonical Work marker for repository orientation;
+- require exact-head checks, fresh claimless Independent Assurance, formal lifecycle review, READY/currentness and ordinary merge before checkpoint acceptance;
+- carry This Project / Frontier / Home simulation work forward only after this checkpoint reaches accepted main.
+
+CURRENT CHECKPOINT
+The docs candidate is source-manifest-current and accepted-main preflight has proven the merge topology. The remaining validation sequence is exact PR orientation/current Foundation proof -> Assurance -> lifecycle review/READY -> ordinary merge -> post-merge verification.
+
+<!-- [VXG RealForever] -->
