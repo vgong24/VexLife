@@ -9,6 +9,12 @@
       "sha256": "eb01d8016893c1c0dc274eb24f522a2800786ff3e37ec3b6f3591c5275abb893"
     },
     {
+      "path": "docs/vexlife-assortment/round-1/RANGE-00-30.md",
+      "mode": "100644",
+      "bytes": 7291,
+      "sha256": "f925c10eaa164807bd94573bdadcc9d3a5a54fb8d4648e917b32e64e611dc3c5"
+    },
+    {
       "path": "reference/browser/evolution/index.html",
       "mode": "100644",
       "bytes": 1048,
