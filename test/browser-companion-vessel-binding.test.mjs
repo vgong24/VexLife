@@ -108,6 +108,8 @@ test('VA-I02 module slice exposes callback/binder contracts without taking PR818
   assert.match(chatSource, /await onCompanionTurnCompleted\(vesselProjection\)/u);
   assert.match(chatSource, /companionVesselProjectionState = 'REJECTED'/u);
   assert.match(guideSource, /function bindCompanionTurn\(value\)/u);
+  assert.match(guideSource, /let node = \$\('#vexCompanionTurnState'\)/u);
+  assert.match(guideSource, /node \|\|= companionTurnStateNode\(\)/u);
   assert.match(guideSource, /projection\.threadRef !== current\.threadRef/u);
   assert.match(guideSource, /projection\.channelRef !== current\.channelRef/u);
   assert.match(guideSource, /companionTurnDisposition = 'CURRENT'/u);
