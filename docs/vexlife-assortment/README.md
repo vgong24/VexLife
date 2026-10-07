@@ -67,7 +67,7 @@ FRESH_INSTANCE != NEW_WRITER
 - `INFRASTRUCTURE-MAP.md` — how Victor's design suggestions map onto existing canonical owners.
 - `CURRENT.md` — current Assortment continuation and held boundaries.
 - `FIRST-PRACTICUM.md` — "This Project" as the first Home/Project simulation.
-- `FRONTIER-TO-PROJECT.md` — live seed-to-project process-map experiment.
+- `FRONTIER-PROJECT-MAP.md` — live seed-to-project process-map experiment.
 - `round-1/RANGE-00-30.md` — reconstructed Round 1 discussion lineage.
 - `assets/MANIFEST.md` — stable visual keys/paths; binaries are GitHub assets, not ChatGPT Project Sources.
 - `MIGRATION.md` — wrong-repository correction and provenance.
