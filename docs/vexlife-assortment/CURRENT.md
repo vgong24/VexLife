@@ -3,13 +3,24 @@
 [VXG RealForever]
 
 round=1
-lastRecordedIndex=10
-state=ROUND_1_CHECKPOINT_CANDIDATE
+lastRecordedIndex=11
+state=ROUND_1_CHECKPOINT_VALIDATION
 repository=vgong24/VexLife
 repositoryId=1317660990
 branch=VXG-100726-chatgpt-vexlife-assortment-round-1
 pullRequest=825
 wrongRepositoryPR=VexGPT/VexLife#1 CLOSED_SUPERSEDED
+
+workRef=work.vexlife.assortment.round-1.20261007a
+
+## Checkpoint validation
+
+The Assortment docs and their exact generated Source Manifest buckets are current.
+The prior Foundation run had zero failed/blocking proof cells and one unresolved orientation cell because the PR event could not discover a single canonical Work marker. PR #825 now carries exactly one:
+
+Work: work.vexlife.assortment.round-1.20261007a
+
+The next exact-head pull-request validation must re-observe that marker before the checkpoint can progress to Assurance/lifecycle review.
 
 ## Checkpoint purpose
 
