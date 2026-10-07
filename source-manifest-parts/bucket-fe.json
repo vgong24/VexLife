@@ -3,6 +3,12 @@
   "bucketId": "fe",
   "files": [
     {
+      "path": "blueprint/capability-runtime-startup-policy.json",
+      "mode": "100644",
+      "bytes": 1181,
+      "sha256": "a006c5886d6f8bc6383a7925d4dfbde7fec3c82a5ec10dae4613e7f0e24e794c"
+    },
+    {
       "path": "src/core/architecture-meaning.mjs",
       "mode": "100644",
       "bytes": 14829,
