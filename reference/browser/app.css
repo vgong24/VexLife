@@ -177,4 +177,5 @@ html[data-theme="light"]{--bg:#f2f2f0;--surface:#fff;--raised:#f5f5f3;--overlay:
   .e27-auto-entry{width:auto;min-width:0;flex:1;min-height:44px;display:flex;align-items:center;padding:6px 8px}
   .e27-auto-entry label:first-child{margin:0;white-space:normal}
   .e28-terrain-instrumentation{left:auto;right:8px;top:var(--terrain-secondary-controls-top);width:116px;max-height:58vh}
+  .e28-terrain-instrumentation[open]{width:min(270px,calc(100vw - 16px))}
 }
