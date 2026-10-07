@@ -22,4 +22,15 @@ object GeneratedCanonicalRefs {
     val remoteVesselPresentation = SemanticRef(REMOTE_VESSEL_PRESENTATION_REF)
     val remoteVesselTitleElement = SemanticRef("element.vexlife.android.remote-vessel.title")
     val remoteVesselStatusElement = SemanticRef("element.vexlife.android.remote-vessel.status")
+    const val R5_HOME_LOOPBACK_PROOF_LABEL: String = "SYNTHETIC / LOOPBACK"
+    const val R5_HOME_BRIDGE_REF: String = "bridge.vexlife.personal-home.001"
+    const val R5_LOOPBACK_TRANSPORT_REF: String = "transport.vexlife.loopback"
+    const val R5_REQUEST_REF: String = "synthetic.request.android-r5.loopback.001"
+    const val R5_RECEIPT_REF: String = "synthetic.receipt.android-r5.loopback.001"
+    const val R5_PROJECTION_REF: String = "projection.vexlife.android.r5.home-loopback"
+    const val R5_STATE_REF: String = "state.vexlife.android.r5.home-loopback"
+
+    val homeLoopbackPresentation = SemanticRef("presentation.vexlife.android.r5.home-loopback")
+    val homeLoopbackTitleElement = SemanticRef("element.vexlife.android.r5.home-loopback.title")
+    val homeLoopbackStatusElement = SemanticRef("element.vexlife.android.r5.home-loopback.status")
 }

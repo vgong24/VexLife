@@ -27,6 +27,12 @@
       "sha256": "cb746a2337fa460c1672cd00ef271e6b5b419ce230572e2c4b5d353fa6a51679"
     },
     {
+      "path": "test/android-r5-home-loopback.test.mjs",
+      "mode": "100644",
+      "bytes": 7680,
+      "sha256": "4f2b45fe9462750aae27717c13741df8c0954a6d859d9b6d59942a722934cd88"
+    },
+    {
       "path": "test/browser-relationships-cdr-persistence-binding-route.test.mjs",
       "mode": "100644",
       "bytes": 15808,

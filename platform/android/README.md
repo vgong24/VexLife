@@ -48,3 +48,23 @@ physicalDeviceEffect=false
 The surface is presentation-only: it has no action callback, route, network adapter, Home adapter,
 or mutable product-state owner. The accepted A2 StateFlow projection and R2 runtime ownership
 boundaries remain unchanged.
+
+## R5 — synthetic / loopback Home Bridge integration proof
+
+R5 consumes the accepted Home Bridge evaluator and canonical VexCompoundState using
+deterministic synthetic identities. It proves the Android projection boundary without
+creating a real Home connection, network/session authority, credentials, or Home writer.
+
+```text
+proofLabel=SYNTHETIC / LOOPBACK
+homeBridgeRef=bridge.vexlife.personal-home.001
+transportRef=transport.vexlife.loopback
+requestRef=synthetic.request.android-r5.loopback.001
+receiptRef=synthetic.receipt.android-r5.loopback.001
+canonicalWriter=DESKTOP_HOME_NODE
+remoteWriterGranted=false
+realHomeConnected=false
+realNetworkConnected=false
+```
+
+R6 remains the separately protected real paired Home integration stage.

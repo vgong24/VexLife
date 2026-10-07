@@ -6,4 +6,6 @@
     <string name="r2_attention_admitted">关注请求已在本地受理</string>
     <string name="r4_remote_vessel_title">Android 优先</string>
     <string name="r4_remote_vessel_status">预览 — 安全运行时尚未连接</string>
+    <string name="r5_home_loopback_title">Synthetic Home 回环</string>
+    <string name="r5_home_loopback_status">SYNTHETIC / LOOPBACK — 非真实 Home 连接</string>
 </resources>

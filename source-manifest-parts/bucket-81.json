@@ -15,6 +15,12 @@
       "sha256": "f49b19750884f22f70476f2349b40f448eb588bb2d78a281e99175fa9bbf9e50"
     },
     {
+      "path": "platform/android/app/src/main/kotlin/vexlife/android/presentation/AndroidHomeLoopbackSurface.kt",
+      "mode": "100644",
+      "bytes": 1235,
+      "sha256": "af7ff06e27ab89313f24c89e8043eab00aba077522d21d2881c387583e5b2899"
+    },
+    {
       "path": "src/core/android-test-evidence-obligations.mjs",
       "mode": "100644",
       "bytes": 24419,

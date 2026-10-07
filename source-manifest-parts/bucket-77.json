@@ -11,8 +11,8 @@
     {
       "path": "platform/android/app/src/main/res/values-zh-rCN/vexlife_r2.xml",
       "mode": "100644",
-      "bytes": 512,
-      "sha256": "2b70eb677d24d1da35eae3ebe7431479a61a6ea51de8a71f395376fd330f3c8d"
+      "bytes": 684,
+      "sha256": "c3006d51d9d67fd694a892c592a82f852f0873ac4a495092b889eb4e44ebf9a6"
     },
     {
       "path": "test/vex-assembly-capability-runtime-policy.test.mjs",
