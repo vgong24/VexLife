@@ -2,6 +2,61 @@ import { $, $$, loadJson, saveJson } from './dom.js';
 
 export const GUIDE_INTENTS = Object.freeze({ CURRENT: 'intent.guide.current', NEXT: 'intent.guide.next', PROTECTS: 'intent.guide.protects', ARCHITECTURE: 'intent.guide.architecture' });
 export const VEX_PRESENCE_STATES = Object.freeze({ AMBIENT:'AMBIENT', ATTENTIVE:'ATTENTIVE', SUMMONED:'SUMMONED', ACTIVE_CONVERSATION:'ACTIVE_CONVERSATION' });
+export const COMPANION_VESSEL_TURN_PROJECTION_SCHEMA = 'vexlife.companion-vessel-turn-projection/v1';
+export const COMPANION_VESSEL_VISIBLE_CONTENT_LIMIT = 240;
+const COMPANION_VESSEL_TURN_KEYS = new Set([
+  'schemaVersion',
+  'truthClass',
+  'projectRef',
+  'threadRef',
+  'channelRef',
+  'turnRef',
+  'responseMessageRef',
+  'conversationHeadSha256',
+  'modelNameOrBoundedTestProfileRef',
+  'content',
+  'effectsPerformed'
+]);
+
+function companionProjectionNonempty(value) {
+  return typeof value === 'string' && value.length > 0;
+}
+
+export function normalizeCompanionVesselTurnProjection(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('Companion vessel turn projection must be one object');
+  }
+  const keys = Object.keys(value);
+  if (
+    keys.length !== COMPANION_VESSEL_TURN_KEYS.size
+    || keys.some((key) => !COMPANION_VESSEL_TURN_KEYS.has(key))
+    || value.schemaVersion !== COMPANION_VESSEL_TURN_PROJECTION_SCHEMA
+    || value.truthClass !== 'CURRENT_LOCAL_MODEL'
+    || value.effectsPerformed !== false
+  ) {
+    throw new TypeError('Companion vessel turn projection contract is invalid');
+  }
+  for (const key of [
+    'projectRef',
+    'threadRef',
+    'channelRef',
+    'turnRef',
+    'responseMessageRef',
+    'modelNameOrBoundedTestProfileRef'
+  ]) {
+    if (!companionProjectionNonempty(value[key])) {
+      throw new TypeError(`Companion vessel turn projection.${key} is required`);
+    }
+  }
+  if (!/^[0-9a-f]{64}$/u.test(value.conversationHeadSha256 ?? '')) {
+    throw new TypeError('Companion vessel turn projection conversationHeadSha256 is invalid');
+  }
+  if (!companionProjectionNonempty(value.content)) {
+    throw new TypeError('Companion vessel turn projection content is required');
+  }
+  return Object.freeze(structuredClone(value));
+}
+
 const PROMPT_REF_BY_INTENT = Object.freeze({ [GUIDE_INTENTS.CURRENT]: 'guide.ask.current', [GUIDE_INTENTS.NEXT]: 'guide.mode.next', [GUIDE_INTENTS.PROTECTS]: 'guide.ask.protects', [GUIDE_INTENTS.ARCHITECTURE]: 'architecture.open' });
 const NEXT_TARGET_BY_SCREEN = Object.freeze({
   'screen.vexlife.terrain': 'element.terrain.reset',
@@ -24,6 +79,8 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
   let attentionSourceRef = null;
   let explicitSummoned = false;
   let activeConversation = false;
+  let companionTurnProjection = null;
+  let companionTurnDisposition = 'UNBOUND';
   const rectFor = ({ left, top, width, height }) => ({ left, top, width, height, right: left + width, bottom: top + height });
   const overlaps = (left, right) => !(left.right + SAFE_MARGIN <= right.left || left.left >= right.right + SAFE_MARGIN || left.bottom + SAFE_MARGIN <= right.top || left.top >= right.bottom + SAFE_MARGIN);
   const samePlacement = (left, right, epsilon=.5) => Boolean(left&&right) && ['left','top','width','height'].every((key)=>Math.abs(Number(left[key])-Number(right[key]))<=epsilon);
@@ -84,10 +141,91 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     $('#guideHandle')?.insertBefore(node,$('#guideHandle .guide-controls'));
     return node;
   }
+  function companionTurnStateNode() {
+    let node = $('#vexCompanionTurnState');
+    if (node) return node;
+    node = document.createElement('span');
+    node.id = 'vexCompanionTurnState';
+    node.className = 'e28-vex-companion-turn-state';
+    node.setAttribute('aria-live','polite');
+    $('#guideHandle')?.insertBefore(node,$('#guideHandle .guide-controls'));
+    return node;
+  }
+  function projectCompanionTurnState() {
+    let node = $('#vexCompanionTurnState');
+    state.guideCompanionTurnDisposition = companionTurnDisposition;
+    if (!companionTurnProjection) {
+      if (node) {
+        node.hidden = true;
+        node.textContent = '';
+      }
+      for (const key of [
+        'companionTurnRef',
+        'companionResponseMessageRef',
+        'companionConversationHeadSha256',
+        'companionModelRef',
+        'companionThreadRef',
+        'companionChannelRef'
+      ]) delete windowElement.dataset[key];
+      state.guideCompanionTurnRef = null;
+      state.guideCompanionConversationHeadSha256 = null;
+      return null;
+    }
+    node ||= companionTurnStateNode();
+    windowElement.dataset.companionTurnRef = companionTurnProjection.turnRef;
+    windowElement.dataset.companionResponseMessageRef = companionTurnProjection.responseMessageRef;
+    windowElement.dataset.companionConversationHeadSha256 = companionTurnProjection.conversationHeadSha256;
+    windowElement.dataset.companionModelRef = companionTurnProjection.modelNameOrBoundedTestProfileRef;
+    windowElement.dataset.companionThreadRef = companionTurnProjection.threadRef;
+    windowElement.dataset.companionChannelRef = companionTurnProjection.channelRef;
+    state.guideCompanionTurnRef = companionTurnProjection.turnRef;
+    state.guideCompanionConversationHeadSha256 = companionTurnProjection.conversationHeadSha256;
+    node.dataset.turnRef = companionTurnProjection.turnRef;
+    node.dataset.responseMessageRef = companionTurnProjection.responseMessageRef;
+    node.dataset.conversationHeadSha256 = companionTurnProjection.conversationHeadSha256;
+    node.dataset.modelRef = companionTurnProjection.modelNameOrBoundedTestProfileRef;
+    node.dataset.contentTruncated = String(companionTurnProjection.content.length > COMPANION_VESSEL_VISIBLE_CONTENT_LIMIT);
+    node.textContent = companionTurnProjection.content.slice(0, COMPANION_VESSEL_VISIBLE_CONTENT_LIMIT);
+    node.hidden = !state.guideOpen || state.guideMinimized === true;
+    return structuredClone(companionTurnProjection);
+  }
+  function bindCompanionTurn(value) {
+    const projection = normalizeCompanionVesselTurnProjection(value);
+    const current = chat.currentChannel();
+    if (
+      !current
+      || projection.projectRef !== current.projectRef
+      || projection.threadRef !== current.threadRef
+      || projection.channelRef !== current.channelRef
+    ) {
+      throw new Error('Companion vessel turn projection is not current for the visible conversation');
+    }
+    companionTurnProjection = projection;
+    companionTurnDisposition = 'CURRENT';
+    activeConversation = true;
+    explicitSummoned = true;
+    attentionSourceRef = null;
+    projectPresenceState();
+    return structuredClone(projection);
+  }
+  function clearCompanionTurn(reason = 'UNAVAILABLE') {
+    if (!['STALE','UNAVAILABLE','CONTEXT_CHANGED'].includes(reason)) {
+      throw new Error(`Unsupported Companion vessel clear reason: ${reason}`);
+    }
+    companionTurnProjection = null;
+    companionTurnDisposition = reason;
+    activeConversation = false;
+    projectPresenceState();
+    return companionTurnDisposition;
+  }
+  function currentCompanionTurn() {
+    return companionTurnProjection ? structuredClone(companionTurnProjection) : null;
+  }
   function projectPresenceState() {
     const presence = currentPresenceState();
     state.guidePresenceState = presence;
     state.guideAttentionSourceRef = attentionSourceRef;
+    projectCompanionTurnState();
     if (!presence) { delete windowElement.dataset.vesselPresenceState; return null; }
     const label = t(PRESENCE_STRING_REF[presence]);
     const node = presenceStateNode();
@@ -309,6 +447,10 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     setOpen,
     summon,
     setAttentionSource,
+    bindCompanionTurn,
+    clearCompanionTurn,
+    currentCompanionTurn,
+    companionTurnDisposition: () => companionTurnDisposition,
     currentPresenceState,
     projectPresenceState,
     preferredGeometry:preferredGeometrySnapshot,

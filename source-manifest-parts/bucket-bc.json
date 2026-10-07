@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/modules/guide-controller.js",
       "mode": "100644",
-      "bytes": 23056,
-      "sha256": "1b7f09b2867a11b8a4f64f275067665128f64dca9a8c032ad94e827b5bfae746"
+      "bytes": 28831,
+      "sha256": "2a0aca9065aeb473f301021f3b82ef7d04851e2147ca2cc34f3e98c32e4e325a"
     },
     {
       "path": "scripts/generate-android-r2.mjs",

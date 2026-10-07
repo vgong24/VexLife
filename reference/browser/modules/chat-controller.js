@@ -169,7 +169,58 @@ export async function requestBrowserCompanionRecoveryAction({
   return Object.freeze({ action, result: structuredClone(result) });
 }
 
-export function createChatController({ state, projects, roles, channels, messages, createMessage, conversationKey, t, navigation, experienceFoundation, capabilityRegistry }) {
+export const BROWSER_COMPANION_VESSEL_TURN_PROJECTION_SCHEMA =
+  'vexlife.companion-vessel-turn-projection/v1';
+
+export function projectBrowserCompanionVesselTurn(value, {
+  projectRef,
+  threadRef,
+  channelRef
+} = {}) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('Companion vessel turn source must be one object');
+  }
+  if (
+    value.schemaVersion !== 'vexlife.browser-companion-turn/v1'
+    || value.state !== 'TURN_COMPLETED'
+    || value.truthClass !== 'CURRENT_LOCAL_MODEL'
+  ) {
+    throw new TypeError('Companion vessel turn requires one completed current local-model turn');
+  }
+  for (const [label, refValue] of [
+    ['turnRef', value.turnRef],
+    ['responseMessageRef', value.responseMessageRef],
+    ['modelNameOrBoundedTestProfileRef', value.modelNameOrBoundedTestProfileRef],
+    ['projectRef', projectRef],
+    ['threadRef', threadRef],
+    ['channelRef', channelRef]
+  ]) {
+    if (!availabilityNonempty(refValue)) {
+      throw new TypeError(`Companion vessel turn ${label} is required`);
+    }
+  }
+  if (!/^[0-9a-f]{64}$/u.test(value.conversationHeadSha256 ?? '')) {
+    throw new TypeError('Companion vessel turn conversationHeadSha256 is invalid');
+  }
+  if (typeof value.content !== 'string' || value.content.length === 0) {
+    throw new TypeError('Companion vessel turn content is required');
+  }
+  return Object.freeze({
+    schemaVersion: BROWSER_COMPANION_VESSEL_TURN_PROJECTION_SCHEMA,
+    truthClass: 'CURRENT_LOCAL_MODEL',
+    projectRef,
+    threadRef,
+    channelRef,
+    turnRef: value.turnRef,
+    responseMessageRef: value.responseMessageRef,
+    conversationHeadSha256: value.conversationHeadSha256,
+    modelNameOrBoundedTestProfileRef: value.modelNameOrBoundedTestProfileRef,
+    content: value.content,
+    effectsPerformed: false
+  });
+}
+
+export function createChatController({ state, projects, roles, channels, messages, createMessage, conversationKey, t, navigation, experienceFoundation, capabilityRegistry, onCompanionTurnCompleted = null }) {
   const currentProject = () => projects.find((project) => project.projectRef === state.projectRef) || projects[0];
   const currentThread = () => currentProject().threads.find((thread) => thread.threadRef === state.threadRef) || currentProject().threads[0];
   const channelsForThread = (projectRef = state.projectRef, threadRef = state.threadRef) =>
@@ -187,6 +238,10 @@ export function createChatController({ state, projects, roles, channels, message
   let companionTurnPending = false;
   let companionRecoveryPending = false;
   let companionRecoveryFailure = false;
+  let companionVesselProjectionState = 'UNBOUND';
+  if (onCompanionTurnCompleted !== null && typeof onCompanionTurnCompleted !== 'function') {
+    throw new TypeError('onCompanionTurnCompleted must be a function or null');
+  }
   let pendingSemanticRelayInput = null;
   let pendingSemanticRelayAction = null;
   let pendingSemanticRelayScope = null;
@@ -1079,6 +1134,19 @@ export function createChatController({ state, projects, roles, channels, message
         const messageKey = keyForChannel(channel);
         state.unread.set(messageKey, (state.unread.get(messageKey) || 0) + 1);
       }
+      if (onCompanionTurnCompleted) {
+        try {
+          const vesselProjection = projectBrowserCompanionVesselTurn(body, {
+            projectRef: channel.projectRef,
+            threadRef: channel.threadRef,
+            channelRef: channel.channelRef
+          });
+          await onCompanionTurnCompleted(vesselProjection);
+          companionVesselProjectionState = 'BOUND';
+        } catch {
+          companionVesselProjectionState = 'REJECTED';
+        }
+      }
       return true;
     } catch {
       restoreCompanionDraft(channel, content, sourceMessage);
@@ -1212,6 +1280,7 @@ export function createChatController({ state, projects, roles, channels, message
     companionAvailabilityState,
     companionAvailability: companionAvailabilitySnapshot,
     companionRecoveryAvailable: () => browserCompanionRecoveryAvailable(companionAvailability),
+    companionVesselProjectionState: () => companionVesselProjectionState,
     composerCommandState: () => structuredClone(composerCommandState),
     pendingReplyCount: () => pendingReplyTimers.size
   };
