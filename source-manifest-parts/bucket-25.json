@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/modules/terrain-controller.js",
       "mode": "100644",
-      "bytes": 52977,
-      "sha256": "3c43a67757b2d30f201a4510a2aa3a745eea62c31c5524845e011133942a3891"
+      "bytes": 53949,
+      "sha256": "03ad2440b537512f078870f7af87869217b94700c7429d823c2fe3218f49399f"
     },
     {
       "path": "test/browser-vex-birth-walkthrough.test.mjs",
