@@ -3,6 +3,12 @@
   "bucketId": "43",
   "files": [
     {
+      "path": "docs/vexlife-assortment/FIRST-PRACTICUM.md",
+      "mode": "100644",
+      "bytes": 2473,
+      "sha256": "7ac8560debc9598250f2eff452b0ec4aa0f2de5f4d918883bf88bf0ca28aa732"
+    },
+    {
       "path": "reference/browser/integration-test.js",
       "mode": "100644",
       "bytes": 19430,

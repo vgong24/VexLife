@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 29495,
       "sha256": "bc9ef82ec2188d83672a0e0bcf5213d5d4cc22ae7775fc2677bbdd1b8bc3642d"
+    },
+    {
+      "path": "docs/vexlife-assortment/INTENTION.md",
+      "mode": "100644",
+      "bytes": 2743,
+      "sha256": "a867a7550ecb0442fc1f85e4b6c7d86b8651d51a25316715b4ea532f3282cafd"
     }
   ]
 }

@@ -9,6 +9,12 @@
       "sha256": "23ccce708cd7d7946bc353c35357498c89876c67ae8342ced58afdcace6a4658"
     },
     {
+      "path": "docs/vexlife-assortment/INFRASTRUCTURE-MAP.md",
+      "mode": "100644",
+      "bytes": 5601,
+      "sha256": "a15b9c5343fe20876c594247fc72fec713ba8a5454a6221ec2db6fc40f4b3fdc"
+    },
+    {
       "path": "src/core/intent-completion-verifier.mjs",
       "mode": "100644",
       "bytes": 21202,

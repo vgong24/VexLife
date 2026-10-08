@@ -3,6 +3,12 @@
   "bucketId": "2e",
   "files": [
     {
+      "path": "docs/vexlife-assortment/CURRENT.md",
+      "mode": "100644",
+      "bytes": 2954,
+      "sha256": "1ab62f269500535d5075cfc80f7037a2e56b5131e8ba958dfc90858437882604"
+    },
+    {
       "path": "scripts/current.mjs",
       "mode": "100644",
       "bytes": 480,
