@@ -6,4 +6,6 @@
     <string name="r2_attention_admitted">注意リクエストをローカルで受理しました</string>
     <string name="r4_remote_vessel_title">Android優先</string>
     <string name="r4_remote_vessel_status">プレビュー — セキュリティランタイム未接続</string>
+    <string name="r5_home_loopback_title">Synthetic Home ループバック</string>
+    <string name="r5_home_loopback_status">SYNTHETIC / LOOPBACK — 実 Home 接続ではありません</string>
 </resources>

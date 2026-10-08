@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 5762,
       "sha256": "54323e40f5b78c4bcec5beb39de8b5375a5e96defc83dc892224f25aaabb44dc"
+    },
+    {
+      "path": "src/core/android-r5-home-loopback.mjs",
+      "mode": "100644",
+      "bytes": 23276,
+      "sha256": "7a96c924297e5171b165b4a16acccee171e6ee0bc55f62072018d413a49cfe99"
     }
   ]
 }
