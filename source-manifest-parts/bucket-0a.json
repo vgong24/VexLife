@@ -15,6 +15,12 @@
       "sha256": "d3e4c7b478e12909e5038b18284565a387114d714de6fc54bfaeb707a1f441bc"
     },
     {
+      "path": "test/android-r6-home-session.test.mjs",
+      "mode": "100644",
+      "bytes": 6132,
+      "sha256": "79aa1954e132165aa8ecf4af2275f3a726285b29862e1265cabd9dc01c09708f"
+    },
+    {
       "path": "test/browser-relationships-visible-persistence-composition.test.mjs",
       "mode": "100644",
       "bytes": 16899,

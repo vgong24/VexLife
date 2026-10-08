@@ -9,6 +9,12 @@
       "sha256": "9b90b23b93ac51fd9d71f3699abd5966bb0d38f3553a502e5646ddf0a3ef0ca5"
     },
     {
+      "path": "src/core/android-r6-home-session.mjs",
+      "mode": "100644",
+      "bytes": 18191,
+      "sha256": "0bb7f3c50bd35c7ac918d677662af8bae13f6d4ce6311cad0da8aa6f7f9049eb"
+    },
+    {
       "path": "src/core/evolution.mjs",
       "mode": "100644",
       "bytes": 4841,
