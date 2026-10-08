@@ -33,6 +33,12 @@
       "sha256": "17c80d16803b09b9a6ca88b5a4aaacb76eeeb4cf1fb0133b1fa5b9edb51fcb16"
     },
     {
+      "path": "test/vex-assembly-clean-shutdown.test.mjs",
+      "mode": "100644",
+      "bytes": 2668,
+      "sha256": "affbc95320b33e50611c33154b340dea866896fd71a28e84ee97417bec92a0d6"
+    },
+    {
       "path": "test/vex-family-conversation-store.test.mjs",
       "mode": "100644",
       "bytes": 28824,
