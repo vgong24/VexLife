@@ -18,6 +18,7 @@ import {
   loadBrowserCompanionHomeIdentity
 } from '../src/core/browser-companion-bridge.mjs';
 import { compileCompanionAvailability, formCompanionReentryPlan } from '../src/core/companion-availability-reentry.mjs';
+import { createReleaseRuntimeCompanionRecoveryOwner } from '../src/core/browser-companion-recovery-owner.mjs';
 import {
   CAPABILITY_ASSIMILATION_MODES,
   createCapabilityAssimilationRuntime
@@ -424,6 +425,7 @@ export function createServerOwnedBrowserCompanionBridge({
   model = process.env.VEXLIFE_COMPANION_MODEL ?? null,
   runtimeMode = process.env.VEXLIFE_CAPABILITY_RUNTIME_MODE ??
     CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN,
+  recoveryOwnerFactory = createReleaseRuntimeCompanionRecoveryOwner,
   bridgeFactory = createBrowserCompanionBridge
 } = {}) {
   if (!Object.values(CAPABILITY_ASSIMILATION_MODES).includes(runtimeMode)) {
@@ -431,6 +433,9 @@ export function createServerOwnedBrowserCompanionBridge({
   }
   if (typeof bridgeFactory !== 'function') {
     throw new TypeError('Browser Companion bridge factory must be one function');
+  }
+  if (typeof recoveryOwnerFactory !== 'function') {
+    throw new TypeError('Browser Companion recovery-owner factory must be one function');
   }
   const capabilityRuntimeBundle = runtimeMode === CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN
     ? null
@@ -480,6 +485,10 @@ export function createServerOwnedBrowserCompanionBridge({
   };
   const promptContextResolver = (input) => currentPromptContextRuntime().promptContextResolver(input);
   const promptContextAuthorityVerifier = (query) => currentPromptContextRuntime().promptContextAuthorityVerifier(query);
+  const recoveryOwner = recoveryOwnerFactory({ sourceRoot, home: companionHome });
+  if (!recoveryOwner || typeof recoveryOwner.recover !== 'function') {
+    throw new TypeError('Browser Companion recovery owner must expose recover(request)');
+  }
   return bridgeFactory({
     home: companionHome,
     endpoint,
@@ -487,7 +496,8 @@ export function createServerOwnedBrowserCompanionBridge({
     capabilityRuntime,
     modelConnectionComposer,
     promptContextResolver,
-    promptContextAuthorityVerifier
+    promptContextAuthorityVerifier,
+    recoveryOwner
   });
 }
 
