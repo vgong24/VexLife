@@ -37,6 +37,12 @@
       "mode": "100644",
       "bytes": 1018,
       "sha256": "0b3c6ba42dabf658063d7185d365abcb58ce5991e1fbd44fa9d7dae6f8f27968"
+    },
+    {
+      "path": "src/core/android-r6b-private-transport-consumer.mjs",
+      "mode": "100644",
+      "bytes": 26582,
+      "sha256": "8885360ff45f48d49792b1c9c43cddde4d71cd0c287ab5df0ad833cd272cdda7"
     }
   ]
 }

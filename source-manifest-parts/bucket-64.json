@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 679,
       "sha256": "32aade5c1aafe11498c924be9d8c9371e3330ff619f09c9ec478e83d0aee8eab"
+    },
+    {
+      "path": "test/android-r6b-private-transport.test.mjs",
+      "mode": "100644",
+      "bytes": 13490,
+      "sha256": "a856eea51ae86849a9a0a1bf8725bc9d017ed149a1f6982053e86361d6069f2d"
     }
   ]
 }

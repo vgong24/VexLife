@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "89",
+  "files": [
+    {
+      "path": "platform/android/app/src/main/kotlin/vexlife/android/home/AndroidPrivateTransportConsumerContract.kt",
+      "mode": "100644",
+      "bytes": 6317,
+      "sha256": "f88099535c057cf086bdbe81a3e1a59e88176678db91a4bba47e330f7cddc03d"
+    }
+  ]
+}
