@@ -41,9 +41,9 @@ test('bootstrap creates a distinct device lineage and refuses to overwrite exist
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-test('W6 Windows launcher exposes only start and uninstall-preserve lifecycle modes', () => {
+test('W6 Windows launcher exposes start, stop, and uninstall-preserve lifecycle modes', () => {
   const script = fs.readFileSync(path.join(ROOT, 'start-vexlife.ps1'), 'utf8');
-  assert.match(script, /ValidateSet\("start", "uninstall-preserve"\)/u);
+  assert.match(script, /ValidateSet\("start", "stop", "uninstall-preserve"\)/u);
   assert.match(script, /\[string\]\$Operation = "start"/u);
   assert.match(script, /if \(\$Operation -eq "uninstall-preserve"\) \{\s*Invoke-UninstallPreserveContinuity\s*\}/u);
   assert.ok(

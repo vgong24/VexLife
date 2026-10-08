@@ -15,6 +15,12 @@
       "sha256": "9c8476531f5984771e0da3353953742d428ac0e55ff5c9335d07925e7c018f5b"
     },
     {
+      "path": "test/browser-companion-recovery-owner.test.mjs",
+      "mode": "100644",
+      "bytes": 6752,
+      "sha256": "36b9fd3061179f728ed227977c4dcf6572af62d6b83d0670e7463dec5fe94d7d"
+    },
+    {
       "path": "test/experience-review-kit.test.mjs",
       "mode": "100644",
       "bytes": 13661,

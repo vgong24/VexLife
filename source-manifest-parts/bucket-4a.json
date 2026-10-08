@@ -5,8 +5,8 @@
     {
       "path": "scripts/initialize-vex.mjs",
       "mode": "100644",
-      "bytes": 27576,
-      "sha256": "cedac47dfaf7f5fc8f97ad7205cb4877824ec025f518f0dca49c24925a62a905"
+      "bytes": 31032,
+      "sha256": "ce9f64ee091c5661de5bf5547c914be9edf009ced1eedab6b7718fc1a1ecb86c"
     }
   ]
 }

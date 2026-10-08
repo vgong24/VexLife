@@ -1,6 +1,6 @@
 #requires -Version 5.1
 param(
-  [ValidateSet("start", "uninstall-preserve")]
+  [ValidateSet("start", "stop", "uninstall-preserve")]
   [string]$Operation = "start",
   [string]$DeviceName = $env:COMPUTERNAME,
   [Alias("Home")]
@@ -349,6 +349,85 @@ function Stop-ExactQualifiedRuntime([string]$HomeRoot, [string]$RepoRoot) {
   return [ordered]@{ disposition = "EXACT_QUALIFIED_RUNTIME_STOPPED"; pid = [int]$runtimeOwnership.pid; executableSha256 = [string]$runtimeOwnership.executableSha256 }
 }
 
+function Invoke-CleanStop {
+  $resolvedHomeInput = $VexHome
+  if ([string]::IsNullOrWhiteSpace($resolvedHomeInput)) { $resolvedHomeInput = Join-Path $HOME ".vexlife" }
+  $homeRoot = Assert-CanonicalDirectory $resolvedHomeInput "Vex Home"
+  $repoRoot = Assert-CanonicalDirectory $Root "VexLife source root"
+  $recoveryRoot = Assert-CanonicalDirectory (Join-Path $homeRoot "recovery") "Vex Home recovery directory"
+  $receiptPath = Assert-PathWithin $homeRoot (Join-Path $recoveryRoot "clean-shutdown-receipt.json") "clean shutdown receipt"
+  $homeIdentityPath = Assert-PathWithin $homeRoot (Join-Path $homeRoot "config\home.json") "Home identity"
+  if (-not (Test-Path -LiteralPath $homeIdentityPath -PathType Leaf)) { throw "Canonical Home identity is missing" }
+  $homeIdentityBefore = (Get-FileHash -LiteralPath $homeIdentityPath -Algorithm SHA256).Hash.ToLowerInvariant()
+  $protectedBefore = Get-ProtectedHomeSnapshot $homeRoot $receiptPath
+  $headsBefore = Get-ConversationHeadSnapshot $homeRoot
+
+  $serverDisposition = "ALREADY_STOPPED"
+  $serverPid = 0
+  $browserProcessReceiptPath = Assert-PathWithin $homeRoot (Join-Path $recoveryRoot "browser-process.json") "browser process receipt"
+  $ownedBrowser = Get-OwnedBrowserServer $browserProcessReceiptPath $repoRoot $homeRoot
+  if ($null -ne $ownedBrowser) {
+    $serverPid = [int]$ownedBrowser.pid
+    Stop-Process -Id $serverPid -ErrorAction Stop
+    Set-BrowserProcessReceiptStopped $browserProcessReceiptPath "STOPPED_BY_CLEAN_STOP"
+    $serverDisposition = "EXACT_CURRENT_BROWSER_PROCESS_INSTANCE_STOPPED"
+  }
+
+  $qualifiedRuntime = Stop-ExactQualifiedRuntime $homeRoot $repoRoot
+  $homeIdentityAfter = (Get-FileHash -LiteralPath $homeIdentityPath -Algorithm SHA256).Hash.ToLowerInvariant()
+  $protectedAfter = Get-ProtectedHomeSnapshot $homeRoot $receiptPath
+  $headsAfter = Get-ConversationHeadSnapshot $homeRoot
+  $continuityPreserved = (
+    $homeIdentityBefore -eq $homeIdentityAfter -and
+    $protectedBefore.fingerprintSha256 -eq $protectedAfter.fingerprintSha256 -and
+    $protectedBefore.fileCount -eq $protectedAfter.fileCount -and
+    $headsBefore.fingerprintSha256 -eq $headsAfter.fingerprintSha256 -and
+    $headsBefore.count -eq $headsAfter.count
+  )
+
+  $state = "CLEAN_STOP_COMPLETED"
+  if (-not $continuityPreserved) { $state = "CLEAN_STOP_CONTINUITY_MISMATCH" }
+  $receipt = [ordered]@{
+    schemaVersion = "vexlife.clean-shutdown-receipt/v1"
+    marker = "[VXG RealForever]"
+    operation = "stop"
+    state = $state
+    platform = "windows"
+    source = [ordered]@{
+      repoRootSha256 = Get-TextSha256 $repoRoot.ToLowerInvariant()
+      launcherSha256 = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    browser = [ordered]@{ disposition = $serverDisposition; pid = $serverPid }
+    runtime = $qualifiedRuntime
+    Home = [ordered]@{
+      identitySha256Before = $homeIdentityBefore
+      identitySha256After = $homeIdentityAfter
+      protectedFileCountBefore = $protectedBefore.fileCount
+      protectedFileCountAfter = $protectedAfter.fileCount
+      protectedFingerprintBefore = $protectedBefore.fingerprintSha256
+      protectedFingerprintAfter = $protectedAfter.fingerprintSha256
+      continuityPreserved = $continuityPreserved
+    }
+    conversationHeads = [ordered]@{
+      countBefore = $headsBefore.count
+      countAfter = $headsAfter.count
+      fingerprintBefore = $headsBefore.fingerprintSha256
+      fingerprintAfter = $headsAfter.fingerprintSha256
+      preserved = ($headsBefore.count -eq $headsAfter.count -and $headsBefore.fingerprintSha256 -eq $headsAfter.fingerprintSha256)
+    }
+    foreignProcessStopped = $false
+    uninstallPerformed = $false
+    HomeDeleted = $false
+    MemoryDeleted = $false
+    modelArtifactsDeleted = $false
+    shutdownCompletedAt = (Get-Date).ToUniversalTime().ToString("o")
+  }
+  $receipt | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $receiptPath -Encoding UTF8
+  if (-not $continuityPreserved) { exit 17 }
+  Write-Host ($receipt | ConvertTo-Json -Depth 8 -Compress)
+  exit 0
+}
+
 function Invoke-UninstallPreserveContinuity {
   $resolvedHomeInput = $VexHome
   if ([string]::IsNullOrWhiteSpace($resolvedHomeInput)) { $resolvedHomeInput = Join-Path $HOME ".vexlife" }
@@ -473,6 +552,10 @@ $serverDisposition = "ALREADY_STOPPED"
   Write-Host "UNINSTALL_AND_REMOVE_LOCAL_DATA is a separate destructive authority class and is not available from this route."
   if (-not $continuityPreserved) { exit 17 }
   exit 0
+}
+
+if ($Operation -eq "stop") {
+  Invoke-CleanStop
 }
 
 if ($Operation -eq "uninstall-preserve") {
