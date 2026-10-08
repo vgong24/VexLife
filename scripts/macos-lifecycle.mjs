@@ -15,7 +15,7 @@ export const SOURCE_ROOT = path.resolve(HERE, '..');
 export const MAC_LIFECYCLE_SCHEMA = 'vexlife.macos-lifecycle/v1';
 export const MAC_BROWSER_RECEIPT_SCHEMA = 'vexlife.browser-process-receipt/v1';
 export const ALLOWED_OPERATIONS = Object.freeze([
-  'auto', 'status', 'start', 'repair', 'rebuild-preserve', 'uninstall-preserve'
+  'auto', 'status', 'start', 'stop', 'repair', 'rebuild-preserve', 'uninstall-preserve'
 ]);
 
 const TRANSIENT_EXACT = new Set([
@@ -494,8 +494,8 @@ export function classifyMacLifecycleState(home) {
 }
 export function choicesForLifecycleState(state) {
   if (state === 'ABSENT') return ['start'];
-  if (state === 'EXISTING_HEALTHY') return ['start', 'repair', 'rebuild-preserve', 'uninstall-preserve'];
-  if (state === 'EXISTING_DEGRADED_REPAIRABLE') return ['repair', 'rebuild-preserve', 'uninstall-preserve'];
+  if (state === 'EXISTING_HEALTHY') return ['start', 'stop', 'repair', 'rebuild-preserve', 'uninstall-preserve'];
+  if (state === 'EXISTING_DEGRADED_REPAIRABLE') return ['stop', 'repair', 'rebuild-preserve', 'uninstall-preserve'];
   return [];
 }
 export function assertLifecycleOperationAdmitted(state, operation) {
@@ -681,6 +681,40 @@ async function runStart(home, repo, options) {
   const browser = await startBrowser(home, repo, initialized);
   return { initialized, browser };
 }
+export async function cleanStop(home, repo) {
+  const homeRoot = canonicalMacHomeDirectory(home);
+  const repoRoot = canonicalExistingDirectory(repo, 'VexLife source root');
+  const before = protectedHomeSnapshot(homeRoot);
+  const browser = await stopOwnedBrowser(homeRoot, repoRoot);
+  const runtime = await stopOwnedRuntime(homeRoot);
+  const after = protectedHomeSnapshot(homeRoot);
+  const continuityPreserved = before.fileCount === after.fileCount && before.fingerprintSha256 === after.fingerprintSha256;
+  const result = {
+    schemaVersion: 'vexlife.clean-shutdown-receipt/v1',
+    operation: 'stop',
+    state: continuityPreserved ? 'CLEAN_STOP_COMPLETED' : 'CLEAN_STOP_CONTINUITY_MISMATCH',
+    platform: 'darwin',
+    source: {
+      repoRootSha256: sha256(Buffer.from(repoRoot)),
+      lifecycleScriptSha256: sha256(fs.readFileSync(fileURLToPath(import.meta.url)))
+    },
+    browser,
+    runtime,
+    protectedBefore: { fileCount: before.fileCount, fingerprintSha256: before.fingerprintSha256 },
+    protectedAfter: { fileCount: after.fileCount, fingerprintSha256: after.fingerprintSha256 },
+    continuityPreserved,
+    foreignProcessStopped: false,
+    uninstallPerformed: false,
+    HomeDeleted: false,
+    MemoryDeleted: false,
+    modelArtifactsDeleted: false,
+    shutdownCompletedAt: new Date().toISOString()
+  };
+  writeJsonAtomic(lifecycleReceiptPath(homeRoot), result);
+  if (!continuityPreserved) throw new Error('clean stop changed protected Home continuity');
+  return result;
+}
+
 async function uninstallPreserve(home, repo) {
   const homeRoot = canonicalMacHomeDirectory(home);
   const repoRoot = canonicalExistingDirectory(repo, 'VexLife source root');
@@ -734,10 +768,11 @@ async function promptChoice(state) {
   const rl = createInterface({ input, output });
   try {
     const friendly = state === 'EXISTING_HEALTHY'
-      ? 'VexLife already exists. Choose: [Enter] resume, [r] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, [q] quit: '
-      : 'VexLife needs attention. Choose: [Enter] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, [q] quit: ';
+      ? 'VexLife already exists. Choose: [Enter] resume, [s] stop cleanly, [r] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, [q] quit: '
+      : 'VexLife needs attention. Choose: [s] stop exact owned processes, [Enter] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, [q] quit: ';
     const answer = (await rl.question(friendly)).trim().toLowerCase();
     if (answer === 'q') return 'quit';
+    if (answer === 's') return 'stop';
     if (answer === 'b') return 'rebuild-preserve';
     if (answer === 'u') return 'uninstall-preserve';
     if (answer === 'r') return 'repair';
@@ -782,6 +817,7 @@ export async function runLifecycle(argv = process.argv.slice(2)) {
     const started = await runStart(home, repo, options);
     return { schemaVersion: MAC_LIFECYCLE_SCHEMA, operation: 'start', state: 'START_OR_RESUME_COMPLETED', priorState: state, started };
   }
+  if (chosen === 'stop') return { schemaVersion: MAC_LIFECYCLE_SCHEMA, ...(await cleanStop(home, repo)), priorState: state };
   if (chosen === 'repair') return { schemaVersion: MAC_LIFECYCLE_SCHEMA, ...(await repair(home, repo, options)), priorState: state };
   if (chosen === 'rebuild-preserve') return { schemaVersion: MAC_LIFECYCLE_SCHEMA, ...(await rebuildPreserve(home, repo, options)), priorState: state };
   if (chosen === 'uninstall-preserve') return { schemaVersion: MAC_LIFECYCLE_SCHEMA, ...(await uninstallPreserve(home, repo)), priorState: state };

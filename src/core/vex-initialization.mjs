@@ -413,7 +413,7 @@ export function selectOperationalProfile({ registry, platform, architecture, mod
   const compatible = registry.profiles.filter((profile) => profile.platform === platform && profile.architecture === architecture);
   const selected = profileRef ? compatible.find((profile) => profile.profileRef === profileRef) : compatible[0];
   if (!selected) return { state: 'UNSUPPORTED_HOST', profile: null };
-  if (mode === 'normal' && selected.state !== NORMAL_PROFILE_STATE) return { state: 'NO_RELEASE_QUALIFIED_PROFILE', profile: null, heldProfileRef: selected.profileRef, heldProfileState: selected.state };
+  if (['normal', 'recovery-current-binding'].includes(mode) && selected.state !== NORMAL_PROFILE_STATE) return { state: 'NO_RELEASE_QUALIFIED_PROFILE', profile: null, heldProfileRef: selected.profileRef, heldProfileState: selected.state };
   if (mode === 'candidate-qualification' && ![NORMAL_PROFILE_STATE, CANDIDATE_PROFILE_STATE].includes(selected.state)) return { state: 'PROFILE_NOT_ELIGIBLE_FOR_QUALIFICATION', profile: null };
   return { state: 'PROFILE_RESOLVED', profile: selected };
 }
@@ -422,6 +422,38 @@ export function classifyHomeState({ homeManifestPresent, homeDirectoryPresent, h
   if (homeManifestPresent) return 'EXISTING_HOME_PRESERVED';
   if (!homeDirectoryPresent || !homeDirectoryNonEmpty) return 'FRESH_HOME_ALLOWED';
   return 'HOME_REQUIRES_MIGRATION_PLAN';
+}
+
+export function validateRecoveryCurrentBinding({ profile, modelBundle, modelConfiguration }) {
+  const errors = [];
+  try {
+    requireObject(profile, 'profile');
+    requireObject(modelBundle, 'modelBundle');
+    requireObject(modelConfiguration, 'modelConfiguration');
+    if (profile.state !== NORMAL_PROFILE_STATE) errors.push('recovery requires one RELEASE_QUALIFIED operational profile');
+    if (modelBundle.state !== 'RELEASE_QUALIFIED') errors.push('recovery requires one RELEASE_QUALIFIED model bundle');
+    const exact = [
+      ['schemaVersion', 'vexlife.model-configuration/v1'],
+      ['state', 'BOUND_QUALIFIED'],
+      ['profileRef', profile.profileRef],
+      ['activeModelBundleRef', modelBundle.modelBundleRef],
+      ['generationRef', modelBundle.generationRef],
+      ['modelProfileRef', modelBundle.modelProfileRef],
+      ['endpoint', profile.endpoint.origin],
+      ['requestModel', modelBundle.requestModel],
+      ['activeArtifactRef', modelBundle.baseModelArtifactRef],
+      ['runtimeDependencyRef', profile.runtime.dependencyRef],
+      ['runtimeExecutableSha256SourcePinned', profile.runtime.executableSha256]
+    ];
+    for (const [field, expected] of exact) {
+      if ((modelConfiguration[field] ?? null) !== (expected ?? null)) errors.push(`modelConfiguration.${field} does not match the current source binding`);
+    }
+    if (modelConfiguration.automaticDownload !== false) errors.push('recovery requires automaticDownload=false');
+    if (modelConfiguration.automaticActivation !== false) errors.push('recovery requires automaticActivation=false');
+  } catch (error) {
+    errors.push(error.message);
+  }
+  return { ok: errors.length === 0, errors };
 }
 
 export function buildRuntimeArguments(profile, { modelPath, projectorPath }) {
@@ -496,7 +528,7 @@ export function buildVexInitializationPlan({ profile, modelBundle, modelArtifact
       argumentTemplate: profile.runtime.argumentTemplate
     },
     effects: {
-      networkFetch: true,
+      networkFetch: mode !== 'recovery-current-binding',
       homeWrite: true,
       processLaunch: true,
       loopbackOnly: true,

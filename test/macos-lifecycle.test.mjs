@@ -505,7 +505,7 @@ test('MAC07C protected continuity hashes model files incrementally without whole
 
 test('MAC08 lifecycle exposes no destructive local-data removal operation', () => {
   assert.equal(ALLOWED_OPERATIONS.includes('remove-local-data'), false);
-  assert.deepEqual(choicesForLifecycleState('EXISTING_HEALTHY'), ['start','repair','rebuild-preserve','uninstall-preserve']);
+  assert.deepEqual(choicesForLifecycleState('EXISTING_HEALTHY'), ['start','stop','repair','rebuild-preserve','uninstall-preserve']);
   assert.equal(choicesForLifecycleState('HELD_NONCANONICAL_HOME').length, 0);
 });
 

@@ -20,7 +20,8 @@ import {
   runtimeProcessEvidenceMatches,
   selectOperationalProfile,
   validateModelBundleRegistry,
-  validateOperationalProfileRegistry
+  validateOperationalProfileRegistry,
+  validateRecoveryCurrentBinding
 } from '../src/core/vex-initialization.mjs';
 import { classifyVerifiedArtifact, downloadVerifiedArtifact, sha256File } from '../src/core/model-provision.mjs';
 import { resolveAndDownloadArtifact } from '../src/core/artifact-delivery.mjs';
@@ -153,7 +154,7 @@ function findNamedFile(root, filename) {
   if (found.length !== 1) throw new Error(`runtime extraction must contain exactly one ${filename}; found ${found.length}`);
   return found[0];
 }
-async function materializeRuntime(profile, artifactPaths) {
+async function materializeRuntime(profile, artifactPaths, { existingOnly = false } = {}) {
   const target = path.join(home, ...profile.runtime.extraction.subdirectory.split('/'));
   if (fs.existsSync(target)) {
     if (profile.runtime.executableSha256 === null) {
@@ -170,6 +171,12 @@ async function materializeRuntime(profile, artifactPaths) {
       throw new Error('existing runtime materialization failed executable SHA-256/byte verification; refusing to overwrite it');
     }
     return { state: 'REUSED_VERIFIED_RUNTIME', target, executable, executableSha256: actual, executableBytes, executableSha256DiscoveryRequired: false };
+  }
+  if (existingOnly) {
+    throw Object.assign(
+      new Error('recovery-current-binding requires an already-materialized exact runtime; no extraction or download is permitted'),
+      { state: 'RECOVERY_RUNTIME_MATERIALIZATION_MISSING' }
+    );
   }
   const staging = `${target}.partial-${process.pid}`;
   if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
@@ -271,6 +278,7 @@ async function qualifyInference(profile, modelBundle) {
   };
 }
 async function promptConsent(profile, modelBundle) {
+  if (mode === 'recovery-current-binding') return true;
   if (yes) return true;
   const rl = createInterface({ input, output });
   try {
@@ -308,7 +316,7 @@ try {
   if (mode === 'candidate-qualification' && (!requestedProfileRef || !candidateAuthorityRef)) {
     fail('CANDIDATE_AUTHORITY_REQUIRED', 'Candidate qualification requires --profile-ref and --candidate-authority-ref.', 2);
   }
-  if (!['normal', 'candidate-qualification'].includes(mode)) fail('SOURCE_INVALID', `Unknown initialization mode: ${mode}`, 2);
+  if (!['normal', 'candidate-qualification', 'recovery-current-binding'].includes(mode)) fail('SOURCE_INVALID', `Unknown initialization mode: ${mode}`, 2);
 
   const host = inspectHost();
   const selection = selectOperationalProfile({ registry, platform: host.platform, architecture: host.architecture, mode, profileRef: requestedProfileRef });
@@ -323,6 +331,26 @@ try {
   const homeStatus = pathState(home);
   if (homeStatus.state === 'HOME_REQUIRES_MIGRATION_PLAN') fail('HOME_REQUIRES_MIGRATION_PLAN', 'The selected Vex Home is non-empty but has no canonical Home identity. Nothing was changed.', 5);
   if (homeStatus.state === 'FRESH_HOME_ALLOWED') fail('HOME_NOT_ESTABLISHED', 'Vex Home must be established by the Frontdoor bootstrap before runtime initialization.', 5);
+
+  if (mode === 'recovery-current-binding') {
+    const modelConfigurationPath = path.join(home, 'config', 'model.json');
+    if (!fs.existsSync(modelConfigurationPath)) {
+      fail('RECOVERY_CURRENT_BINDING_MISSING', 'recovery-current-binding requires the existing qualified model configuration; nothing was provisioned.', 5);
+    }
+    const modelConfiguration = loadJson(modelConfigurationPath);
+    const currentBinding = validateRecoveryCurrentBinding({ profile, modelBundle, modelConfiguration });
+    if (!currentBinding.ok) {
+      fail('RECOVERY_CURRENT_BINDING_IDENTITY_MISMATCH', currentBinding.errors.join('; '), 5, { errors: currentBinding.errors });
+    }
+    const expectedModelPath = destinationForArtifact(profile, modelArtifacts[0]);
+    const expectedProjectorPath = destinationForArtifact(profile, modelArtifacts[1]);
+    const expectedRuntimeRoot = path.join(home, ...profile.runtime.extraction.subdirectory.split('/'));
+    if (path.resolve(modelConfiguration.modelPath || '') !== path.resolve(expectedModelPath)
+        || path.resolve(modelConfiguration.projectorPath || '') !== path.resolve(expectedProjectorPath)
+        || path.resolve(modelConfiguration.runtimeMaterializationRoot || '') !== path.resolve(expectedRuntimeRoot)) {
+      fail('RECOVERY_CURRENT_BINDING_PATH_MISMATCH', 'recovery-current-binding paths do not match the exact current Home/source binding.', 5);
+    }
+  }
 
   const plan = buildVexInitializationPlan({ profile, modelBundle, modelArtifacts, home, homeState: homeStatus.state, hostEvidence: host, mode });
   if (planOnly) {
@@ -340,6 +368,14 @@ try {
     const destination = destinationForArtifact(profile, artifact);
     progress(`Verifying ${artifact.filename}...`);
     const before = await classifyVerifiedArtifact({ finalPath: destination, expectedSha256: artifact.sha256, expectedBytes: artifact.expectedBytes });
+    if (mode === 'recovery-current-binding') {
+      if (before.state !== 'VERIFIED_REUSABLE') {
+        throw Object.assign(new Error(`${artifact.filename} is not already present with the exact accepted bytes; recovery refuses provisioning`), { state: 'RECOVERY_ARTIFACT_NOT_CURRENT' });
+      }
+      artifactPaths.set(artifact.artifactRef, destination);
+      artifactReceipts.push({ artifactRef: artifact.artifactRef, filename: artifact.filename, destinationClass: 'RUNTIME_ARCHIVE', disposition: 'REUSED_VERIFIED', bytes: before.bytes, sha256: before.actualSha256, selectedChannelRef: null, attemptedChannelRefs: [], providerOrNetworkEffect: false });
+      continue;
+    }
     if (before.state === 'INVALID_HASH' || before.state === 'INVALID_SIZE' || before.state === 'INVALID_NOT_FILE') {
       throw Object.assign(new Error(`${artifact.filename} already exists but does not match the accepted profile; refusing to overwrite it`), { state: 'ARTIFACT_HASH_MISMATCH' });
     }
@@ -358,6 +394,28 @@ try {
     const destination = destinationForArtifact(profile, artifact);
     progress(`Verifying ${artifact.filename} through source-managed model delivery...`);
     const before = await classifyVerifiedArtifact({ finalPath: destination, expectedSha256: artifact.sha256, expectedBytes: artifact.expectedBytes });
+    if (mode === 'recovery-current-binding') {
+      if (before.state !== 'VERIFIED_REUSABLE') {
+        throw Object.assign(new Error(`${artifact.filename} is not already present with the exact accepted bytes; recovery refuses provisioning`), { state: 'RECOVERY_ARTIFACT_NOT_CURRENT' });
+      }
+      artifactPaths.set(artifact.artifactRef, destination);
+      artifactReceipts.push({
+        artifactRef: artifact.artifactRef,
+        filename: artifact.filename,
+        destinationClass: 'MODEL',
+        modelBundleRef: modelBundle.modelBundleRef,
+        generationRef: modelBundle.generationRef,
+        disposition: 'REUSED_VERIFIED',
+        bytes: before.bytes,
+        sha256: before.actualSha256,
+        selectedChannelRef: null,
+        attemptedChannelRefs: [],
+        providerOrNetworkEffect: false,
+        manifestSha256: null,
+        recordedSourceUrl: null
+      });
+      continue;
+    }
     if (before.state === 'INVALID_HASH' || before.state === 'INVALID_SIZE' || before.state === 'INVALID_NOT_FILE') {
       throw Object.assign(new Error(`${artifact.filename} already exists but does not match the accepted profile; refusing to overwrite it`), { state: 'ARTIFACT_HASH_MISMATCH' });
     }
@@ -381,7 +439,7 @@ try {
   }
 
   progress('Materializing the local runtime...');
-  const materialization = await materializeRuntime(profile, artifactPaths);
+  const materialization = await materializeRuntime(profile, artifactPaths, { existingOnly: mode === 'recovery-current-binding' });
   const modelPath = artifactPaths.get(modelBundle.baseModelArtifactRef);
   const projectorPath = artifactPaths.get(modelBundle.projectorArtifactRef);
   const runtimeReceiptPath = path.join(home, 'runtime', 'initialization', 'receipt.json');

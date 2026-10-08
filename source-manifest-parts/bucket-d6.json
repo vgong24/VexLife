@@ -3,6 +3,12 @@
   "bucketId": "d6",
   "files": [
     {
+      "path": "platform/android/app/src/test/kotlin/vexlife/android/app/R6HomeSessionAuthorityContractTest.kt",
+      "mode": "100644",
+      "bytes": 3205,
+      "sha256": "b98037e39b06b81d0cd3eea515e91493fee22450022e35926afa5c202b7d9859"
+    },
+    {
       "path": "src/core/check-result.mjs",
       "mode": "100644",
       "bytes": 3466,
