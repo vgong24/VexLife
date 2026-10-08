@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 1624,
       "sha256": "3e912fd27db597b16db0a063e82f010469278e6c2557977045df9c834a7fa9e9"
+    },
+    {
+      "path": "platform/android/app/src/main/kotlin/vexlife/android/home/AndroidHomeSessionAuthorityContract.kt",
+      "mode": "100644",
+      "bytes": 5202,
+      "sha256": "1c1774c9672349540dbe488c3b4955d740466ff4223eb1346ee9af92e6a105b9"
     }
   ]
 }
