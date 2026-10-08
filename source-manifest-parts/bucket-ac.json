@@ -9,6 +9,12 @@
       "sha256": "00bee4274babf471c5ab82939aebe0fd7ed2d862558df8d94250e660335dc3cb"
     },
     {
+      "path": "platform/android/app/src/test/kotlin/vexlife/android/app/R5HomeLoopbackContractTest.kt",
+      "mode": "100644",
+      "bytes": 1292,
+      "sha256": "27c1a59f19b78be3a4ffa82a0c6c9fb8832cf8f082e18f94e5cb9743708d458b"
+    },
+    {
       "path": "reference/browser/modules/transient-presentation-controller.js",
       "mode": "100644",
       "bytes": 12163,

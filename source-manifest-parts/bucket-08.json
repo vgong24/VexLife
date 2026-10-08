@@ -3,6 +3,12 @@
   "bucketId": "08",
   "files": [
     {
+      "path": "scripts/generate-android-r5.mjs",
+      "mode": "100755",
+      "bytes": 9618,
+      "sha256": "ed45301e87ffdff2cfd0a5a38d16946524496a2b3e15fb5ed56723ace0760875"
+    },
+    {
       "path": "test/browser-family-room-projection.test.mjs",
       "mode": "100644",
       "bytes": 43375,
