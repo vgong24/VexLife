@@ -440,9 +440,9 @@ function renderTest() {
 `        gatewayGeneration = 3L,\n` +
 `        remoteCanonicalWrite = false,\n` +
 `        rawModelEndpointIsGateway = false,\n` +
-`        revisionDigest = "${'a'*64}",\n` +
+`        revisionDigest = "${'a'.repeat(64)}",\n` +
 `        revisionGeneration = 6L,\n` +
-`        pointerDigest = "${'b'*64}",\n` +
+`        pointerDigest = "${'b'.repeat(64)}",\n` +
 `        pointerGeneration = 7L,\n` +
 `        signatureReceiptRef = "receipt.signature.r6b.fixture",\n` +
 `        acceptanceReceiptRef = "receipt.acceptance.r6b.fixture",\n` +

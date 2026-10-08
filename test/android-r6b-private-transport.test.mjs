@@ -324,6 +324,10 @@ test('renderer is deterministic, exact, and contains no endpoint/network impleme
   const two = renderAndroidR6BOutputs();
   assert.deepEqual(one, two);
   assert.deepEqual(Object.keys(one.files).sort(), [...ANDROID_R6B_OUTPUT_PATHS].sort());
+  const renderedKotlinTest = one.files['platform/android/app/src/test/kotlin/vexlife/android/app/R6BPrivateTransportConsumerContractTest.kt'];
+  assert.match(renderedKotlinTest, /revisionDigest = "[0-9a-f]{64}"/u);
+  assert.match(renderedKotlinTest, /pointerDigest = "[0-9a-f]{64}"/u);
+  assert.equal(renderedKotlinTest.includes('\"NaN\"'), false);
   assert.deepEqual(ANDROID_R6B_ALLOWED_PRIVATE_TRANSPORT_REFS, [
     'transport.vexlife.tailscale',
     'transport.vexlife.wireguard',
