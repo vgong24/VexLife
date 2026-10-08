@@ -2,10 +2,10 @@
 
 [VXG RealForever]
 
-```text
+~~~text
 round=2
-lastRecordedIndex=15
-state=ROUND_2_ACTIVE_DESIGN_CONTINUITY
+lastRecordedIndex=22
+state=ROUND_2_DOC_CHECKPOINT_FREEZE
 repository=vgong24/VexLife
 repositoryId=1317660990
 branch=VXG-100726-chatgpt-vexlife-assortment-round-2
@@ -14,149 +14,189 @@ workRef=work.vexlife.assortment.round-2.20261007a
 claimRef=claim.vexlife.assortment.round-2.20261007a
 laneRef=lane.vexlife-assortment.round-2.successor-01
 predecessorMerge=7361dfa306662ccdd0256403e320b0970f0bde3e
-acceptedPracticumRef=preview.vexlife-assortment.r2.i09
-nextFunction=PROJECTS_PLURAL_BRIDGE
+acceptedPracticumRef=preview.vexlife-assortment.r2.i12.idea-work-lineage
+acceptedPracticumDisposition=HUMAN_ACCEPTED_FOR_DOC_CHECKPOINT
+nextFunction=ROUND2_DOC_CHECKPOINT_SOURCE_FREEZE
+postCheckpointSeed=CONTINUITY_DASHBOARD
 round3Formed=false
-```
+~~~
 
 ## Current meaning
 
-Round 1 is accepted and terminal. PR #825 merged as
-`7361dfa306662ccdd0256403e320b0970f0bde3e`, its post-merge RETURN was
-consumed, and its writer claim was released.
+Round 1 is accepted and terminal. PR #829 remains the single Round-2
+continuation. A fresh chat, model/provider instance, practicum retry, host
+package or proof attempt does not create another Round, branch, workspace,
+workRef or claim.
 
-PR #829 is the single Round-2 continuation. A fresh chat, provider instance,
-retry, host package or proof attempt does not create another Round, branch,
-workspace, workRef or claim.
+Round 2 has now earned a documentation checkpoint. The stable result is not one
+mock screen; it is a reusable relationship between Home breadth, idea capture,
+existing-work recovery, admitted Projects, Project depth, work coordination,
+proof, completion and later extension.
 
-## Accepted design checkpoint
+## Human-accepted design checkpoint
 
-The Round-2 practicum reached human acceptance for the next design edge at
-`preview.vexlife-assortment.r2.i09`.
+The lived sequence through I12 established:
 
-The reusable Process Trail direction established:
+~~~text
+CURRENT_PROJECT = PERSISTENT_ORIENTATION__NOT_COLLECTION_LENS
+PROJECT_SELECTION = INSPECTION__NOT_ACTIVATION
 
-- one append-only history source may support multiple presentation variants;
-- `CURRENT_POSITION != SELECTED_MOMENT`;
-- `INSPECTABLE != EXECUTABLE`;
-- selected moments may expose decision/discussion, why it mattered, what it led
-  to, and evidence/provenance;
-- Horizontal uses bounded semantic windows/paging;
-- Vertical uses bounded selection-detail inspection with local chronicle
-  scrolling;
-- localized variable content follows `CONSTRAIN_WIDTH__WRAP_HEIGHT`;
-- the mounted Project surface remains the primary page-scroll owner;
-- component observers/diagnostics release on unmount;
-- rendered browser geometry precedes human handoff:
-  `PARSE_PASS != VISUAL_HANDOFF_READY` and `CSS_INTENT != USED_GEOMETRY`.
+PROJECTS
+  = CHOOSE_AMONG_ADMITTED_PROJECTS
 
-This is an Assortment design/practicum checkpoint, not canonical component
-registration or product-source adoption.
+CONTINUE
+  = RESUME_ACTUAL_CURRENT_PROJECT_DEPTH
+  (current accepted law for this checkpoint)
 
-## Next design function — Projects plural bridge
+FRONTIER
+  = CAPTURED_INTENT_BEFORE_ADMISSION
 
-```text
-PROJECTS_DOOR = BREADTH_ENTRY
-CONTINUE = RESUME_CURRENT_DEPTH
-PROJECTS_ROOM != NEW_PROJECT_STATE_OWNER
-PROJECT_STATUS_BUCKET != CANONICAL_LIFECYCLE
-PROJECT_NODE_INSPECT != PROJECT_DEPTH_ENTER
-```
+IDEA_CAPTURED != PROJECT_ADMITTED
+UNPLACED != ORPHANED
+CAPTURED_SEED_STATE != LIVE_TRAJECTORY_STATE
+~~~
 
-The next design step is the topmost Projects room:
+I12 added the missing lineage/currentness layer:
 
-```text
-Home
-  -> Projects
-      -> Projects room
-          Current / Active / Past / All = projection lenses
-          project identities = meaningful nodes
-          selected Project = inspectable
-          enter Project = accepted Project-depth / Process-Trail grammar
-```
+- idea records expose source/provenance refs;
+- known issue / PR / work / Project / Feature lineage is inspectable;
+- an existing durable trajectory is resumed instead of duplicated;
+- VexVision Android proves the existing-work case through
+  github.issue.vexlife.831, placement child github.issue.vexlife.832, and
+  planning PR github.pull.vexlife.834;
+- captured-only ideas remain shaping/admission candidates rather than automatic
+  Projects.
 
-Current / Active / Past / All must project existing Project, selection and
-Intent Workgraph truth. They must not become a second project lifecycle.
-Frontier remains an adjacent doorway for ideas that have not become bounded
-Projects.
+This is an Assortment practicum/design checkpoint. It does not canonically adopt
+Frontier, Projects, Process Trail, Health or other practicum presentation into
+product source.
 
-## Cross-project lineage — captured, held
+## Reusable Progression Grammar
 
-Each Project keeps its own Process Trail. Cross-project continuity may later use
-source-backed typed relations between exact Project/moment identities.
+The durable meta-pattern now lives in the Progression Grammar section of
+CONTINUATION-CYCLE.md.
 
-```text
-TEMPORAL_ADJACENCY != CAUSALITY
-CROSS_PROJECT_EDGE != COPY_PROJECT_HISTORY
-PORTFOLIO_TIMELINE != NEW_HISTORY_OWNER
-```
+In compact form:
 
-System / Resource Health remains a future practicum and is not the current
-design function.
+~~~text
+01 CAPTURE + PROVENANCE
+02 LINEAGE + CURRENTNESS
+03 SHAPE + PLACE
+04 ADMIT / REUSE
+05 CONSTRUCT
+06 EXECUTE / COORDINATE
+07 HEALTH + PROOF
+08 ACCEPT + COMPLETE
+09 PRESERVE + EXTEND
+~~~
+
+It is a routing/projection grammar over rightful canonical owners, not a new
+product lifecycle owner.
+
+## Post-checkpoint seed — Continuity Dashboard
+
+The I12 Continue walk produced one new idea for the next Assortment phase.
+It does not block this checkpoint:
+
+~~~text
+currentLaw:
+  Continue -> resume current Project depth
+
+candidateEvolution:
+  Continue -> Continuity doorway
+               -> Resume current work
+               -> recent meaningful changes
+               -> accepted/completed milestones
+               -> revisitable Project/work history
+               -> source-backed lineage
+~~~
+
+The intention is “continue the continuity,” not merely “open the latest page.”
+
+Any future Continuity surface must derive from existing owners such as Semantic
+Journey, Process Trail/causal design lineage, Intent Workgraph, Project/Feature
+identity and accepted source/PR/merge/post-merge evidence.
+
+~~~text
+CONTINUITY_DASHBOARD != NEW_HISTORY_OWNER
+RECENT != IMPORTANT
+VISITED != WORKED_ON
+GIT_COMMIT != MEANINGFUL_PRODUCT_MILESTONE_BY_ITSELF
+MERGE != TERMINAL_COMPLETION_WITHOUT_POSTMERGE_PROOF
+HUMAN_READABLE_TITLE != LOSS_OF_STABLE_REF
+CURRENT_WORK_RESUME_REMAINS_EXPLICIT
+~~~
+
+## Current next effect — freeze and merge the Round-2 docs checkpoint
+
+No I13 design expansion is required before this checkpoint.
+
+~~~text
+persist stable Round-2 source
+-> refresh exact Source Manifest generated custody
+-> exact-head source proof
+-> fresh claimless Independent Assurance
+-> lifecycle/currentness
+-> Formal Review
+-> READY
+-> expected-head ordinary merge
+-> post-merge accepted-main verification
+-> claim/custody release
+-> dependent wake discovery
+-> terminal return
+~~~
+
+A merge inside Round 2 does not automatically create Round 3. The next design
+phase starts from accepted main and earns a new Round only if a real human/design
+phase boundary requires one.
 
 ## Current host/source posture
 
-The Round-2 Local Source Workspace census is complete:
+The prior Round-2 host census remains historical evidence for this docs-only
+continuation:
 
-```text
+~~~text
 A001=SAFE_FAILURE__VEX_HOME_AMBIGUOUS
-A001.returnSha256=7f66e892ef1f30a3d0cf5569c7e3005d2dd3d1fed4ddacb719a5f81248924064
 A002=PASS__HOST_STATUS_OBSERVED
-A002.returnSha256=881e9717d84c1e5ac5a08db87d8f7fee746cbe7dd36b9a1c058fc56413309cdc
 exactRound2WorkspaceMatches=[]
-foreignActiveWorkspaceCount=1
 custodyOverlap=[]
-```
+~~~
 
-The accepted Local Source Workspace allocator also has a current real-macOS
-consumer finding at `github.issue.vextreme-sdk.1791.comment.6052598915`
-(`WORKSPACE_REPOSITORY_TOPLEVEL_MISMATCH`) before new AUTHORING allocation.
-Do not make Victor replay that known failure merely to satisfy ceremony.
+Do not treat that old host observation as standing authority for future local or
+product AUTHORING. Any such effect must re-ground the then-current Local Source
+Workspace and overlapping owners.
 
-For this documentation-only Assortment continuation, an exact authorized
-GitHub/provider write surface may be used directly after current host-status and
-remote-currentness grounding. That is not a general Local Workspace bypass.
-Future local AUTHORING allocation must re-ground the then-current Local Source
-Workspace owner/source and use its repaired/current route.
+The docs-only branch is currentized against accepted main before this freeze.
+The exact PR head/tree/currentness after the source commit is the evidence that
+matters for lifecycle progression.
 
 ## Operations/orientation posture
 
-Assortment Project boot must consume the **live accepted Operations front door**
-when Operations scope is implicated, rather than treating bundled historical
-manuals as ambient mandatory reading.
+Follow live AGENTS.md and npm run orient semantics before
+commit-producing/review/lifecycle effects. Read only the returned required
+sources for the exact effect.
 
-Current Operations culture is:
-
-```text
-ground live repository
--> stable Operations front door / npm run orient
--> current-entry / currentness resolution
--> question-scoped Federated Orientation
--> descend only required sources
--> stop when scope is satisfied or a typed UNKNOWN/BLOCKER is reached
-```
-
-Historical manuals, broad Root narration and old static roadmaps remain
-source-descendable fallback evidence, not the default boot path.
-
-See `CONTINUATION-CYCLE.md`.
+~~~text
+MORE_AVAILABLE_HISTORY != MORE_REQUIRED_CONTEXT
+SCOPE_SATISFIED -> ACT_OR_RETURN
+~~~
 
 ## Held effects
 
-```text
+~~~text
 productSourceImplementation=false
 HomeTerrainSourceMutation=false
+canonicalFrontierProductAdoption=false
 canonicalProcessTrailRegistration=false
-newSemanticOwner=false
-newLifecycleOwner=false
+canonicalIntentQueueMutation=false
+canonicalProjectAdmission=false
+canonicalFeatureAdmission=false
+SystemResourceHealthImplementation=false
+BuilderAtlasProductAdoption=false
+ContinuityDashboardProductAdoption=false
 ReferenceCutover=false
-SystemResourceHealthPracticum=false
 publication=false
 release=false
-```
+~~~
 
-Before any overlapping Home/Terrain product-source adoption, re-ground current
-Furnishing ownership. At this checkpoint PR #818 remains an open Furnishing
-candidate, but live source always outranks this sentence.
-
-<!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][CURRENT] -->
+<!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][CURRENT][I12-ACCEPTED][DOC-FREEZE] -->

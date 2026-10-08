@@ -239,6 +239,236 @@ next work is genuinely a new semantic task or the previous lane is terminal.
 
 A merge inside Round 2 does not automatically create Round 3.
 
+## Progression Grammar — idea to accepted work and later extension
+
+This is the reusable **meta-template** for the relationship between Assortment
+nodes and canonical VexLife owners. It answers what must be understood before
+moving from an idea to real work, and where completed work re-enters when it
+produces a new idea.
+
+It is not another lifecycle owner. Each station projects/reuses the rightful
+owner named by current VexLife source.
+
+~~~text
+01 CAPTURE + PROVENANCE
+02 LINEAGE + CURRENTNESS
+03 SHAPE + PLACE
+04 ADMIT / REUSE
+05 CONSTRUCT
+06 EXECUTE / COORDINATE
+07 HEALTH + PROOF
+08 ACCEPT + COMPLETE
+09 PRESERVE + EXTEND
+~~~
+
+### G01 — Capture + provenance
+
+Human question:
+
+> What idea matters enough not to lose?
+
+Ordinary projection: **Frontier**.
+
+Required:
+
+- protect human intention and origin/source lineage;
+- preserve uncertainty about placement;
+- capture without silently creating Project, Feature, branch, writer or work;
+- make unplaced ideas retrievable.
+
+~~~text
+IDEA_CAPTURED != PROJECT_ADMITTED
+UNPLACED != ORPHANED
+~~~
+
+Primary work/progress owner remains Intent Queue / Intent Workgraph.
+
+### G02 — Lineage + currentness
+
+Human question:
+
+> Does this already have a life somewhere?
+
+Join exact current sources for:
+
+~~~text
+issue / PR / workRef
+projectRef / featureRef
+source owner / current candidate
+accepted / held / superseded trajectory
+~~~
+
+A local Frontier seed never overwrites realized current work.
+
+~~~text
+CAPTURED_SEED_STATE != LIVE_TRAJECTORY_STATE
+EXISTING_TRAJECTORY -> RESUME_OR_INSPECT__NOT_DUPLICATE_FORMATION
+~~~
+
+### G03 — Shape + place
+
+Human question:
+
+> What kind of thing is this, and where does it belong?
+
+Possible projections include:
+
+~~~text
+existing Project extension
+new Project candidate
+Feature candidate
+shared capability
+multi-home concern
+Home/presentation candidate
+parked/held idea
+~~~
+
+Placement is classification/context, not execution authority.
+
+### G04 — Admit / reuse
+
+Human question:
+
+> Has bounded work identity actually been earned?
+
+Reuse an existing owner whenever current source already supplies one. Otherwise
+admit only the smallest rightful Project / Feature / work identity with exact
+parent and source lineage.
+
+~~~text
+CAPTURE != ADMISSION
+PLACEMENT != ADMISSION
+ADMISSION != EFFECT_AUTHORITY
+~~~
+
+Parallel work should not widen before identity, owner and duplicate-currentness
+questions are sufficiently resolved.
+
+### G05 — Construct
+
+Human question:
+
+> How does admitted intent become bounded design/work?
+
+Reuse current owners such as:
+
+- Purpose Workspace;
+- Feature Construction Recipe;
+- Presentation Graph when UI is implicated;
+- Experience Foundation;
+- action / permission / localization / accessibility / recovery owners.
+
+Do not form a new construction system merely because the feature is new.
+
+### G06 — Execute / coordinate
+
+Human question:
+
+> What can proceed now, in parallel, or only after a dependency?
+
+Use Intent Workgraph / scheduler / rightful execution owners for dependency and
+progress truth.
+
+~~~text
+PARALLEL_READY = OWNER + IDENTITY + DEPENDENCY CURRENTNESS SUFFICIENT
+PARALLEL != DUPLICATE SEMANTIC WORK
+~~~
+
+### G07 — Health + proof
+
+Human question:
+
+> Is this actually current, healthy and proved?
+
+Join the proof class the claim requires:
+
+- Build Health / source checks;
+- runtime/process/resource health;
+- rendered/browser evidence;
+- platform-native evidence;
+- user-facing Health projection when earned.
+
+~~~text
+SYNTAX_PASS != RUNTIME_INITIALIZED
+HTTP_ALIVE != APPLICATION_HEALTHY
+HOSTED_GREEN != HOST_LOCAL_PROOF
+PROOF_CLASS_FOLLOWS_CLAIM
+~~~
+
+### G08 — Accept + complete
+
+Human question:
+
+> What was actually accepted, and what finished?
+
+Keep these distinct:
+
+~~~text
+rendered/runtime proof
+human walk
+Independent Assurance
+Formal Review
+READY/currentness
+merge
+post-merge accepted-main verification
+claim/custody release
+terminal return
+~~~
+
+~~~text
+MERGE != POST_MERGE_VERIFICATION
+MERGE != TERMINAL_COMPLETION
+~~~
+
+### G09 — Preserve + extend
+
+Human question:
+
+> What became true, and what new possibility emerged?
+
+Process Trail / Journey / exact source refs preserve ancestry. A new feature or
+idea arising from completed work re-enters at the **earliest station actually
+required**, not automatically at G01 and not by mutating the finished history.
+
+~~~text
+EXTENSION_REENTERS_AT_EARLIEST_REQUIRED_STATION
+CORRECTION != ERASURE
+NEW_IDEA_PRESERVES_PARENT_LINEAGE
+~~~
+
+A candidate Continuity doorway may later project current work plus source-backed
+meaningful milestones and revisitable work history. It must join existing
+Journey / Process Trail / Workgraph / Project / accepted-source evidence rather
+than become a second history owner.
+
+~~~text
+CONTINUITY_DASHBOARD != NEW_HISTORY_OWNER
+RECENT != IMPORTANT
+VISITED != WORKED_ON
+HUMAN_READABLE_TITLE != LOSS_OF_STABLE_REF
+~~~
+
+### Node relationship shorthand
+
+~~~text
+Home
+  Frontier  -> capture / recover lineage / shape
+  Projects  -> admitted Project breadth
+  Continue  -> current checkpoint: resume current Project depth
+               future hypothesis: Continuity doorway with explicit Resume
+
+admitted Project / Feature
+  -> Purpose Workspace / construction owners
+  -> Workgraph / execution owners
+  -> Health + proof
+  -> acceptance / merge / terminal evidence
+  -> Process Trail / Journey
+  -> later idea or extension re-enters the grammar
+~~~
+
+Use this grammar to preserve causal purpose across fresh instances. Do not use it
+to infer canonical state that the named owners have not supplied.
+
 ## Retry rule
 
 For the same semantic task preserve:

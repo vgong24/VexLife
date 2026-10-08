@@ -310,4 +310,210 @@ manual as ambient mandatory reading.
 
 Next design function remains `PROJECTS_PLURAL_BRIDGE`.
 
+## Index 16 — Executable continuity becomes a practicum law
+
+The first I10 Projects bridge preserved design vocabulary but rebuilt the
+experience as a detached HTML lookalike. Victor rejected that as broken
+continuity.
+
+The correction established:
+
+~~~text
+HUMAN_ACCEPTED_PRACTICUM_BEHAVIOR != STYLE_REFERENCE_ONLY
+NEXT_PRACTICUM -> EXTEND_EXECUTABLE_BASELINE
+RECONSTRUCTED_LOOKALIKE != CONTINUITY_PRESERVING_SUCCESSOR
+~~~
+
+I10A then extended the exact integrated I09 VexLife baseline instead of
+reconstructing it.
+
+Evidence:
+- github.pull.vexlife.829.comment.6055005942
+- github.pull.vexlife.829.comment.6055078943
+- github.pull.vexlife.829.comment.6058169665
+
+---
+
+## Index 17 — Projects and Continue separate breadth from depth
+
+The I10A human walk clarified three Home meanings:
+
+~~~text
+PROJECTS = CHOOSE_AMONG_ADMITTED_PROJECTS
+CONTINUE = RESUME_ACTUAL_CURRENT_PROJECT_DEPTH
+CURRENT_PROJECT = PERSISTENT_ORIENTATION__NOT_COLLECTION_LENS
+~~~
+
+Selecting another Project remains inspection, not activation.
+
+Victor's more important observation was that substantial new ideas could still
+float outside Projects. That changed the next function from Project navigation
+to preserving pre-Project intent.
+
+Evidence:
+- github.pull.vexlife.829.comment.6059282010
+
+---
+
+## Index 18 — Frontier protects ideas before admission
+
+I11 added Frontier as a human projection over captured intent rather than a new
+lifecycle owner.
+
+The first fixture set intentionally covered different placement questions:
+
+~~~text
+VexVision Android
+Company People Timeline
+System / Resource Health
+Builder Atlas / Coding Health
+~~~
+
+Permanent:
+
+~~~text
+FRONTIER = CAPTURED_INTENT_BEFORE_ADMISSION
+IDEA_CAPTURED != PROJECT_ADMITTED
+UNPLACED != ORPHANED
+~~~
+
+The preview-only capture form remained ephemeral; the durable discussion record
+stayed on the Round-2 PR.
+
+Evidence:
+- github.pull.vexlife.829.comment.6059282010
+
+---
+
+## Index 19 — Practicum failures expose runtime and Builder Health lessons
+
+The Frontier practicum hit several execution failures even when syntax or HTTP
+startup looked healthy. The repairs produced narrow reusable lessons instead of
+a new coding manifesto:
+
+~~~text
+SYNTAX_VALID != RUNTIME_INITIALIZATION_VALID
+HTTP_SERVER_ALIVE != APPLICATION_INITIALIZED
+OBSERVABILITY_CHANGE_MUST_NOT_MUTATE_EXECUTION_SEMANTICS
+CANONICAL_PATH_IDENTITY_MATTERS_AT_ENTRYPOINT_BOUNDARIES
+PREVIEW_RUNTIME_OWNS_AND_CLEANS_ONLY_ITS_OWN_PROCESSES
+~~~
+
+Builder Atlas / Coding Health remained a multi-home idea because VexLife already
+has AGENTS/orientation, Capability & Tool Atlas, Module Registry, Build Health
+and Feature Construction owners.
+
+Evidence:
+- github.pull.vexlife.829.comment.6070358899
+- github.pull.vexlife.829.comment.6070489810
+- github.pull.vexlife.829.comment.6070538370
+
+---
+
+## Index 20 — Frontier needs lineage, not only idea cards
+
+The successful I11C walk accepted Frontier as useful enough to continue and
+found the next integrity gap:
+
+- placement/count language must derive from records rather than static strings;
+- sibling destination navigation is not "Back";
+- semantic destination and active surface must hand off together;
+- an idea record needs exact source/trajectory refs when durable work exists.
+
+Fresh live recovery proved VexVision Android already had a durable trajectory:
+
+~~~text
+root=github.issue.vexlife.831
+placementChild=github.issue.vexlife.832
+planningPr=github.pull.vexlife.834
+workRef=work.vexlife.vexvision-android.remote-physical-visual-sensor.20261007A
+~~~
+
+Therefore:
+
+~~~text
+CAPTURED_SEED_STATE != LIVE_TRAJECTORY_STATE
+EXISTING_TRAJECTORY -> OPEN/RESUME__NOT_DUPLICATE_FORMATION
+~~~
+
+Evidence:
+- github.pull.vexlife.829.comment.6070685729
+
+---
+
+## Index 21 — I12 accepts Capture + Lineage and yields a Progression Grammar
+
+I12 corrected Frontier count truth, sibling navigation, active-surface handoff
+and durable source routes. Victor accepted the direction of the first two
+stations:
+
+~~~text
+01 CAPTURE + PROVENANCE
+02 LINEAGE + CURRENTNESS
+~~~
+
+The broader reusable relationship is now named the **Progression Grammar**:
+
+~~~text
+01 CAPTURE + PROVENANCE
+02 LINEAGE + CURRENTNESS
+03 SHAPE + PLACE
+04 ADMIT / REUSE
+05 CONSTRUCT
+06 EXECUTE / COORDINATE
+07 HEALTH + PROOF
+08 ACCEPT + COMPLETE
+09 PRESERVE + EXTEND
+~~~
+
+It is a meta-template over existing owners, not another lifecycle.
+
+Evidence:
+- github.pull.vexlife.829.comment.6070883522
+- github.pull.vexlife.829.comment.6070980788
+
+---
+
+## Index 22 — Continue produces the next-phase Continuity Dashboard seed
+
+During the I12 walk Victor recognized that the Project-depth Process Trail feels
+useful as a broader work-history surface.
+
+The accepted checkpoint still keeps:
+
+~~~text
+CONTINUE -> RESUME_CURRENT_PROJECT_DEPTH
+~~~
+
+but the next phase now carries a hypothesis:
+
+~~~text
+CONTINUE
+  -> Continuity doorway
+      -> Resume current work
+      -> recent meaningful changes
+      -> accepted/completed milestones
+      -> revisitable Project/work history
+      -> source-backed lineage
+~~~
+
+This idea does not block the Round-2 docs checkpoint and does not create a new
+history owner.
+
+~~~text
+CONTINUITY_DASHBOARD != NEW_HISTORY_OWNER
+RECENT != IMPORTANT
+VISITED != WORKED_ON
+GIT_COMMIT != MEANINGFUL_PRODUCT_MILESTONE_BY_ITSELF
+MERGE != TERMINAL_COMPLETION_WITHOUT_POSTMERGE_PROOF
+~~~
+
+The next Round-2 effect is source freeze and lifecycle progression, not another
+pre-freeze practicum.
+
+Evidence:
+- github.pull.vexlife.829.comment.6070980788
+
+---
+
 <!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][RANGE-00-30] -->

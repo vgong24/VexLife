@@ -37,7 +37,7 @@ A fresh instance should not reconstruct the lane from chat history.
 Read:
 
 1. `CURRENT.md` — current Round, occupancy, accepted checkpoint and next function.
-2. `CONTINUATION-CYCLE.md` — reusable continuation grammar and stop rules.
+2. `CONTINUATION-CYCLE.md` — reusable continuation grammar, **Progression Grammar** (idea → accepted work → extension), and stop rules.
 3. the active `round-<n>/RANGE-*.md` — bounded design lineage for this Round.
 4. only the exact canonical owner/source records those files name for the next
    effect.
@@ -94,7 +94,7 @@ RETRY != NEW_SEMANTIC_TASK
 ## Durable files
 
 - `CURRENT.md` — current Assortment position and held boundaries.
-- `CONTINUATION-CYCLE.md` — reusable fresh-instance / retry / successor cycle.
+- `CONTINUATION-CYCLE.md` — reusable fresh-instance / retry / successor cycle plus the cross-feature Progression Grammar.
 - `INTENTION.md` — slow-moving human/design foundation.
 - `INFRASTRUCTURE-MAP.md` — design suggestions mapped to canonical owners.
 - `FIRST-PRACTICUM.md` — "This Project" as the first Home/Project simulation.
