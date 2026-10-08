@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "e6",
+  "files": [
+    {
+      "path": "scripts/generate-android-r6.mjs",
+      "mode": "100755",
+      "bytes": 6141,
+      "sha256": "714ff43f879533e06d5345699ba4d91e5cb352bd13782ff21924163bb2ce33fb"
+    }
+  ]
+}
