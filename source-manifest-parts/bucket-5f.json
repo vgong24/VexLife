@@ -3,6 +3,12 @@
   "bucketId": "5f",
   "files": [
     {
+      "path": "docs/vexlife-assortment/FRONTIER-PROJECT-MAP.md",
+      "mode": "100644",
+      "bytes": 3086,
+      "sha256": "fffb44c7042153d4044ff7b91894852ba1162d61c8bd3d553f837b755bbaed87"
+    },
+    {
       "path": "src/core/conversation.mjs",
       "mode": "100644",
       "bytes": 26585,

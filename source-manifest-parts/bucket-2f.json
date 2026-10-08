@@ -3,6 +3,12 @@
   "bucketId": "2f",
   "files": [
     {
+      "path": "docs/vexlife-assortment/SOURCE-BASELINE.md",
+      "mode": "100644",
+      "bytes": 2138,
+      "sha256": "04315af0f9ff46f2b9c6e4db4b4c22bbbbe94f72734afed1e0e9ff192a697d4f"
+    },
+    {
       "path": "reference/browser/modules/public-learning-navigation-continuity.js",
       "mode": "100644",
       "bytes": 15632,
