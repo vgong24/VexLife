@@ -3,6 +3,12 @@
   "bucketId": "7f",
   "files": [
     {
+      "path": "docs/VEX-ASSEMBLY-CAPABILITY-DOMAINS.md",
+      "mode": "100644",
+      "bytes": 5241,
+      "sha256": "a75c984c8b9fbaead6b70fb5aff4a00426aabefc5e8e4f7f8ca8bc425c9d24b5"
+    },
+    {
       "path": "test/windowed-setup.test.mjs",
       "mode": "100644",
       "bytes": 4433,
