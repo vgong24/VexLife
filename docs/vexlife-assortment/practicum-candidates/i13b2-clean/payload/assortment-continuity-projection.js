@@ -43,14 +43,14 @@ const sourceDetails=(record,t)=>{
 
 async function loadFixture(){
   const response=await fetch(FIXTURE_URL);
-  if(!response.ok)throw new Error(\`Assortment fixture read failed: HTTP \${response.status}\`);
+  if(!response.ok)throw new Error(`Assortment fixture read failed: HTTP ${response.status}`);
   const fixture=await response.json();
   if(fixture.previewRef!==ASSORTMENT_PREVIEW_REF||fixture.truthClass!=='SOURCE_BACKED_FROZEN_PREVIEW'||fixture.liveAutomaticAggregator!==false)throw new Error('Assortment fixture identity/truth drift');
   return Object.freeze(fixture);
 }
 function ensureStylesheet(){
   const href=new URL('./assortment-continuity.css',import.meta.url).href;
-  const existing=document.querySelector(\`link[data-assortment-preview-stylesheet="\${STYLESHEET_REF}"]\`);
+  const existing=document.querySelector(`link[data-assortment-preview-stylesheet="${STYLESHEET_REF}"]`);
   if(existing){if(existing.href!==href)throw new Error('Assortment stylesheet binding drift');return existing;}
   const link=document.createElement('link');link.rel='stylesheet';link.href=href;link.dataset.assortmentPreviewStylesheet=STYLESHEET_REF;document.head.append(link);return link;
 }
@@ -129,7 +129,7 @@ function renderProcessTrail({root,fixture,t}){
   const vertical=btn('',t('assortment.process.vertical'),()=>{mode='vertical';render()});modes.append(horizontal,vertical);heading.append(modes);wrap.append(heading);
   const content=el('div','assortment-process-trail__content');wrap.append(content);root.append(wrap);
   function render(){content.replaceChildren();horizontal.classList.toggle('is-selected',mode==='horizontal');vertical.classList.toggle('is-selected',mode==='vertical');horizontal.setAttribute('aria-pressed',String(mode==='horizontal'));vertical.setAttribute('aria-pressed',String(mode==='vertical'));
-    const rail=el('div',\`assortment-process-rail assortment-process-rail--\${mode}\`);
+    const rail=el('div',`assortment-process-rail assortment-process-rail--${mode}`);
     const visible=mode==='horizontal'?fixture.processTrail.slice(windowStart,windowStart+windowSize):fixture.processTrail;
     for(const item of visible){const index=fixture.processTrail.indexOf(item),row=btn('assortment-process-row','',()=>{selectedIndex=index;render()});row.dataset.status=item.statusKey;row.dataset.momentRef=item.momentRef;if(item.statusKey==='current')row.setAttribute('aria-current','step');if(index===selectedIndex)row.classList.add('is-selected');const dot=el('span','assortment-process-row__dot');const copy=el('span','assortment-process-row__copy');copy.append(el('strong','',t(item.titleRef)),el('small','',t(item.summaryRef)));row.append(dot,copy,el('span','assortment-process-row__inspect',t('assortment.process.inspect')));rail.append(row);}
     const detailItem=fixture.processTrail[selectedIndex];const detail=el('article','assortment-process-detail');detail.append(el('small','assortment-record__class',detailItem.statusKey.toUpperCase()),el('h3','',t(detailItem.titleRef)),el('p','',t(detailItem.summaryRef)),sourceDetails(detailItem,t));
@@ -142,7 +142,7 @@ function renderProjectDepth({host,fixture,t}){
   const root=el('section','assortment-surface assortment-project-depth');root.dataset.surfaceRef=ASSORTMENT_PROJECT_DEPTH_SURFACE_REF;root.dataset.previewRef=ASSORTMENT_PREVIEW_REF;
   const hero=el('header','assortment-hero');hero.append(el('small','assortment-eyebrow',t('assortment.project-depth.eyebrow')),el('h2','','VexLife Assortment · Home Blueprint'),el('p','',t('assortment.project-depth.intro')),truthBadge(t));root.append(hero);
   const summary=el('section','assortment-status-grid');
-  for(const [key,ref] of [['current','assortment.status.current'],['next','assortment.status.next'],['queue','assortment.status.queue'],['held','assortment.status.held']]){const card=el('article','assortment-status-card');card.dataset.status=key;card.append(el('small','',t(\`assortment.status.\${key}.label\`)),el('strong','',t(ref)));summary.append(card);}root.append(summary);
+  for(const [key,ref] of [['current','assortment.status.current'],['next','assortment.status.next'],['queue','assortment.status.queue'],['held','assortment.status.held']]){const card=el('article','assortment-status-card');card.dataset.status=key;card.append(el('small','',t(`assortment.status.${key}.label`)),el('strong','',t(ref)));summary.append(card);}root.append(summary);
   renderProcessTrail({root,fixture,t});host.append(root);
 }
 
@@ -154,7 +154,7 @@ export function createAssortmentPreview({app,t=(ref)=>ref}={}){
   const syncBack=()=>{const b=shellBack();if(!b)return;const active=activeSurface();b.hidden=!ASSORTMENT_SURFACES.has(active);b.disabled=!ASSORTMENT_SURFACES.has(active);b.dataset.presentationDepth=String(presentationStack.length);};
   const syncTerrainToFrame=(frame)=>{const ref=frame?.selectedNodeRef;if(typeof ref==='string'){app.state.terrain.selected=ref;app.terrain.render(false);}return ref;};
   async function ensureFixture(){fixture??=await loadFixture();return fixture;}
-  async function openSurface(ref){if(!ASSORTMENT_SURFACES.has(ref))throw new Error(\`Unknown Assortment surface \${ref}\`);const result=await app.uxProjectionShell.openEvolutionSurface(ref);syncBack();return result;}
+  async function openSurface(ref){if(!ASSORTMENT_SURFACES.has(ref))throw new Error(`Unknown Assortment surface ${ref}`);const result=await app.uxProjectionShell.openEvolutionSurface(ref);syncBack();return result;}
   async function openPresentation(ref){const current=activeSurface();if(current&&ASSORTMENT_SURFACES.has(current))presentationStack.push(current);return openSurface(ref);}
   async function openSemanticSibling(terrainRef){presentationStack.splice(0);return app.terrain.travel(terrainRef,'sibling');}
   async function handleTerrainNode(terrainRef){const surface=SURFACE_FOR_TERRAIN[terrainRef];if(!surface)return false;presentationStack.splice(0);await openSurface(surface);return true;}

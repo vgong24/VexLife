@@ -15,12 +15,12 @@ const read=(rel)=>fs.readFileSync(path.join(SRC,rel),'utf8');
 const write=(rel,value)=>{const target=path.join(SRC,rel);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,value,'utf8')};
 const git=(...args)=>execFileSync('git',args,{cwd:SRC,encoding:'utf8'}).trim();
 const assert=(value,message)=>{if(!value)throw new Error(message)};
-const replaceOnce=(value,needle,replacement,label)=>{const first=value.indexOf(needle),last=value.lastIndexOf(needle);assert(first>=0,\`PATCH_MARKER_MISSING:\${label}\`);assert(first===last,\`PATCH_MARKER_NOT_UNIQUE:\${label}\`);return value.slice(0,first)+replacement+value.slice(first+needle.length)};
+const replaceOnce=(value,needle,replacement,label)=>{const first=value.indexOf(needle),last=value.lastIndexOf(needle);assert(first>=0,`PATCH_MARKER_MISSING:${label}`);assert(first===last,`PATCH_MARKER_NOT_UNIQUE:${label}`);return value.slice(0,first)+replacement+value.slice(first+needle.length)};
 
-assert(git('rev-parse','HEAD')===binding.liveMainAtFormation,\`HEAD_BINDING_MISMATCH:\${git('rev-parse','HEAD')}!=\${binding.liveMainAtFormation}\`);
+assert(git('rev-parse','HEAD')===binding.liveMainAtFormation,`HEAD_BINDING_MISMATCH:${git('rev-parse','HEAD')}!=${binding.liveMainAtFormation}`);
 for(const [rel,expected] of Object.entries(binding.sourceBindings)){
-  const observed=git('rev-parse',\`HEAD:\${rel}\`);
-  assert(observed===expected,\`SOURCE_BLOB_MISMATCH:\${rel}:\${observed}!=\${expected}\`);
+  const observed=git('rev-parse',`HEAD:${rel}`);
+  assert(observed===expected,`SOURCE_BLOB_MISMATCH:${rel}:${observed}!=${expected}`);
 }
 
 {
@@ -32,7 +32,7 @@ for(const [rel,expected] of Object.entries(binding.sourceBindings)){
     {terrainNodeRef:'terrain.assortment.projects',parentRef:'terrain.project.root-hub',labelStringRef:'assortment.node.projects',kind:'RESOURCE',defaultPosition:{x:600,y:650}},
     {terrainNodeRef:'terrain.assortment.frontier',parentRef:'terrain.project.root-hub',labelStringRef:'assortment.node.frontier',kind:'RESOURCE',defaultPosition:{x:940,y:620}}
   ];
-  for(const node of nodes){assert(!refs.has(node.terrainNodeRef),\`TERRAIN_PREVIEW_REF_COLLISION:\${node.terrainNodeRef}\`);terrain.push(node);}
+  for(const node of nodes){assert(!refs.has(node.terrainNodeRef),`TERRAIN_PREVIEW_REF_COLLISION:${node.terrainNodeRef}`);terrain.push(node);}
   write(rel,JSON.stringify(terrain,null,2)+'\n');
 }
 
@@ -46,7 +46,7 @@ for(const [rel,expected] of Object.entries(binding.sourceBindings)){
     ['surface.vexlife.assortment-project-depth','Project depth','assortmentPreviewProjectDepth'],
     ['surface.vexlife.assortment-frontier','Frontier','assortmentPreviewFrontier']
   ];
-  for(const [surfaceRef,title,controlId] of surfaces){assert(!refs.has(surfaceRef),\`SURFACE_REF_COLLISION:\${surfaceRef}\`);scaffold.surfaceInventory.push({surfaceRef,semanticRef:'feature.vexlife.contextual-workspace',title,controlId,referenceProjectionAvailable:false});}
+  for(const [surfaceRef,title,controlId] of surfaces){assert(!refs.has(surfaceRef),`SURFACE_REF_COLLISION:${surfaceRef}`);scaffold.surfaceInventory.push({surfaceRef,semanticRef:'feature.vexlife.contextual-workspace',title,controlId,referenceProjectionAvailable:false});}
   write(rel,JSON.stringify(scaffold,null,2)+'\n');
 }
 {
@@ -67,8 +67,8 @@ for(const [rel,expected] of Object.entries(binding.sourceBindings)){
 }
 
 for(const language of ['en','zh','ja']){
-  const rel=\`blueprint/strings/\${language}.json\`,catalog=JSON.parse(read(rel));
-  for(const [ref,value] of Object.entries(additions[language])){assert(!Object.hasOwn(catalog,ref),\`LOCALIZATION_REF_COLLISION:\${language}:\${ref}\`);catalog[ref]=value;}
+  const rel=`blueprint/strings/${language}.json`,catalog=JSON.parse(read(rel));
+  for(const [ref,value] of Object.entries(additions[language])){assert(!Object.hasOwn(catalog,ref),`LOCALIZATION_REF_COLLISION:${language}:${ref}`);catalog[ref]=value;}
   write(rel,JSON.stringify(catalog,null,2)+'\n');
 }
 
