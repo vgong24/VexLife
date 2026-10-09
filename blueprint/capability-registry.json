@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.capability-registry/v0",
   "registryRef": "registry.vexlife.capabilities.001",
-  "registryVersion": 3,
+  "registryVersion": 4,
   "stages": [
     "DISCOVERABLE",
     "EXPLAINABLE",
@@ -338,6 +338,250 @@
       ]
     },
     {
+      "capabilityRef": "capability.vexlife.companion-read-domains",
+      "purpose": "Expose the four server-owned VA-I04 read domains as one first-turn adopted-runtime frontier without making the parent executable.",
+      "sourceOfTruth": "blueprint/capability-registry.json",
+      "alwaysAvailable": false,
+      "rootKernel": false,
+      "parentCapabilityRef": null,
+      "childCapabilityRefs": [
+        "capability.vexlife.local.observe",
+        "capability.vexlife.online.observe",
+        "capability.vexlife.vexhome.observe",
+        "capability.vexlife.code.read"
+      ],
+      "recommendedNextCapabilityRefs": [
+        "capability.vexlife.local.observe",
+        "capability.vexlife.online.observe",
+        "capability.vexlife.vexhome.observe",
+        "capability.vexlife.code.read"
+      ],
+      "heldNextCapabilities": [],
+      "unknownDoorRefs": [],
+      "competenceState": "BOUNDED_COMPETENT",
+      "currentness": {
+        "state": "CURRENT",
+        "sourceRef": "source.blueprint.capability-registry",
+        "sourceVersionRef": "capability-registry.v4",
+        "compatibility": "COMPATIBLE"
+      },
+      "defaultStage": "EXPLAINABLE",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "READ_ONLY",
+      "resourceClass": "IO_BOUNDED",
+      "parallelClass": "INDEPENDENT_READ_ONLY",
+      "dependencyRefs": [],
+      "roleRefs": [
+        "role.vex.companion"
+      ],
+      "platformRefs": [
+        "platform.browser"
+      ]
+    },
+    {
+      "capabilityRef": "capability.vexlife.local.observe",
+      "purpose": "Observe bounded local runtime, system and source identity without mutation or network effects",
+      "sourceOfTruth": "blueprint/capability-registry.json",
+      "alwaysAvailable": false,
+      "rootKernel": false,
+      "parentCapabilityRef": "capability.vexlife.companion-read-domains",
+      "childCapabilityRefs": [],
+      "recommendedNextCapabilityRefs": [],
+      "heldNextCapabilities": [],
+      "unknownDoorRefs": [],
+      "competenceState": "BOUNDED_COMPETENT",
+      "currentness": {
+        "state": "CURRENT",
+        "sourceRef": "source.blueprint.capability-registry",
+        "sourceVersionRef": "capability-registry.v4",
+        "compatibility": "COMPATIBLE"
+      },
+      "defaultStage": "EXECUTABLE",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "READ_ONLY",
+      "resourceClass": "IO_BOUNDED",
+      "parallelClass": "INDEPENDENT_READ_ONLY",
+      "dependencyRefs": [],
+      "roleRefs": [
+        "role.vex.companion"
+      ],
+      "platformRefs": [
+        "platform.browser"
+      ],
+      "toolContract": {
+        "contractRef": "contract.vexlife.local-observe.read-only/v1",
+        "toolRef": "tool.vexlife.local-observe",
+        "effectRef": "effect.vexlife.read-only",
+        "argumentSchemaRef": "schema.vexlife.local-observe.arguments/v1",
+        "resultSchemaRef": "schema.vexlife.local-observe.observation/v1",
+        "executorRef": "executor.vexlife.local-observe.deterministic-read-only",
+        "requiredArgumentFields": [],
+        "requiredResultFields": [
+          "summaryRef",
+          "capabilityRef",
+          "sourceRefs",
+          "currentness",
+          "payload"
+        ],
+        "maxObservationBytes": 8192,
+        "externalEffectsExecuted": false
+      }
+    },
+    {
+      "capabilityRef": "capability.vexlife.online.observe",
+      "purpose": "Report truthful ONLINE availability state without performing network or credential effects",
+      "sourceOfTruth": "blueprint/capability-registry.json",
+      "alwaysAvailable": false,
+      "rootKernel": false,
+      "parentCapabilityRef": "capability.vexlife.companion-read-domains",
+      "childCapabilityRefs": [],
+      "recommendedNextCapabilityRefs": [],
+      "heldNextCapabilities": [],
+      "unknownDoorRefs": [],
+      "competenceState": "BOUNDED_COMPETENT",
+      "currentness": {
+        "state": "CURRENT",
+        "sourceRef": "source.blueprint.capability-registry",
+        "sourceVersionRef": "capability-registry.v4",
+        "compatibility": "COMPATIBLE"
+      },
+      "defaultStage": "EXECUTABLE",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "READ_ONLY",
+      "resourceClass": "IO_BOUNDED",
+      "parallelClass": "INDEPENDENT_READ_ONLY",
+      "dependencyRefs": [],
+      "roleRefs": [
+        "role.vex.companion"
+      ],
+      "platformRefs": [
+        "platform.browser"
+      ],
+      "toolContract": {
+        "contractRef": "contract.vexlife.online-observe.read-only/v1",
+        "toolRef": "tool.vexlife.online-observe",
+        "effectRef": "effect.vexlife.read-only",
+        "argumentSchemaRef": "schema.vexlife.online-observe.arguments/v1",
+        "resultSchemaRef": "schema.vexlife.online-observe.observation/v1",
+        "executorRef": "executor.vexlife.online-observe.deterministic-read-only",
+        "requiredArgumentFields": [],
+        "requiredResultFields": [
+          "summaryRef",
+          "capabilityRef",
+          "sourceRefs",
+          "currentness",
+          "payload"
+        ],
+        "maxObservationBytes": 8192,
+        "externalEffectsExecuted": false
+      }
+    },
+    {
+      "capabilityRef": "capability.vexlife.vexhome.observe",
+      "purpose": "Observe only canonical Vex Home identity plus qualified model, runtime and recovery summary",
+      "sourceOfTruth": "blueprint/capability-registry.json",
+      "alwaysAvailable": false,
+      "rootKernel": false,
+      "parentCapabilityRef": "capability.vexlife.companion-read-domains",
+      "childCapabilityRefs": [],
+      "recommendedNextCapabilityRefs": [],
+      "heldNextCapabilities": [],
+      "unknownDoorRefs": [],
+      "competenceState": "BOUNDED_COMPETENT",
+      "currentness": {
+        "state": "CURRENT",
+        "sourceRef": "source.blueprint.capability-registry",
+        "sourceVersionRef": "capability-registry.v4",
+        "compatibility": "COMPATIBLE"
+      },
+      "defaultStage": "EXECUTABLE",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "READ_ONLY",
+      "resourceClass": "IO_BOUNDED",
+      "parallelClass": "INDEPENDENT_READ_ONLY",
+      "dependencyRefs": [],
+      "roleRefs": [
+        "role.vex.companion"
+      ],
+      "platformRefs": [
+        "platform.browser"
+      ],
+      "toolContract": {
+        "contractRef": "contract.vexlife.vexhome-observe.read-only/v1",
+        "toolRef": "tool.vexlife.vexhome-observe",
+        "effectRef": "effect.vexlife.read-only",
+        "argumentSchemaRef": "schema.vexlife.vexhome-observe.arguments/v1",
+        "resultSchemaRef": "schema.vexlife.vexhome-observe.observation/v1",
+        "executorRef": "executor.vexlife.vexhome-observe.deterministic-read-only",
+        "requiredArgumentFields": [],
+        "requiredResultFields": [
+          "summaryRef",
+          "capabilityRef",
+          "sourceRefs",
+          "currentness",
+          "payload"
+        ],
+        "maxObservationBytes": 8192,
+        "externalEffectsExecuted": false
+      }
+    },
+    {
+      "capabilityRef": "capability.vexlife.code.read",
+      "purpose": "Read one Source-Manifest-addressed regular UTF-8 repository source path with exact byte identity",
+      "sourceOfTruth": "blueprint/capability-registry.json",
+      "alwaysAvailable": false,
+      "rootKernel": false,
+      "parentCapabilityRef": "capability.vexlife.companion-read-domains",
+      "childCapabilityRefs": [],
+      "recommendedNextCapabilityRefs": [],
+      "heldNextCapabilities": [],
+      "unknownDoorRefs": [],
+      "competenceState": "BOUNDED_COMPETENT",
+      "currentness": {
+        "state": "CURRENT",
+        "sourceRef": "source.blueprint.capability-registry",
+        "sourceVersionRef": "capability-registry.v4",
+        "compatibility": "COMPATIBLE"
+      },
+      "defaultStage": "EXECUTABLE",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "READ_ONLY",
+      "resourceClass": "IO_BOUNDED",
+      "parallelClass": "INDEPENDENT_READ_ONLY",
+      "dependencyRefs": [],
+      "roleRefs": [
+        "role.vex.companion"
+      ],
+      "platformRefs": [
+        "platform.browser"
+      ],
+      "toolContract": {
+        "contractRef": "contract.vexlife.code-read.read-only/v1",
+        "toolRef": "tool.vexlife.code-read",
+        "effectRef": "effect.vexlife.read-only",
+        "argumentSchemaRef": "schema.vexlife.code-read.arguments/v1",
+        "resultSchemaRef": "schema.vexlife.code-read.observation/v1",
+        "executorRef": "executor.vexlife.code-read.deterministic-read-only",
+        "requiredArgumentFields": [
+          "path"
+        ],
+        "requiredResultFields": [
+          "summaryRef",
+          "capabilityRef",
+          "sourceRefs",
+          "currentness",
+          "payload"
+        ],
+        "maxObservationBytes": 8192,
+        "externalEffectsExecuted": false
+      }
+    },
+    {
       "capabilityRef": "capability.search",
       "purpose": "Find canonical capability candidates from task terms and registered relationships without executing them.",
       "sourceOfTruth": "blueprint/capability-registry.json",
@@ -357,7 +601,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v3",
+        "sourceVersionRef": "capability-registry.v4",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",
@@ -420,7 +664,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v3",
+        "sourceVersionRef": "capability-registry.v4",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",
@@ -482,7 +726,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v3",
+        "sourceVersionRef": "capability-registry.v4",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",
@@ -543,7 +787,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v3",
+        "sourceVersionRef": "capability-registry.v4",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",
@@ -605,7 +849,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v3",
+        "sourceVersionRef": "capability-registry.v4",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",

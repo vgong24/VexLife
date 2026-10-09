@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "vexlife-assortment.vexwalk/v1",
+  "previewRef": "preview.vexlife-assortment.r2.i13b2.clean-reform",
+  "walkRef": "walk.vexlife-assortment.r2.i13b2.clean-reform",
+  "purpose": "Exercise bounded Back, Close separation, semantic sibling moves, and inherited doorway behavior",
+  "start": {"resetToRoot": true, "expectedProjection": "EVOLUTION_PROJECTION"},
+  "humanPacing": {"defaultStepDelayMs": 3000, "proofStepDelayMs": 0},
+  "steps": [
+    {
+      "human": "Home → Continue",
+      "selector": ".e27-node[data-terrain-ref=\"terrain.assortment.continue\"]",
+      "actionRef": "action.assortment.continuity.open",
+      "expectedSurfaceRef": "surface.vexlife.assortment-continuity",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.terrain.node.select"
+    },
+    {
+      "human": "Continuity → Resume current work",
+      "selector": "[data-vex-element-ref=\"element.assortment.continuity.resume-current\"]",
+      "actionRef": "action.assortment.continuity.resume-current",
+      "expectedSurfaceRef": "surface.vexlife.assortment-project-depth",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Project depth → Back to Continuity (presentation only)",
+      "selector": "#evolutionActiveSurfaceBack",
+      "actionRef": "action.assortment.continuity.return",
+      "expectedSurfaceRef": "surface.vexlife.assortment-continuity",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Continuity → Projects (semantic sibling)",
+      "selector": "[data-vex-element-ref=\"element.assortment.continuity.projects\"]",
+      "actionRef": "action.navigation.sibling",
+      "expectedSurfaceRef": "surface.vexlife.assortment-projects",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.navigation.sibling"
+    },
+    {
+      "human": "Projects → Back to Continuity (semantic Back)",
+      "selector": "#evolutionActiveSurfaceBack",
+      "actionRef": "action.navigation.back",
+      "expectedSurfaceRef": "surface.vexlife.assortment-continuity",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.navigation.back"
+    },
+    {
+      "human": "Continuity → Frontier (semantic sibling)",
+      "selector": "[data-vex-element-ref=\"element.assortment.continuity.frontier\"]",
+      "actionRef": "action.navigation.sibling",
+      "expectedSurfaceRef": "surface.vexlife.assortment-frontier",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.navigation.sibling"
+    },
+    {
+      "human": "Frontier → Back to Continuity (semantic Back)",
+      "selector": "#evolutionActiveSurfaceBack",
+      "actionRef": "action.navigation.back",
+      "expectedSurfaceRef": "surface.vexlife.assortment-continuity",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.navigation.back"
+    },
+    {
+      "human": "Continuity → Back to Home / parent Terrain",
+      "selector": "#evolutionActiveSurfaceBack",
+      "actionRef": "action.navigation.back",
+      "expectedSurfaceRef": null,
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.navigation.back"
+    }
+  ]
+}

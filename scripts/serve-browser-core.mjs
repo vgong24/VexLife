@@ -23,6 +23,9 @@ import {
   CAPABILITY_ASSIMILATION_MODES,
   createCapabilityAssimilationRuntime
 } from '../src/core/capability-assimilation-runtime.mjs';
+import {
+  createVexAssemblyCapabilityDomainSupport
+} from '../src/core/vex-assembly-capability-domains.mjs';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import {
   createModelConnectionTurnComposer,
@@ -440,14 +443,29 @@ export function createServerOwnedBrowserCompanionBridge({
   const capabilityRuntimeBundle = runtimeMode === CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN
     ? null
     : loadBlueprint(sourceRoot);
-  const capabilityRuntime = capabilityRuntimeBundle
+  const capabilityDomainSupport = runtimeMode === CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY
+    ? createVexAssemblyCapabilityDomainSupport({ sourceRoot, home: companionHome })
+    : null;
+  const baseCapabilityRuntime = capabilityRuntimeBundle
     ? createCapabilityAssimilationRuntime({
         capabilityRegistry: capabilityRuntimeBundle.capabilities,
         processFactoryDefinition: capabilityRuntimeBundle.factory,
         schedulerRegistry: capabilityRuntimeBundle.schedulerRegistry,
-        mode: runtimeMode
+        mode: runtimeMode,
+        executors: capabilityDomainSupport?.executors ?? {}
       })
     : null;
+  const capabilityRuntime = baseCapabilityRuntime && capabilityDomainSupport
+    ? Object.freeze({
+        ...baseCapabilityRuntime,
+        resolveTurn(input) {
+          return baseCapabilityRuntime.resolveTurn({
+            ...input,
+            context: capabilityDomainSupport.bindContext(input?.context ?? {})
+          });
+        }
+      })
+    : baseCapabilityRuntime;
   const modelConnectionComposer = capabilityRuntime
     ? createModelConnectionTurnComposer({
         sourceBundle: loadModelConnectionTurnSources(sourceRoot)
