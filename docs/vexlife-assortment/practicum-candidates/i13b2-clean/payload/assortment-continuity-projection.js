@@ -154,11 +154,20 @@ export function createAssortmentPreview({app,t=(ref)=>ref}={}){
   const syncBack=()=>{const b=shellBack();if(!b)return;const active=activeSurface();b.hidden=!ASSORTMENT_SURFACES.has(active);b.disabled=!ASSORTMENT_SURFACES.has(active);b.dataset.presentationDepth=String(presentationStack.length);};
   const syncTerrainToFrame=(frame)=>{const ref=frame?.selectedNodeRef;if(typeof ref==='string'){app.state.terrain.selected=ref;app.terrain.render(false);}return ref;};
   async function ensureFixture(){fixture??=await loadFixture();return fixture;}
+  async function waitForTerrainIdle(timeoutMs=2400){
+    const deadline=performance.now()+timeoutMs;
+    while(app.terrain.transitionSnapshot?.().phase!=='IDLE'){
+      if(performance.now()>=deadline)return false;
+      await new Promise((resolve)=>setTimeout(resolve,16));
+    }
+    return true;
+  }
   async function openSurface(ref){if(!ASSORTMENT_SURFACES.has(ref))throw new Error(`Unknown Assortment surface ${ref}`);const result=await app.uxProjectionShell.openEvolutionSurface(ref);syncBack();return result;}
   async function openPresentation(ref){const current=activeSurface();if(current&&ASSORTMENT_SURFACES.has(current))presentationStack.push(current);return openSurface(ref);}
-  async function openSemanticSibling(terrainRef){presentationStack.splice(0);return app.terrain.travel(terrainRef,'sibling');}
+  async function openSemanticSibling(terrainRef){presentationStack.splice(0);if(!await waitForTerrainIdle())return Object.freeze({state:'HELD_TERRAIN_TRANSITION_ACTIVE',terrainRef});return app.terrain.travel(terrainRef,'sibling');}
   async function handleTerrainNode(terrainRef){const surface=SURFACE_FOR_TERRAIN[terrainRef];if(!surface)return false;presentationStack.splice(0);await openSurface(surface);return true;}
   async function back(){const active=activeSurface();if(!ASSORTMENT_SURFACES.has(active))return Object.freeze({state:'NOT_ASSORTMENT'});if(presentationStack.length){const target=presentationStack.pop();await openSurface(target);syncBack();return Object.freeze({state:'PRESENTATION_BACK',surfaceRef:target,journeyMutated:false});}
+    if(!await waitForTerrainIdle())return Object.freeze({state:'HELD_TERRAIN_TRANSITION_ACTIVE',journeyMutated:false});
     const result=app.navigation.back();if(!result.changed){await app.uxProjectionShell.closeEvolutionActiveSurface('ASSORTMENT_BACK_EMPTY');syncBack();return Object.freeze({state:'CLOSED_BACK_EMPTY',journeyMutated:false});}
     const terrainRef=syncTerrainToFrame(result.frame);const target=SURFACE_FOR_TERRAIN[terrainRef]??null;if(target)await openSurface(target);else await app.uxProjectionShell.closeEvolutionActiveSurface('ASSORTMENT_BACK_HOME');syncBack();return Object.freeze({state:target?'SEMANTIC_BACK':'SEMANTIC_BACK_HOME',surfaceRef:target,terrainRef,journeyMutated:true,journeyActionRef:result.journeyEvent?.actionRef??null});
   }
