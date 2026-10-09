@@ -9,6 +9,12 @@
       "sha256": "aa990b433e4597d9e55cc9857696fd673a05b7af997674c7ff9165a48d28008f"
     },
     {
+      "path": "src/core/android-r8-device-possession.mjs",
+      "mode": "100644",
+      "bytes": 20362,
+      "sha256": "2d05ea4abbd14950e27fe4cc86072378feafb1a2b34ef865a084f3fa5eefcf9b"
+    },
+    {
       "path": "test/stewardship-orchestration-adapter.test.mjs",
       "mode": "100644",
       "bytes": 21256,

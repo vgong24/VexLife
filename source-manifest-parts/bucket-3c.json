@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 7039,
       "sha256": "d6bdba3a0f7132a4dade776236ce42003295f325d410f01b63a06e279dd9dd4c"
+    },
+    {
+      "path": "platform/android/app/src/main/kotlin/vexlife/android/security/AndroidHomeDevicePossessionKey.kt",
+      "mode": "100644",
+      "bytes": 8696,
+      "sha256": "ba6210cb04cef25e6b1864b98f9d3c1f3947df1aecfbc50397ae8c2eebd74a7b"
     }
   ]
 }

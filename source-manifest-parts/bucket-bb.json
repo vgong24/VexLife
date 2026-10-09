@@ -9,6 +9,12 @@
       "sha256": "54efdaf3443ff346689cd17a8b8960b03fc126a8f6953b352764d01ed08cb8d4"
     },
     {
+      "path": "platform/android/app/src/test/kotlin/vexlife/android/app/R8DevicePossessionKeyTest.kt",
+      "mode": "100644",
+      "bytes": 3738,
+      "sha256": "50ba15582157ba420b9fefeb68e3dbe92c97538e3ca54890d6ce48cc210a0727"
+    },
+    {
       "path": "scripts/browser-vex-birth-walkthrough.mjs",
       "mode": "100644",
       "bytes": 8600,
