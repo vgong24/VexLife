@@ -9,6 +9,12 @@
       "sha256": "24ea68bda62700e5a0ce07f104b58be97d751111eceebd8a7993c3b144a20208"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-kit/README.md",
+      "mode": "100644",
+      "bytes": 3807,
+      "sha256": "4b783b15cd05e4711b423cfb676c1836457b773925d3c94c1e21136fe2f13669"
+    },
+    {
       "path": "test/relationships-visible-adoption.test.mjs",
       "mode": "100644",
       "bytes": 31484,

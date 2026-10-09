@@ -9,6 +9,12 @@
       "sha256": "8edaf6907cad71bf411b919146dc3db227bda619357f6d33098f0ce860081d2a"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-kit/cdp-client.mjs",
+      "mode": "100755",
+      "bytes": 3531,
+      "sha256": "2e27f8cc8002d6fe2a2b2bc3ef39705be97b5eaac31dfe19ca7733160009e2c8"
+    },
+    {
       "path": "reference/browser/cdr-s5-closed-alpha/index.html",
       "mode": "100644",
       "bytes": 5762,
