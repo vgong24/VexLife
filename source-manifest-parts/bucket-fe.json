@@ -9,6 +9,12 @@
       "sha256": "a006c5886d6f8bc6383a7925d4dfbde7fec3c82a5ec10dae4613e7f0e24e794c"
     },
     {
+      "path": "scripts/generate-android-r8.mjs",
+      "mode": "100644",
+      "bytes": 5615,
+      "sha256": "c63d49bef1516053a2fb73f7cce6cdafeee83964408de08cc890c87a2c313b96"
+    },
+    {
       "path": "src/core/architecture-meaning.mjs",
       "mode": "100644",
       "bytes": 14829,

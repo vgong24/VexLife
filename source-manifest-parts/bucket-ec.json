@@ -15,6 +15,12 @@
       "sha256": "f8d1979d96ea1a02ad72ab69ff20e8c026f7ff635f483afe0d3b7fab052bd9c8"
     },
     {
+      "path": "test/android-r8-home-device-possession.test.mjs",
+      "mode": "100644",
+      "bytes": 4005,
+      "sha256": "9b9a66607c783ed9dbaa72eea1ac3496b997b5bd5fb629dd8ff15079b2e21995"
+    },
+    {
       "path": "test/capability-assimilation-scheduler-authority.test.mjs",
       "mode": "100644",
       "bytes": 6322,
