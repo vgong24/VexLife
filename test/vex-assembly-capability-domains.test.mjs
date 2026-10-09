@@ -74,7 +74,12 @@ function makeQualifiedHome(t) {
     generationRef: 'generation.vexlife.va-i04-test',
     modelProfileRef: 'model-profile.vexlife.va-i04-test',
     formedAt: '2026-10-08T20:00:00.000Z',
+    materialization: {
+      executableSha256: 'a'.repeat(64),
+      sourcePinnedExecutableSha256: 'a'.repeat(64),
+    },
     runtime: { pid: 12345, disposition: 'REUSED_QUALIFIED_BOUND_RUNTIME' },
+    endpoint: { origin: 'http://127.0.0.1:18080', requestModel: 'model.va-i04-test' },
   }, null, 2)}\n`);
   return home;
 }
@@ -262,6 +267,21 @@ test('VEXHOME returns only canonical Home identity plus qualified runtime/recove
   assert.equal(observed.payload.effects.memoryMutationPerformed, false);
   assert.equal(JSON.stringify(observed.payload).includes(home), false);
   assert.equal(JSON.stringify(observed.payload).includes('/private/not-projected'), false);
+});
+
+test('VEXHOME holds when retained recovery receipt identity does not match the qualified model binding', async (t) => {
+  const home = makeQualifiedHome(t);
+  const receiptPath = path.join(home, 'recovery', 'vex-initialization-receipt.json');
+  const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
+  receipt.receiptRef = 'receipt.vexlife.initialization.stale-va-i04-test';
+  fs.writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
+  const support = createVexAssemblyCapabilityDomainSupport({ sourceRoot: ROOT, home });
+  const observed = await support.executors[VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.VEXHOME]({});
+  assert.equal(observed.payload.state, 'HELD_VEXHOME_RUNTIME_SUMMARY_UNAVAILABLE');
+  assert.equal(observed.payload.reasonCode, 'VEXHOME_RECOVERY_RECEIPT_IDENTITY_MISMATCH');
+  assert.equal(observed.payload.modelBinding, null);
+  assert.equal(observed.payload.runtimeSummary, null);
+  assert.equal(observed.payload.recoverySummary, null);
 });
 
 test('CODE reads only manifest-addressed regular UTF-8 source and returns exact source identity with a bounded excerpt', async () => {

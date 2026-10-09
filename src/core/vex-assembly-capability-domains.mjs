@@ -292,10 +292,16 @@ function readWhitelistedHomeSummary(home) {
     };
   }
   const receiptIdentityMatches = recoveryReceipt?.state === 'RUNTIME_QUALIFIED'
+    && recoveryReceipt?.receiptRef === modelConfiguration.qualificationReceiptRef
     && recoveryReceipt?.profileRef === modelConfiguration.profileRef
     && recoveryReceipt?.modelBundleRef === modelConfiguration.activeModelBundleRef
     && recoveryReceipt?.generationRef === modelConfiguration.generationRef
-    && recoveryReceipt?.modelProfileRef === modelConfiguration.modelProfileRef;
+    && recoveryReceipt?.modelProfileRef === modelConfiguration.modelProfileRef
+    && recoveryReceipt?.runtime?.pid === modelConfiguration.runtimePid
+    && recoveryReceipt?.endpoint?.origin === modelConfiguration.endpoint
+    && recoveryReceipt?.endpoint?.requestModel === modelConfiguration.requestModel
+    && recoveryReceipt?.materialization?.executableSha256 === modelConfiguration.runtimeExecutableSha256
+    && recoveryReceipt?.materialization?.sourcePinnedExecutableSha256 === modelConfiguration.runtimeExecutableSha256SourcePinned;
   if (!receiptIdentityMatches) {
     return {
       state: 'HELD_VEXHOME_RUNTIME_SUMMARY_UNAVAILABLE',
