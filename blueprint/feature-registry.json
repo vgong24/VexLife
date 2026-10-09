@@ -2462,6 +2462,85 @@
         "Generic calendar ownership remains absent; accepted due and attention counts are descriptive follow-through truth and do not grant notification, calendar, Scheduler or Concern Watch effect authority.",
         "Public onboarding remains owned by ONB-DIST and real-human Family validation remains separately held."
       ]
+    },
+    {
+      "featureRef": "feature.vexlife.companion-voice-output",
+      "purpose": "Bind one exact current completed Companion response to the accepted host-qualified Voice playback package without changing conversation truth or inferring human hearing.",
+      "status": "HELD",
+      "humanIntroduction": {
+        "disposition": "NONE_JUSTIFIED",
+        "routeState": "CURRENT",
+        "planRefOrNull": null,
+        "rationale": "VA-I06 is a server-owned post-turn output capability with no separately accepted visible control; current host Voice materialization remains explicitly held where RDM evidence is absent."
+      },
+      "canonicalNodeRefs": [
+        "state.device-family",
+        "state.messages",
+        "state.model"
+      ],
+      "stateRefs": [
+        "state.device-family",
+        "state.messages",
+        "state.context",
+        "state.model"
+      ],
+      "actionRefs": [
+        "action.message.send"
+      ],
+      "permissionRefs": [
+        "permission.conversation.send"
+      ],
+      "processRefs": [
+        "process.vexlife.conversation.send-addressed"
+      ],
+      "moduleRefs": [
+        "module.vexlife.core.lived-companion",
+        "module.vexlife.core.companion-voice-playback"
+      ],
+      "localizationRefs": [],
+      "testRefs": [
+        "test.vex-assembly.companion-voice-playback",
+        "test.lived-companion.identity-head-replay",
+        "test.permission.no-inferred-effect",
+        "test.public.no-private-runtime",
+        "test.platform.windows.conformance"
+      ],
+      "platformRefs": [
+        "platform.windows"
+      ],
+      "reviewLensRefs": [
+        "lens.vexlife.intent-and-placement",
+        "lens.vexlife.identity-lattice",
+        "lens.vexlife.localization-intent",
+        "lens.vexlife.design-system",
+        "lens.vexlife.usability-and-journey",
+        "lens.vexlife.accessibility",
+        "lens.vexlife.state-and-currentness",
+        "lens.vexlife.concurrency-and-relay",
+        "lens.vexlife.security-privacy-permission",
+        "lens.vexlife.legal-provenance-stewardship",
+        "lens.vexlife.resource-and-context",
+        "lens.vexlife.reuse-and-simplification",
+        "lens.vexlife.recovery-migration-continuity",
+        "lens.vexlife.platform-environment",
+        "lens.vexlife.visibility-terrain-health",
+        "lens.vexlife.assurance-and-adversarial"
+      ],
+      "resourceClass": "HOST_LOCAL_QUALIFIED_EXTERNAL_RUNTIME",
+      "dataClass": "DEVICE_PRIVATE_CONVERSATION_DERIVED_OUTPUT",
+      "effectClass": "LOCAL_EXTERNAL_PROCESS_AUDIO_OUTPUT",
+      "concurrencyClass": "POST_TURN_SINGLE_EFFECT",
+      "rollbackRouteRef": "NONE_COMPLETED_COMPANION_TURN_PRESERVED",
+      "projectionRefs": [
+        "projection.lived-companion.current-head",
+        "projection.lived-companion.failure"
+      ],
+      "knownGaps": [
+        "Accepted eSpeak RDM evidence is currently Windows-qualified; macOS artifact/binding/qualification remains held to the rightful RDM owner.",
+        "OS audio routing, speaker audibility, human hearing and semantic meaning heard remain independently unproven.",
+        "Private Voice package materialization remains a host-local effect and is not performed by repository source or ordinary server startup.",
+        "Microphone, ASR, continuous listening, Voice cloning, training, weight mutation and public/package-registry publication remain held."
+      ]
     }
   ]
-}
+}\n

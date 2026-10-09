@@ -1166,5 +1166,9 @@
   {
     "testRef": "test.cdr-s5.closed-alpha-recovery-localization-accessibility",
     "brief": "Support excludes secrets and private context; block/revoke/withdraw/export/disconnect are prospective; EN/JA/ZH, keyboard, >=44px, compact layout and reduced-motion meaning remain aligned."
+  },
+  {
+    "testRef": "test.vex-assembly.companion-voice-playback",
+    "brief": "Exact current completed Companion turn binds to one accepted host-qualified Voice playback attempt while engine completion, OS routing and human hearing remain distinct."
   }
-]
+]\n

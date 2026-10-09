@@ -1,0 +1,27 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.companion-voice-playback",
+    "path": "src/core/companion-voice-playback.mjs",
+    "role": "Server-owned post-turn consumer that binds one exact current Lived Companion response to the accepted host-local Voice package and preserves engine-completion versus OS-routing versus human-hearing truth.",
+    "platformScope": "UNIVERSAL_SOURCE_WINDOWS_RUNTIME_CURRENT",
+    "reads": [
+      "module.vexlife.core.lived-companion",
+      "module.vexlife.core.utils",
+      "state.device-family",
+      "state.messages",
+      "state.model"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
+    "tests": [
+      "test/vex-assembly-companion-voice-playback.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/lived-companion.mjs",
+      "scripts/serve-browser-core.mjs",
+      "docs/VEX-ASSEMBLY-COMPANION-VOICE-PLAYBACK.md"
+    ]
+  }
+]\n

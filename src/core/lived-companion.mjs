@@ -3354,6 +3354,9 @@ export function readCurrentLivedCompanionCompletedTurn({
     headSequence: head.sequence,
     turnRef: head.turnRef,
     instanceRef: head.instanceRef,
+    requestMessageRef: head.requestMessageRef,
+    responseMessageRef: head.responseMessageRef,
+    modelNameOrBoundedTestProfileRef: response.modelNameOrBoundedTestProfileRef,
     requestEventBinding: Object.freeze({
       eventRef: request.eventRef,
       eventHash: request.eventHash,
