@@ -179,7 +179,7 @@ test('Round-2 I13B2 clean re-form earns integrated P0-P4 and rendered evidence',
   assert.equal(passive.projection, 'EVOLUTION_PROJECTION');
 
   const parityLog = run(process.execPath, [
-    path.join(sourceRoot, 'docs/vexlife-assortment/practicum-kit/vexwalk-runner.mjs'),
+    path.join(ROOT, 'docs/vexlife-assortment/practicum-kit/vexwalk-runner.mjs'),
     '--runtime', runtimePath,
     '--walk', path.join(CANDIDATE, 'contracts/VEXWALK-I13A-PARITY.json'),
     '--mode', 'proof',
@@ -193,7 +193,7 @@ test('Round-2 I13B2 clean re-form earns integrated P0-P4 and rendered evidence',
   runtime.logPath = fullReceipts;
   fs.writeFileSync(runtimePath, JSON.stringify(runtime, null, 2) + '\n');
   const fullLog = run(process.execPath, [
-    path.join(sourceRoot, 'docs/vexlife-assortment/practicum-kit/vexwalk-runner.mjs'),
+    path.join(ROOT, 'docs/vexlife-assortment/practicum-kit/vexwalk-runner.mjs'),
     '--runtime', runtimePath,
     '--walk', path.join(CANDIDATE, 'contracts/VEXWALK-I13B2.json'),
     '--mode', 'proof',
