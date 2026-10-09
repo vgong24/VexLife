@@ -3,6 +3,12 @@
   "bucketId": "0c",
   "files": [
     {
+      "path": "docs/vexlife-assortment/CONTINUITY-EVENT-GRAMMAR.md",
+      "mode": "100644",
+      "bytes": 5156,
+      "sha256": "cabdb16ee24e1bad984d9aad8a61b7d935f6a28026a857bef8ead646c0100d46"
+    },
+    {
       "path": "reference/browser/modules/dom.js",
       "mode": "100644",
       "bytes": 1472,

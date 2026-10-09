@@ -516,4 +516,108 @@ Evidence:
 
 ---
 
+## Index 23 — Round-2 documentation checkpoint reaches terminal accepted main
+
+PR #829 completed its lifecycle and merged at `b9c91a87cc0ddc44869fa77cac4a48dc6984da77`.
+The next phase remained Round 2 and formed PR #837 rather than inventing Round 3.
+
+Evidence: `github.pull.vexlife.829.comment.6072192094`.
+
+---
+
+## Index 24 — I13A makes Continue a working Continuity doorway
+
+I13A became the last human-proven executable predecessor: Home -> Continue -> Continuity
+worked, Resume current work reached Project depth, and optional same-browser VexWalk worked.
+
+~~~text
+HANDLER_EXISTS != DESTINATION_ADMITTED
+ACTION_CONTRACT -> EXECUTE -> OBSERVE -> RECEIPT
+~~~
+
+Evidence: `github.pull.vexlife.837.comment.6073702161`.
+
+---
+
+## Index 25 — Back and observation requirements emerge
+
+Victor separated Close from Back and generalized Back across the Assortment depth-1 layer.
+
+~~~text
+X = CLOSE_ACTIVE_SURFACE
+BACK = REVERSE_NAVIGATION_PATH
+DEPTH_1_SURFACE_BACK -> PARENT_TERRAIN
+~~~
+
+Presentation Graph Runtime Observer supplies timestamped presentation evidence:
+`timestamp = primary`, `duration = derived`, `rawPointerLogging = false`.
+
+---
+
+## Index 26 — Current work may be plural
+
+Intent Workgraph remains the owner for current/ready/waiting/blocked/completed truth.
+
+~~~text
+CURRENT_WORK_MAY_BE_PLURAL
+NAMED_STAGE_RAIL != PERCENT_COMPLETE
+CURRENT_WORK_TRUTH -> INTENT_WORKGRAPH
+~~~
+
+---
+
+## Index 27 — Failed later packages do not replace the proven predecessor
+
+I13B/I13C exposed harness regressions and remain evidence/requirements only.
+
+~~~text
+LAST_HUMAN_PROVEN_PREDECESSOR = I13A
+LATER_FILENAME != NEW_BASELINE
+FAILED_PRACTICUM != ACCEPTED_DESIGN
+~~~
+
+Evidence: `github.pull.vexlife.837.comment.6075593658`.
+
+---
+
+## Index 28 — Source-manage the reusable practicum kit
+
+PR #837 persisted `docs/vexlife-assortment/practicum-kit/` and merged at
+`715e95830f9b1745ea7be3be00dcf443b256ca37`. Accepted-main Foundation passed
+before successor-02 custody was released.
+
+~~~text
+P0+P1+P2+P3+P4 -> PACKAGE_HANDOFF_ELIGIBLE
+P5 -> HUMAN_CAN_INSPECT
+P6 -> DESIGN_CAN_ADVANCE
+~~~
+
+Evidence: `github.pull.vexlife.837.comment.6076038416`.
+
+---
+
+## Index 29 — Continuity Event Grammar becomes the next stable foundation
+
+PR #840 remains Round 2 and source-manages the bounded read-side grammar before another preview.
+
+~~~text
+Journey = semantic/navigation history
+Presentation Observer = meaningful presentation events + timestamp
+Intent Workgraph = current work truth
+accepted lifecycle evidence = meaningful milestones
+Continuity = bounded human projection
+~~~
+
+~~~text
+RECENT != IMPORTANT
+EVENT_EXISTS != DEFAULT_TIMELINE_ITEM
+REVISITABLE != CHRONOLOGICALLY_CENTRAL
+CONTINUITY_DASHBOARD != NEW_HISTORY_OWNER
+~~~
+
+Next executable target remains I13B2 from exact I13A using the accepted practicum kit.
+
+Evidence: `github.pull.vexlife.840.comment.6076105871`.
+
+---
 <!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][RANGE-00-30] -->

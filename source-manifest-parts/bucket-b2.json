@@ -9,6 +9,12 @@
       "sha256": "78eb10d48cefa84c16444d98416c22fb0ec324d3d429f00a93a5b5f1ee7ba55f"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-kit/vexwalk-runner.mjs",
+      "mode": "100755",
+      "bytes": 7188,
+      "sha256": "5f062852bf72da36f752d6222be9df410c3421b71e4dcfd5a6d2d4636babc2c6"
+    },
+    {
       "path": "setup-vexlife.command",
       "mode": "100755",
       "bytes": 5292,
