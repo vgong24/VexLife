@@ -23,8 +23,8 @@
     {
       "path": "platform/android/app/src/main/kotlin/vexlife/android/app/MainActivity.kt",
       "mode": "100644",
-      "bytes": 2818,
-      "sha256": "d88de48cb7f4306bfaaa21e8fa9824944575be71041d3c422a29dd04230239e0"
+      "bytes": 3406,
+      "sha256": "91636d079ea64f3bf8311f793cfa8f5db02df66a62e0ee10394ce1dadee949ce"
     },
     {
       "path": "src/core/atlas.mjs",
