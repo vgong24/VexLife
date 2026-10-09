@@ -138,7 +138,7 @@ test('Round-2 I13B2 clean re-form earns integrated P0-P4 and rendered evidence',
   });
   serverProcess.stdout.on('data', (chunk) => { serverOutput += chunk.toString(); });
   serverProcess.stderr.on('data', (chunk) => { serverOutput += chunk.toString(); });
-  const url = `http://127.0.0.1:${port}/?projection=evolution`;
+  const url = `http://127.0.0.1:${port}/reference/browser/?projection=evolution`;
   await waitForHttp(url, serverProcess);
 
   const browserPath = chromium.executablePath();
