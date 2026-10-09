@@ -3,6 +3,12 @@
   "bucketId": "e6",
   "files": [
     {
+      "path": "platform/android/app/src/test/kotlin/vexlife/android/app/R6BPrivateTransportConsumerContractTest.kt",
+      "mode": "100644",
+      "bytes": 3861,
+      "sha256": "3b91b0f4676f0b15a8f84da372d7b91c82237dd550e3e14a0cd02059ff87f501"
+    },
+    {
       "path": "scripts/generate-android-r6.mjs",
       "mode": "100755",
       "bytes": 6141,

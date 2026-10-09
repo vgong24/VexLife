@@ -9,6 +9,12 @@
       "sha256": "686ecae3c15affffbb84ba31d11c8ae3adee939b9ef2f89bb580c28c7d8a2aad"
     },
     {
+      "path": "scripts/generate-android-r6b.mjs",
+      "mode": "100644",
+      "bytes": 5809,
+      "sha256": "662d00e34e3595073b39c4c85a0a2348b58f1fbfc5fe3f908cc0b1f0cd4eae6d"
+    },
+    {
       "path": "scripts/registry-summary.mjs",
       "mode": "100644",
       "bytes": 317,
