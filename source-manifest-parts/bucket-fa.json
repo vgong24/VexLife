@@ -9,6 +9,12 @@
       "sha256": "f9035784e83bbcff09d9752683e25a08b55fb781e9441425dc8df51c416bdd72"
     },
     {
+      "path": "docs/vexlife-assortment/round-2/RANGE-00-30.md",
+      "mode": "100644",
+      "bytes": 14251,
+      "sha256": "e3b285522998758270ee0efa64e56effb1b5ec6523d1911062d7a701280956d1"
+    },
+    {
       "path": "platform/android/app/src/main/res/values/vexlife_r2.xml",
       "mode": "100644",
       "bytes": 718,

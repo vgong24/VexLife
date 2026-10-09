@@ -9,10 +9,16 @@
       "sha256": "31de1cf0fe842a424bc01055982aaf8b77aa3b1f9dc93ac594f40b9fc97ca42e"
     },
     {
+      "path": "docs/vexlife-assortment/CONTINUATION-CYCLE.md",
+      "mode": "100644",
+      "bytes": 14655,
+      "sha256": "5f83837452f670bdecd14081b4915609e8debbd97f0fe022689f05e0979cee6e"
+    },
+    {
       "path": "docs/vexlife-assortment/README.md",
       "mode": "100644",
-      "bytes": 3469,
-      "sha256": "19105bce8ca9378593d653a4a9a526dbcff09b3bdcc8cc76fcb6c956c4a27c33"
+      "bytes": 4469,
+      "sha256": "9cfbee9f4a5825551c93e9a897ca03eece48cf431a30da69e172b982109b2490"
     },
     {
       "path": "platform/android/gradle.properties",

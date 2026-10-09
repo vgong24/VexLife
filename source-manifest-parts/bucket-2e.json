@@ -5,8 +5,8 @@
     {
       "path": "docs/vexlife-assortment/CURRENT.md",
       "mode": "100644",
-      "bytes": 2954,
-      "sha256": "1ab62f269500535d5075cfc80f7037a2e56b5131e8ba958dfc90858437882604"
+      "bytes": 6102,
+      "sha256": "750d93196b16beb2d0232b23d89ef3a1128d6d6cd50fd84dbe7639351e69a742"
     },
     {
       "path": "scripts/current.mjs",
