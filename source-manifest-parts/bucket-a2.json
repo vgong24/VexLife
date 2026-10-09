@@ -3,40 +3,10 @@
   "bucketId": "a2",
   "files": [
     {
-      "path": "blueprint/module-registry/purpose-workspace.json",
+      "path": "docs/vexlife-assortment/practicum-candidates/i13b2-clean/PATCH-PREVIEW.mjs",
       "mode": "100644",
-      "bytes": 763,
-      "sha256": "fa36b57f114dc6e8e1cb0db7ec6e9ff8b5124baa9a841d54403a862e64897d63"
-    },
-    {
-      "path": "platform/android/app/src/main/kotlin/vexlife/android/app/VexAppViewModel.kt",
-      "mode": "100644",
-      "bytes": 1704,
-      "sha256": "a41db9ffdeb2e981c52af4a82306107f65a99c53f65aff190305c7b4159771e5"
-    },
-    {
-      "path": "reference/browser/modules/living-journal-controller.js",
-      "mode": "100644",
-      "bytes": 37941,
-      "sha256": "9acc0e6fd4c005a82049d8ff65a0d30d8d823ad590ff81881f9dc4982e1b52b2"
-    },
-    {
-      "path": "scripts/scheduler-check.mjs",
-      "mode": "100644",
-      "bytes": 5149,
-      "sha256": "4aeb4a217f99d6e227864deeb171192ded531c1c382b5180d5d175f23a230c17"
-    },
-    {
-      "path": "src/core/experience-guidance.mjs",
-      "mode": "100644",
-      "bytes": 20425,
-      "sha256": "6add3a15e6022b29a2996222029939a365afa48c3ec596d24e1d771b0355825d"
-    },
-    {
-      "path": "src/core/registry.mjs",
-      "mode": "100644",
-      "bytes": 18652,
-      "sha256": "d08a2cab9c5149b863a1d1e379e2fafb66f62c19140da60ab983b7e65c604c78"
+      "bytes": 9069,
+      "sha256": "8c89e0b24aa748e1b04a96e97439f1cbb285b871b2e417548b5cdb22059ceac4"
     }
   ]
 }

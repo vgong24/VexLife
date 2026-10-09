@@ -3,22 +3,10 @@
   "bucketId": "6b",
   "files": [
     {
-      "path": "docs/UX-EVOLUTION-LIVING-JOURNAL-PRESENTATION.md",
+      "path": "docs/vexlife-assortment/practicum-candidates/i13b2-clean/payload/assortment-continuity.css",
       "mode": "100644",
-      "bytes": 4840,
-      "sha256": "b852bb88ade9b5c06d80d32a22a9fbefb2abd92f87105509b9bd7e2a7681ef75"
-    },
-    {
-      "path": "platform/android/build.gradle.kts",
-      "mode": "100644",
-      "bytes": 383,
-      "sha256": "126f8bd15993aadfcb73144d529c2b4173964889866032eae6ee0a5b798d0cde"
-    },
-    {
-      "path": "reference/browser/modules/experience-guidance-human-projection.js",
-      "mode": "100644",
-      "bytes": 29692,
-      "sha256": "84e63e05278ca0c7d859c43adcff4280f412e0fec58c2b4489b45658d4d32422"
+      "bytes": 7229,
+      "sha256": "630173866bcf3ea7c4b37567989e9a0a1adf84e125b00284ee527b6d13797056"
     }
   ]
 }
