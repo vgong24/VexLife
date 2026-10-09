@@ -94,8 +94,13 @@ function captureFile(filePath, data) {
 }
 
 function foregroundMatches(output, packageName, component) {
-  const text = String(output ?? '');
-  return text.includes(packageName) || text.includes(component);
+  const resumedMarker = /(?:^|\\s)(?:m?ResumedActivity|topResumedActivity)[:=]/u;
+  return String(output ?? '')
+    .split(/\\r?\\n/u)
+    .some((line) =>
+      resumedMarker.test(line) &&
+      (line.includes(packageName) || line.includes(component))
+    );
 }
 
 export function settleAndroidLaunchReadiness({

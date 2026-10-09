@@ -223,4 +223,27 @@ test('AHF00-11 launch readiness timeout returns truthful partial-effect receipt'
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+test('AHF00-12 package history does not impersonate resumed foreground truth', () => {
+  const { dir, apkPath, identity } = apkFixture();
+  const fixture = fakeSpawn({
+    pidSequence: ['4242\\n'],
+    foregroundSequence: [
+      '  Hist #0: ActivityRecord{history com.example/.MainActivity}\\n  ResumedActivity: ActivityRecord{top com.other/.MainActivity}\\n',
+    ],
+  });
+  const clock = fakeClock();
+  const receipt = runAndroidDeviceHost({
+    operation: ANDROID_DEVICE_HOST_OPERATIONS.INSTALL_UPDATE_LAUNCH,
+    adbPath: '/sdk/adb', packageName: 'com.example', component: 'com.example/.MainActivity', apkPath, ...identity,
+    launchSettleTimeoutMs: 0, launchPollIntervalMs: 100,
+  }, { spawn: fixture.spawn, now: clock.now, sleep: clock.sleep });
+  assert.equal(receipt.state, 'INSTALL_UPDATE_LAUNCH_UNCONFIRMED');
+  assert.equal(receipt.app.pidObserved, true);
+  assert.equal(receipt.app.foregroundObserved, false);
+  assert.equal(receipt.effects.installPerformed, true);
+  assert.equal(receipt.effects.launchPerformed, true);
+  assert.equal(fixture.calls.filter((call) => call.args.includes('install')).length, 1);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 // [VXG RealForever]
