@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 4412,
       "sha256": "4970a104ad0929f817eb6ac0ee8537e0142708df4cbde8ab8977b1272d6338e8"
+    },
+    {
+      "path": "test/android-device-host.test.mjs",
+      "mode": "100644",
+      "bytes": 8087,
+      "sha256": "2b46c217e2d131845620d6961c0ec073629c1608202c3130c290e0298814eb21"
     }
   ]
 }
