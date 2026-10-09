@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "vexlife-assortment.practicum-kit/v1",
+  "kitRef": "kit.vexlife-assortment.practicum.001",
+  "purpose": "Reusable human-first Assortment preview harness",
+  "canonicalProductSource": false,
+  "canonicalStateOwner": false,
+  "gates": [
+    {"gateRef":"P0","label":"EXACT_PREDECESSOR_AND_SOURCE_BINDING","requiredBeforeHandoff":true},
+    {"gateRef":"P1","label":"FORMATION_AND_STATIC_WIRING","requiredBeforeHandoff":true},
+    {"gateRef":"P2","label":"REAL_BROWSER_RUNTIME_INITIALIZED","requiredBeforeHandoff":true},
+    {"gateRef":"P3","label":"PASSIVE_INTERACTIVE_READINESS","requiredBeforeHandoff":true},
+    {"gateRef":"P4","label":"EXECUTABLE_PATH_AND_REGRESSION_PROOF","requiredBeforeHandoff":true},
+    {"gateRef":"P5","label":"HUMAN_FIRST_PACKAGE_INTERFACE","requiredBeforeHandoff":true},
+    {"gateRef":"P6","label":"HUMAN_WALK_ACCEPTANCE","requiredBeforeHandoff":false}
+  ],
+  "packageInterface": {
+    "oneZip": true,
+    "humanFirstRunner": "RUN-1-PREVIEW.sh",
+    "optionalWalkRunner": "RUN-2-VEXWALK.sh",
+    "run1NavigationActionsAllowed": false,
+    "freshBrowserProfilePerRun": true,
+    "loopbackOnlyControl": true
+  },
+  "vexWalk": {
+    "defaultHumanStepDelayMs": 3000,
+    "stepDelayEnvironment": "VEXWALK_STEP_DELAY_MS",
+    "machineProofStepDelayMs": 0,
+    "resetToDeclaredStartBeforeWalk": true,
+    "receiptsSessionLocal": true,
+    "receiptsDeletedWhenRun1Stops": true
+  },
+  "observation": {
+    "presentationRegistryRef": "registry.vexlife.presentation-graph.001",
+    "presentationOwnerRef": "github.issue.vexlife.719",
+    "eventTimestampPrimary": true,
+    "durationDerivedOnly": true,
+    "rawPointerLogging": false,
+    "continuousDomDump": false
+  },
+  "nonCollapse": [
+    "SERVER_READY != BROWSER_READY",
+    "BROWSER_READY != APP_INITIALIZED",
+    "APP_INITIALIZED != INTERACTIVE_READY",
+    "INTERACTIVE_READY != HUMAN_WALK_ACCEPTED",
+    "PARSE_PASS != RUNTIME_PASS",
+    "STATIC_WIRING != LIVE_BINDING",
+    "VISIBLE_UI != INTERACTIVE_UI",
+    "HANDLER_EXISTS != DESTINATION_REACHABLE",
+    "HUMAN_PREVIEW_LAUNCH != AUTOMATED_WALK",
+    "OPTIONAL_AUTOMATION != REQUIRED_PREVIEW_GATE"
+  ]
+}

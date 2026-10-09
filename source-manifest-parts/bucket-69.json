@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 10219,
       "sha256": "36650be3aa0d09d1b22e4b9c9f563c7c32e25f475d4333c48c5f9edb16f2812a"
+    },
+    {
+      "path": "docs/vexlife-assortment/practicum-kit/CONTRACT.json",
+      "mode": "100644",
+      "bytes": 2151,
+      "sha256": "7832d3d1efac596d35764e7e5383b65aa87bd1c5dcedc49052ddeb64d5cdb2d7"
     }
   ]
 }
