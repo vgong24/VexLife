@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 
 export const ANDROID_NATIVE_WALK_FOUNDATION_SCHEMA = 'vexlife.android-native-walk-foundation/v0';
 export const ANDROID_NATIVE_WALK_FOUNDATION_STAGE = 'NW-00_NATIVE_SEMANTIC_WALK_FOUNDATION';
+export const ACCEPTED_ANDROID_BASE = '78bed64878cc85264878e1cb5ab9fbab7bee293b';
 export const MAIN_ACTIVITY_PATH = 'platform/android/app/src/main/kotlin/vexlife/android/app/MainActivity.kt';
 export const ACCEPTED_MAIN_ACTIVITY_SHA256 = 'd88de48cb7f4306bfaaa21e8fa9824944575be71041d3c422a29dd04230239e0';
 

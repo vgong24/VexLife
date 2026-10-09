@@ -11,8 +11,8 @@
     {
       "path": "src/core/android-native-walk-foundation.mjs",
       "mode": "100644",
-      "bytes": 4152,
-      "sha256": "34ae9f36753a953778c1fdcfd6b9244e12ef17eb4e254ce3fb27481b5a1b9d3c"
+      "bytes": 4233,
+      "sha256": "8e954681f1a29dbf94200d2d1a337fc35aec61946207e46d2aa18235a10db9b8"
     },
     {
       "path": "src/core/intent-workgraph.mjs",

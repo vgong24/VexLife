@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  ACCEPTED_ANDROID_BASE,
   ACCEPTED_MAIN_ACTIVITY_SHA256,
   MAIN_ACTIVITY_PATH,
   renderAndroidNativeWalkFoundation,
@@ -11,7 +12,11 @@ import {
 } from '../src/core/android-native-walk-foundation.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BASE = fs.readFileSync(path.join(ROOT, ...MAIN_ACTIVITY_PATH.split('/')), 'utf8');
+const BASE = execFileSync('git', ['show', `${ACCEPTED_ANDROID_BASE}:${MAIN_ACTIVITY_PATH}`], {
+  cwd: ROOT,
+  encoding: 'utf8',
+  stdio: ['ignore', 'pipe', 'pipe'],
+});
 
 function rendered() { return renderAndroidNativeWalkFoundation(BASE).files[MAIN_ACTIVITY_PATH]; }
 

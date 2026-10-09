@@ -4,6 +4,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
+  ACCEPTED_ANDROID_BASE,
   ACCEPTED_MAIN_ACTIVITY_SHA256,
   ANDROID_NATIVE_WALK_FOUNDATION_STAGE,
   MAIN_ACTIVITY_PATH,
@@ -12,7 +13,6 @@ import {
 } from '../src/core/android-native-walk-foundation.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const ACCEPTED_ANDROID_BASE = '78bed64878cc85264878e1cb5ab9fbab7bee293b';
 
 function target(relativePath) { return path.join(ROOT, ...relativePath.split('/')); }
 function git(args) { return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
