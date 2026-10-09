@@ -30,7 +30,7 @@
       "path": "scripts/daily-memory-dream.mjs",
       "mode": "100644",
       "bytes": 44357,
-      "sha256": "1e3ca8211976f05f787046ab63c12203715e981d616a461"
+      "sha256": "1e3ca8211976f05f787046ab63c1220372ae3057fd3dbdc05715e981d616a461"
     },
     {
       "path": "src/core/lived-companion.mjs",
