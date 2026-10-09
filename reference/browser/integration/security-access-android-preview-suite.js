@@ -59,9 +59,24 @@ async function runAndroidShapedCompactProof({ assert, delay }) {
 
     const actionStyle = compactWindow.getComputedStyle(actions);
     assert(actionStyle.display === 'grid', 'Security & Access compact primary actions did not switch to grid layout');
-    for (const button of [detailsToggle, askVex]) {
+    const primaryButtons = [detailsToggle, askVex];
+    let priorPrimaryHeights = null;
+    let stablePrimaryHeights = null;
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      await new Promise((resolve) => compactWindow.requestAnimationFrame(resolve));
+      compactDocument.documentElement.getBoundingClientRect();
+      const nextPrimaryHeights = primaryButtons.map((button) => button.getBoundingClientRect().height);
+      const allAtLeast44 = nextPrimaryHeights.every((height) => height >= 44);
+      const stable = priorPrimaryHeights !== null && nextPrimaryHeights.every((height, index) => Math.abs(height - priorPrimaryHeights[index]) < 0.1);
+      if (allAtLeast44 && stable) {
+        stablePrimaryHeights = nextPrimaryHeights;
+        break;
+      }
+      priorPrimaryHeights = nextPrimaryHeights;
+    }
+    assert(stablePrimaryHeights?.every((height) => height >= 44), `Security & Access compact primary action did not settle at or above the 44px touch target: ${JSON.stringify(priorPrimaryHeights)}`);
+    for (const button of primaryButtons) {
       const rect = button.getBoundingClientRect();
-      assert(rect.height >= 44, 'Security & Access compact primary action fell below the 44px touch target');
       assert(rect.width <= regionRect.width + 1, 'Security & Access compact primary action exceeds the card width');
     }
     detailsToggle.focus();
