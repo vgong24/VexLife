@@ -11,8 +11,8 @@
     {
       "path": "docs/vexlife-assortment/round-2/RANGE-00-30.md",
       "mode": "100644",
-      "bytes": 14251,
-      "sha256": "e3b285522998758270ee0efa64e56effb1b5ec6523d1911062d7a701280956d1"
+      "bytes": 17122,
+      "sha256": "f7f8db571c6beb3e6b094e0fb2e58a66c4781105feedd21aba3ef884720dc106"
     },
     {
       "path": "platform/android/app/src/main/res/values/vexlife_r2.xml",
@@ -30,7 +30,7 @@
       "path": "scripts/daily-memory-dream.mjs",
       "mode": "100644",
       "bytes": 44357,
-      "sha256": "1e3ca8211976f05f787046ab63c1220372ae3057fd3dbdc05715e981d616a461"
+      "sha256": "1e3ca8211976f05f787046ab63c12203715e981d616a461"
     },
     {
       "path": "src/core/lived-companion.mjs",
