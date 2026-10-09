@@ -227,10 +227,10 @@ test('Round-2 I13B2 clean re-form earns integrated P0-P4 and rendered evidence',
   const journeyAfterClose = await page.evaluate(() => globalThis.__VEXLIFE_APP__.navigation.fullJourney().length);
   assert.equal(journeyAfterClose, journeyBeforeClose, 'X Close must not impersonate semantic Back');
 
-  await page.evaluate(async () => { await globalThis.__VEXLIFE_ASSORTMENT_PREVIEW__.handleTerrainNode('terrain.assortment.continue'); });
-  await page.waitForSelector('.assortment-continuity');
   await page.selectOption('#languageSelect', 'ja');
-  await page.waitForFunction(() => document.documentElement.lang === 'ja' && document.querySelector('.assortment-continuity h2')?.textContent?.trim() === '連続性');
+  await page.waitForFunction(() => document.documentElement.lang === 'ja');
+  await page.evaluate(async () => { await globalThis.__VEXLIFE_ASSORTMENT_PREVIEW__.handleTerrainNode('terrain.assortment.continue'); });
+  await page.waitForFunction(() => document.querySelector('.assortment-continuity h2')?.textContent?.trim() === '連続性');
   const japanese = await continuityMetrics(page);
   assert.equal(japanese.horizontalOverflow, 0);
   assert.deepEqual(japanese.interactiveTargetsUnder44px, []);
@@ -242,8 +242,13 @@ test('Round-2 I13B2 clean re-form earns integrated P0-P4 and rendered evidence',
   const mobileShot = await page.screenshot({ type: 'png', fullPage: false });
   console.log(`I13B2_SCREENSHOT_MOBILE_JA_BASE64=${mobileShot.toString('base64')}`);
 
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.locator('#evolutionActiveSurfaceClose').click();
+  await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.uxProjectionShell.snapshot().activeSurfaceRef === null);
   await page.selectOption('#languageSelect', 'zh');
-  await page.waitForFunction(() => document.documentElement.lang === 'zh' && document.querySelector('.assortment-continuity h2')?.textContent?.trim() === '连续性');
+  await page.waitForFunction(() => document.documentElement.lang === 'zh');
+  await page.evaluate(async () => { await globalThis.__VEXLIFE_ASSORTMENT_PREVIEW__.handleTerrainNode('terrain.assortment.continue'); });
+  await page.waitForFunction(() => document.querySelector('.assortment-continuity h2')?.textContent?.trim() === '连续性');
   const chinese = await continuityMetrics(page);
   assert.equal(chinese.horizontalOverflow, 0);
   assert.deepEqual(chinese.interactiveTargetsUnder44px, []);
