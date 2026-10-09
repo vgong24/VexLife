@@ -39,7 +39,9 @@ Read:
 1. `CURRENT.md` — current Round, occupancy, accepted checkpoint and next function.
 2. `CONTINUATION-CYCLE.md` — reusable continuation grammar, **Progression Grammar** (idea → accepted work → extension), and stop rules.
 3. the active `round-<n>/RANGE-*.md` — bounded design lineage for this Round.
-4. only the exact canonical owner/source records those files name for the next
+4. `CONTINUITY-EVENT-GRAMMAR.md` when the current function is Continue/Continuity.
+5. `practicum-kit/README.md` when forming or repairing an executable human preview.
+6. only the exact canonical owner/source records those files name for the next
    effect.
 
 Then re-ground live repository/PR state before acting.
@@ -89,6 +91,8 @@ FRONTIER_CAPTURE != PROJECT_PROMOTION
 FRESH_THREAD != NEW_ROUND
 FRESH_INSTANCE != NEW_WRITER
 RETRY != NEW_SEMANTIC_TASK
+PRACTICUM_KIT != PRODUCT_SOURCE
+CONTINUITY_DASHBOARD != NEW_HISTORY_OWNER
 ```
 
 ## Durable files
@@ -101,6 +105,8 @@ RETRY != NEW_SEMANTIC_TASK
 - `FRONTIER-PROJECT-MAP.md` — live seed-to-project process-map experiment.
 - `round-1/RANGE-00-30.md` — Round-1 recovery + infrastructure lineage.
 - `round-2/RANGE-00-30.md` — Round-2 practicum + current design lineage.
+- `CONTINUITY-EVENT-GRAMMAR.md` — owner map and inclusion law for Continue/Continuity.
+- `practicum-kit/` — reusable human-first preview/readiness/VexWalk harness.
 - `assets/MANIFEST.md` — stable visual keys/paths; binaries live in GitHub.
 - `MIGRATION.md` — wrong-repository correction and provenance.
 

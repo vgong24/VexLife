@@ -172,6 +172,34 @@ held product-source boundaries
 
 A practicum may simulate. It does not silently become canonical product source.
 
+### C05A — Reuse the source-managed practicum kit
+
+Executable Assortment previews consume `kit.vexlife-assortment.practicum.001`
+from `docs/vexlife-assortment/practicum-kit/` rather than rebuilding launch,
+CDP, readiness and VexWalk machinery in every package.
+
+~~~text
+P0 exact source + predecessor binding
+P1 formation/static wiring
+P2 real-browser runtime initialized
+P3 passive interactive readiness
+P4 executable new-path + inherited regression proof
+-> PACKAGE_HANDOFF_ELIGIBLE
+
+P5 RUN-1 fresh visible browser / zero navigation actions
+   RUN-2 optional human-paced VexWalk
+
+P6 Victor human walk
+~~~
+
+~~~text
+LAST_HUMAN_PROVEN_PREDECESSOR > later failed package
+HUMAN_PREVIEW_LAUNCH != AUTOMATED_WALK
+PRACTICUM_RECEIPT != DURABLE_PRODUCT_HISTORY
+~~~
+
+Fix common harness defects in the kit rather than forking another copy into a new preview package.
+
 ### C06 — Preserve material design continuity
 
 After a material design exchange, update the active Round lineage through the
