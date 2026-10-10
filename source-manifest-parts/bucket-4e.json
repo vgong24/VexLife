@@ -11,8 +11,8 @@
     {
       "path": "src/core/browser-companion-recovery-owner.mjs",
       "mode": "100644",
-      "bytes": 6462,
-      "sha256": "702901b9ac5c71fbecbae6e74863811eee0117d7eadaa330b0ecdf1596930bd9"
+      "bytes": 13180,
+      "sha256": "4dfc2a003db6c29b0f6b8b6da42a29ca6e8f9826fc950757c731b9e221ab1903"
     },
     {
       "path": "test/vex-family-membership-runtime.test.mjs",
