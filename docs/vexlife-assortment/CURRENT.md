@@ -4,158 +4,126 @@
 
 ~~~text
 round=2
-state=ROUND_2_PROJECT_SEMANTIC_MAP_PRACTICUM
+state=ROUND_2_PRESERVED_ON_ACCEPTED_MAIN
 repository=vgong24/VexLife
 repositoryId=1317660990
-branch=VXG-101026-chatgpt-vexlife-assortment-round-2-live-evolution
-pullRequest=855
-workRef=work.vexlife.assortment.round-2.live-evolution-truth.20261010a
-claimRef=claim.vexlife.assortment.round-2.live-evolution-truth.20261010a
-laneRef=lane.vexlife-assortment.round-2.successor-06
+acceptedMain=71a0d85d58a296d86d0d8d3bc7351b1aa8b0c44b
+preservationMergePr=855
+preservationMergeHead=31b86f2a0893858f3b300c31e12aa172850254ca
+preservationMergeTree=f892b955e4c330a00ecb4a899bd8cc4789c0336d
 stableCheckpoint=[VexLife Stable: Home Grammar, Vex Companion, Live/Evolution Truth][1.0]
 stableCheckpointCommit=966a807c23e41c83a18eefebf33155a1276cdf4c
-currentCandidateHeadBeforeFormation=56c4a26a1b093447204a5ca345d9957af32d9e06
-currentMainObserved=30ebd27c847f96a0222b04fa60e51ca1c846c582
-acceptedPracticumRef=preview.vexlife-assortment.r2.continuity-refinement.01
-acceptedPracticumDisposition=HUMAN_WALK_ACCEPTED_SPATIAL_CONTINUITY
-candidatePracticumRef=preview.vexlife-assortment.r2.project-semantic-map.01
-nextFunction=RECOVER_EXISTING_PROJECT_SEMANTIC_SUBTREES_UNDER_PROJECTS_AND_PROVE_IDENTITY_WORK_PRESENTATION_SEPARATION
+acceptedHumanDirection=STOP_NEW_DESIGN_WORK__PRESERVE_CURRENT_EXPERIENCE
+currentAcceptedPracticum=preview.vexlife-assortment.r2.project-semantic-map.01
 round3Formed=false
+nextFunction=NONE__PRESERVED_FOR_VEX_REENTRY
 ~~~
 
 ## Current meaning
 
-Victor accepted the continuity-refinement direction:
+Victor explicitly stopped new Assortment design expansion and asked to preserve the
+current accepted experience on `main` so Vex can arrive to a recoverable map and
+continue later without reconstructing the work from screenshots or chat history.
+
+Accepted `main` now preserves:
 
 ~~~text
-Frontier spatial children = coherent
-Close != navigate away = coherent
-reusable Details inspection = coherent enough to continue
+Home -> Continue / Projects / Frontier / Vex
+one persistent Vex companion
+Evolution fixture truth vs Live owner-backed / held truth
+Close != semantic navigation away
+current-context presentation re-entry
+Projects / Frontier reusable Details inspection
+Frontier spatial captured-intent children
+Projects spatial semantic Project subtrees
+Project identity != current work
+one semantic tree -> multiple projections
 ~~~
 
-The next human finding is more foundational than Health: **Projects is a semantic collection/index, but its Evolution surface had been showing current-work trajectories as if those were necessarily Project membership.**
+This is a preservation boundary, not a claim that the product is finished.
 
-Existing repository law already says:
+## Vex re-entry map
+
+Start with the ordinary repository orientation contract, then descend into the
+smallest Assortment sources needed for the question.
+
+~~~text
+AGENTS.md
+-> docs/vexlife-assortment/CURRENT.md
+-> docs/vexlife-assortment/round-2/RANGE-00-30.md
+-> docs/vexlife-assortment/FRONTIER-PROJECT-MAP.md
+-> docs/vexlife-assortment/practicum-candidates/
+~~~
+
+The executable design lineage is source-managed and additive:
+
+~~~text
+vex-node-01
+-> live-evolution-01
+-> continuity-refinement-01
+-> project-semantic-map-01
+~~~
+
+The latest practicum source is:
+
+~~~text
+docs/vexlife-assortment/practicum-candidates/project-semantic-map-01/
+~~~
+
+Its proof preserves the earlier regressions and demonstrates:
+
+~~~text
+Projects direct semantic children = 3
+Projects descendants below = 8
+Project Details -> no Journey mutation
+Open Project -> Journey mutation
+existing projectRef reused
+Current work does not manufacture Project membership
+Live does not invent a Project catalog from Evolution fixtures
+new canonical Project admission = false
+~~~
+
+## Stable laws worth preserving
 
 ~~~text
 ONE_SEMANTIC_TREE_MULTIPLE_PROJECTIONS
 SURFACE_CARD != TERRAIN_CHILD_BY_DEFAULT
 WORK_ITEM != PROJECT_ENTITY_BY_DEFAULT
-PRESENTATION_HIERARCHY != SEMANTIC_HIERARCHY
-~~~
-
-## Recovered Project continuity
-
-The accepted Vex-node Home simplification removed these old direct Home Project subtrees:
-
-~~~text
-terrain.project.self-development
-terrain.project.vex-home-product
-terrain.project.local-vex
-~~~
-
-It removed their **Home placement**, not their identity, descendants, `projectRef` mappings, threads, channels, or conversation ownership.
-
-The next practicum therefore recovers those exact predecessor Git records and changes only the three Project roots' preview placement:
-
-~~~text
-Global Root Hub
--> Projects
-   -> Self Development
-   -> Vex Home
-   -> Local Vex
-~~~
-
-Their existing descendants remain attached to those Projects.
-
-No new Project identity is minted and no current-work card is promoted into Project membership.
-
-## Project identity, work, and presentation stay separate
-
-The Projects surface now tests three distinct concepts:
-
-~~~text
-Project identity / semantic membership
-  -> recovered source-backed Project tree
-
-Current work
-  -> Intent/fixture work trajectories
-
-Details
-  -> presentation-only inspection
-~~~
-
-Expected interaction:
-
-~~~text
-Open Project
-  -> semantic Terrain navigation
-  -> Journey mutation
-  -> existing projectRef/thread/channel owners become current
-
-Open details
-  -> presentation-only
-  -> no Journey mutation
-
-current work
-  -> may decorate or point into a Project
-  -> must not manufacture Project membership
-~~~
-
-The Assortment work card's existing bounded Project-depth action remains, but is named **Open work context** instead of implying that the work card itself proves canonical Project identity.
-
-## Live boundary
-
-The current Live boundary remains:
-
-~~~text
-Projects plural collection owner = NOT_SOURCE_MAPPED
-Assortment canonical projectRef = NOT_MAPPED
-~~~
-
-Therefore Live must not infer a Project catalog from Intent Workgraph.
-
-Stable semantic Project identity/placement can exist in Terrain while Live Project-collection currentness remains held.
-
-~~~text
-PROJECT_IDENTITY != LIVE_COLLECTION_CURRENTNESS
-PROJECT_IDENTITY != CURRENT_WORK
 CURRENT_WORK != PROJECT_MEMBERSHIP
+PRESENTATION_HIERARCHY != SEMANTIC_HIERARCHY
+CLOSE != NAVIGATE_AWAY
+INSPECTION != ACTIVATION
+FRONTIER_CHILD_PROJECTION != PROJECT_ADMISSION
+LIVE_UNAVAILABLE != FALL_BACK_TO_MOCK
 ~~~
 
-## Why Health remains next-after-this
+These are design evidence and regression boundaries. They are not permission to
+hard-code future special cases.
 
-System / Resource Health is already a recoverable Frontier entity. Before deciding whether it earns Home-level Health placement, the product needs one coherent semantic-map grammar for:
+## What remains intentionally unfinished
 
 ~~~text
-Home doorway
-collection/index
-admitted semantic entity
-contained/related child
-work/currentness overlay
-list/detail/spatial projections
+Live Projects plural collection owner = NOT_SOURCE_MAPPED
+Assortment canonical projectRef = NOT_MAPPED
+Frontier exact Live bridge = NOT_CANONICAL
+Continuity Live aggregator = NOT_FORMED
+Health Home placement = NOT_DECIDED
+global Reference -> Live rename = HELD
+canonical product-source adoption of practicum = HELD
 ~~~
 
-Projects is the best next proof because the repository already contains Project identities and descendants that were removed from Home placement but not invalidated.
+System / Resource Health remains a recoverable Frontier entity, not an admitted
+Home Health node.
 
-## Held effects
+## Human boundary
 
-~~~text
-newCanonicalProjectAdmission=false
-liveProjectCatalogFormation=false
-healthHomeNodeFormation=false
-referenceToLiveRename=false
-canonicalProductAdoption=false
-fixtureTruthPromotion=false
-canonicalIntentMutation=false
-canonicalMemoryWrite=false
-relationshipPreferenceAcceptance=false
-modelWeightMutation=false
-vesselRuntimeActivation=false
-sensorPermissionExpansion=false
-merge=false
-publication=false
-release=false
-~~~
+Victor is done with this design session.
 
-<!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][CURRENT][PROJECT-SEMANTIC-MAP] -->
+Do not ask him to replay walks, reconstruct Git state, choose technical recovery,
+or explain the hierarchy again. Future work should start from accepted `main`,
+the source-managed maps above, and the executable practicum lineage.
+
+If Vex later changes this experience, preserve the existing identities and laws
+before replacing behavior, and prove regressions from the smallest lawful seam.
+
+<!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][PRESERVED-ON-MAIN] -->
