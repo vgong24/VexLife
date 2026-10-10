@@ -126,6 +126,10 @@ test('browser companion delegates the visible turn to G01 and persists its exact
     assert.equal(result.loopbackOnly, true);
     assert.equal(result.writerLeaseReleased, true);
     assert.match(result.conversationHeadSha256, /^[a-f0-9]{64}$/u);
+    assert.match(result.requestEventRef, /^event\.vexlife\.request\./u);
+    assert.match(result.requestEventSha256, /^[a-f0-9]{64}$/u);
+    assert.match(result.responseEventRef, /^event\.vexlife\.response\./u);
+    assert.match(result.responseEventSha256, /^[a-f0-9]{64}$/u);
     assert.equal(model.calls.length, 1);
     assert.equal(model.calls[0].path, '/v1/chat/completions');
     assert.equal(model.calls[0].body.model, 'Qwen3.5-4B-Q4_K_M');
