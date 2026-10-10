@@ -18,6 +18,26 @@ async function waitHttp(url,handle,timeout=15000){const deadline=Date.now()+time
 async function waitDebug(port,handle,timeout=15000){const deadline=Date.now()+timeout;let last=null;while(Date.now()<deadline){if(handle.exitCode!==null)throw new Error(`browser exited ${handle.exitCode}`);try{const r=await fetch(`http://127.0.0.1:${port}/json/version`,{cache:'no-store'});if(r.ok)return;last=`HTTP ${r.status}`;}catch(error){last=error.message;}await sleep(120);}throw new Error(`debug timeout ${last}`);}
 async function stop(handle){if(!handle||handle.exitCode!==null)return;handle.kill('SIGTERM');const deadline=Date.now()+3000;while(handle.exitCode===null&&Date.now()<deadline)await sleep(50);if(handle.exitCode===null)handle.kill('SIGKILL');}
 async function rmRetry(target){for(let i=0;i<8;i+=1){try{fs.rmSync(target,{recursive:true,force:true});return;}catch(error){if(!['ENOTEMPTY','EBUSY','EPERM'].includes(error.code))throw error;await sleep(80*(i+1));}}fs.rmSync(target,{recursive:true,force:true});}
+async function ensureCommit(ref){
+  const present=()=>{try{run('git',['cat-file','-e',`${ref}^{commit}`]);return true;}catch{return false;}};
+  if(present())return;
+  // The accepted predecessor proof may be fetching the same historical commit in
+  // another Node test worker. Give that owner the first opportunity rather than
+  // racing its shallow.lock. When this test runs alone, fall back to the same
+  // bounded exact fetch after the grace window.
+  await sleep(1800);
+  const deadline=Date.now()+15000;
+  while(Date.now()<deadline){
+    if(present())return;
+    try{run('git',['fetch','--no-tags','--depth=1','origin',ref]);if(present())return;}
+    catch(error){
+      const detail=String(error?.stderr??error?.message??error);
+      if(!/shallow\.lock|another git process/i.test(detail))throw error;
+    }
+    await sleep(250);
+  }
+  if(!present())throw new Error(`Unable to acquire exact predecessor commit ${ref}`);
+}
 
 test('Round-2 Live/Evolution truth switch preserves accepted semantics and never substitutes fixture truth', {timeout:120000}, async (t)=>{
   const temp=fs.mkdtempSync(path.join(os.tmpdir(),'vexlife-assortment-live-evolution-'));
@@ -26,7 +46,7 @@ test('Round-2 Live/Evolution truth switch preserves accepted semantics and never
   const port=await freePort(),debugPort=await freePort();
   let server=null,browser=null,cdp=null;
   t.after(async()=>{try{await cdp?.close();}catch{}await stop(browser);await stop(server);try{run('git',['worktree','remove','--force',source]);}catch{}await rmRetry(temp);});
-  try{run('git',['cat-file','-e',`${BINDING.predecessorSourceHead}^{commit}`]);}catch{run('git',['fetch','--no-tags','--depth=1','origin',BINDING.predecessorSourceHead]);}
+  await ensureCommit(BINDING.predecessorSourceHead);
   run('git',['worktree','add','--detach',source,BINDING.predecessorSourceHead]);
   const receipt=JSON.parse(run(process.execPath,[path.join(CANDIDATE,'PATCH-PREVIEW.mjs'),source],{cwd:source}));
   assert.equal(receipt.state,'FORMED');

@@ -198,7 +198,7 @@ export function createAssortmentPreview({app,t=(ref)=>ref}={}){
   }
   async function ensureLiveTruth(){if(liveTruth===null)liveTruth=await loadLiveTruth();return liveTruth;}
   function renderMounted(){if(!mountedBody||!mountedRenderer)return;mountedBody.replaceChildren();mountedRenderer({host:mountedBody,fixture,t,preview:api,truthMode,liveTruth});queueMicrotask(syncBack);}
-  async function setTruthMode(next){if(!['LIVE','EVOLUTION'].includes(next))return Object.freeze({state:'BLOCKED',reason:'UNKNOWN_TRUTH_MODE'});truthMode=next;if(truthMode==='LIVE')await ensureLiveTruth();renderMounted();return snapshot();}
+  async function setTruthMode(next){if(!['LIVE','EVOLUTION'].includes(next))return Object.freeze({state:'BLOCKED',reason:'UNKNOWN_TRUTH_MODE'});if(next==='LIVE')await ensureLiveTruth();truthMode=next;renderMounted();return snapshot();}
   const syncBack=()=>{const b=shellBack();if(!b)return;const active=activeSurface();b.hidden=!ASSORTMENT_SURFACES.has(active);b.disabled=!ASSORTMENT_SURFACES.has(active);b.dataset.presentationDepth=String(presentationStack.length);};
   const syncTerrainToFrame=(frame)=>{const ref=frame?.selectedNodeRef;if(typeof ref==='string'){app.state.terrain.selected=ref;app.terrain.render(false);}return ref;};
   async function ensureFixture(){fixture??=await loadFixture();return fixture;}
