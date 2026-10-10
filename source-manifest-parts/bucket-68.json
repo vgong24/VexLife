@@ -3,6 +3,12 @@
   "bucketId": "68",
   "files": [
     {
+      "path": "docs/VEX-ASSEMBLY-COMPANION-VOICE-PLAYBACK.md",
+      "mode": "100644",
+      "bytes": 3892,
+      "sha256": "ab00f25df6df61f96f1d7c988fac766d679d7a5e842c693adf06bf1c8948eac5"
+    },
+    {
       "path": "test/security-access-convergence.test.mjs",
       "mode": "100644",
       "bytes": 6464,

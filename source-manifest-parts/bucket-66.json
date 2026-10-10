@@ -3,6 +3,12 @@
   "bucketId": "66",
   "files": [
     {
+      "path": "blueprint/module-registry/companion-voice-playback.json",
+      "mode": "100644",
+      "bytes": 916,
+      "sha256": "6f25e395864ee415aa8b3778f4d86eecdfbda038aacdd4b79475ad304f8cebcb"
+    },
+    {
       "path": "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
       "mode": "100644",
       "bytes": 19526,
