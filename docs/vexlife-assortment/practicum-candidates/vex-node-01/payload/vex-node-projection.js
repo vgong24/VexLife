@@ -50,14 +50,22 @@ export function createVexNodePreview({app,t,capabilityRegistry}){
   const capabilities=capabilityProjection(capabilityRegistry);
   const appRoot=()=>document.querySelector('#app');
   const guideWindow=()=>document.querySelector('#guideWindow');
+  const presenceButton=()=>document.querySelector('#vexSummon');
   const shellBack=()=>document.querySelector('#evolutionActiveSurfaceBack');
   const activeSurface=()=>app.uxProjectionShell.snapshot().activeSurfaceRef;
   const syncBack=()=>{const button=shellBack();if(!button)return;const owned=activeSurface()===VEX_NODE_SURFACE_REF;button.hidden=!owned;button.disabled=!owned;};
 
   function updateCompanionStratum(){
     const root=appRoot(),guide=guideWindow();if(!root||!guide)return;
+    const mode=guide.hidden?'closed':guide.classList.contains('is-minimized')?'compact':'expanded';
     root.dataset.vexCompanionStratum='true';
-    root.dataset.vexCompanionRail=guide.hidden?'closed':guide.classList.contains('is-minimized')?'compact':'expanded';
+    root.dataset.vexCompanionRail=mode;
+    const mark=presenceButton();
+    if(mark){
+      mark.dataset.vexPresenceMode=mode;
+      mark.setAttribute('aria-expanded',String(mode==='expanded'));
+      mark.title=mode==='compact'?t('vex-node.presence.here'):'';
+    }
   }
 
   function ensureContextAttachment(){
@@ -205,6 +213,12 @@ export function createVexNodePreview({app,t,capabilityRegistry}){
     appRoot().dataset.vexCompanionStratum='true';
     companionObserver=new MutationObserver(()=>refresh());
     const guide=guideWindow();if(guide)companionObserver.observe(guide,{attributes:true,attributeFilter:['hidden','class','style']});
+    const mark=presenceButton();
+    mark?.addEventListener('click',(event)=>{
+      if(appRoot()?.dataset.vexCompanionRail!=='compact')return;
+      event.preventDefault();event.stopImmediatePropagation();
+      expandVexForVexNode();refresh();
+    },true);
     app.uxProjectionShell.registerEvolutionSurfaceAdapter(VEX_NODE_SURFACE_REF,Object.freeze({
       async mount({body}){mountedBody=body;renderVex(body);queueMicrotask(()=>{syncBack();refresh();});return Object.freeze({state:'MOUNTED',surfaceRef:VEX_NODE_SURFACE_REF,effects:false});},
       requestClose(){mountedBody=null;queueMicrotask(syncBack);return Object.freeze({state:'CLOSED',reason:'PRESENTATION_DISMISS',semanticNavigationMutated:false});}
