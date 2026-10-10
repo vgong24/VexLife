@@ -1,0 +1,155 @@
+{
+  "schemaVersion": "vexlife.android-design-lab-registry/v0",
+  "registryRef": "registry.vexlife.android-design-lab.001",
+  "ownerRef": "github.issue.vexlife.783",
+  "surfaceRef": "surface.vexlife.android.design-lab.001",
+  "presentationRef": "presentation.vexlife.android.design-lab",
+  "mode": "DEBUG_DEVELOPER_ONLY",
+  "doorway": {
+    "componentRef": "component.vexlife.action-vessel",
+    "elementRef": "element.vexlife.android.design-lab.fab",
+    "actionRef": "action.vexlife.design-lab.open",
+    "permissionRef": "permission.none",
+    "effectClass": "PRESENTATION_LOCAL"
+  },
+  "sections": [
+    {
+      "sectionRef": "section.vexlife.design-lab.play",
+      "labelStringRef": "design_lab_section_play",
+      "state": "HELD_LATER_SLICE",
+      "specimenRefs": []
+    },
+    {
+      "sectionRef": "section.vexlife.design-lab.building-blocks",
+      "labelStringRef": "design_lab_section_building_blocks",
+      "state": "CURRENT",
+      "specimenRefs": [
+        "specimen.vexlife.design-lab.vex-button.001"
+      ]
+    },
+    {
+      "sectionRef": "section.vexlife.design-lab.tokens-themes",
+      "labelStringRef": "design_lab_section_tokens_themes",
+      "state": "HELD_LATER_SLICE",
+      "specimenRefs": []
+    },
+    {
+      "sectionRef": "section.vexlife.design-lab.inspect",
+      "labelStringRef": "design_lab_section_inspect",
+      "state": "HELD_LATER_SLICE",
+      "specimenRefs": []
+    }
+  ],
+  "specimens": [
+    {
+      "specimenRef": "specimen.vexlife.design-lab.vex-button.001",
+      "componentRef": "component.vexlife.design-lab.vex-button",
+      "elementRef": "element.vexlife.design-lab.specimen.vex-button",
+      "actionRef": "action.vexlife.design-lab.specimen.button.increment",
+      "permissionRef": "permission.none",
+      "effectClass": "LOCAL_FIXTURE",
+      "labelStringRef": "design_lab_vex_button",
+      "actionLabelStringRef": "design_lab_vex_button_action"
+    }
+  ],
+  "outputConsole": {
+    "elementRef": "element.vexlife.design-lab.output-console",
+    "scope": "SPECIMEN_LOCAL_EPHEMERAL",
+    "result": "ADMITTED_LOCAL_FIXTURE",
+    "presentationEvent": "DESIGN_LAB_LOCAL_SPECIMEN_ACTION",
+    "fields": [
+      "ACTION_REQUESTED",
+      "elementRef",
+      "actionRef",
+      "itemRefOrNull",
+      "operationRefOrNull",
+      "preRevision",
+      "result",
+      "postRevision",
+      "presentationEvent"
+    ]
+  },
+  "localizations": {
+    "en": {
+      "design_lab_title": "Design Lab",
+      "design_lab_open": "Open Design Lab",
+      "design_lab_close": "Close",
+      "design_lab_section_play": "PLAY",
+      "design_lab_section_building_blocks": "BUILDING BLOCKS",
+      "design_lab_section_tokens_themes": "TOKENS & THEMES",
+      "design_lab_section_inspect": "INSPECT",
+      "design_lab_held_later": "Held for a later gallery slice",
+      "design_lab_vex_button": "VexButton",
+      "design_lab_vex_button_action": "Advance local specimen",
+      "design_lab_output_console": "Output Console",
+      "design_lab_output_waiting": "Waiting for a local specimen action",
+      "design_lab_output_action_requested": "ACTION_REQUESTED",
+      "design_lab_output_element": "Element",
+      "design_lab_output_action": "Action",
+      "design_lab_output_pre_revision": "Pre revision",
+      "design_lab_output_result": "Result",
+      "design_lab_output_post_revision": "Post revision",
+      "design_lab_output_presentation_event": "Presentation event"
+    },
+    "ja": {
+      "design_lab_title": "デザインラボ",
+      "design_lab_open": "デザインラボを開く",
+      "design_lab_close": "閉じる",
+      "design_lab_section_play": "プレイ",
+      "design_lab_section_building_blocks": "ビルディングブロック",
+      "design_lab_section_tokens_themes": "トークンとテーマ",
+      "design_lab_section_inspect": "インスペクト",
+      "design_lab_held_later": "後続のギャラリースライスで追加",
+      "design_lab_vex_button": "VexButton",
+      "design_lab_vex_button_action": "ローカル標本を進める",
+      "design_lab_output_console": "出力コンソール",
+      "design_lab_output_waiting": "ローカル標本アクション待機中",
+      "design_lab_output_action_requested": "ACTION_REQUESTED",
+      "design_lab_output_element": "要素",
+      "design_lab_output_action": "アクション",
+      "design_lab_output_pre_revision": "前のリビジョン",
+      "design_lab_output_result": "結果",
+      "design_lab_output_post_revision": "後のリビジョン",
+      "design_lab_output_presentation_event": "プレゼンテーションイベント"
+    },
+    "zh-rCN": {
+      "design_lab_title": "设计实验室",
+      "design_lab_open": "打开设计实验室",
+      "design_lab_close": "关闭",
+      "design_lab_section_play": "试玩",
+      "design_lab_section_building_blocks": "构件",
+      "design_lab_section_tokens_themes": "令牌与主题",
+      "design_lab_section_inspect": "检查",
+      "design_lab_held_later": "将在后续画廊切片中加入",
+      "design_lab_vex_button": "VexButton",
+      "design_lab_vex_button_action": "推进本地样例",
+      "design_lab_output_console": "输出控制台",
+      "design_lab_output_waiting": "等待本地样例操作",
+      "design_lab_output_action_requested": "ACTION_REQUESTED",
+      "design_lab_output_element": "元素",
+      "design_lab_output_action": "操作",
+      "design_lab_output_pre_revision": "操作前版本",
+      "design_lab_output_result": "结果",
+      "design_lab_output_post_revision": "操作后版本",
+      "design_lab_output_presentation_event": "呈现事件"
+    }
+  },
+  "authority": {
+    "homeEffect": false,
+    "networkEffect": false,
+    "pairingEffect": false,
+    "modelEffect": false,
+    "keyEffect": false,
+    "memoryEffect": false,
+    "trainingEffect": false,
+    "persistentThemeMutation": false,
+    "publicationAuthority": false
+  },
+  "held": [
+    "INSPECT_WHY_MAPPING",
+    "THEME_PREVIEW",
+    "ANCHORED_TOOLTIP_STRESS",
+    "PERSISTENT_GLOBAL_THEME_MUTATION",
+    "PUBLIC_DESIGN_LAB_DISCOVERABILITY"
+  ]
+}
