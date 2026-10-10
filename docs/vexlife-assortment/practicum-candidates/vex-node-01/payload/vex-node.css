@@ -15,9 +15,9 @@
 .assortment-projection-toggle{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--raised);border-radius:9px;padding:3px 5px}.assortment-projection-toggle label{font:700 8px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}.assortment-projection-toggle select{min-height:34px;border:0;background:transparent;color:var(--text);font-size:11px}.assortment-projection-toggle output{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 @media(max-width:760px){
   .vex-node-now-grid,.vex-node-grid{grid-template-columns:1fr}.vex-node-hero{display:grid}.vex-node-surface{padding:16px}
-  #app[data-vex-companion-stratum="true"][data-vex-companion-rail="compact"] #guideWindow.e27-vex.is-minimized{position:fixed!important;left:auto!important;right:8px!important;top:auto!important;bottom:78px!important;width:168px!important;height:58px!important;max-height:58px!important;border-radius:999px!important}
-  #app[data-vex-companion-stratum="true"][data-vex-companion-rail="compact"] #guideWindow.e27-vex.is-minimized #guideClose{display:none}
-  #app[data-vex-companion-stratum="true"][data-vex-companion-rail="compact"] #guideWindow.e27-vex.is-minimized .guide-resize-handle{display:none}
+  #app[data-vex-companion-stratum="true"][data-vex-companion-rail="compact"] #guideWindow.e27-vex.is-minimized{display:none!important}
+  #app[data-vex-companion-stratum="true"][data-vex-companion-rail="compact"] #vexSummon[data-vex-presence-mode="compact"]{position:relative;border-color:var(--info);box-shadow:0 0 0 2px color-mix(in srgb,var(--info) 28%,transparent)}
+  #app[data-vex-companion-stratum="true"][data-vex-companion-rail="compact"] #vexSummon[data-vex-presence-mode="compact"]::after{content:'';position:absolute;right:4px;bottom:4px;width:8px;height:8px;border-radius:50%;background:var(--info);box-shadow:0 0 0 2px var(--surface)}
   #app[data-vex-companion-stratum="true"][data-evolution-surface-active="true"][data-vex-companion-rail="expanded"] .uxe-active-surface-host{inset:64px 0 42vh 0!important}
   #app[data-vex-companion-stratum="true"][data-evolution-surface-active="true"][data-vex-companion-rail="expanded"] #guideWindow.e27-vex{left:0!important;right:0!important;top:auto!important;bottom:0!important;width:100%!important;height:42vh!important;border-radius:16px 16px 0 0!important}
   .assortment-projection-toggle label{display:none}
