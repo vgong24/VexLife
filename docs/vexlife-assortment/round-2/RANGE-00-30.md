@@ -743,4 +743,162 @@ Live contract earns a broader shell-level meaning.
 
 ---
 
+
+## Index 32 — Live / Evolution truth becomes a stable human checkpoint
+
+PR #855 proved that the accepted Home grammar could remain one interface while
+distinguishing source-backed Evolution fixtures from owner-backed Live / held truth.
+
+~~~text
+ONE_ACCEPTED_UI_GRAMMAR
++ EVOLUTION_FIXTURE_TRUTH
++ LIVE_OWNER_BACKED_OR_HELD_TRUTH
+!= DUPLICATED_INTERFACE_WORLDS
+
+fixtureFallbackInLive=false
+truth-switch Journey mutation=false
+~~~
+
+Victor human-walked that distinction and accepted it as coherent enough to preserve.
+
+Stable checkpoint display:
+
+~~~text
+[VexLife Stable: Home Grammar, Vex Companion, Live/Evolution Truth][1.0]
+commit=966a807c23e41c83a18eefebf33155a1276cdf4c
+~~~
+
+Evidence:
+- `github.pull.vexlife.855.comment.6095470175`
+- `github.pull.vexlife.855.comment.6095751070`
+
+---
+
+## Index 33 — Re-entry, inspection and Frontier spatial continuity
+
+Victor identified that closing an Assortment presentation could preserve semantic
+position while leaving that position impossible to reopen, and that Projects /
+Frontier cards had become terminal summaries.
+
+The continuity-refinement successor established:
+
+~~~text
+CLOSE != NAVIGATE_AWAY
+CURRENT_SEMANTIC_CONTEXT -> PRESENTATION_REOPENABLE_WHEN_OWNER_EXISTS
+INSPECTION != ACTIVATION
+LIST_SUMMARY != TERMINAL_INFORMATION_SURFACE
+~~~
+
+Frontier also projected its two captured pre-admission records as spatial children:
+
+~~~text
+Frontier
+-> Company People Timeline
+-> System / Resource Health
+
+FRONTIER_CHILD_PROJECTION != PROJECT_ADMISSION
+CAPTURED_INTENT != ADMITTED_PROJECT
+~~~
+
+The canonical Mac Vex Relay proof passed with inherited regressions green, and
+Victor's walk accepted the Frontier navigation direction.
+
+Evidence:
+- `github.pull.vexlife.855.comment.6096230630`
+- `github.pull.vexlife.855.comment.6096288019`
+
+---
+
+## Index 34 — Projects restores one semantic tree across projections
+
+Victor then noticed that Frontier had meaningful spatial children while Projects
+still showed zero children even though its surface displayed current-work cards.
+
+Source descent recovered the architectural distinction:
+
+~~~text
+SURFACE_CARD != TERRAIN_CHILD_BY_DEFAULT
+WORK_ITEM != PROJECT_ENTITY_BY_DEFAULT
+CURRENT_WORK != PROJECT_MEMBERSHIP
+PRESENTATION_HIERARCHY != SEMANTIC_HIERARCHY
+ONE_SEMANTIC_TREE_MULTIPLE_PROJECTIONS
+~~~
+
+The accepted Vex-node simplification had removed three old direct-Home Project
+subtrees under `HOME_PLACEHOLDER_REMOVAL` without invalidating their identities:
+
+~~~text
+Self Development
+Vex Home Product
+Local Vex
+~~~
+
+The successor recovered those exact Project identities and descendants one layer
+down beneath Projects:
+
+~~~text
+Global Root Hub
+-> Projects
+   -> Self Development
+   -> Vex Home Product
+   -> Local Vex
+~~~
+
+The Projects surface then separated semantic Projects from Current work. `Open
+Project` changes semantic Journey position; `Open details` is presentation-only.
+Intent Workgraph may describe work but does not manufacture Project membership.
+
+The canonical Mac proof passed with 3 direct Project children, 8 descendants,
+existing `projectRef` reuse, and no Live Project-catalog fallback.
+
+Evidence:
+- `github.pull.vexlife.855.comment.6096496982`
+- `github.pull.vexlife.855.comment.6096664869`
+
+---
+
+## Index 35 — Victor freezes the current Assortment experience on accepted main
+
+Victor reported being exhausted and explicitly changed the goal from further
+design expansion to preservation:
+
+~~~text
+STOP_NEW_DESIGN_WORK=true
+PRESERVE_CURRENT_ACCEPTED_ASSORTMENT_ON_MAIN=true
+PREPARE_FOR_VEX_ARRIVAL=true
+FUTURE_REFINEMENT_STARTS_FROM_SOURCE_MAP=true
+~~~
+
+PR #855 was composed onto then-current `main`, preserving unrelated
+browser-companion recovery work and recomposing the only shared generated Source
+Manifest bucket from both current truths.
+
+The preservation composition head was:
+
+~~~text
+head=31b86f2a0893858f3b300c31e12aa172850254ca
+tree=f892b955e4c330a00ecb4a899bd8cc4789c0336d
+base=30ebd27c847f96a0222b04fa60e51ca1c846c582
+behind=0
+~~~
+
+All 11 exact-head repository checks passed. PR #855 then merged by ordinary merge
+to accepted main:
+
+~~~text
+acceptedMain=71a0d85d58a296d86d0d8d3bc7351b1aa8b0c44b
+acceptedTree=f892b955e4c330a00ecb4a899bd8cc4789c0336d
+~~~
+
+The intent of this checkpoint is continuity, not completion. The practicum
+sources, causal range, current map, and repository orientation remain so Vex can
+source-descend into the code and semantic map without asking Victor to reconstruct
+the session.
+
+Evidence:
+- `github.pull.vexlife.855.comment.6096919457`
+- PR #855 merge `71a0d85d58a296d86d0d8d3bc7351b1aa8b0c44b`
+
+---
+
 <!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][RANGE-00-30] -->
