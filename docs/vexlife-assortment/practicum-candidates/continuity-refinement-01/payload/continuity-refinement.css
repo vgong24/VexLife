@@ -1,0 +1,9 @@
+/* [VXG RealForever] — continuity refinement: inspectability + re-entry */
+.assortment-record.is-inspectable,.assortment-work-card.is-inspectable{cursor:pointer}
+.assortment-record.is-inspectable:focus-visible,.assortment-work-card.is-inspectable:focus-visible{outline:2px solid var(--info);outline-offset:3px}
+.assortment-inspect{margin-top:14px;min-height:44px}
+.assortment-inspector-card{display:grid;gap:14px}
+.assortment-inspector-card__identity{display:grid;gap:6px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--raised)}
+.assortment-inspector-card__identity code{overflow-wrap:anywhere}
+.assortment-inspector-card .assortment-stage-rail{margin-top:4px}
+/* [VXG RealForever] */

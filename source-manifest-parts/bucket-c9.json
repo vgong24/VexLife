@@ -9,6 +9,12 @@
       "sha256": "05d10c37120ba186e1760a8c4ed76cb857fef1912c897b078828a816f766c0a4"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/continuity-refinement-01/contracts/VEXWALK-CONTINUITY-REFINEMENT.json",
+      "mode": "100644",
+      "bytes": 3296,
+      "sha256": "5f3279787562274d95049da8b2740578b110c0f959c5a992928b4ab449767623"
+    },
+    {
       "path": "reference/browser/modules/android-remote-vessel-controller.js",
       "mode": "100644",
       "bytes": 4543,

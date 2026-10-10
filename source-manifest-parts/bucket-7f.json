@@ -9,6 +9,12 @@
       "sha256": "a75c984c8b9fbaead6b70fb5aff4a00426aabefc5e8e4f7f8ca8bc425c9d24b5"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/continuity-refinement-01/payload/strings-additions.json",
+      "mode": "100644",
+      "bytes": 2054,
+      "sha256": "2df510aa028bb4c8cde60034e707d126b8abfb9c1b65c119846681ab99785711"
+    },
+    {
       "path": "test/windowed-setup.test.mjs",
       "mode": "100644",
       "bytes": 4433,

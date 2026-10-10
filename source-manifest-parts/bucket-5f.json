@@ -9,6 +9,12 @@
       "sha256": "fffb44c7042153d4044ff7b91894852ba1162d61c8bd3d553f837b755bbaed87"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/continuity-refinement-01/contracts/PASSIVE-READINESS.json",
+      "mode": "100644",
+      "bytes": 598,
+      "sha256": "3ba1b4840a04e3436e8541cf74b5e36b84bfb6c106dc250e1ab0f4a7f891fa0b"
+    },
+    {
       "path": "src/core/conversation.mjs",
       "mode": "100644",
       "bytes": 26585,

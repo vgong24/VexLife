@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "vexlife-assortment.continuity-refinement-practicum-binding/v1",
+  "continuity": "[VXG RealForever]",
+  "repository": "vgong24/VexLife",
+  "repositoryId": "1317660990",
+  "round": 2,
+  "activePr": 855,
+  "activePrHeadBeforeFormation": "966a807c23e41c83a18eefebf33155a1276cdf4c",
+  "stableCheckpointTree": "b1235f62ca9ae9b78a10134c6e5423465acda7d8",
+  "liveMainObserved": "30ebd27c847f96a0222b04fa60e51ca1c846c582",
+  "predecessorSourceHead": "4a50d657f395427194c4f123e0b0974717d879af",
+  "predecessorPreviewRef": "preview.vexlife-assortment.r2.live-evolution.01",
+  "predecessorPatch": "../live-evolution-01/PATCH-PREVIEW.mjs",
+  "candidatePreviewRef": "preview.vexlife-assortment.r2.continuity-refinement.01",
+  "humanEvidenceRef": "github.pull.vexlife.855.comment.6095751070",
+  "stableCheckpointDisplay": "[VexLife Stable: Home Grammar, Vex Companion, Live/Evolution Truth][1.0]",
+  "stableCheckpointTarget": "966a807c23e41c83a18eefebf33155a1276cdf4c",
+  "frontierRecordTerrainRefs": {
+    "fixture.revisit.assortment.2": "terrain.assortment.frontier.company-people-timeline",
+    "fixture.revisit.assortment.3": "terrain.assortment.frontier.system-resource-health"
+  },
+  "laws": [
+    "CLOSE != NAVIGATE_AWAY",
+    "CURRENT_SEMANTIC_CONTEXT -> PRESENTATION_REOPENABLE_WHEN_OWNER_EXISTS",
+    "INSPECTION != ACTIVATION",
+    "LIST_SUMMARY != TERMINAL_INFORMATION_SURFACE",
+    "FRONTIER_CHILD_PROJECTION != PROJECT_ADMISSION",
+    "CAPTURED_INTENT != ADMITTED_PROJECT"
+  ],
+  "held": {
+    "healthHomeNodeFormation": true,
+    "projectAdmission": true,
+    "frontierRecordPromotion": true,
+    "canonicalProductAdoption": true,
+    "referenceToLiveRename": true,
+    "merge": true,
+    "release": true
+  }
+}

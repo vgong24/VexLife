@@ -1,0 +1,35 @@
+{
+  "en": {
+    "terrain.current-context.open": "Open this context",
+    "assortment.action.inspect": "Open details",
+    "assortment.inspector.eyebrow": "Inspect",
+    "assortment.inspector.identity": "Stable identity",
+    "assortment.inspector.no-selection": "No inspectable record is selected.",
+    "assortment.frontier.company-people-timeline": "Company People Timeline",
+    "assortment.frontier.system-resource-health": "System / Resource Health",
+    "assortment.live.inspector.title": "Live details",
+    "assortment.live.inspector-held": "This detail projection does not yet have a mapped Live owner. Evolution fixture details are not substituted."
+  },
+  "ja": {
+    "terrain.current-context.open": "このコンテキストを開く",
+    "assortment.action.inspect": "詳細を開く",
+    "assortment.inspector.eyebrow": "確認",
+    "assortment.inspector.identity": "安定した識別子",
+    "assortment.inspector.no-selection": "確認できるレコードが選択されていません。",
+    "assortment.frontier.company-people-timeline": "Company People Timeline",
+    "assortment.frontier.system-resource-health": "System / Resource Health",
+    "assortment.live.inspector.title": "Live 詳細",
+    "assortment.live.inspector-held": "この詳細 projection には、まだ対応する Live owner がありません。Evolution fixture の詳細で代用しません。"
+  },
+  "zh": {
+    "terrain.current-context.open": "打开当前上下文",
+    "assortment.action.inspect": "打开详情",
+    "assortment.inspector.eyebrow": "查看",
+    "assortment.inspector.identity": "稳定标识",
+    "assortment.inspector.no-selection": "尚未选择可查看的记录。",
+    "assortment.frontier.company-people-timeline": "Company People Timeline",
+    "assortment.frontier.system-resource-health": "System / Resource Health",
+    "assortment.live.inspector.title": "Live 详情",
+    "assortment.live.inspector-held": "此详情 projection 尚无已映射的 Live owner；不会用 Evolution fixture 详情替代。"
+  }
+}
