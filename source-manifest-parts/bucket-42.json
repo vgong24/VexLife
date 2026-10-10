@@ -9,6 +9,12 @@
       "sha256": "59a5c721706a884209e9ee290929a0bf2ffb2cc048a03ea4f07c6fb06363db6f"
     },
     {
+      "path": "platform/android/app/src/main/res/values-zh-rCN/design_lab.xml",
+      "mode": "100644",
+      "bytes": 1331,
+      "sha256": "bde2ec08e1e72d86bb02db0d27ee557cb0d1e3af9d39b6d25b7fdd2235adece2"
+    },
+    {
       "path": "src/core/home-bridge-session-authority.mjs",
       "mode": "100644",
       "bytes": 15728,

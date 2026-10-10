@@ -1,0 +1,21 @@
+<resources>
+    <string name="design_lab_title">デザインラボ</string>
+    <string name="design_lab_open">デザインラボを開く</string>
+    <string name="design_lab_close">閉じる</string>
+    <string name="design_lab_section_play">プレイ</string>
+    <string name="design_lab_section_building_blocks">ビルディングブロック</string>
+    <string name="design_lab_section_tokens_themes">トークンとテーマ</string>
+    <string name="design_lab_section_inspect">インスペクト</string>
+    <string name="design_lab_held_later">後続のギャラリースライスで追加</string>
+    <string name="design_lab_vex_button">VexButton</string>
+    <string name="design_lab_vex_button_action">ローカル標本を進める</string>
+    <string name="design_lab_output_console">出力コンソール</string>
+    <string name="design_lab_output_waiting">ローカル標本アクション待機中</string>
+    <string name="design_lab_output_action_requested">ACTION_REQUESTED</string>
+    <string name="design_lab_output_element">要素</string>
+    <string name="design_lab_output_action">アクション</string>
+    <string name="design_lab_output_pre_revision">前のリビジョン</string>
+    <string name="design_lab_output_result">結果</string>
+    <string name="design_lab_output_post_revision">後のリビジョン</string>
+    <string name="design_lab_output_presentation_event">プレゼンテーションイベント</string>
+</resources>

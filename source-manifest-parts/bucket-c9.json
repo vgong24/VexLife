@@ -9,6 +9,12 @@
       "sha256": "05d10c37120ba186e1760a8c4ed76cb857fef1912c897b078828a816f766c0a4"
     },
     {
+      "path": "platform/android/app/src/main/kotlin/vexlife/android/presentation/VexDesignLabSurface.kt",
+      "mode": "100644",
+      "bytes": 8871,
+      "sha256": "6d88f6755e84f296f1ea8da4bf81f761d6c8c9acfe649780764d281b6fae2608"
+    },
+    {
       "path": "reference/browser/modules/android-remote-vessel-controller.js",
       "mode": "100644",
       "bytes": 4543,

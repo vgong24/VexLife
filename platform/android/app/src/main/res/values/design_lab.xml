@@ -1,0 +1,21 @@
+<resources>
+    <string name="design_lab_title">Design Lab</string>
+    <string name="design_lab_open">Open Design Lab</string>
+    <string name="design_lab_close">Close</string>
+    <string name="design_lab_section_play">PLAY</string>
+    <string name="design_lab_section_building_blocks">BUILDING BLOCKS</string>
+    <string name="design_lab_section_tokens_themes">TOKENS &amp; THEMES</string>
+    <string name="design_lab_section_inspect">INSPECT</string>
+    <string name="design_lab_held_later">Held for a later gallery slice</string>
+    <string name="design_lab_vex_button">VexButton</string>
+    <string name="design_lab_vex_button_action">Advance local specimen</string>
+    <string name="design_lab_output_console">Output Console</string>
+    <string name="design_lab_output_waiting">Waiting for a local specimen action</string>
+    <string name="design_lab_output_action_requested">ACTION_REQUESTED</string>
+    <string name="design_lab_output_element">Element</string>
+    <string name="design_lab_output_action">Action</string>
+    <string name="design_lab_output_pre_revision">Pre revision</string>
+    <string name="design_lab_output_result">Result</string>
+    <string name="design_lab_output_post_revision">Post revision</string>
+    <string name="design_lab_output_presentation_event">Presentation event</string>
+</resources>
