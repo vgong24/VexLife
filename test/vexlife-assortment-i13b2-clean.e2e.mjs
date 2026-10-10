@@ -231,6 +231,8 @@ test('Round-2 I13B2 clean re-form earns integrated P0-P4 and rendered evidence',
   await page.waitForFunction(() => document.querySelector('#surfaceMenu')?.hidden === false);
   await page.selectOption('#languageSelect', 'ja');
   await page.waitForFunction(() => document.documentElement.lang === 'ja');
+  await page.locator('#surfaceMenuButton').click();
+  await page.waitForFunction(() => document.querySelector('#surfaceMenu')?.hidden === true);
   await page.evaluate(async () => { await globalThis.__VEXLIFE_ASSORTMENT_PREVIEW__.handleTerrainNode('terrain.assortment.continue'); });
   await page.waitForFunction(() => document.querySelector('.assortment-continuity h2')?.textContent?.trim() === '連続性');
   const japanese = await continuityMetrics(page);
@@ -253,6 +255,8 @@ test('Round-2 I13B2 clean re-form earns integrated P0-P4 and rendered evidence',
   }
   await page.selectOption('#languageSelect', 'zh');
   await page.waitForFunction(() => document.documentElement.lang === 'zh');
+  await page.locator('#surfaceMenuButton').click();
+  await page.waitForFunction(() => document.querySelector('#surfaceMenu')?.hidden === true);
   await page.evaluate(async () => { await globalThis.__VEXLIFE_ASSORTMENT_PREVIEW__.handleTerrainNode('terrain.assortment.continue'); });
   await page.waitForFunction(() => document.querySelector('.assortment-continuity h2')?.textContent?.trim() === '连续性');
   const chinese = await continuityMetrics(page);
