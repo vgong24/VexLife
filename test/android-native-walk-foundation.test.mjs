@@ -1,26 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
   ACCEPTED_ANDROID_BASE,
   ACCEPTED_MAIN_ACTIVITY_SHA256,
+  ACCEPTED_MAIN_ACTIVITY_SOURCE,
   MAIN_ACTIVITY_PATH,
   renderAndroidNativeWalkFoundation,
   validateAcceptedMainActivityPreimage,
 } from '../src/core/android-native-walk-foundation.mjs';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BASE = execFileSync('git', ['show', `${ACCEPTED_ANDROID_BASE}:${MAIN_ACTIVITY_PATH}`], {
-  cwd: ROOT,
-  encoding: 'utf8',
-  stdio: ['ignore', 'pipe', 'pipe'],
-});
+const BASE = ACCEPTED_MAIN_ACTIVITY_SOURCE;
 
 function rendered() { return renderAndroidNativeWalkFoundation(BASE).files[MAIN_ACTIVITY_PATH]; }
 
-test('NW00-01 exact accepted MainActivity preimage is required', () => {
+test('NW00-01 exact accepted MainActivity preimage is required and source-addressable', () => {
+  assert.equal(ACCEPTED_ANDROID_BASE, '78bed64878cc85264878e1cb5ab9fbab7bee293b');
   const accepted = validateAcceptedMainActivityPreimage(BASE);
   assert.equal(accepted.sha256, ACCEPTED_MAIN_ACTIVITY_SHA256);
   assert.throws(() => validateAcceptedMainActivityPreimage(BASE + '\n// drift\n'), /NW00_MAIN_ACTIVITY_PREIMAGE_DRIFT/);
