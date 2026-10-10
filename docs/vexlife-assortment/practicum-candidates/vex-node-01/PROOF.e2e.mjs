@@ -216,11 +216,28 @@ test('Round-2 Vex node practicum cleans Home and composes persistent source-boun
   assert.ok(compactMarkBox&&compactMarkBox.width>=44&&compactMarkBox.height>=44,'compact Vex app-bar presence must remain directly operable');
   assert.equal(await page.locator('#guideBody').isVisible(),false);
   assert.equal(await page.evaluate(()=>globalThis.__VEXLIFE_VEX_PREVIEW__.snapshot().companionTurnRef),turnBeforeCompact,'compact Vex presence must preserve conversation turn identity');
-  const compactVexTargetClear=await page.locator('.e27-node[data-terrain-ref="terrain.assortment.vex"]').evaluate((node)=>{
-    const r=node.getBoundingClientRect(),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
-    return Boolean(hit&&(hit===node||node.contains(hit)));
+  const compactVexTargetDiagnostic=await page.locator('.e27-node[data-terrain-ref="terrain.assortment.vex"]').evaluate((node)=>{
+    const r=node.getBoundingClientRect(),point={x:r.left+r.width/2,y:r.top+r.height/2},hit=document.elementFromPoint(point.x,point.y);
+    const describe=(element)=>{if(!element)return null;const s=getComputedStyle(element),rect=element.getBoundingClientRect();return {
+      tag:element.tagName?.toLowerCase()??null,
+      id:element.id||null,
+      className:typeof element.className==='string'?element.className:null,
+      rect:rect.toJSON(),
+      pointerEvents:s.pointerEvents,
+      position:s.position,
+      zIndex:s.zIndex,
+      terrainRef:element.dataset?.terrainRef??null,
+      nodeRef:element.dataset?.nodeRef??null,
+      regionRef:element.dataset?.regionRef??null,
+      surfaceRef:element.dataset?.surfaceRef??null
+    };};
+    const owner=hit?.closest?.('[data-terrain-ref],[data-node-ref],[data-region-ref],[data-surface-ref],#evolutionActiveSurfaceHost,#guideWindow,#app')??null;
+    const chain=[];let cursor=hit;
+    for(let depth=0;cursor&&depth<8;depth+=1,cursor=cursor.parentElement)chain.push(describe(cursor));
+    return {point,target:describe(node),hit:describe(hit),owner:describe(owner),chain,clear:Boolean(hit&&(hit===node||node.contains(hit)))};
   });
-  assert.equal(compactVexTargetClear,true,'compact Vex presence must leave the Vex Terrain node center target clear');
+  console.log('VEX_NODE_COMPACT_TERRAIN_HIT_DIAGNOSTIC='+JSON.stringify(compactVexTargetDiagnostic));
+  assert.equal(compactVexTargetDiagnostic.clear,true,'compact Vex presence must leave the Vex Terrain node center target clear');
   await page.locator('.e27-node[data-terrain-ref="terrain.assortment.vex"]').click();
   await page.waitForSelector('.vex-node-surface');
   await page.waitForFunction(()=>document.querySelector('#app')?.dataset.vexCompanionRail==='expanded');
