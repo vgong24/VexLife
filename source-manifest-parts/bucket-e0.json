@@ -15,6 +15,12 @@
       "sha256": "000cbd97a0be114432cf2baad4159c9474a7c5097ba409a35d9b1e2c0db8dd50"
     },
     {
+      "path": "src/core/companion-voice-playback.mjs",
+      "mode": "100644",
+      "bytes": 21080,
+      "sha256": "73a0cdf0aaef305630398a53a0415d5adc06cd2504f21b936c9079e243a37eae"
+    },
+    {
       "path": "test/intent-completion-verifier.test.mjs",
       "mode": "100644",
       "bytes": 23417,
