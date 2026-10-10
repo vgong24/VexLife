@@ -23,8 +23,8 @@
     {
       "path": "test/android-device-host.test.mjs",
       "mode": "100644",
-      "bytes": 8087,
-      "sha256": "2b46c217e2d131845620d6961c0ec073629c1608202c3130c290e0298814eb21"
+      "bytes": 13625,
+      "sha256": "59583ac76ae88577e359ac65e828f0a2f81f5bb5a90a124b02151c0c11bad8c7"
     }
   ]
 }
