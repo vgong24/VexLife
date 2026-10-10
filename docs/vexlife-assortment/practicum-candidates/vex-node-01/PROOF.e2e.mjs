@@ -157,6 +157,7 @@ test('Round-2 Vex node practicum cleans Home and composes persistent source-boun
     };
   });
   console.log('VEX_NODE_DESKTOP_GEOMETRY='+JSON.stringify({desktop,geometryDiagnostic}));
+  assert.equal(geometryDiagnostic.appDataset.vexCompanionRail,'expanded','entering Vex must expand the one Vex companion presence');
   assert.equal(nonOverlapping(desktop.activeRect,desktop.guideRect),true,'desktop companion rail must not obscure active Vex surface');
 
   const syntheticTurn=await page.evaluate(()=>{
