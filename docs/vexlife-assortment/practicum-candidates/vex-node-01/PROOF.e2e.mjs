@@ -130,6 +130,33 @@ test('Round-2 Vex node practicum cleans Home and composes persistent source-boun
   assert.equal(desktop.vexCardCount,6);
   assert.equal(desktop.horizontalOverflow,0);
   assert.deepEqual(desktop.under44,[]);
+  const geometryDiagnostic=await page.evaluate(()=>{
+    const app=document.querySelector('#app');
+    const guide=document.querySelector('#guideWindow');
+    const host=document.querySelector('#evolutionActiveSurfaceHost');
+    const describe=(node)=>{if(!node)return null;const s=getComputedStyle(node);return {
+      rect:node.getBoundingClientRect().toJSON(),
+      display:s.display,
+      position:s.position,
+      left:s.left,
+      right:s.right,
+      top:s.top,
+      bottom:s.bottom,
+      width:s.width,
+      height:s.height,
+      inset:s.inset,
+      hidden:node.hidden===true,
+      className:node.className
+    };};
+    return {
+      appDataset:{...app?.dataset},
+      guide:describe(guide),
+      activeSurface:describe(host),
+      viewport:{width:innerWidth,height:innerHeight},
+      stylesheetHrefs:[...document.styleSheets].map((sheet)=>sheet.href).filter(Boolean)
+    };
+  });
+  console.log('VEX_NODE_DESKTOP_GEOMETRY='+JSON.stringify({desktop,geometryDiagnostic}));
   assert.equal(nonOverlapping(desktop.activeRect,desktop.guideRect),true,'desktop companion rail must not obscure active Vex surface');
 
   const syntheticTurn=await page.evaluate(()=>{
