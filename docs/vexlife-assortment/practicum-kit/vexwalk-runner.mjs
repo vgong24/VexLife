@@ -33,7 +33,24 @@ const receipts = [];
 try {
   await waitFor(cdp, `document.readyState==='complete' && !!globalThis.__VEXLIFE_APP__`, 'VexLife application initialization', 12000);
   if (walk.start?.resetToRoot !== false) {
-    await evaluate(cdp, `(async()=>{const app=globalThis.__VEXLIFE_APP__;if(app?.state?.uxActiveSurfaceRef)await app.uxProjectionShell.closeEvolutionActiveSurface('VEXWALK_RESET');if(app?.terrain?.currentRef?.()!==app?.terrain?.rootRef)await app.terrain.travel(app.terrain.rootRef,'out');return true})()`);
+    await evaluate(cdp, `(async()=>{
+      const app=globalThis.__VEXLIFE_APP__;
+      const waitTerrainIdle=async()=>{
+        const deadline=Date.now()+2400;
+        while(app?.terrain?.transitionSnapshot?.().phase!=='IDLE'){
+          if(Date.now()>=deadline)throw new Error('VEXWALK_RESET_TERRAIN_TRANSITION_TIMEOUT');
+          await new Promise((resolve)=>setTimeout(resolve,16));
+        }
+      };
+      if(app?.state?.uxActiveSurfaceRef)await app.uxProjectionShell.closeEvolutionActiveSurface('VEXWALK_RESET');
+      await waitTerrainIdle();
+      if(app?.terrain?.currentRef?.()!==app?.terrain?.rootRef){
+        const moved=await app.terrain.travel(app.terrain.rootRef,'out');
+        if(moved===false)throw new Error('VEXWALK_RESET_TERRAIN_TRAVEL_REJECTED');
+      }
+      await waitTerrainIdle();
+      return true;
+    })()`);
   }
   if (walk.start?.expectedProjection) await waitFor(cdp, `document.querySelector('#app')?.dataset.uxProjection===${json(walk.start.expectedProjection)}`, 'declared start projection');
   if (walk.start?.terrainLabel) await waitFor(cdp, `[...document.querySelectorAll('#terrainBreadcrumb button')].some((button)=>button.getAttribute('aria-current')==='true'&&button.textContent.trim()===${json(walk.start.terrainLabel)})`, 'declared start Terrain');

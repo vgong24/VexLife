@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "vexlife-assortment.vexwalk/v1",
+  "previewRef": "preview.vexlife-assortment.r2.vex-node.01",
+  "walkRef": "walk.vexlife-assortment.r2.vex-node.01",
+  "purpose": "Exercise cleaned Home, Vex node entry, persistent companion presentation, Continue coexistence, and semantic Back",
+  "start": {"resetToRoot": true, "expectedProjection": "EVOLUTION_PROJECTION"},
+  "humanPacing": {"defaultStepDelayMs": 3000, "proofStepDelayMs": 0},
+  "steps": [
+    {
+      "human": "Home → Vex",
+      "selector": ".e27-node[data-terrain-ref=\"terrain.assortment.vex\"]",
+      "actionRef": "action.assortment.vex.open",
+      "expectedSurfaceRef": "surface.vexlife.assortment-vex",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.terrain.node.select"
+    },
+    {
+      "human": "Vex → Back to Home",
+      "selector": "#evolutionActiveSurfaceBack",
+      "actionRef": "action.navigation.back",
+      "expectedSurfaceRef": null,
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.navigation.back"
+    },
+    {
+      "human": "Home → Continue while Vex remains available",
+      "selector": ".e27-node[data-terrain-ref=\"terrain.assortment.continue\"]",
+      "actionRef": "action.assortment.continuity.open",
+      "expectedSurfaceRef": "surface.vexlife.assortment-continuity",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.terrain.node.select"
+    }
+  ]
+}

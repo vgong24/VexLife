@@ -9,6 +9,12 @@
       "sha256": "0437ef806b2250c766e6f12668c5c0b3cb74c0bd204156ae995b0b3824b0d842"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/i13b2-clean/payload/assortment-continuity-projection.js",
+      "mode": "100644",
+      "bytes": 18029,
+      "sha256": "3e7d4f37db742a15b3efead5c5d5d39fd33f7310ee5fc84acfb2f4b32ac2b80e"
+    },
+    {
       "path": "pages/strings/vexlife-onboarding.zh.json",
       "mode": "100644",
       "bytes": 16907,

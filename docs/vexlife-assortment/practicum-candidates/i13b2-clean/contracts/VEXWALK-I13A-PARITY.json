@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "vexlife-assortment.vexwalk/v1",
+  "previewRef": "preview.vexlife-assortment.r2.i13b2.clean-reform",
+  "walkRef": "walk.vexlife-assortment.r2.i13a-parity.clean-reform",
+  "purpose": "Prove the last human-proven I13A behavior before consuming I13B2 delta",
+  "start": {"resetToRoot": true, "expectedProjection": "EVOLUTION_PROJECTION"},
+  "humanPacing": {"defaultStepDelayMs": 3000, "proofStepDelayMs": 0},
+  "steps": [
+    {
+      "human": "Home → Continue",
+      "selector": ".e27-node[data-terrain-ref=\"terrain.assortment.continue\"]",
+      "actionRef": "action.assortment.continuity.open",
+      "elementRef": "terrain.assortment.continue",
+      "expectedSurfaceRef": "surface.vexlife.assortment-continuity",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.terrain.node.select"
+    },
+    {
+      "human": "Continuity → Resume current work",
+      "selector": "[data-vex-element-ref=\"element.assortment.continuity.resume-current\"]",
+      "actionRef": "action.assortment.continuity.resume-current",
+      "elementRef": "element.assortment.continuity.resume-current",
+      "expectedSurfaceRef": "surface.vexlife.assortment-project-depth",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Project depth → Back to Continuity",
+      "selector": "#evolutionActiveSurfaceBack",
+      "actionRef": "action.assortment.continuity.return",
+      "elementRef": "evolutionActiveSurfaceBack",
+      "expectedSurfaceRef": "surface.vexlife.assortment-continuity",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Continuity → Projects",
+      "selector": "[data-vex-element-ref=\"element.assortment.continuity.projects\"]",
+      "actionRef": "action.navigation.sibling",
+      "elementRef": "element.assortment.continuity.projects",
+      "expectedSurfaceRef": "surface.vexlife.assortment-projects",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.navigation.sibling"
+    }
+  ]
+}

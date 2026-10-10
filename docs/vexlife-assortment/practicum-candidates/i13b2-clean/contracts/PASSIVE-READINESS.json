@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "vexlife-assortment.passive-readiness-contract/v1",
+  "previewRef": "preview.vexlife-assortment.r2.i13b2.clean-reform",
+  "expectedProjection": "EVOLUTION_PROJECTION",
+  "timeoutMs": 12000,
+  "controls": [
+    {"selector": ".e27-node[data-terrain-ref=\"terrain.assortment.continue\"]"},
+    {"selector": ".e27-node[data-terrain-ref=\"terrain.assortment.projects\"]"},
+    {"selector": ".e27-node[data-terrain-ref=\"terrain.assortment.frontier\"]"}
+  ]
+}
