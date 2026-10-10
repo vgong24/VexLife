@@ -1171,4 +1171,4 @@
     "testRef": "test.vex-assembly.companion-voice-playback",
     "brief": "Exact current completed Companion turn binds to one accepted host-qualified Voice playback attempt while engine completion, OS routing and human hearing remain distinct."
   }
-]\n
+]
