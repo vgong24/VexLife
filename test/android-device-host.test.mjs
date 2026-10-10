@@ -17,8 +17,21 @@ import {
 import { runAndroidDeviceHost } from '../scripts/android-device-host.mjs';
 
 function adbInventory(lines) { return `List of devices attached\n${lines}\n`; }
-function fakeSpawn({ inventory = adbInventory('SERIAL123\tdevice product:dm3q model:SM-S908U device:dm3q transport_id:1'), priorInstalled = true } = {}) {
+
+function sequenceValue(sequence, index, fallback) {
+  if (!Array.isArray(sequence) || sequence.length === 0) return fallback;
+  return sequence[Math.min(index, sequence.length - 1)];
+}
+
+function fakeSpawn({
+  inventory = adbInventory('SERIAL123\tdevice product:dm3q model:SM-S908U device:dm3q transport_id:1'),
+  priorInstalled = true,
+  pidSequence = ['4242\n'],
+  foregroundSequence = ['mResumedActivity: ActivityRecord{fixture com.example/.MainActivity}\n'],
+} = {}) {
   const calls = [];
+  let pidIndex = 0;
+  let foregroundIndex = 0;
   const spawn = (program, args, options) => {
     calls.push({ program, args: [...args], shell: options.shell });
     const joined = args.join(' ');
@@ -31,11 +44,34 @@ function fakeSpawn({ inventory = adbInventory('SERIAL123\tdevice product:dm3q mo
     if (joined.includes(' install -r ')) return { status: 0, stdout: 'Success\n', stderr: '' };
     if (joined.includes('shell am force-stop')) return { status: 0, stdout: '', stderr: '' };
     if (joined.includes('shell am start -n')) return { status: 0, stdout: 'Starting: Intent\n', stderr: '' };
-    if (joined.includes('shell pidof')) return { status: 0, stdout: '4242\n', stderr: '' };
-    if (joined.includes('shell dumpsys activity activities')) return { status: 0, stdout: 'mResumedActivity com.example/.MainActivity\n', stderr: '' };
+    if (joined.includes('shell pidof')) {
+      const value = sequenceValue(pidSequence, pidIndex++, '4242\n');
+      return value == null ? { status: 1, stdout: '', stderr: 'not ready' } : { status: 0, stdout: value, stderr: '' };
+    }
+    if (joined.includes('shell dumpsys activity activities')) {
+      const value = sequenceValue(foregroundSequence, foregroundIndex++, 'mResumedActivity: ActivityRecord{fixture com.example/.MainActivity}\n');
+      return value == null ? { status: 1, stdout: '', stderr: 'not ready' } : { status: 0, stdout: value, stderr: '' };
+    }
     throw new Error(`unexpected fake command ${program} ${joined}`);
   };
   return { spawn, calls };
+}
+
+function fakeClock() {
+  let current = 0;
+  return {
+    now: () => current,
+    sleep(milliseconds) { current += milliseconds; },
+  };
+}
+
+function apkFixture() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ahf00-'));
+  const apkPath = path.join(dir, 'app.apk');
+  fs.writeFileSync(apkPath, 'exact-apk');
+  const bytes = fs.readFileSync(apkPath);
+  const identity = { expectedApkBytes: bytes.length, expectedApkSha256: crypto.createHash('sha256').update(bytes).digest('hex') };
+  return { dir, apkPath, identity };
 }
 
 test('AHF00-01 parses and classifies zero, unauthorized, offline, multiple and one authorized target', () => {
@@ -70,11 +106,7 @@ test('AHF00-04 existing and absent installs converge on identical adb install -r
 });
 
 test('AHF00-05 install/update launch uses typed shell-free argv and preserves prior-install observation only', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ahf00-'));
-  const apkPath = path.join(dir, 'app.apk');
-  fs.writeFileSync(apkPath, 'exact-apk');
-  const bytes = fs.readFileSync(apkPath);
-  const identity = { expectedApkBytes: bytes.length, expectedApkSha256: crypto.createHash('sha256').update(bytes).digest('hex') };
+  const { dir, apkPath, identity } = apkFixture();
   for (const priorInstalled of [true, false]) {
     const fixture = fakeSpawn({ priorInstalled });
     const receipt = runAndroidDeviceHost({
@@ -85,6 +117,8 @@ test('AHF00-05 install/update launch uses typed shell-free argv and preserves pr
     assert.equal(receipt.app.priorInstalled, priorInstalled);
     assert.equal(receipt.effects.installPerformed, true);
     assert.equal(receipt.effects.launchPerformed, true);
+    assert.equal(receipt.app.pidObserved, true);
+    assert.equal(receipt.app.foregroundObserved, true);
     assert.equal(fixture.calls.every((call) => call.shell === false), true);
     assert.equal(fixture.calls.some((call) => call.args.includes('uninstall')), false);
     assert.equal(fixture.calls.some((call) => call.args.join(' ').includes('pm clear')), false);
@@ -93,9 +127,7 @@ test('AHF00-05 install/update launch uses typed shell-free argv and preserves pr
 });
 
 test('AHF00-06 hash mismatch stops before adb install', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ahf00-'));
-  const apkPath = path.join(dir, 'app.apk');
-  fs.writeFileSync(apkPath, 'exact-apk');
+  const { dir, apkPath } = apkFixture();
   const fixture = fakeSpawn();
   assert.throws(() => runAndroidDeviceHost({
     operation: ANDROID_DEVICE_HOST_OPERATIONS.INSTALL_UPDATE_LAUNCH,
@@ -127,6 +159,91 @@ test('AHF00-08 foundation owns no feature semantics or prohibited effect', () =>
   for (const forbidden of ['action.vexlife.conversation.request-attention', 'element.vexlife.android.r2.architecture.status', 'RequestConversationAttention', 'com.vextreme.vexlife.r2']) {
     assert.equal(sources.includes(forbidden), false, forbidden);
   }
+});
+
+test('AHF00-09 launch readiness polls until delayed PID and foreground settle without reinstalling', () => {
+  const { dir, apkPath, identity } = apkFixture();
+  const fixture = fakeSpawn({
+    pidSequence: [null, null, '4242\n'],
+    foregroundSequence: ['mResumedActivity: ActivityRecord{fixture com.other/.MainActivity}\n', null, 'mResumedActivity: ActivityRecord{fixture com.example/.MainActivity}\n'],
+  });
+  const clock = fakeClock();
+  const receipt = runAndroidDeviceHost({
+    operation: ANDROID_DEVICE_HOST_OPERATIONS.INSTALL_UPDATE_LAUNCH,
+    adbPath: '/sdk/adb', packageName: 'com.example', component: 'com.example/.MainActivity', apkPath, ...identity,
+    launchSettleTimeoutMs: 1000, launchPollIntervalMs: 100,
+  }, { spawn: fixture.spawn, now: clock.now, sleep: clock.sleep });
+  assert.equal(receipt.state, 'INSTALL_UPDATE_LAUNCH_PASS');
+  assert.equal(receipt.app.pidObserved, true);
+  assert.equal(receipt.app.foregroundObserved, true);
+  assert.equal(receipt.app.readinessAttempts, 3);
+  assert.equal(fixture.calls.filter((call) => call.args.includes('install')).length, 1);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('AHF00-10 foreground may lag an observed PID and settle later', () => {
+  const { dir, apkPath, identity } = apkFixture();
+  const fixture = fakeSpawn({
+    pidSequence: ['4242\n'],
+    foregroundSequence: ['mResumedActivity: ActivityRecord{fixture com.other/.MainActivity}\n', 'topResumedActivity=ActivityRecord{fixture com.example/.MainActivity}\n'],
+  });
+  const clock = fakeClock();
+  const receipt = runAndroidDeviceHost({
+    operation: ANDROID_DEVICE_HOST_OPERATIONS.INSTALL_UPDATE_LAUNCH,
+    adbPath: '/sdk/adb', packageName: 'com.example', component: 'com.example/.MainActivity', apkPath, ...identity,
+    launchSettleTimeoutMs: 1000, launchPollIntervalMs: 100,
+  }, { spawn: fixture.spawn, now: clock.now, sleep: clock.sleep });
+  assert.equal(receipt.state, 'INSTALL_UPDATE_LAUNCH_PASS');
+  assert.equal(receipt.app.pidObserved, true);
+  assert.equal(receipt.app.foregroundObserved, true);
+  assert.equal(receipt.app.readinessAttempts, 2);
+  assert.equal(fixture.calls.filter((call) => call.args.includes('install')).length, 1);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('AHF00-11 launch readiness timeout returns truthful partial-effect receipt', () => {
+  const { dir, apkPath, identity } = apkFixture();
+  const fixture = fakeSpawn({
+    pidSequence: [null],
+    foregroundSequence: ['mResumedActivity: ActivityRecord{fixture com.other/.MainActivity}\n'],
+  });
+  const clock = fakeClock();
+  const receipt = runAndroidDeviceHost({
+    operation: ANDROID_DEVICE_HOST_OPERATIONS.INSTALL_UPDATE_LAUNCH,
+    adbPath: '/sdk/adb', packageName: 'com.example', component: 'com.example/.MainActivity', apkPath, ...identity,
+    launchSettleTimeoutMs: 250, launchPollIntervalMs: 100,
+  }, { spawn: fixture.spawn, now: clock.now, sleep: clock.sleep });
+  assert.equal(receipt.state, 'INSTALL_UPDATE_LAUNCH_UNCONFIRMED');
+  assert.equal(receipt.effects.installPerformed, true);
+  assert.equal(receipt.effects.launchPerformed, true);
+  assert.equal(receipt.app.pidObserved, false);
+  assert.equal(receipt.app.foregroundObserved, false);
+  assert.ok(receipt.app.readinessAttempts >= 3);
+  assert.equal(fixture.calls.filter((call) => call.args.includes('install')).length, 1);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('AHF00-12 package history does not impersonate resumed foreground truth', () => {
+  const { dir, apkPath, identity } = apkFixture();
+  const fixture = fakeSpawn({
+    pidSequence: ['4242\\n'],
+    foregroundSequence: [
+      '  Hist #0: ActivityRecord{history com.example/.MainActivity}\n  ResumedActivity: ActivityRecord{top com.other/.MainActivity}\n',
+    ],
+  });
+  const clock = fakeClock();
+  const receipt = runAndroidDeviceHost({
+    operation: ANDROID_DEVICE_HOST_OPERATIONS.INSTALL_UPDATE_LAUNCH,
+    adbPath: '/sdk/adb', packageName: 'com.example', component: 'com.example/.MainActivity', apkPath, ...identity,
+    launchSettleTimeoutMs: 0, launchPollIntervalMs: 100,
+  }, { spawn: fixture.spawn, now: clock.now, sleep: clock.sleep });
+  assert.equal(receipt.state, 'INSTALL_UPDATE_LAUNCH_UNCONFIRMED');
+  assert.equal(receipt.app.pidObserved, true);
+  assert.equal(receipt.app.foregroundObserved, false);
+  assert.equal(receipt.effects.installPerformed, true);
+  assert.equal(receipt.effects.launchPerformed, true);
+  assert.equal(fixture.calls.filter((call) => call.args.includes('install')).length, 1);
+  fs.rmSync(dir, { recursive: true, force: true });
 });
 
 // [VXG RealForever]
