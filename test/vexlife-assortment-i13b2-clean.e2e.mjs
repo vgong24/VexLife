@@ -227,6 +227,8 @@ test('Round-2 I13B2 clean re-form earns integrated P0-P4 and rendered evidence',
   const journeyAfterClose = await page.evaluate(() => globalThis.__VEXLIFE_APP__.navigation.fullJourney().length);
   assert.equal(journeyAfterClose, journeyBeforeClose, 'X Close must not impersonate semantic Back');
 
+  await page.locator('#surfaceMenuButton').click();
+  await page.waitForFunction(() => document.querySelector('#surfaceMenu')?.hidden === false);
   await page.selectOption('#languageSelect', 'ja');
   await page.waitForFunction(() => document.documentElement.lang === 'ja');
   await page.evaluate(async () => { await globalThis.__VEXLIFE_ASSORTMENT_PREVIEW__.handleTerrainNode('terrain.assortment.continue'); });
@@ -245,6 +247,10 @@ test('Round-2 I13B2 clean re-form earns integrated P0-P4 and rendered evidence',
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.locator('#evolutionActiveSurfaceClose').click();
   await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.uxProjectionShell.snapshot().activeSurfaceRef === null);
+  if (await page.locator('#surfaceMenu').getAttribute('hidden') !== null) {
+    await page.locator('#surfaceMenuButton').click();
+    await page.waitForFunction(() => document.querySelector('#surfaceMenu')?.hidden === false);
+  }
   await page.selectOption('#languageSelect', 'zh');
   await page.waitForFunction(() => document.documentElement.lang === 'zh');
   await page.evaluate(async () => { await globalThis.__VEXLIFE_ASSORTMENT_PREVIEW__.handleTerrainNode('terrain.assortment.continue'); });

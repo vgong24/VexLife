@@ -3,10 +3,22 @@
   "bucketId": "a9",
   "files": [
     {
-      "path": "docs/vexlife-assortment/practicum-candidates/i13b2-clean/payload/assortment-continuity-projection.js",
+      "path": "docs/VEX-FAMILY-SPACE-MEMBERSHIP.md",
       "mode": "100644",
-      "bytes": 17518,
-      "sha256": "bb36bca84ed3b9006154b6fdf3578a25bca2e11e8b5054e395a1fed5d72aa3ae"
+      "bytes": 8125,
+      "sha256": "0437ef806b2250c766e6f12668c5c0b3cb74c0bd204156ae995b0b3824b0d842"
+    },
+    {
+      "path": "pages/strings/vexlife-onboarding.zh.json",
+      "mode": "100644",
+      "bytes": 16907,
+      "sha256": "063ac495ab73a53770781b9f317347f688357cb04c04ab1cc4df5ab44b93cd3d"
+    },
+    {
+      "path": "src/core/capability-assimilation-runtime.mjs",
+      "mode": "100644",
+      "bytes": 57024,
+      "sha256": "77415e053118207bfba6eaff1f5fb69ac938f94495b490083b705c2897a11e79"
     }
   ]
 }

@@ -3,10 +3,10 @@
   "bucketId": "3f",
   "files": [
     {
-      "path": "docs/vexlife-assortment/practicum-candidates/i13b2-clean/payload/strings-additions.json",
+      "path": "platform/android/gradle/wrapper/gradle-wrapper.jar",
       "mode": "100644",
-      "bytes": 18971,
-      "sha256": "3b9a0c4422f45fe0ccc0adfc5c0ba5a4a8de5448c3065e61f1fea1c39baa3470"
+      "bytes": 48462,
+      "sha256": "497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7"
     }
   ]
 }

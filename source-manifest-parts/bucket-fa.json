@@ -3,10 +3,58 @@
   "bucketId": "fa",
   "files": [
     {
-      "path": "docs/vexlife-assortment/practicum-candidates/i13b2-clean/contracts/PASSIVE-READINESS.json",
+      "path": "blueprint/module-registry/companion-availability-reentry.json",
       "mode": "100644",
-      "bytes": 475,
-      "sha256": "92d96634d4f78683c6e41fe32ab4c20b8e6f6610c5dc2ff2c805f7954a10dc73"
+      "bytes": 755,
+      "sha256": "f9035784e83bbcff09d9752683e25a08b55fb781e9441425dc8df51c416bdd72"
+    },
+    {
+      "path": "docs/vexlife-assortment/round-2/RANGE-00-30.md",
+      "mode": "100644",
+      "bytes": 17122,
+      "sha256": "f7f8db571c6beb3e6b094e0fb2e58a66c4781105feedd21aba3ef884720dc106"
+    },
+    {
+      "path": "platform/android/app/src/main/res/values/vexlife_r2.xml",
+      "mode": "100644",
+      "bytes": 718,
+      "sha256": "19d0421f15afa1b7ba019856c5b81f0bb33aca529771d4c3517a223d73108f1a"
+    },
+    {
+      "path": "reference/browser/public-learning/app.js",
+      "mode": "100644",
+      "bytes": 1933,
+      "sha256": "f0dd6cf6aa35d0ba6c345624ac0d2d27a38d1222848fadc5f1a7f26aa5e4361d"
+    },
+    {
+      "path": "scripts/daily-memory-dream.mjs",
+      "mode": "100644",
+      "bytes": 44357,
+      "sha256": "1e3ca8211976f05f787046ab63c1220372ae3057fd3dbdc05715e981d616a461"
+    },
+    {
+      "path": "src/core/lived-companion.mjs",
+      "mode": "100644",
+      "bytes": 144501,
+      "sha256": "f356bcbeee2473c6b69bd7333bfdeb21ffc45da25e45985dc8ab1eca84662ef4"
+    },
+    {
+      "path": "test/g04b-native-provisioning-integrity.test.mjs",
+      "mode": "100644",
+      "bytes": 12095,
+      "sha256": "cdd47f7c627878a134d8547a094ed2195edc8163a0c7d638524422d0039da56a"
+    },
+    {
+      "path": "test/public-learning-navigation-preflight.test.mjs",
+      "mode": "100644",
+      "bytes": 3779,
+      "sha256": "c8c866cdc1fa32e5abf81104025fcdb94170120c3750aefa949654c605311024"
+    },
+    {
+      "path": "test/vex-family-join-runtime.test.mjs",
+      "mode": "100644",
+      "bytes": 14166,
+      "sha256": "ee6780e9b975a4eb44dc12f8842671f706cd30a9787a19a203d38bff5eac47d0"
     }
   ]
 }

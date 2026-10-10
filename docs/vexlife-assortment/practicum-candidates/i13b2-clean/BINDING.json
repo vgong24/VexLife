@@ -6,7 +6,7 @@
   "round": 2,
   "activePr": 841,
   "activePrHead": "597511fc3f699f194e46c78a180db2d5d2a6fda1",
-  "liveMainAtFormation": "3fa610aaa6b5fa0932b6fd1d975d074b3e8cb9ed",
+  "liveMainAtFormation": "4a50d657f395427194c4f123e0b0974717d879af",
   "acceptedAssortmentGrammarMerge": "78bed64878cc85264878e1cb5ab9fbab7bee293b",
   "lastHumanProvenBehaviorRef": "preview.vexlife-assortment.r2.i13a.continuity-doorway-navigation-contract",
   "candidatePreviewRef": "preview.vexlife-assortment.r2.i13b2.clean-reform",
@@ -41,5 +41,6 @@
     "HomeTerrainSourceMutation": true,
     "publication": true,
     "release": true
-  }
+  },
+  "currentizedFromPrHead": "61e56cd3b579a5fc8457f99b09adaa2101c7b1f7"
 }
