@@ -9,6 +9,12 @@
       "sha256": "a20e3d1133ae5493efc4efb925e4f0b137b7dd017189cc7cdd1fdf4ace6ce4e9"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/vex-node-01/README.md",
+      "mode": "100644",
+      "bytes": 2437,
+      "sha256": "7bcb6611bc584575a8d15d976d7e0b1136e292b8f4e0bd14920a94ffbdce56fc"
+    },
+    {
       "path": "reference/browser/modules/public-learning-navigation-request.js",
       "mode": "100644",
       "bytes": 2321,

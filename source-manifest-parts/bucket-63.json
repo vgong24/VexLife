@@ -3,6 +3,12 @@
   "bucketId": "63",
   "files": [
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/vex-node-01/payload/vex-node-projection.js",
+      "mode": "100644",
+      "bytes": 14236,
+      "sha256": "9303a29a46b0f5fd5e461bd6d8a089e029588009b8a222ab08ca031c260612ba"
+    },
+    {
       "path": "docs/vexlife-assortment/practicum-kit/preview-runtime-doctor.sh",
       "mode": "100755",
       "bytes": 3123,

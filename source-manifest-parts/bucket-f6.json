@@ -31,6 +31,12 @@
       "mode": "100644",
       "bytes": 1051,
       "sha256": "5cdfa67a043b52b643c37bc8874488140de0e9ef09fa8eaa965e6bd5643d9d54"
+    },
+    {
+      "path": "test/vexlife-assortment-i13b2-clean.e2e.mjs",
+      "mode": "100644",
+      "bytes": 13990,
+      "sha256": "eae255bc6a7cbc820f374cf59ab098a13d8940e0db7f8c1f9a073a5db4ebbfba"
     }
   ]
 }

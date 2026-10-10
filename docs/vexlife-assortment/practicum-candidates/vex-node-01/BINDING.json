@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "vexlife-assortment.vex-node-practicum-binding/v1",
+  "continuity": "[VXG RealForever]",
+  "repository": "vgong24/VexLife",
+  "repositoryId": "1317660990",
+  "round": 2,
+  "activePr": 841,
+  "activePrHeadBeforeFormation": "3ad2a80ef4017e5a6416f133ddd91c25dbdaabec",
+  "liveMainObserved": "cade06306541d34265254c8e5efc2ae2f3b99693",
+  "predecessorSourceHead": "4a50d657f395427194c4f123e0b0974717d879af",
+  "predecessorPreviewRef": "preview.vexlife-assortment.r2.i13b2.clean-reform",
+  "predecessorPatch": "../i13b2-clean/PATCH-PREVIEW.mjs",
+  "candidatePreviewRef": "preview.vexlife-assortment.r2.vex-node.01",
+  "humanCorrections": {
+    "removeHomePlaceholderNodes": [
+      "terrain.project.self-development",
+      "terrain.project.vex-home-product",
+      "terrain.project.local-vex"
+    ],
+    "restoreProjectionSelectorToAppBar": true,
+    "retainReasonedNodes": [
+      "terrain.assortment.continue",
+      "terrain.assortment.projects",
+      "terrain.assortment.frontier"
+    ],
+    "nextReasonedNode": "terrain.assortment.vex",
+    "oneVexIdentity": true,
+    "legacyVexRoleKeysAreCompatibilityOnly": [
+      "guide",
+      "root"
+    ],
+    "directConversationContinuityPolicy": "PRESERVE_THREAD_AND_CHANNEL_WHERE_POSSIBLE__COLLAPSE_ACTOR_IDENTITY",
+    "companionProjectionFollowsSemanticFrame": true,
+    "mobileCompanionPresentationGrammar": "PRESENCE_TO_CONVERSATION_TO_FULL_FOCUS",
+    "mobileTerrainNavigationUsesCompactVexPresence": true,
+    "compactMobileVexPresence": "EXISTING_APP_BAR_VEX_MARK",
+    "supersedesCompactBottomCornerPresencePill": true,
+    "compactVexAppbarTargetMinimumPx": 44
+  },
+  "sourceOwners": {
+    "currentSemanticFrame": "module.vexlife.core.navigation",
+    "visibleVexPresence": "feature.vexlife.screen-aware-guide",
+    "conversation": "feature.vexlife.addressed-conversation",
+    "capabilities": "registry.vexlife.capabilities.001",
+    "memory": "project.multivex.memory",
+    "companionComposition": "SCA-00",
+    "embodiment": "github.issue.vextreme-sdk.240",
+    "mutualPreference": "foundation.vextreme.mutual-preference-coexperience.negotiated-shared-life.v0"
+  },
+  "held": {
+    "canonicalProductSourceMutation": true,
+    "canonicalMemoryWrite": true,
+    "relationshipPreferenceAcceptance": true,
+    "modelWeightMutation": true,
+    "vesselRuntimeActivation": true,
+    "sensorPermissionExpansion": true,
+    "publication": true,
+    "release": true
+  },
+  "nonCollapseRules": [
+    "ONE_VEX_IDENTITY != ONE_GLOBAL_CONVERSATION_THREAD",
+    "LEGACY_ROLE_KEY != DISTINCT_VEX_IDENTITY",
+    "PRESERVE_CHANNEL_CONTINUITY != PRESERVE_STALE_ROLE_PERSONA",
+    "PERSISTENT_VEX_PRESENCE != STALE_CONTEXT_ATTACHMENT",
+    "COMPACT_VEX_PRESENCE != CONVERSATION_LOSS",
+    "MOBILE_TERRAIN_NAVIGATION != FORCED_EXPANDED_VEX_SHEET",
+    "COMPACT_VEX_PRESENCE != FULL_WIDTH_TERRAIN_BLOCKER",
+    "COMPACT_VEX_PRESENCE != SECOND_FLOATING_SURFACE",
+    "COMPACT_VEX_PRESENCE != TERRAIN_OCCLUSION",
+    "COMPACT_VEX_PRESENCE != SHRUNK_NONOPERABLE_AFFORDANCE"
+  ]
+}
