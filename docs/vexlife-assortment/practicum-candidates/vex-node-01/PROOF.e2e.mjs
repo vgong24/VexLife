@@ -212,6 +212,7 @@ test('Round-2 Vex node practicum cleans Home and composes persistent source-boun
   assert.equal(await page.locator('#vexSummon').isVisible(),true);
   assert.equal(await page.locator('#vexSummon').getAttribute('data-vex-presence-mode'),'compact');
   const compactMarkBox=await page.locator('#vexSummon').boundingBox();
+  console.log('VEX_NODE_COMPACT_PRESENCE_GEOMETRY='+JSON.stringify({compactMarkBox,compactPresenceMode:await page.locator('#vexSummon').getAttribute('data-vex-presence-mode')}));
   assert.ok(compactMarkBox&&compactMarkBox.width>=44&&compactMarkBox.height>=44,'compact Vex app-bar presence must remain directly operable');
   assert.equal(await page.locator('#guideBody').isVisible(),false);
   assert.equal(await page.evaluate(()=>globalThis.__VEXLIFE_VEX_PREVIEW__.snapshot().companionTurnRef),turnBeforeCompact,'compact Vex presence must preserve conversation turn identity');
