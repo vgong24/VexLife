@@ -209,8 +209,14 @@ test('Round-2 Vex node practicum cleans Home and composes persistent source-boun
   await page.waitForFunction(()=>document.querySelector('#guideWindow')?.classList.contains('is-minimized')&&document.querySelector('#app')?.dataset.vexCompanionRail==='compact');
   const compactPresence=await metrics(page);
   assert.equal(compactPresence.guideVisible,true);
+  assert.ok(compactPresence.guideRect.width<=180,'compact Vex presence must not become a full-width Terrain blocker');
   assert.equal(await page.locator('#guideBody').isVisible(),false);
   assert.equal(await page.evaluate(()=>globalThis.__VEXLIFE_VEX_PREVIEW__.snapshot().companionTurnRef),turnBeforeCompact,'compact Vex presence must preserve conversation turn identity');
+  const compactVexTargetClear=await page.locator('.e27-node[data-terrain-ref="terrain.assortment.vex"]').evaluate((node)=>{
+    const r=node.getBoundingClientRect(),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+    return Boolean(hit&&(hit===node||node.contains(hit)));
+  });
+  assert.equal(compactVexTargetClear,true,'compact Vex presence must leave the Vex Terrain node center target clear');
   await page.locator('.e27-node[data-terrain-ref="terrain.assortment.vex"]').click();
   await page.waitForSelector('.vex-node-surface');
   await page.waitForFunction(()=>document.querySelector('#app')?.dataset.vexCompanionRail==='expanded');
