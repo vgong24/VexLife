@@ -15,6 +15,12 @@
       "sha256": "251360fab4c5908cb00574ad4704a97a5b2e79bc00e9119fc32b310c75e43ed4"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/live-evolution-01/contracts/PASSIVE-READINESS.json",
+      "mode": "100644",
+      "bytes": 651,
+      "sha256": "b1a2dbd38f72cd96585330f736afb9190cf5487c64afb84c07e15d74d3a315d5"
+    },
+    {
       "path": "fixtures/purpose-workspace/synthetic-scenarios.json",
       "mode": "100644",
       "bytes": 10475,

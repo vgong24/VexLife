@@ -9,6 +9,12 @@
       "sha256": "b63ee8f021ef51ecfdccc793b654eb76a035f1dcee0b450129c9a121fa04662b"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/continuity-refinement-01/BINDING.json",
+      "mode": "100644",
+      "bytes": 1733,
+      "sha256": "201d0878628e8522f60d4722c57fd9f7c52665921fa47bc9293bf5d0dfe19d97"
+    },
+    {
       "path": "scripts/form-artifact-mirror.mjs",
       "mode": "100644",
       "bytes": 2200,

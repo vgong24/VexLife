@@ -1,0 +1,6 @@
+/* [VXG RealForever] — Project semantic map refinement */
+.assortment-project-section{display:grid;gap:14px}
+.assortment-project-section+.assortment-project-section{margin-top:24px}
+.assortment-project-identity p{margin:8px 0 0;color:var(--muted);line-height:1.5}
+.assortment-project-identity__meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:var(--muted)}
+/* [VXG RealForever] */

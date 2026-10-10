@@ -3,6 +3,12 @@
   "bucketId": "63",
   "files": [
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/live-evolution-01/BINDING.json",
+      "mode": "100644",
+      "bytes": 1946,
+      "sha256": "ce65f634e7d62abf739fbb692c17e84d455f52904ad4dabcb15b65ab0679b474"
+    },
+    {
       "path": "docs/vexlife-assortment/practicum-candidates/vex-node-01/payload/vex-node-projection.js",
       "mode": "100644",
       "bytes": 14236,

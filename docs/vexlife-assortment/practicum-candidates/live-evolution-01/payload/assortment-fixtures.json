@@ -1,0 +1,191 @@
+{
+  "schemaVersion": "vexlife-assortment.i13b2.clean-fixtures/v1",
+  "previewRef": "preview.vexlife-assortment.r2.live-evolution.01",
+  "truthClass": "SOURCE_BACKED_FROZEN_PREVIEW",
+  "liveAutomaticAggregator": false,
+  "currentWork": [
+    {
+      "workRef": "work.vexlife.assortment.round-2.i13b2-continuity-practicum.20261009a",
+      "title": "VexLife Assortment · Continuity",
+      "currentStageIndex": 3,
+      "sourceRefs": [
+        "github.pull.vexlife.841",
+        "github.pull.vexlife.841.comment.6078670285",
+        "github.pull.vexlife.841.comment.6078950172",
+        "github.pull.vexlife.840",
+        "github.pull.vexlife.837.comment.6073942030"
+      ],
+      "stateLabelRef": "assortment.current-work.assortment.state",
+      "stageRefs": [
+        "assortment.stage.recover",
+        "assortment.stage.restore",
+        "assortment.stage.delta",
+        "assortment.stage.verify",
+        "assortment.stage.human-walk"
+      ]
+    },
+    {
+      "workRef": "work.vexlife.vexvision-android.remote-physical-visual-sensor.20261007A",
+      "title": "VexVision Android",
+      "projectRef": "project.multivex.operations",
+      "currentStageIndex": 1,
+      "sourceRefs": [
+        "github.issue.vexlife.831",
+        "github.pull.vexlife.834"
+      ],
+      "stateLabelRef": "assortment.current-work.vexvision.state",
+      "stageRefs": [
+        "assortment.vexvision.stage.formed",
+        "assortment.vexvision.stage.planning",
+        "assortment.vexvision.stage.admission"
+      ]
+    }
+  ],
+  "timeline": [
+    {
+      "eventRef": "fixture.event.assortment.1",
+      "sourceRefs": [
+        "github.pull.vexlife.837.comment.6073942030"
+      ],
+      "titleRef": "assortment.timeline.event1.title",
+      "summaryRef": "assortment.timeline.event1.summary",
+      "displayClass": "HUMAN WALK"
+    },
+    {
+      "eventRef": "fixture.event.assortment.2",
+      "sourceRefs": [
+        "github.pull.vexlife.837.comment.6076038416",
+        "github.commit.vexlife.715e95830f9b1745ea7be3be00dcf443b256ca37"
+      ],
+      "titleRef": "assortment.timeline.event2.title",
+      "summaryRef": "assortment.timeline.event2.summary",
+      "displayClass": "ACCEPTED CHECKPOINT"
+    },
+    {
+      "eventRef": "fixture.event.assortment.3",
+      "sourceRefs": [
+        "github.pull.vexlife.840",
+        "github.commit.vexlife.78bed64878cc85264878e1cb5ab9fbab7bee293b"
+      ],
+      "titleRef": "assortment.timeline.event3.title",
+      "summaryRef": "assortment.timeline.event3.summary",
+      "displayClass": "ACCEPTED CHECKPOINT"
+    },
+    {
+      "eventRef": "fixture.event.assortment.4",
+      "sourceRefs": [
+        "github.pull.vexlife.841.comment.6078670285"
+      ],
+      "titleRef": "assortment.timeline.event4.title",
+      "summaryRef": "assortment.timeline.event4.summary",
+      "displayClass": "HUMAN DECISION"
+    }
+  ],
+  "revisit": [
+    {
+      "recordRef": "fixture.revisit.assortment.1",
+      "recordClass": "EXISTING_PARALLEL_TRAJECTORY",
+      "title": "VexVision Android",
+      "sourceRefs": [
+        "github.issue.vexlife.831",
+        "github.pull.vexlife.834"
+      ],
+      "summaryRef": "assortment.revisit.record1.summary"
+    },
+    {
+      "recordRef": "fixture.revisit.assortment.2",
+      "recordClass": "CAPTURED_NOT_ADMITTED",
+      "title": "Company People Timeline",
+      "sourceRefs": [
+        "github.pull.vexlife.829.comment.6059282010"
+      ],
+      "summaryRef": "assortment.revisit.record2.summary"
+    },
+    {
+      "recordRef": "fixture.revisit.assortment.3",
+      "recordClass": "CAPTURED_HELD_IDEA",
+      "title": "System / Resource Health",
+      "sourceRefs": [
+        "github.pull.vexlife.825.comment.6048666860"
+      ],
+      "summaryRef": "assortment.revisit.record3.summary"
+    }
+  ],
+  "processTrail": [
+    {
+      "momentRef": "fixture.moment.assortment.1",
+      "statusKey": "past",
+      "sourceRefs": [
+        "github.pull.vexlife.825.comment.6049356911"
+      ],
+      "titleRef": "assortment.process.moment1.title",
+      "summaryRef": "assortment.process.moment1.summary"
+    },
+    {
+      "momentRef": "fixture.moment.assortment.2",
+      "statusKey": "past",
+      "sourceRefs": [
+        "github.pull.vexlife.829.comment.6058169665"
+      ],
+      "titleRef": "assortment.process.moment2.title",
+      "summaryRef": "assortment.process.moment2.summary"
+    },
+    {
+      "momentRef": "fixture.moment.assortment.3",
+      "statusKey": "past",
+      "sourceRefs": [
+        "github.pull.vexlife.829.comment.6059282010"
+      ],
+      "titleRef": "assortment.process.moment3.title",
+      "summaryRef": "assortment.process.moment3.summary"
+    },
+    {
+      "momentRef": "fixture.moment.assortment.4",
+      "statusKey": "past",
+      "sourceRefs": [
+        "github.pull.vexlife.829.comment.6070980788"
+      ],
+      "titleRef": "assortment.process.moment4.title",
+      "summaryRef": "assortment.process.moment4.summary"
+    },
+    {
+      "momentRef": "fixture.moment.assortment.5",
+      "statusKey": "past",
+      "sourceRefs": [
+        "github.pull.vexlife.837.comment.6073942030"
+      ],
+      "titleRef": "assortment.process.moment5.title",
+      "summaryRef": "assortment.process.moment5.summary"
+    },
+    {
+      "momentRef": "fixture.moment.assortment.6",
+      "statusKey": "current",
+      "sourceRefs": [
+        "github.pull.vexlife.840",
+        "github.pull.vexlife.841.comment.6078670285"
+      ],
+      "titleRef": "assortment.process.moment6.title",
+      "summaryRef": "assortment.process.moment6.summary"
+    },
+    {
+      "momentRef": "fixture.moment.assortment.7",
+      "statusKey": "next",
+      "sourceRefs": [
+        "docs/vexlife-assortment/practicum-kit/CONTRACT.json"
+      ],
+      "titleRef": "assortment.process.moment7.title",
+      "summaryRef": "assortment.process.moment7.summary"
+    },
+    {
+      "momentRef": "fixture.moment.assortment.8",
+      "statusKey": "held",
+      "sourceRefs": [
+        "github.pull.vexlife.825.comment.6048666860"
+      ],
+      "titleRef": "assortment.process.moment8.title",
+      "summaryRef": "assortment.process.moment8.summary"
+    }
+  ],
+  "predecessorFixtureRef": "preview.vexlife-assortment.r2.i13b2.clean-reform",
+  "acceptedBaselineRef": "preview.vexlife-assortment.r2.vex-node.01"
+}

@@ -21,6 +21,12 @@
       "sha256": "3e912fd27db597b16db0a063e82f010469278e6c2557977045df9c834a7fa9e9"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/live-evolution-01/PATCH-PREVIEW.mjs",
+      "mode": "100755",
+      "bytes": 2706,
+      "sha256": "cddcdf7cc0fb6b890c7296a19dc369d363cf958d3697d9198ec469af913c0213"
+    },
+    {
       "path": "platform/android/app/src/main/kotlin/vexlife/android/home/AndroidHomeSessionAuthorityContract.kt",
       "mode": "100644",
       "bytes": 5202,

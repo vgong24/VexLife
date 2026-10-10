@@ -1,0 +1,23 @@
+{
+  "en": {
+    "assortment.projects.entities.title": "Projects",
+    "assortment.projects.current-work.title": "Current work",
+    "assortment.project-identity.label": "Project",
+    "assortment.project-identity.contexts": "contexts",
+    "assortment.action.open-work-context": "Open work context"
+  },
+  "ja": {
+    "assortment.projects.entities.title": "Projects",
+    "assortment.projects.current-work.title": "現在の作業",
+    "assortment.project-identity.label": "Project",
+    "assortment.project-identity.contexts": "コンテキスト",
+    "assortment.action.open-work-context": "作業コンテキストを開く"
+  },
+  "zh": {
+    "assortment.projects.entities.title": "Projects",
+    "assortment.projects.current-work.title": "当前工作",
+    "assortment.project-identity.label": "Project",
+    "assortment.project-identity.contexts": "上下文",
+    "assortment.action.open-work-context": "打开工作上下文"
+  }
+}

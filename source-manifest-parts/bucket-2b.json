@@ -3,6 +3,12 @@
   "bucketId": "2b",
   "files": [
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/project-semantic-map-01/BINDING.json",
+      "mode": "100644",
+      "bytes": 2305,
+      "sha256": "acb0c76af087d586d1aa5866ef5f54b2d892f97ecfed7db6a3156efcecd17602"
+    },
+    {
       "path": "pages/vexlife-onboarding.css",
       "mode": "100644",
       "bytes": 25865,

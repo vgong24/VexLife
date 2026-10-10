@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "vexlife-assortment.vexwalk/v1",
+  "previewRef": "preview.vexlife-assortment.r2.continuity-refinement.01",
+  "walkRef": "walk.vexlife-assortment.r2.continuity-refinement.01",
+  "purpose": "Exercise presentation re-entry, reusable inspection and Frontier spatial child projection without admission mutation",
+  "start": {"resetToRoot": true, "expectedProjection": "EVOLUTION_PROJECTION"},
+  "humanPacing": {"defaultStepDelayMs": 3000, "proofStepDelayMs": 0},
+  "steps": [
+    {
+      "human": "Home → Frontier",
+      "selector": ".e27-node[data-terrain-ref=\"terrain.assortment.frontier\"]",
+      "actionRef": "action.terrain.node.select",
+      "expectedSurfaceRef": "surface.vexlife.assortment-frontier",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.terrain.node.select"
+    },
+    {
+      "human": "Close Frontier presentation; remain semantically at Frontier",
+      "selector": "#evolutionActiveSurfaceClose",
+      "actionRef": "action.presentation.close",
+      "expectedSurfaceRef": null,
+      "expectedTerrainLabel": "Frontier",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Reopen the already-current Frontier context",
+      "selector": ".e27-focus [data-focus-action=\"current\"]",
+      "actionRef": "action.presentation.open-current-context",
+      "expectedSurfaceRef": "surface.vexlife.assortment-frontier",
+      "expectedTerrainLabel": "Frontier",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Inspect System / Resource Health from the Frontier list",
+      "selector": "[data-record-ref=\"fixture.revisit.assortment.3\"] .assortment-inspect",
+      "actionRef": "action.assortment.inspect",
+      "expectedSurfaceRef": "surface.vexlife.assortment-inspector",
+      "expectedTerrainLabel": "Frontier",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Back from inspection to Frontier presentation",
+      "selector": "#evolutionActiveSurfaceBack",
+      "actionRef": "action.presentation.back",
+      "expectedSurfaceRef": "surface.vexlife.assortment-frontier",
+      "expectedTerrainLabel": "Frontier",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Close Frontier again to see its spatial children",
+      "selector": "#evolutionActiveSurfaceClose",
+      "actionRef": "action.presentation.close",
+      "expectedSurfaceRef": null,
+      "expectedTerrainLabel": "Frontier",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Frontier → System / Resource Health child",
+      "selector": ".e27-node[data-terrain-ref=\"terrain.assortment.frontier.system-resource-health\"]",
+      "actionRef": "action.terrain.node.select",
+      "expectedSurfaceRef": "surface.vexlife.assortment-inspector",
+      "expectedTerrainLabel": "System / Resource Health",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.terrain.node.select"
+    },
+    {
+      "human": "Back to Frontier semantic context",
+      "selector": "#evolutionActiveSurfaceBack",
+      "actionRef": "action.navigation.back",
+      "expectedSurfaceRef": "surface.vexlife.assortment-frontier",
+      "expectedTerrainLabel": "Frontier",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.navigation.back"
+    }
+  ]
+}

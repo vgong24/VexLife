@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "96",
+  "files": [
+    {
+      "path": "docs/vexlife-assortment/practicum-candidates/live-evolution-01/payload/assortment-fixtures.json",
+      "mode": "100644",
+      "bytes": 6271,
+      "sha256": "4246e0cb62ebccc808c8c59a42da7c2f471ba66b76f2bf2db47006f6e92bd8b9"
+    },
+    {
+      "path": "docs/vexlife-assortment/practicum-candidates/project-semantic-map-01/contracts/PASSIVE-READINESS.json",
+      "mode": "100644",
+      "bytes": 657,
+      "sha256": "97880e8d89c1bc0a6e81ca9270ced8e763d43c680f82e3ecb76b20e3aac9a9d9"
+    }
+  ]
+}
