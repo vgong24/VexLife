@@ -4,7 +4,7 @@ import { validateArtifactRegistry } from './artifact-delivery.mjs';
 
 export const VEX_OPERATIONAL_PROFILE_REGISTRY_SCHEMA = 'vexlife.operational-profiles/v1';
 export const VEX_MODEL_BUNDLE_REGISTRY_SCHEMA = 'vexlife.model-bundle-registry/v1';
-export const VEX_MODEL_BUNDLE_REGISTRY_SCHEMA_V2 = 'vexlife.model-bundle-registry/v2';
+export const VEX_MODEL_BUNDLE_SCHEMA_V2 = 'vexlife.model-bundle/v2';
 export const NORMAL_MODEL_BUNDLE_STATE = 'RELEASE_QUALIFIED';
 export const VEX_INITIALIZATION_PLAN_SCHEMA = 'vexlife.initialization-plan/v1';
 export const NORMAL_PROFILE_STATE = 'RELEASE_QUALIFIED';
@@ -329,6 +329,7 @@ export function evaluateOperationalProfileHost(profile, host) {
 }
 
 
+
 function exactModelBundleKeys(value, expected, label) {
   requireObject(value, label);
   const actual = Object.keys(value).sort();
@@ -342,14 +343,16 @@ function requireUniqueStableRefArray(value, label) {
   }
 }
 
-function modelBundleArtifactBindings(bundle, schemaVersion) {
-  if (schemaVersion === VEX_MODEL_BUNDLE_REGISTRY_SCHEMA) {
-    return [
-      { roleRef: 'artifact-role.vexlife.base-model', artifactRef: bundle.baseModelArtifactRef },
-      { roleRef: 'artifact-role.vexlife.projector', artifactRef: bundle.projectorArtifactRef }
-    ];
-  }
-  return bundle.artifactBindings.map((binding) => ({ ...binding }));
+function isGeneralizedModelBundle(bundle) {
+  return bundle?.bundleSchemaVersion === VEX_MODEL_BUNDLE_SCHEMA_V2;
+}
+
+function modelBundleArtifactBindings(bundle) {
+  if (isGeneralizedModelBundle(bundle)) return bundle.artifactBindings.map((binding) => ({ ...binding }));
+  return [
+    { roleRef: 'artifact-role.vexlife.base-model', artifactRef: bundle.baseModelArtifactRef },
+    { roleRef: 'artifact-role.vexlife.projector', artifactRef: bundle.projectorArtifactRef }
+  ];
 }
 
 function validateV2ArtifactBindings(bindings, label) {
@@ -370,8 +373,8 @@ export function validateModelBundleRegistry(registry, { artifactRegistry = null,
   try {
     requireObject(registry, 'model bundle registry');
     exactModelBundleKeys(registry, ['activeModelBundleRef','bundles','registryRef','schemaVersion'], 'model bundle registry');
-    if (![VEX_MODEL_BUNDLE_REGISTRY_SCHEMA, VEX_MODEL_BUNDLE_REGISTRY_SCHEMA_V2].includes(registry.schemaVersion)) {
-      throw new Error('model bundle registry schema is not supported');
+    if (registry.schemaVersion !== VEX_MODEL_BUNDLE_REGISTRY_SCHEMA) {
+      throw new Error('model bundle registry schema must be ' + VEX_MODEL_BUNDLE_REGISTRY_SCHEMA);
     }
     requireStableRef(registry.registryRef, 'model bundle registryRef');
     if (registry.registryRef !== 'registry.vexlife.model-bundles.001') throw new Error('model bundle registryRef is not canonical');
@@ -380,12 +383,12 @@ export function validateModelBundleRegistry(registry, { artifactRegistry = null,
 
     const refs = new Set();
     const v1BundleKeys = ['baseModelArtifactRef','compatibleOperationalProfileRefs','generationRef','modelBundleRef','modelProfileRef','projectorArtifactRef','requestModel','sourceRefs','state'];
-    const v2BundleKeys = ['artifactBindings','artifactSetRef','contentSetSha256','generationRef','modelBundleRef','modelProfileRef','runtimeRealizationRefs','sourceRefs','state'];
+    const v2BundleKeys = ['artifactBindings','artifactSetRef','bundleSchemaVersion','contentSetSha256','generationRef','modelBundleRef','modelProfileRef','runtimeRealizationRefs','sourceRefs','state'];
 
     for (const [index, bundle] of registry.bundles.entries()) {
       const label = 'bundles[' + index + ']';
-      const expectedKeys = registry.schemaVersion === VEX_MODEL_BUNDLE_REGISTRY_SCHEMA ? v1BundleKeys : v2BundleKeys;
-      exactModelBundleKeys(bundle, expectedKeys, label);
+      const generalized = isGeneralizedModelBundle(bundle);
+      exactModelBundleKeys(bundle, generalized ? v2BundleKeys : v1BundleKeys, label);
       for (const field of ['modelBundleRef','generationRef','modelProfileRef']) requireStableRef(bundle[field], label + '.' + field);
       if (refs.has(bundle.modelBundleRef)) throw new Error('duplicate modelBundleRef ' + bundle.modelBundleRef);
       refs.add(bundle.modelBundleRef);
@@ -394,16 +397,16 @@ export function validateModelBundleRegistry(registry, { artifactRegistry = null,
       }
       requireUniqueStableRefArray(bundle.sourceRefs, label + '.sourceRefs');
 
-      if (registry.schemaVersion === VEX_MODEL_BUNDLE_REGISTRY_SCHEMA) {
-        for (const field of ['baseModelArtifactRef','projectorArtifactRef']) requireStableRef(bundle[field], label + '.' + field);
-        requireString(bundle.requestModel, label + '.requestModel');
-        requireUniqueStableRefArray(bundle.compatibleOperationalProfileRefs, label + '.compatibleOperationalProfileRefs');
-        if (bundle.baseModelArtifactRef === bundle.projectorArtifactRef) throw new Error(label + ' model/projector artifact refs must differ');
-      } else {
+      if (generalized) {
         validateV2ArtifactBindings(bundle.artifactBindings, label + '.artifactBindings');
         requireStableRef(bundle.artifactSetRef, label + '.artifactSetRef');
         requireSha(bundle.contentSetSha256, label + '.contentSetSha256');
         requireUniqueStableRefArray(bundle.runtimeRealizationRefs, label + '.runtimeRealizationRefs');
+      } else {
+        for (const field of ['baseModelArtifactRef','projectorArtifactRef']) requireStableRef(bundle[field], label + '.' + field);
+        requireString(bundle.requestModel, label + '.requestModel');
+        requireUniqueStableRefArray(bundle.compatibleOperationalProfileRefs, label + '.compatibleOperationalProfileRefs');
+        if (bundle.baseModelArtifactRef === bundle.projectorArtifactRef) throw new Error(label + ' model/projector artifact refs must differ');
       }
     }
 
@@ -415,17 +418,18 @@ export function validateModelBundleRegistry(registry, { artifactRegistry = null,
       const artifacts = validateArtifactRegistry(artifactRegistry);
       const artifactRefs = new Set(artifacts.artifacts.map((artifact) => artifact.artifactRef));
       for (const bundle of registry.bundles) {
-        for (const binding of modelBundleArtifactBindings(bundle, registry.schemaVersion)) {
+        for (const binding of modelBundleArtifactBindings(bundle)) {
           if (!artifactRefs.has(binding.artifactRef)) throw new Error('bundle ' + bundle.modelBundleRef + ' references an unregistered model artifact');
         }
       }
     }
 
-    if (operationalProfileRegistry && registry.schemaVersion === VEX_MODEL_BUNDLE_REGISTRY_SCHEMA) {
+    if (operationalProfileRegistry) {
       const operational = validateOperationalProfileRegistry(operationalProfileRegistry);
       if (!operational.ok) throw new Error('operational profile registry invalid: ' + operational.errors.join('; '));
       const profileRefs = new Set(operationalProfileRegistry.profiles.map((profile) => profile.profileRef));
       for (const bundle of registry.bundles) {
+        if (isGeneralizedModelBundle(bundle)) continue;
         for (const profileRef of bundle.compatibleOperationalProfileRefs) {
           if (!profileRefs.has(profileRef)) throw new Error('bundle ' + bundle.modelBundleRef + ' references unknown operational profile ' + profileRef);
         }
@@ -437,20 +441,22 @@ export function validateModelBundleRegistry(registry, { artifactRegistry = null,
   return { ok: errors.length === 0, errors };
 }
 
-export function resolveActiveModelBundle({ registry, artifactRegistry, operationalProfile }) {
+export function resolveModelBundleByRef({ registry, artifactRegistry, modelBundleRef }) {
   const validation = validateModelBundleRegistry(registry, { artifactRegistry });
   if (!validation.ok) return { state: 'SOURCE_INVALID', errors: validation.errors, bundle: null, artifacts: [] };
+  requireStableRef(modelBundleRef, 'modelBundleRef');
+  const bundle = registry.bundles.find((item) => item.modelBundleRef === modelBundleRef);
+  if (!bundle) return { state: 'MODEL_BUNDLE_NOT_REGISTERED', bundle: null, artifacts: [], modelBundleRef };
 
-  const bundle = registry.bundles.find((item) => item.modelBundleRef === registry.activeModelBundleRef);
   const artifacts = validateArtifactRegistry(artifactRegistry).artifacts;
   const byRef = new Map(artifacts.map((artifact) => [artifact.artifactRef, artifact]));
-  const artifactBindings = modelBundleArtifactBindings(bundle, registry.schemaVersion);
+  const artifactBindings = modelBundleArtifactBindings(bundle);
   const selectedArtifacts = artifactBindings.map((binding) => byRef.get(binding.artifactRef));
   if (selectedArtifacts.some((artifact) => !artifact)) {
-    return { state: 'SOURCE_INVALID', errors: ['active model bundle artifact identity is missing'], bundle: null, artifacts: [] };
+    return { state: 'SOURCE_INVALID', errors: ['model bundle artifact identity is missing'], bundle: null, artifacts: [] };
   }
 
-  if (registry.schemaVersion === VEX_MODEL_BUNDLE_REGISTRY_SCHEMA_V2) {
+  if (isGeneralizedModelBundle(bundle)) {
     return {
       state: 'MODEL_BUNDLE_RUNTIME_REALIZATION_HELD',
       bundle,
@@ -462,6 +468,22 @@ export function resolveActiveModelBundle({ registry, artifactRegistry, operation
     };
   }
 
+  return { state: 'MODEL_BUNDLE_ARTIFACT_SET_RESOLVED', bundle, artifacts: selectedArtifacts };
+}
+
+export function resolveActiveModelBundle({ registry, artifactRegistry, operationalProfile }) {
+  const validation = validateModelBundleRegistry(registry, { artifactRegistry });
+  if (!validation.ok) return { state: 'SOURCE_INVALID', errors: validation.errors, bundle: null, artifacts: [] };
+
+  const bundle = registry.bundles.find((item) => item.modelBundleRef === registry.activeModelBundleRef);
+  const structural = resolveModelBundleByRef({
+    registry,
+    artifactRegistry,
+    modelBundleRef: bundle.modelBundleRef
+  });
+  if (structural.state === 'MODEL_BUNDLE_RUNTIME_REALIZATION_HELD') return structural;
+  if (structural.state !== 'MODEL_BUNDLE_ARTIFACT_SET_RESOLVED') return structural;
+
   requireObject(operationalProfile, 'operationalProfile');
   if (!operationalProfile.compatibleModelBundleRefs?.includes(bundle.modelBundleRef) || !bundle.compatibleOperationalProfileRefs.includes(operationalProfile.profileRef)) {
     return { state: 'MODEL_BUNDLE_NOT_COMPATIBLE', bundle: null, artifacts: [], activeModelBundleRef: bundle.modelBundleRef };
@@ -469,6 +491,7 @@ export function resolveActiveModelBundle({ registry, artifactRegistry, operation
   if (operationalProfile.endpoint?.requestModel !== bundle.requestModel) {
     return { state: 'SOURCE_INVALID', errors: ['operational profile requestModel projection contradicts active model bundle'], bundle: null, artifacts: [] };
   }
+  const selectedArtifacts = structural.artifacts;
   const profileArtifacts = new Map((operationalProfile.modelArtifacts || []).map((artifact) => [artifact.artifactRef, artifact]));
   if (profileArtifacts.size !== selectedArtifacts.length || !selectedArtifacts.every((artifact) => profileArtifacts.has(artifact.artifactRef))) {
     return { state: 'SOURCE_INVALID', errors: ['operational profile model qualification projection does not match active model bundle'], bundle: null, artifacts: [] };
