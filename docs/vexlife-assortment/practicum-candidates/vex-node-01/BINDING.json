@@ -34,7 +34,8 @@
     "mobileCompanionPresentationGrammar": "PRESENCE_TO_CONVERSATION_TO_FULL_FOCUS",
     "mobileTerrainNavigationUsesCompactVexPresence": true,
     "compactMobileVexPresence": "EXISTING_APP_BAR_VEX_MARK",
-    "supersedesCompactBottomCornerPresencePill": true
+    "supersedesCompactBottomCornerPresencePill": true,
+    "compactVexAppbarTargetMinimumPx": 44
   },
   "sourceOwners": {
     "currentSemanticFrame": "module.vexlife.core.navigation",
@@ -65,6 +66,7 @@
     "MOBILE_TERRAIN_NAVIGATION != FORCED_EXPANDED_VEX_SHEET",
     "COMPACT_VEX_PRESENCE != FULL_WIDTH_TERRAIN_BLOCKER",
     "COMPACT_VEX_PRESENCE != SECOND_FLOATING_SURFACE",
-    "COMPACT_VEX_PRESENCE != TERRAIN_OCCLUSION"
+    "COMPACT_VEX_PRESENCE != TERRAIN_OCCLUSION",
+    "COMPACT_VEX_PRESENCE != SHRUNK_NONOPERABLE_AFFORDANCE"
   ]
 }
