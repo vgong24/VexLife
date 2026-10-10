@@ -3,6 +3,12 @@
   "bucketId": "48",
   "files": [
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/i13b2-clean/contracts/VEXWALK-I13B2.json",
+      "mode": "100644",
+      "bytes": 3180,
+      "sha256": "85363f0bba0c23f9ee0c4b7cc872cbb8fe4a321d15b349af8cd52485f1bf1250"
+    },
+    {
       "path": "test/android-r4-presentation-surface.test.mjs",
       "mode": "100644",
       "bytes": 8689,

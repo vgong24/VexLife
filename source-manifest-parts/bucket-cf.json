@@ -15,6 +15,12 @@
       "sha256": "cdc1df69dd463982715c723033e192f78dfcb13ba7c6585e9b171eaaf3891299"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/vex-node-01/contracts/VEXWALK-VEX-NODE.json",
+      "mode": "100644",
+      "bytes": 1458,
+      "sha256": "c0a251eb6fbacd8483103632d738397774c3d2d7cf40a06c427ed01682c1e973"
+    },
+    {
       "path": "scripts/resume-vex.mjs",
       "mode": "100644",
       "bytes": 6322,

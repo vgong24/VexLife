@@ -3,6 +3,12 @@
   "bucketId": "a6",
   "files": [
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/i13b2-clean/payload/assortment-fixtures.json",
+      "mode": "100644",
+      "bytes": 5537,
+      "sha256": "de73a1e058079dc7e5d16d0457da08e876af0ab294af7a8b3a9788e5dcd1139c"
+    },
+    {
       "path": "reference/browser/integration/security-access-android-preview-suite.js",
       "mode": "100644",
       "bytes": 14397,

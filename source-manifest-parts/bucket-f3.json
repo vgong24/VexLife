@@ -9,6 +9,12 @@
       "sha256": "8edaf6907cad71bf411b919146dc3db227bda619357f6d33098f0ce860081d2a"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/vex-node-01/payload/strings-additions.json",
+      "mode": "100644",
+      "bytes": 10351,
+      "sha256": "96712b772cd6d349ba5008a59a9bafb5772e0427b941b498f40f40f3f08a5c3c"
+    },
+    {
       "path": "docs/vexlife-assortment/practicum-kit/cdp-client.mjs",
       "mode": "100755",
       "bytes": 3531,

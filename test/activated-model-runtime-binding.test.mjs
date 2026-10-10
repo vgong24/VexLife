@@ -736,7 +736,7 @@ test('M4B13 one natural completed browser turn forms one shared content-addresse
     state: 'TURN_COMPLETED',
     actualHttpCall: true,
     loopbackOnly: true,
-    modelNameOrBoundedTestProfileRef: binding.bindingRef,
+    modelNameOrBoundedTestProfileRef: binding.runtime.requestModel,
     conversationHeadSha256: 'a'.repeat(64),
     requestEventRef: 'event.request.fixture',
     requestEventSha256: 'b'.repeat(64),
@@ -752,6 +752,9 @@ test('M4B13 one natural completed browser turn forms one shared content-addresse
   assert.equal(one.replayPerformed, false);
   assert.equal(one.conversationHeadSha256, browserTurnReceipt.conversationHeadSha256);
   assert.equal(one.homeRef, runtimeBindingReceipt.homeRef);
+  assert.equal(one.bindingRef, binding.bindingRef);
+  assert.equal(one.runtimeRequestModel, binding.runtime.requestModel);
+  assert.notEqual(one.bindingRef, one.runtimeRequestModel);
   assert.equal(Object.hasOwn(one, 'transcript'), false);
 });
 
@@ -764,7 +767,7 @@ test('M4B13 runtime receipt Home and exact semantic identity must remain current
     state: 'TURN_COMPLETED',
     actualHttpCall: true,
     loopbackOnly: true,
-    modelNameOrBoundedTestProfileRef: binding.bindingRef,
+    modelNameOrBoundedTestProfileRef: binding.runtime.requestModel,
     conversationHeadSha256: 'a'.repeat(64),
     requestEventRef: 'event.request.fixture',
     requestEventSha256: 'b'.repeat(64),
@@ -791,6 +794,31 @@ test('M4B13 runtime receipt Home and exact semantic identity must remain current
   }
 });
 
+// M4B13 hostile transport/product identity: the lived receipt must bind the source-owned transport request model,
+// while the evidence index separately binds the activated product bindingRef.
+test('M4B13 transport request model and activated product binding identity remain distinct', () => {
+  const binding = baseBinding();
+  const runtimeBindingReceipt = livedRuntimeReceipt(binding);
+  const receipt = {
+    schemaVersion: 'vexlife.browser-companion-turn/v1',
+    state: 'TURN_COMPLETED',
+    actualHttpCall: true,
+    loopbackOnly: true,
+    modelNameOrBoundedTestProfileRef: binding.bindingRef,
+    conversationHeadSha256: 'a'.repeat(64),
+    requestEventRef: 'event.request.transport-product-mismatch',
+    requestEventSha256: 'b'.repeat(64),
+    responseEventRef: 'event.response.transport-product-mismatch',
+    responseEventSha256: 'c'.repeat(64),
+    modelTurnWitness: { model: binding.runtime.requestModel, fingerprint: 'fixture' }
+  };
+  assert.notEqual(binding.bindingRef, binding.runtime.requestModel);
+  assert.throws(
+    () => formCultivatedFirstLivedTurnEvidence({ binding, runtimeBindingReceipt, browserTurnReceipt: receipt }),
+    (error) => errorCode(error) === 'CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID'
+  );
+});
+
 // M4B13 negative: fixtures/non-http/non-loopback turns may never masquerade as the first lived Victor episode.
 test('M4B13 simulated or non-completed turn is rejected as shared lived evidence', () => {
   const binding = baseBinding();
@@ -804,7 +832,7 @@ test('M4B13 simulated or non-completed turn is rejected as shared lived evidence
         state: 'TURN_COMPLETED',
         actualHttpCall: false,
         loopbackOnly: true,
-        modelNameOrBoundedTestProfileRef: binding.bindingRef
+        modelNameOrBoundedTestProfileRef: binding.runtime.requestModel
       }
     }),
     (error) => errorCode(error) === 'CULTIVATED_FIRST_LIVED_TURN_EVIDENCE_INVALID'
