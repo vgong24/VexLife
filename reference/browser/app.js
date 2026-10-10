@@ -250,7 +250,13 @@ navigation=createNavigationController({
   }
 });
 navigation.seedCurrentJourney(initialTerrainRef);
-chat=createChatController({state,projects,roles,channels,messages,createMessage,conversationKey,t,navigation,experienceFoundation,capabilityRegistry});
+chat=createChatController({
+  state,projects,roles,channels,messages,createMessage,conversationKey,t,navigation,experienceFoundation,capabilityRegistry,
+  onCompanionTurnCompleted: async (projection) => {
+    if (!guide) throw new Error('Guide controller is unavailable for Companion vessel projection');
+    return guide.bindCompanionTurn(projection);
+  }
+});
 familyRoom=createFamilyRoomController({state,projects,roles,channels,messages,conversationKey,t,navigation,chat,onChange:()=>queueMicrotask(()=>projectFrame())});
 familyRoom.bind();
 terrain=createTerrainController({state,blueprint,t,navigation,semanticPatchForNode,onCurrentNode:()=>{if(chat)queueMicrotask(()=>projectFrame());}});

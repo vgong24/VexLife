@@ -98,7 +98,7 @@ test('VA-I02 Guide normalization accepts only the zero-effect exact vessel proje
   assert.equal(COMPANION_VESSEL_VISIBLE_CONTENT_LIMIT, 240);
 });
 
-test('VA-I02 module slice exposes callback/binder contracts without taking PR818 app composition', () => {
+test('VA-I07 production app composes the accepted completed-turn callback into the existing visible Vex', () => {
   const chatSource = fs.readFileSync(path.join(ROOT, 'reference/browser/modules/chat-controller.js'), 'utf8');
   const guideSource = fs.readFileSync(path.join(ROOT, 'reference/browser/modules/guide-controller.js'), 'utf8');
   const appSource = fs.readFileSync(path.join(ROOT, 'reference/browser/app.js'), 'utf8');
@@ -108,17 +108,14 @@ test('VA-I02 module slice exposes callback/binder contracts without taking PR818
   assert.match(chatSource, /await onCompanionTurnCompleted\(vesselProjection\)/u);
   assert.match(chatSource, /companionVesselProjectionState = 'REJECTED'/u);
   assert.match(guideSource, /function bindCompanionTurn\(value\)/u);
-  assert.match(guideSource, /let node = \$\('#vexCompanionTurnState'\)/u);
-  assert.match(guideSource, /node \|\|= companionTurnStateNode\(\)/u);
   assert.match(guideSource, /projection\.threadRef !== current\.threadRef/u);
   assert.match(guideSource, /projection\.channelRef !== current\.channelRef/u);
   assert.match(guideSource, /companionTurnDisposition = 'CURRENT'/u);
   assert.match(guideSource, /VEX_PRESENCE_STATES\.ACTIVE_CONVERSATION/u);
-  assert.match(guideSource, /function clearCompanionTurn\(reason = 'UNAVAILABLE'\)/u);
-
-  assert.doesNotMatch(appSource, /onCompanionTurnCompleted\s*:/u);
-  assert.doesNotMatch(appSource, /\.bindCompanionTurn\(/u);
-  assert.doesNotMatch(chatSource + guideSource, /getUserMedia|mediaDevices|camera|microphone|screenCapture/iu);
+  assert.match(appSource, /onCompanionTurnCompleted:\s*async \(projection\)/u);
+  assert.match(appSource, /guide\.bindCompanionTurn\(projection\)/u);
+  assert.match(appSource, /Guide controller is unavailable for Companion vessel projection/u);
+  assert.doesNotMatch(chatSource + guideSource + appSource, /getUserMedia|mediaDevices|camera|microphone|screenCapture/iu);
 });
 
 test('VA-I02 visible response projection is bounded while exact refs and full source truth remain bound', () => {
