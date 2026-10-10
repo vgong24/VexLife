@@ -203,13 +203,24 @@ test('Round-2 Vex node practicum cleans Home and composes persistent source-boun
 
   await page.locator('#evolutionActiveSurfaceBack').click();
   await page.waitForFunction(()=>globalThis.__VEXLIFE_APP__.uxProjectionShell.snapshot().activeSurfaceRef===null);
+  const turnBeforeCompact=await page.evaluate(()=>globalThis.__VEXLIFE_VEX_PREVIEW__.snapshot().companionTurnRef);
   await page.setViewportSize({width:390,height:844});
+  await page.locator('#guideMinimize').click();
+  await page.waitForFunction(()=>document.querySelector('#guideWindow')?.classList.contains('is-minimized')&&document.querySelector('#app')?.dataset.vexCompanionRail==='compact');
+  const compactPresence=await metrics(page);
+  assert.equal(compactPresence.guideVisible,true);
+  assert.equal(await page.locator('#guideBody').isVisible(),false);
+  assert.equal(await page.evaluate(()=>globalThis.__VEXLIFE_VEX_PREVIEW__.snapshot().companionTurnRef),turnBeforeCompact,'compact Vex presence must preserve conversation turn identity');
   await page.locator('.e27-node[data-terrain-ref="terrain.assortment.vex"]').click();
   await page.waitForSelector('.vex-node-surface');
+  await page.waitForFunction(()=>document.querySelector('#app')?.dataset.vexCompanionRail==='expanded');
   const mobile=await metrics(page);
   assert.equal(mobile.guideVisible,true);
+  assert.equal(mobile.contextAttachment,'Vex');
   assert.equal(mobile.horizontalOverflow,0);
   assert.deepEqual(mobile.under44,[]);
+  assert.equal(nonOverlapping(mobile.activeRect,mobile.guideRect),true,'mobile Vex sheet must coexist with active Vex surface');
+  assert.equal(await page.evaluate(()=>globalThis.__VEXLIFE_VEX_PREVIEW__.snapshot().companionTurnRef),turnBeforeCompact,'re-expanding Vex must preserve the same conversation turn identity');
   const mobileShot=await page.screenshot({type:'png',fullPage:false});
   console.log(`VEX_NODE_SCREENSHOT_MOBILE_BASE64=${mobileShot.toString('base64')}`);
 
