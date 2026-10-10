@@ -29,8 +29,8 @@
     {
       "path": "scripts/android-device-host.mjs",
       "mode": "100644",
-      "bytes": 13107,
-      "sha256": "e15dd7acdff0fcb34902119043a8465aa1d963f051dbf10206013619b89dbd8b"
+      "bytes": 13279,
+      "sha256": "628e4bc1ced77ca21f821971f9c9647c9111411c53b4c4b5446f0ef5bc2c5c04"
     },
     {
       "path": "scripts/implementation-packet.mjs",
