@@ -112,11 +112,22 @@ test('Round-2 I13B2 clean re-form earns integrated P0-P4 and rendered evidence',
   let cdpBrowser = null;
 
   t.after(async () => {
+    const stopOwnedProcess = async (processHandle) => {
+      if (!processHandle || processHandle.exitCode !== null) return;
+      const exited = new Promise((resolve) => processHandle.once('exit', resolve));
+      processHandle.kill('SIGTERM');
+      await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 1500))]);
+      if (processHandle.exitCode === null) {
+        const killed = new Promise((resolve) => processHandle.once('exit', resolve));
+        processHandle.kill('SIGKILL');
+        await Promise.race([killed, new Promise((resolve) => setTimeout(resolve, 1500))]);
+      }
+    };
     try { await cdpBrowser?.close(); } catch {}
-    if (browserProcess?.exitCode === null) browserProcess.kill('SIGTERM');
-    if (serverProcess?.exitCode === null) serverProcess.kill('SIGTERM');
+    await stopOwnedProcess(browserProcess);
+    await stopOwnedProcess(serverProcess);
     try { run('git', ['worktree', 'remove', '--force', sourceRoot]); } catch {}
-    fs.rmSync(tempRoot, { recursive: true, force: true });
+    fs.rmSync(tempRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   });
 
   try { run('git', ['cat-file', '-e', `${sourceSha}^{commit}`]); }
