@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 7977,
       "sha256": "dad0ff7deff99ec5fe67c0d36161b7b5e36945747dea8015e10d1ad09e3dd0ce"
+    },
+    {
+      "path": "test/android-design-lab-foundation.test.mjs",
+      "mode": "100755",
+      "bytes": 4991,
+      "sha256": "aab362da144e7064a2db97628080871aec1822b665b0ac575f2a3b61a205cfca"
     }
   ]
 }

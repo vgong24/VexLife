@@ -21,6 +21,12 @@
       "sha256": "e131684893e95b9d07ed412ed4aff1daee7e3f85b2eb487729612d21cf311648"
     },
     {
+      "path": "platform/android/app/src/main/res/drawable/ic_vex_design_lab.xml",
+      "mode": "100644",
+      "bytes": 753,
+      "sha256": "7df24599711d37808793fc129abd8d13c7926aef4b5a982345a18f47556595b0"
+    },
+    {
       "path": "release/macos/build-vexlife-bootstrap.sh",
       "mode": "100755",
       "bytes": 7704,

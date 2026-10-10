@@ -3,6 +3,12 @@
   "bucketId": "35",
   "files": [
     {
+      "path": "platform/android/app/src/main/kotlin/vexlife/android/presentation/VexComposePrimitives.kt",
+      "mode": "100644",
+      "bytes": 960,
+      "sha256": "3556341aa8db521cf0e701edf30e91e2d07994e87437b3befcd231c760a17614"
+    },
+    {
       "path": "scripts/source-manifest.mjs",
       "mode": "100755",
       "bytes": 6561,

@@ -3,6 +3,12 @@
   "bucketId": "9a",
   "files": [
     {
+      "path": "platform/android/app/src/main/res/values-ja/design_lab.xml",
+      "mode": "100644",
+      "bytes": 1487,
+      "sha256": "54ef9d6c9af49ca61872e3e012749e467a8c8c15d6a8aa5aa5b00f834dd62edd"
+    },
+    {
       "path": "platform/android/gradlew.bat",
       "mode": "100644",
       "bytes": 2766,

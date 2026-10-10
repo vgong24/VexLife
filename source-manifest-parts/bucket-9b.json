@@ -3,6 +3,12 @@
   "bucketId": "9b",
   "files": [
     {
+      "path": "platform/android/app/src/main/res/values/design_lab.xml",
+      "mode": "100644",
+      "bytes": 1344,
+      "sha256": "534315b9e3f93ce287eddc68222ee5adbbd3c736400167df4723078d6be584e3"
+    },
+    {
       "path": "scripts/feature-check.mjs",
       "mode": "100644",
       "bytes": 669,

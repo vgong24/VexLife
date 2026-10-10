@@ -3,6 +3,12 @@
   "bucketId": "52",
   "files": [
     {
+      "path": "blueprint/android-design-lab-registry.json",
+      "mode": "100644",
+      "bytes": 6086,
+      "sha256": "4b8004bcfd86ceef85911dc7c3182c2b7c5522aad1676f618e9f2fa8b3afbf1b"
+    },
+    {
       "path": "blueprint/fragments/screens/terrain.json",
       "mode": "100644",
       "bytes": 17499,

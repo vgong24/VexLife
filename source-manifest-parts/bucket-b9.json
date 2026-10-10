@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 1071,
       "sha256": "9aaae12530ee155fdff1662ecaebc1612350b0de51d7777057dd7942b1e04528"
+    },
+    {
+      "path": "platform/android/app/src/test/kotlin/vexlife/android/app/DesignLabContractTest.kt",
+      "mode": "100644",
+      "bytes": 963,
+      "sha256": "4296a07830b7e275dec2c92779239ef6dc2fc04ac4eb09688f13e6f3b157c796"
     }
   ]
 }

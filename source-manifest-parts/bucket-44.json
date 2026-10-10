@@ -9,6 +9,12 @@
       "sha256": "e4fdac432efb8be4320ae4dca9b5a431c54e0af09879feb7c8f0c8450bc51d2a"
     },
     {
+      "path": "scripts/generate-android-design-lab.mjs",
+      "mode": "100644",
+      "bytes": 2969,
+      "sha256": "eb097a076a59727f4568d1d9275e53b0bab6632b56c6780b116b129b2f73ca68"
+    },
+    {
       "path": "src/core/continuity-stream-adapter.mjs",
       "mode": "100644",
       "bytes": 23069,
