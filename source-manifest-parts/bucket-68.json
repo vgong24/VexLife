@@ -5,8 +5,8 @@
     {
       "path": "docs/VEX-ASSEMBLY-COMPANION-VOICE-PLAYBACK.md",
       "mode": "100644",
-      "bytes": 3892,
-      "sha256": "ab00f25df6df61f96f1d7c988fac766d679d7a5e842c693adf06bf1c8948eac5"
+      "bytes": 3821,
+      "sha256": "27a1030d70e32c19aec0359bbab0e0572af5fa989f4f3582081cb3cd36388fce"
     },
     {
       "path": "test/security-access-convergence.test.mjs",
