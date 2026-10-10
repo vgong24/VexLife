@@ -117,6 +117,8 @@ test('Round-2 Vex node practicum cleans Home and composes persistent source-boun
   assert.equal(await page.locator('.e27-node[data-terrain-ref="terrain.project.local-vex"]').count(),0);
   assert.equal(await page.locator('#uxProjectionControl').evaluate((node)=>node.parentElement?.classList.contains('e27-actions')),true);
   assert.equal(await page.locator('#surfaceMenu #uxProjectionControl').count(),0);
+  await page.waitForFunction(()=>[...document.styleSheets].some((sheet)=>sheet.href?.endsWith('/assortment-vex-node.css')));
+  assert.equal(await page.locator('link[data-vex-node-preview-stylesheet="vexlife-assortment-vex-node-01"]').count(),1);
 
   await page.locator('.e27-node[data-terrain-ref="terrain.assortment.vex"]').click();
   await page.waitForSelector('.vex-node-surface');

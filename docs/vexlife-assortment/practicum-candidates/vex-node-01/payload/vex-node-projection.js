@@ -15,7 +15,7 @@ const status=(label,state)=>{const row=el('span','vex-node-status');row.dataset.
 const sourceDetails=(title,refs=[])=>{const d=el('details','vex-node-source');d.append(el('summary','',title));const list=el('ul');for(const ref of refs)list.append(el('li','',ref));d.append(list);return d};
 
 function ensureStylesheet(){
-  const href=new URL('./vex-node.css',import.meta.url).href;
+  const href=new URL('./assortment-vex-node.css',import.meta.url).href;
   const existing=document.querySelector(`link[data-vex-node-preview-stylesheet="${STYLESHEET_REF}"]`);
   if(existing){if(existing.href!==href)throw new Error('Vex node stylesheet binding drift');return existing;}
   const link=document.createElement('link');link.rel='stylesheet';link.href=href;link.dataset.vexNodePreviewStylesheet=STYLESHEET_REF;document.head.append(link);return link;
