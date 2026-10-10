@@ -191,6 +191,7 @@ test('Round-2 Vex node practicum cleans Home and composes persistent source-boun
   await page.waitForSelector('.assortment-continuity');
   await page.waitForFunction(()=>globalThis.__VEXLIFE_APP__.uxProjectionShell.snapshot().activeSurfaceRef==='surface.vexlife.assortment-continuity');
   await page.waitForFunction(()=>{const node=document.querySelector('#guideWindow');return node&&!node.hidden&&getComputedStyle(node).display!=='none';});
+  await page.waitForFunction(()=>document.querySelector('#vexContextAttachment strong')?.textContent?.trim()==='Continue');
   const coexist=await metrics(page);
   assert.equal(coexist.guideVisible,true);
   assert.equal(coexist.contextAttachment,'Continue');
