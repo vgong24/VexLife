@@ -1,12 +1,16 @@
 package vexlife.android.app
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -16,6 +20,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
@@ -29,6 +35,10 @@ class MainActivity : ComponentActivity() {
     private val compositionRoot by lazy { VexCompositionRoot() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.BLACK),
+            navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.BLACK),
+        )
         super.onCreate(savedInstanceState)
         val viewModel = ViewModelProvider(
             this,
@@ -41,10 +51,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun R2Witness(viewModel: VexAppViewModel) {
     val view by viewModel.viewState.collectAsState()
-    Surface(Modifier.fillMaxSize()) {
+    Surface(
+        Modifier
+            .fillMaxSize()
+            .semantics { testTagsAsResourceId = true },
+    ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.safeDrawingPadding().padding(24.dp),
         ) {
             Text(
                 stringResource(R.string.r2_architecture_title),
