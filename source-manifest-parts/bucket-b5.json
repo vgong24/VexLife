@@ -23,8 +23,8 @@
     {
       "path": "test/browser-companion-vessel-binding.test.mjs",
       "mode": "100644",
-      "bytes": 5998,
-      "sha256": "0a83b3ed6eedc931a437ba7ebd45656dfe1813c17655c2217281d77abeac9a08"
+      "bytes": 5901,
+      "sha256": "c6073eedc6e768a3d4abb67dd598e1e9f315f00b212a985606e6f643ad79a29f"
     },
     {
       "path": "test/review-composition.test.mjs",
