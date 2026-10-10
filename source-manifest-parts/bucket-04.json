@@ -9,6 +9,12 @@
       "sha256": "70e6757abe5dd1495f2b355739d629ad460bad28758b8296f4e3e55e9175a720"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/i13b2-clean/BINDING.json",
+      "mode": "100644",
+      "bytes": 2728,
+      "sha256": "740b893852df9f9b4973ac09091de708d90c55af87e2f4cf601c33034cbae47f"
+    },
+    {
       "path": "scripts/build-public-pages.mjs",
       "mode": "100644",
       "bytes": 8285,

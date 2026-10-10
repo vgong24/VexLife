@@ -9,6 +9,12 @@
       "sha256": "ef4ccce50ea8beaf131a1d3c29187c8a356ce759f068dd29987211807c072ffa"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/vex-node-01/BINDING.json",
+      "mode": "100644",
+      "bytes": 3033,
+      "sha256": "65f22819c8f6763c885e03ce72d9931f377690fe7dd15ab46ac8968c8bc271e1"
+    },
+    {
       "path": "src/core/generic-follow-through-runtime-projection.mjs",
       "mode": "100644",
       "bytes": 5401,

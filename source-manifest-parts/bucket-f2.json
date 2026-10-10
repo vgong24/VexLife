@@ -3,6 +3,12 @@
   "bucketId": "f2",
   "files": [
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/i13b2-clean/contracts/VEXWALK-I13A-PARITY.json",
+      "mode": "100644",
+      "bytes": 2002,
+      "sha256": "8bc0b429a2f0a32d43ecde5a3957352e856ec4b086c05d3326f6426be898e5e9"
+    },
+    {
       "path": "reference/browser/modules/browser-random-uuid.js",
       "mode": "100644",
       "bytes": 1925,

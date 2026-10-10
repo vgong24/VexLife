@@ -151,6 +151,16 @@ VEXLIFE_COMPANION_ENDPOINT=http://127.0.0.1:18084
 VEXLIFE_COMPANION_MODEL=default_model
 ```
 
+The browser model value above is the source-owned MLX/OpenAI transport request alias, not the activated product binding identity. Permanent:
+
+```text
+bindingRef != runtime.requestModel
+bindingRef = product/runtime-binding identity
+runtime.requestModel = transport compatibility alias
+```
+
+A completed Browser Companion turn therefore records the exact transport model `default_model`; cultivated lived evidence separately binds both the activated `bindingRef` and `runtimeRequestModel`. No transport alias may masquerade as the product binding identity.
+
 Those values are set server-side by `scripts/resume-vex.mjs` only after exact runtime qualification. User-supplied values for those or other model/provider selectors are rejected before any runtime or browser effect.
 
 ## Pre-qualification runtime ownership and cleanup

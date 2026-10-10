@@ -620,4 +620,70 @@ Next executable target remains I13B2 from exact I13A using the accepted practicu
 Evidence: `github.pull.vexlife.840.comment.6076105871`.
 
 ---
+
+## Index 30 — Vex becomes the accepted stable Home companion baseline
+
+PR #841 extended the clean I13B2 practicum into one Vex companion-legibility
+node while preserving Continue, Projects, Frontier and the accepted Continuity
+behavior.
+
+The machine proof eventually established:
+
+~~~text
+ONE_VEX_IDENTITY=true
+compact app-bar Vex presence >= 44px
+floating compact Vex window outside Terrain
+same companion turn through compact -> re-expand
+Terrain Vex node remains directly operable
+desktop/mobile companion + active surface coexist without overlap
+P0-P4=PASS
+~~~
+
+One intermediate failure was narrowed rather than generalized: the apparent
+mobile Terrain hit obstruction was a proof-harness assumption because the tested
+node center was outside the viewport. No presentation occluder was found. The
+proof was corrected to bring the target into view before hit ownership was
+evaluated.
+
+Victor then human-walked the P5 package and accepted the current Evolution
+experience as a stable baseline:
+
+~~~text
+acceptedPracticumRef=preview.vexlife-assortment.r2.vex-node.01
+acceptedDisposition=HUMAN_WALK_ACCEPTED_STABLE_BASELINE
+acceptedHumanPackage=package.vexlife-assortment.r2.vex-node-01.p5.a001
+acceptedHumanPackageSha256=13b5d3ef47c3f5615d1dbd3647e965537ff40dfe98ae0e47f311a07cedd788ec
+~~~
+
+Evidence:
+- `github.pull.vexlife.841.comment.6094540154`
+- `github.pull.vexlife.841.comment.6094614357`
+- `github.pull.vexlife.841.comment.6094691201`
+
+The accepted experience is now worth preserving before further design movement.
+
+PR #841 remains causal/design provenance rather than the integration carrier:
+two late commits contain immutable DCO formatting defects, and accepted `main`
+advanced independently. PR #852 therefore carries the exact accepted practicum
+bytes onto current accepted main with freshly recomposed Source Manifest custody
+instead of rewriting the provenance branch.
+
+The next design edge surfaced from Victor's walk:
+
+~~~text
+ACCEPTED_UI_GRAMMAR = STABLE_BASELINE
+NEXT_QUESTION = LIVE_CURRENT_TRUTH_VS_EVOLUTION_PREVIEW_TRUTH
+
+REFERENCE_PROJECTION != PROVEN_LIVE_DATA
+CURRENT_REFERENCE_TRUTH_CLASS = CURRENT_SYNTHETIC_REFERENCE
+LIVE -> RIGHTFUL CURRENT OWNERS
+EVOLUTION/PREVIEW -> DELIBERATE MOCK / EXPECTED-DESIGN FIXTURES
+LIVE_UNAVAILABLE != FALL_BACK_TO_MOCK
+~~~
+
+The intended direction is one accepted Home/interface grammar with distinguishable
+truth projections, not separate interface worlds and not duplicated state owners.
+
+---
+
 <!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][RANGE-00-30] -->

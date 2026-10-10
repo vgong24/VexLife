@@ -9,6 +9,12 @@
       "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/vex-node-01/PROOF.e2e.mjs",
+      "mode": "100644",
+      "bytes": 22031,
+      "sha256": "af0e76c895f0bdfc4fbf09242b8e17569bbc34c2d4e5eb7ffa121ab387fb5a47"
+    },
+    {
       "path": "src/core/companion-availability-reentry.mjs",
       "mode": "100644",
       "bytes": 12631,

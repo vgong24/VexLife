@@ -9,6 +9,12 @@
       "sha256": "6c360a73ec0d4bd066f9e7c7315ee275b1c4960ba76a78cb392bda6442c4ec7a"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/vex-node-01/PATCH-PREVIEW.mjs",
+      "mode": "100644",
+      "bytes": 12199,
+      "sha256": "a98cbf1cf423ec2a786c51476961189857ff67d46c8e88278e387bc8eb676399"
+    },
+    {
       "path": "src/core/burden-release.mjs",
       "mode": "100644",
       "bytes": 27656,

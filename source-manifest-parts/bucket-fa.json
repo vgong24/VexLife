@@ -9,10 +9,16 @@
       "sha256": "f9035784e83bbcff09d9752683e25a08b55fb781e9441425dc8df51c416bdd72"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/i13b2-clean/contracts/PASSIVE-READINESS.json",
+      "mode": "100644",
+      "bytes": 475,
+      "sha256": "92d96634d4f78683c6e41fe32ab4c20b8e6f6610c5dc2ff2c805f7954a10dc73"
+    },
+    {
       "path": "docs/vexlife-assortment/round-2/RANGE-00-30.md",
       "mode": "100644",
-      "bytes": 17122,
-      "sha256": "f7f8db571c6beb3e6b094e0fb2e58a66c4781105feedd21aba3ef884720dc106"
+      "bytes": 19583,
+      "sha256": "177e379bc4901741308b7db30d1e0a08e891c04f9cb6c9729e9d92736b133bf3"
     },
     {
       "path": "platform/android/app/src/main/res/values/vexlife_r2.xml",
