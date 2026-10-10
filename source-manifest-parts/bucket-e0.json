@@ -17,8 +17,8 @@
     {
       "path": "src/core/companion-voice-playback.mjs",
       "mode": "100644",
-      "bytes": 20457,
-      "sha256": "84a59b05ea5c8afbc64fdfa4720a17e6a5f965c538539a88872de5fce4a6e4eb"
+      "bytes": 21080,
+      "sha256": "73a0cdf0aaef305630398a53a0415d5adc06cd2504f21b936c9079e243a37eae"
     },
     {
       "path": "test/intent-completion-verifier.test.mjs",

@@ -31,7 +31,7 @@ The host binding must match the current Vex Home/device/lineage and current qual
 
 ## Product playback contract
 
-One exact completed response becomes one semantic unit with no requested prosody controls. The accepted direct-playback port owns engine invocation and forms the engine semantic-playback receipt.
+One exact completed response becomes one semantic unit with no caller-selected prosody customization. The accepted direct-playback port still requires declared control identities, so VexLife binds its current baseline duration, relative-F0 and pause controls with neutral values plus the exact accepted capability refs. Those declarations satisfy the accepted engine contract without creating user-authored expressive styling; Voice-quality remains unrequested. The accepted direct-playback port owns engine invocation and forms the engine semantic-playback receipt.
 
 VexLife then forms `vexlife.companion-voice-playback-receipt/v1` containing only product/session lineage plus the engine receipt reference:
 

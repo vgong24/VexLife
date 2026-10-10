@@ -11,6 +11,8 @@ import {
   VOICE_PACKAGE_WORKSPACE_RELATIVE,
   VOICE_PROFILE_REF,
   VOICE_RUNTIME_BINDING_SCHEMA,
+  VOICE_DIRECT_PLAYBACK_BASELINE_CONTROL_BINDINGS,
+  VOICE_DIRECT_PLAYBACK_BASELINE_CONTROL_REFS,
   createCompanionVoicePlaybackAdapter
 } from '../src/core/companion-voice-playback.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
@@ -179,10 +181,17 @@ test('VA-I06 binds one exact current Companion response to one semantic Voice un
   assert.equal(request.semanticTextByRef[request.semanticUnitRef], content);
   assert.equal(request.vocalGesturePlan.gestureSequence.length, 1);
   assert.equal(request.acousticTargetEnvelope.segments.length, 1);
-  assert.deepEqual(request.acousticTargetEnvelope.appliedControlRefs, []);
+  assert.deepEqual(
+    request.acousticTargetEnvelope.appliedControlRefs,
+    VOICE_DIRECT_PLAYBACK_BASELINE_CONTROL_REFS
+  );
   assert.deepEqual(request.acousticTargetEnvelope.approximatedControlRefs, []);
   assert.deepEqual(request.acousticTargetEnvelope.unavailableControlRefs, []);
-  assert.deepEqual(request.controlBindings, []);
+  assert.deepEqual(request.controlBindings, VOICE_DIRECT_PLAYBACK_BASELINE_CONTROL_BINDINGS);
+  assert.equal(request.acousticTargetEnvelope.segments[0].durationScale, 1);
+  assert.equal(request.acousticTargetEnvelope.segments[0].relativeF0Semitones, 0);
+  assert.equal(request.acousticTargetEnvelope.segments[0].pauseBeforeMs, 0);
+  assert.equal(request.acousticTargetEnvelope.segments[0].pauseAfterMs, 0);
   assert.equal(request.unavailableControlPolicy, 'DEGRADE_EXPLICITLY');
   assert.equal(request.dependencyDescriptor.dependencyRef, VOICE_DEPENDENCY_REF);
 });

@@ -16,6 +16,14 @@ export const VOICE_DEPENDENCY_REF = 'runtime.espeak-ng.formant.1.52.0';
 export const VOICE_PROFILE_REF = 'voice-capability-profile.espeak-ng.en-us.1.52.0';
 export const VOICE_PACKAGE_WORKSPACE_RELATIVE = 'runtime/voice/package-workspace';
 export const VOICE_BINDING_RELATIVE = 'runtime/voice/binding.json';
+export const VOICE_DIRECT_PLAYBACK_BASELINE_CONTROL_BINDINGS = Object.freeze([
+  Object.freeze({ controlRef: 'control.fixture.duration', capabilityRef: 'capability.prosody.duration' }),
+  Object.freeze({ controlRef: 'control.fixture.relative-f0', capabilityRef: 'capability.prosody.relative-f0' }),
+  Object.freeze({ controlRef: 'control.fixture.pause', capabilityRef: 'capability.prosody.pause' })
+]);
+export const VOICE_DIRECT_PLAYBACK_BASELINE_CONTROL_REFS = Object.freeze(
+  VOICE_DIRECT_PLAYBACK_BASELINE_CONTROL_BINDINGS.map((binding) => binding.controlRef)
+);
 
 const SHA256 = /^[0-9a-f]{64}$/u;
 const SAFE_REF = /^[A-Za-z0-9][A-Za-z0-9._/@#:[\]-]*$/u;
@@ -299,7 +307,7 @@ export function formCompanionVoicePlaybackRequest({
     vocalGesturePlanRef: refs.vocalGesturePlanRef,
     enginePortRef: packageBundle.processPort.ENGINE_PORT_REF,
     speakerBaselineRef: refs.speakerBaselineRef,
-    appliedControlRefs: Object.freeze([]),
+    appliedControlRefs: VOICE_DIRECT_PLAYBACK_BASELINE_CONTROL_REFS,
     approximatedControlRefs: Object.freeze([]),
     unavailableControlRefs: Object.freeze([]),
     segments: Object.freeze([Object.freeze({
@@ -325,7 +333,7 @@ export function formCompanionVoicePlaybackRequest({
     runtimeQualificationReceipt: binding.runtimeQualificationReceipt,
     runtimeExecutable: binding.runtimeExecutable,
     voiceCapabilityProfile: packageBundle.voiceProfile,
-    controlBindings: Object.freeze([]),
+    controlBindings: VOICE_DIRECT_PLAYBACK_BASELINE_CONTROL_BINDINGS,
     unavailableControlPolicy: 'DEGRADE_EXPLICITLY'
   });
 }
