@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "vexlife-assortment.live-evolution-practicum-binding/v1",
+  "continuity": "[VXG RealForever]",
+  "repository": "vgong24/VexLife",
+  "repositoryId": "1317660990",
+  "round": 2,
+  "activePr": 855,
+  "activePrHeadBeforeFormation": "c3d5c79adcb844e07095e499155b613cf0c592bd",
+  "liveMainObserved": "4f6b39600c684a0fb6d8c4f2a45da7ddd0130486",
+  "acceptedBaselineMerge": "e8b14cfd4086ad34eebea02832d329160fc2b01f",
+  "predecessorSourceHead": "4a50d657f395427194c4f123e0b0974717d879af",
+  "predecessorPreviewRef": "preview.vexlife-assortment.r2.vex-node.01",
+  "predecessorPatch": "../vex-node-01/PATCH-PREVIEW.mjs",
+  "candidatePreviewRef": "preview.vexlife-assortment.r2.live-evolution.01",
+  "truthClasses": {
+    "LIVE": "OWNER_BACKED_LIVE_OR_HELD",
+    "EVOLUTION": "SOURCE_BACKED_FROZEN_PREVIEW"
+  },
+  "liveOwners": {
+    "currentWork": "source.vexlife.intent-workgraph.runtime-snapshot.001",
+    "currentWorkBrowserProjection": "/api/v1/intent/project-status",
+    "navigationContext": "module.vexlife.core.navigation",
+    "VexAvailability": "/api/v1/companion/availability",
+    "VexConversation": "feature.vexlife.addressed-conversation",
+    "VexCapabilities": "registry.vexlife.capabilities.001"
+  },
+  "heldLiveBoundaries": {
+    "projectsPluralCollection": "NOT_SOURCE_MAPPED",
+    "frontierExactBridge": "NOT_CANONICAL",
+    "assortmentCanonicalProjectRef": "NOT_MAPPED",
+    "continuityLiveAggregator": "NOT_FORMED"
+  },
+  "defaults": {
+    "truthMode": "EVOLUTION",
+    "referenceToLiveRename": false,
+    "fixtureFallbackInLive": false
+  },
+  "held": {
+    "canonicalProductSourceMutation": true,
+    "canonicalIntentMutation": true,
+    "canonicalProjectAdmission": true,
+    "canonicalMemoryWrite": true,
+    "relationshipPreferenceAcceptance": true,
+    "modelWeightMutation": true,
+    "vesselRuntimeActivation": true,
+    "sensorPermissionExpansion": true,
+    "publication": true,
+    "release": true
+  }
+}

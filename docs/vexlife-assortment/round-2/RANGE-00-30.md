@@ -686,4 +686,61 @@ truth projections, not separate interface worlds and not duplicated state owners
 
 ---
 
+
+## Index 31 — Stable Home separates interface grammar from truth source
+
+After PR #852 preserved the human-accepted Vex-node baseline on accepted main,
+Victor identified the next distinction: the current Evolution layout is useful
+as a stable Home grammar, but its Assortment cards are frozen preview data.
+
+Source descent confirmed:
+
+~~~text
+assortment-fixtures.truthClass = SOURCE_BACKED_FROZEN_PREVIEW
+assortment-fixtures.liveAutomaticAggregator = false
+~~~
+
+At the same time, several current owners already expose read-only Live seams:
+
+~~~text
+current work -> Intent Workgraph runtime snapshot
+browser current-work projection -> /api/v1/intent/project-status
+Vex current context -> Navigation semantic frame
+Vex conversation -> addressed conversation / companion turn
+Vex availability -> /api/v1/companion/availability
+Vex capabilities -> registry.vexlife.capabilities.001
+~~~
+
+Not everything has an admitted Live owner yet:
+
+~~~text
+Projects plural collection -> NOT_SOURCE_MAPPED
+Frontier exact live bridge -> NOT_CANONICAL
+Assortment projectRef -> NOT_MAPPED
+Continuity live aggregator -> NOT_FORMED
+~~~
+
+Permanent direction:
+
+~~~text
+ONE_ACCEPTED_UI_GRAMMAR
++ LIVE_OWNER_BACKED_TRUTH
++ EVOLUTION_FIXTURE_TRUTH
+!= DUPLICATED_STATE_OWNERS
+
+LIVE_UNAVAILABLE != FALL_BACK_TO_MOCK
+WORKGRAPH != PROJECT_CATALOG
+REFERENCE_PROJECTION != PROVEN_LIVE_TRUTH
+~~~
+
+PR #855 therefore starts with a bounded practicum truth switch inside the
+accepted Assortment surfaces. Evolution remains the default and exact regression
+baseline. Live reuses current owner reads where admitted and shows held/unavailable
+where ownership is not yet source-mapped.
+
+The global Reference/Evolution shell label is intentionally unchanged until the
+Live contract earns a broader shell-level meaning.
+
+---
+
 <!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][RANGE-00-30] -->

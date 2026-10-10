@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "vexlife-assortment.vexwalk/v1",
+  "previewRef": "preview.vexlife-assortment.r2.live-evolution.01",
+  "walkRef": "walk.vexlife-assortment.r2.live-evolution.01",
+  "purpose": "Exercise accepted Continue surface while switching truth source without navigation mutation",
+  "start": {
+    "resetToRoot": true,
+    "expectedProjection": "EVOLUTION_PROJECTION"
+  },
+  "humanPacing": {
+    "defaultStepDelayMs": 3000,
+    "proofStepDelayMs": 0
+  },
+  "steps": [
+    {
+      "human": "Home → Continue",
+      "selector": ".e27-node[data-terrain-ref=\"terrain.assortment.continue\"]",
+      "actionRef": "action.assortment.continuity.open",
+      "expectedSurfaceRef": "surface.vexlife.assortment-continuity",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.terrain.node.select"
+    },
+    {
+      "human": "Continuity · Evolution → Live truth",
+      "selector": ".assortment-truth-switch button[data-truth-mode=\"LIVE\"]",
+      "actionRef": "action.assortment.truth.live",
+      "expectedSurfaceRef": "surface.vexlife.assortment-continuity",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Continuity · Live → Evolution truth",
+      "selector": ".assortment-truth-switch button[data-truth-mode=\"EVOLUTION\"]",
+      "actionRef": "action.assortment.truth.evolution",
+      "expectedSurfaceRef": "surface.vexlife.assortment-continuity",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Continuity → Back to Home",
+      "selector": "#evolutionActiveSurfaceBack",
+      "actionRef": "action.navigation.back",
+      "expectedSurfaceRef": null,
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.navigation.back"
+    }
+  ]
+}

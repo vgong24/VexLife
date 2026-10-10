@@ -4,120 +4,129 @@
 
 ~~~text
 round=2
-state=ROUND_2_VEX_NODE_BASELINE_PRESERVATION
+state=ROUND_2_LIVE_EVOLUTION_TRUTH_PRACTICUM
 repository=vgong24/VexLife
 repositoryId=1317660990
-branch=VXG-100926-chatgpt-vexlife-assortment-round-2-vex-node-baseline
-pullRequest=852
-workRef=work.vexlife.assortment.round-2.vex-node-baseline-preservation.20261009a
-claimRef=claim.vexlife.assortment.round-2.vex-node-baseline-preservation.20261009a
-laneRef=lane.vexlife-assortment.round-2.successor-05
-predecessorPr=841
-predecessorAcceptedHead=0ec43552a120399f18a8bc4b38b7e3ed8574aba5
+branch=VXG-101026-chatgpt-vexlife-assortment-round-2-live-evolution
+pullRequest=855
+workRef=work.vexlife.assortment.round-2.live-evolution-truth.20261010a
+claimRef=claim.vexlife.assortment.round-2.live-evolution-truth.20261010a
+laneRef=lane.vexlife-assortment.round-2.successor-06
+acceptedBaselineMerge=e8b14cfd4086ad34eebea02832d329160fc2b01f
+currentMainAtFormation=4f6b39600c684a0fb6d8c4f2a45da7ddd0130486
 acceptedPracticumRef=preview.vexlife-assortment.r2.vex-node.01
 acceptedPracticumDisposition=HUMAN_WALK_ACCEPTED_STABLE_BASELINE
-acceptedHumanPackage=package.vexlife-assortment.r2.vex-node-01.p5.a001
-acceptedHumanPackageSha256=13b5d3ef47c3f5615d1dbd3647e965537ff40dfe98ae0e47f311a07cedd788ec
-nextFunction=PRESERVE_ACCEPTED_BASELINE_THEN_DESIGN_LIVE_VS_EVOLUTION_TRUTH_PROJECTION
+candidatePracticumRef=preview.vexlife-assortment.r2.live-evolution.01
+nextFunction=EARN_P0_P4_FOR_LIVE_EVOLUTION_TRUTH_SWITCH_WITHOUT_BASELINE_REGRESSION
 round3Formed=false
 ~~~
 
 ## Current meaning
 
-Victor human-walked the Round-2 Vex-node practicum on PR #841 and accepted the
-current Evolution experience as a stable baseline worth preserving.
+The accepted Vex-node Home baseline is terminal on accepted main through PR #852.
+PR #855 is the single compatible Round-2 successor for the next human-set edge:
+separate **truth source** from the accepted interface grammar.
 
-PR #841 remains the exact causal/design provenance lane. Its accepted experience
-is carried byte-for-byte by PR #852, a clean current-main preservation successor
-formed because the long-lived PR #841 ancestry contains immutable DCO formatting
-defects and predates newer accepted-main work.
+The accepted baseline remains:
 
 ~~~text
-PR841 = HUMAN/DESIGN PROVENANCE
-PR852 = CLEAN CURRENT-MAIN INTEGRATION CARRIER
-ACCEPTED EXPERIENCE = preview.vexlife-assortment.r2.vex-node.01
+Home -> Continue / Projects / Frontier / Vex
+one persistent Vex companion identity
+semantic Back != Close
+compact mobile Vex preserves conversation continuity
+accepted Evolution spatial/surface grammar
 ~~~
 
-The accepted baseline includes Home with Continue / Projects / Frontier / Vex,
-semantic Back distinct from Close, one persistent Vex companion identity,
-Projects/Continue/Vex coexistence with that companion, compact mobile Vex through
-the existing app-bar presence, and preserved conversation-turn identity through
-compact -> re-expand.
+That experience is the regression baseline. This successor does not redesign it.
 
-## Accepted practicum gates
+## Truth-source design
+
+The accepted Evolution Assortment content is explicitly:
 
 ~~~text
-P0 exact source + predecessor binding = PASS
-P1 formation/static wiring = PASS
-P2 real-browser runtime initialized = PASS
-P3 passive interactive readiness = PASS
-P4 executable new-path + inherited regression proof = PASS
-P5 human-first package interface = PASS
-P6 Victor human walk = HUMAN_WALK_ACCEPTED_STABLE_BASELINE
+truthClass=SOURCE_BACKED_FROZEN_PREVIEW
+liveAutomaticAggregator=false
 ~~~
 
-Evidence:
-- `github.pull.vexlife.841.comment.6094614357`
-- `github.pull.vexlife.841.comment.6094691201`
-
-## Current design law
-
-The accepted Evolution spatial/surface grammar is now a regression baseline.
-The next question is **truth source**, not another layout rewrite.
-
-Current repository source does **not** establish the existing Reference projection
-as live truth. The browser currently uses `CURRENT_SYNTHETIC_REFERENCE` for that
-reference-side data.
+Therefore:
 
 ~~~text
+EVOLUTION = DELIBERATE FIXTURE / EXPECTED-DESIGN TRUTH
+LIVE = OWNER-BACKED CURRENT / EMPTY / HELD / UNAVAILABLE TRUTH
+LIVE_UNAVAILABLE != SUBSTITUTE_EVOLUTION_FIXTURE
 REFERENCE_PROJECTION != LIVE_CURRENT_TRUTH
-ACCEPTED_EVOLUTION_GRAMMAR != MOCK_DATA_OWNER
-LIVE_CURRENT_TRUTH -> RIGHTFUL CURRENT OWNERS
-EVOLUTION_OR_PREVIEW_TRUTH -> DELIBERATE FIXTURE / EXPECTED-DESIGN DATA
-ONE_UI_GRAMMAR + MULTIPLE_TRUTH_PROJECTIONS != MULTIPLE_SEMANTIC OWNERS
-LIVE_UNAVAILABLE != SILENT_FALLBACK_TO_MOCK
 ~~~
 
-A future Live projection should call current semantic/state/work owners and show
-truthful current, held, unavailable or empty states when those owners are not
-connected. Evolution/Preview may remain deterministic fixture-backed design
-evidence. Labels should change only when their underlying truth contract earns
-the name.
+The first Live read reuses the existing browser Intent projection:
+
+~~~text
+GET /api/v1/intent/project-status?projectRef=...
+schema=vexlife.browser-intent-project-status/v1
+runtimeSourceRef=source.vexlife.intent-workgraph.runtime-snapshot.001
+effects=false
+executionAuthority=NONE
+~~~
+
+Vex already composes current Navigation, conversation, availability and Capability
+Registry seams in the accepted practicum.
+
+## Known held Live boundaries
+
+~~~text
+Assortment canonical projectRef = NOT_MAPPED
+Projects plural collection owner = NOT_SOURCE_MAPPED
+Frontier exact live bridge = NOT_CANONICAL
+Continuity live aggregator = NOT_FORMED
+~~~
+
+Live must render those boundaries honestly. Workgraph is not promoted into a
+Project catalog, and fixture data is not used as a hidden fallback.
+
+## Current candidate
+
+`preview.vexlife-assortment.r2.live-evolution.01` extends the exact accepted
+Vex-node patch.
+
+Default remains **Evolution** so the accepted human baseline is preserved on
+launch. A local Assortment truth switch lets Victor compare Live against
+Evolution without changing Journey/current semantic position.
+
+The global Reference/Evolution View selector is unchanged. `Reference → Live`
+renaming remains held until Live semantics are earned broadly enough to justify
+a shell-level meaning change.
 
 ## Next effect
 
-First complete lifecycle preservation of the accepted baseline through PR #852.
-
-Then continue Round 2 from that stable point by source-mapping the smallest
-owner-backed Live projection seam while preserving the accepted Evolution
-experience as the regression reference.
-
 ~~~text
-accepted baseline preserved
--> identify rightful current owners for each visible field/card
--> define truthful Live projection boundary
--> keep Evolution/Preview fixture truth explicit
--> prove projection switching does not change semantic current position
--> form the smallest executable delta
--> regression-walk accepted baseline + new truth-source behavior
+source candidate
+-> Source Manifest current
+-> exact browser proof
+-> prove default Evolution parity
+-> switch Evolution -> Live without Journey mutation
+-> prove no fixture fallback in Live
+-> prove held/unavailable where owners are missing
+-> switch Live -> Evolution and recover exact fixture baseline
+-> preserve Vex-node regression
+-> P0-P4 before human handoff
 ~~~
 
 ## Held effects
 
 ~~~text
 referenceToLiveRename=false
+canonicalProductAdoption=false
+projectCatalogInferenceFromWorkgraph=false
+frontierStateInference=false
 fixtureTruthPromotion=false
-liveProjectionProductAdoption=false
+canonicalIntentMutation=false
+canonicalProjectAdmission=false
 canonicalMemoryWrite=false
 relationshipPreferenceAcceptance=false
 modelWeightMutation=false
 vesselRuntimeActivation=false
 sensorPermissionExpansion=false
-canonicalJourneyMutation=false
-canonicalPresentationGraphMutation=false
-canonicalIntentMutation=false
 publication=false
 release=false
 ~~~
 
-<!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][CURRENT][VEX-NODE-BASELINE-PRESERVATION] -->
+<!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][CURRENT][LIVE-EVOLUTION-TRUTH] -->
