@@ -21,6 +21,12 @@
       "sha256": "68e5f64bffc6bcddcec8ae4529676fb7a48bdafec058f0960c867a06d831b453"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/project-semantic-map-01/payload/project-semantic-map.css",
+      "mode": "100644",
+      "bytes": 400,
+      "sha256": "e4b8c5d2e706d9f014578510915a3ac69988e515e5b837f3ec8d35902b19d841"
+    },
+    {
       "path": "src/core/evaluated-rhythm-learning.mjs",
       "mode": "100644",
       "bytes": 35652,

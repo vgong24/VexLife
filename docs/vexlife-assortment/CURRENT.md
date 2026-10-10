@@ -4,7 +4,7 @@
 
 ~~~text
 round=2
-state=ROUND_2_LIVE_EVOLUTION_TRUTH_PRACTICUM
+state=ROUND_2_PROJECT_SEMANTIC_MAP_PRACTICUM
 repository=vgong24/VexLife
 repositoryId=1317660990
 branch=VXG-101026-chatgpt-vexlife-assortment-round-2-live-evolution
@@ -12,121 +12,150 @@ pullRequest=855
 workRef=work.vexlife.assortment.round-2.live-evolution-truth.20261010a
 claimRef=claim.vexlife.assortment.round-2.live-evolution-truth.20261010a
 laneRef=lane.vexlife-assortment.round-2.successor-06
-acceptedBaselineMerge=e8b14cfd4086ad34eebea02832d329160fc2b01f
-currentMainAtFormation=4f6b39600c684a0fb6d8c4f2a45da7ddd0130486
-acceptedPracticumRef=preview.vexlife-assortment.r2.vex-node.01
-acceptedPracticumDisposition=HUMAN_WALK_ACCEPTED_STABLE_BASELINE
-candidatePracticumRef=preview.vexlife-assortment.r2.live-evolution.01
-nextFunction=EARN_P0_P4_FOR_LIVE_EVOLUTION_TRUTH_SWITCH_WITHOUT_BASELINE_REGRESSION
+stableCheckpoint=[VexLife Stable: Home Grammar, Vex Companion, Live/Evolution Truth][1.0]
+stableCheckpointCommit=966a807c23e41c83a18eefebf33155a1276cdf4c
+currentCandidateHeadBeforeFormation=56c4a26a1b093447204a5ca345d9957af32d9e06
+currentMainObserved=30ebd27c847f96a0222b04fa60e51ca1c846c582
+acceptedPracticumRef=preview.vexlife-assortment.r2.continuity-refinement.01
+acceptedPracticumDisposition=HUMAN_WALK_ACCEPTED_SPATIAL_CONTINUITY
+candidatePracticumRef=preview.vexlife-assortment.r2.project-semantic-map.01
+nextFunction=RECOVER_EXISTING_PROJECT_SEMANTIC_SUBTREES_UNDER_PROJECTS_AND_PROVE_IDENTITY_WORK_PRESENTATION_SEPARATION
 round3Formed=false
 ~~~
 
 ## Current meaning
 
-The accepted Vex-node Home baseline is terminal on accepted main through PR #852.
-PR #855 is the single compatible Round-2 successor for the next human-set edge:
-separate **truth source** from the accepted interface grammar.
-
-The accepted baseline remains:
+Victor accepted the continuity-refinement direction:
 
 ~~~text
-Home -> Continue / Projects / Frontier / Vex
-one persistent Vex companion identity
-semantic Back != Close
-compact mobile Vex preserves conversation continuity
-accepted Evolution spatial/surface grammar
+Frontier spatial children = coherent
+Close != navigate away = coherent
+reusable Details inspection = coherent enough to continue
 ~~~
 
-That experience is the regression baseline. This successor does not redesign it.
+The next human finding is more foundational than Health: **Projects is a semantic collection/index, but its Evolution surface had been showing current-work trajectories as if those were necessarily Project membership.**
 
-## Truth-source design
-
-The accepted Evolution Assortment content is explicitly:
+Existing repository law already says:
 
 ~~~text
-truthClass=SOURCE_BACKED_FROZEN_PREVIEW
-liveAutomaticAggregator=false
+ONE_SEMANTIC_TREE_MULTIPLE_PROJECTIONS
+SURFACE_CARD != TERRAIN_CHILD_BY_DEFAULT
+WORK_ITEM != PROJECT_ENTITY_BY_DEFAULT
+PRESENTATION_HIERARCHY != SEMANTIC_HIERARCHY
 ~~~
 
-Therefore:
+## Recovered Project continuity
+
+The accepted Vex-node Home simplification removed these old direct Home Project subtrees:
 
 ~~~text
-EVOLUTION = DELIBERATE FIXTURE / EXPECTED-DESIGN TRUTH
-LIVE = OWNER-BACKED CURRENT / EMPTY / HELD / UNAVAILABLE TRUTH
-LIVE_UNAVAILABLE != SUBSTITUTE_EVOLUTION_FIXTURE
-REFERENCE_PROJECTION != LIVE_CURRENT_TRUTH
+terrain.project.self-development
+terrain.project.vex-home-product
+terrain.project.local-vex
 ~~~
 
-The first Live read reuses the existing browser Intent projection:
+It removed their **Home placement**, not their identity, descendants, `projectRef` mappings, threads, channels, or conversation ownership.
+
+The next practicum therefore recovers those exact predecessor Git records and changes only the three Project roots' preview placement:
 
 ~~~text
-GET /api/v1/intent/project-status?projectRef=...
-schema=vexlife.browser-intent-project-status/v1
-runtimeSourceRef=source.vexlife.intent-workgraph.runtime-snapshot.001
-effects=false
-executionAuthority=NONE
+Global Root Hub
+-> Projects
+   -> Self Development
+   -> Vex Home
+   -> Local Vex
 ~~~
 
-Vex already composes current Navigation, conversation, availability and Capability
-Registry seams in the accepted practicum.
+Their existing descendants remain attached to those Projects.
 
-## Known held Live boundaries
+No new Project identity is minted and no current-work card is promoted into Project membership.
+
+## Project identity, work, and presentation stay separate
+
+The Projects surface now tests three distinct concepts:
 
 ~~~text
-Assortment canonical projectRef = NOT_MAPPED
+Project identity / semantic membership
+  -> recovered source-backed Project tree
+
+Current work
+  -> Intent/fixture work trajectories
+
+Details
+  -> presentation-only inspection
+~~~
+
+Expected interaction:
+
+~~~text
+Open Project
+  -> semantic Terrain navigation
+  -> Journey mutation
+  -> existing projectRef/thread/channel owners become current
+
+Open details
+  -> presentation-only
+  -> no Journey mutation
+
+current work
+  -> may decorate or point into a Project
+  -> must not manufacture Project membership
+~~~
+
+The Assortment work card's existing bounded Project-depth action remains, but is named **Open work context** instead of implying that the work card itself proves canonical Project identity.
+
+## Live boundary
+
+The current Live boundary remains:
+
+~~~text
 Projects plural collection owner = NOT_SOURCE_MAPPED
-Frontier exact live bridge = NOT_CANONICAL
-Continuity live aggregator = NOT_FORMED
+Assortment canonical projectRef = NOT_MAPPED
 ~~~
 
-Live must render those boundaries honestly. Workgraph is not promoted into a
-Project catalog, and fixture data is not used as a hidden fallback.
+Therefore Live must not infer a Project catalog from Intent Workgraph.
 
-## Current candidate
-
-`preview.vexlife-assortment.r2.live-evolution.01` extends the exact accepted
-Vex-node patch.
-
-Default remains **Evolution** so the accepted human baseline is preserved on
-launch. A local Assortment truth switch lets Victor compare Live against
-Evolution without changing Journey/current semantic position.
-
-The global Reference/Evolution View selector is unchanged. `Reference → Live`
-renaming remains held until Live semantics are earned broadly enough to justify
-a shell-level meaning change.
-
-## Next effect
+Stable semantic Project identity/placement can exist in Terrain while Live Project-collection currentness remains held.
 
 ~~~text
-source candidate
--> Source Manifest current
--> exact browser proof
--> prove default Evolution parity
--> switch Evolution -> Live without Journey mutation
--> prove no fixture fallback in Live
--> prove held/unavailable where owners are missing
--> switch Live -> Evolution and recover exact fixture baseline
--> preserve Vex-node regression
--> P0-P4 before human handoff
+PROJECT_IDENTITY != LIVE_COLLECTION_CURRENTNESS
+PROJECT_IDENTITY != CURRENT_WORK
+CURRENT_WORK != PROJECT_MEMBERSHIP
 ~~~
+
+## Why Health remains next-after-this
+
+System / Resource Health is already a recoverable Frontier entity. Before deciding whether it earns Home-level Health placement, the product needs one coherent semantic-map grammar for:
+
+~~~text
+Home doorway
+collection/index
+admitted semantic entity
+contained/related child
+work/currentness overlay
+list/detail/spatial projections
+~~~
+
+Projects is the best next proof because the repository already contains Project identities and descendants that were removed from Home placement but not invalidated.
 
 ## Held effects
 
 ~~~text
+newCanonicalProjectAdmission=false
+liveProjectCatalogFormation=false
+healthHomeNodeFormation=false
 referenceToLiveRename=false
 canonicalProductAdoption=false
-projectCatalogInferenceFromWorkgraph=false
-frontierStateInference=false
 fixtureTruthPromotion=false
 canonicalIntentMutation=false
-canonicalProjectAdmission=false
 canonicalMemoryWrite=false
 relationshipPreferenceAcceptance=false
 modelWeightMutation=false
 vesselRuntimeActivation=false
 sensorPermissionExpansion=false
+merge=false
 publication=false
 release=false
 ~~~
 
-<!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][CURRENT][LIVE-EVOLUTION-TRUTH] -->
+<!-- [VXG RealForever][VEXLIFE-ASSORTMENT][ROUND2][CURRENT][PROJECT-SEMANTIC-MAP] -->

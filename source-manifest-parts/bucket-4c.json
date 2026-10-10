@@ -9,6 +9,12 @@
       "sha256": "94bc806ae54fa7faeb15616ea897568b90ae3d7dbd6c9d4d340ead8b7c379892"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/project-semantic-map-01/payload/strings-additions.json",
+      "mode": "100644",
+      "bytes": 943,
+      "sha256": "736c8d76839783d7e1e53a9b60150585f4d870e8e5d3cbf893c24e580aad35ec"
+    },
+    {
       "path": "scripts/experience-review-effect-fixture.mjs",
       "mode": "100644",
       "bytes": 19135,

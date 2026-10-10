@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 33895,
       "sha256": "bd034b97f62ec80a205509826aeb7748bdaa66e1be7e76871b7598872f847e17"
+    },
+    {
+      "path": "docs/vexlife-assortment/practicum-candidates/project-semantic-map-01/PROOF.e2e.mjs",
+      "mode": "100644",
+      "bytes": 12640,
+      "sha256": "15808d1084e3a0da9841855c1743e8082bea9493596f5dd0e438362a2aa39be2"
     }
   ]
 }

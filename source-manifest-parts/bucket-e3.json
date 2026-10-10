@@ -3,6 +3,12 @@
   "bucketId": "e3",
   "files": [
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/project-semantic-map-01/contracts/VEXWALK-PROJECT-SEMANTIC-MAP.json",
+      "mode": "100644",
+      "bytes": 2590,
+      "sha256": "2c0fae56dfb5799e1b584573a76d0fa49617983a6211a765aba24de86ff2ae09"
+    },
+    {
       "path": "src/core/recovery-policy.mjs",
       "mode": "100644",
       "bytes": 12560,

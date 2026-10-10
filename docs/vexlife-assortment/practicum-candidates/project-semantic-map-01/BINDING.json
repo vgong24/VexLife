@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "vexlife-assortment.project-semantic-map-practicum-binding/v1",
+  "continuity": "[VXG RealForever]",
+  "repository": "vgong24/VexLife",
+  "repositoryId": "1317660990",
+  "round": 2,
+  "activePr": 855,
+  "activePrHeadBeforeFormation": "56c4a26a1b093447204a5ca345d9957af32d9e06",
+  "liveMainObserved": "30ebd27c847f96a0222b04fa60e51ca1c846c582",
+  "predecessorSourceHead": "4a50d657f395427194c4f123e0b0974717d879af",
+  "predecessorPreviewRef": "preview.vexlife-assortment.r2.continuity-refinement.01",
+  "predecessorPatch": "../continuity-refinement-01/PATCH-PREVIEW.mjs",
+  "candidatePreviewRef": "preview.vexlife-assortment.r2.project-semantic-map.01",
+  "humanEvidenceRef": "github.pull.vexlife.855.comment.6096288019",
+  "stableCheckpointDisplay": "[VexLife Stable: Home Grammar, Vex Companion, Live/Evolution Truth][1.0]",
+  "stableCheckpointTarget": "966a807c23e41c83a18eefebf33155a1276cdf4c",
+  "recoveredProjectTerrainRefs": [
+    "terrain.project.self-development",
+    "terrain.project.vex-home-product",
+    "terrain.project.local-vex"
+  ],
+  "recoveredProjectRefs": [
+    "project.self-development",
+    "project.vex-home-product",
+    "project.local-vex"
+  ],
+  "projectRecovery": {
+    "source": "exact predecessor Git blob blueprint/fragments/terrain.json",
+    "selection": "kind=PROJECT AND parentRef=terrain.project.root-hub",
+    "placementDelta": "reparent recovered project roots beneath terrain.assortment.projects; preserve descendant identities and relationships",
+    "membershipMutation": "EVOLUTION_PREVIEW_ONLY",
+    "liveProjectCatalogOwner": "HELD_NOT_SOURCE_MAPPED"
+  },
+  "laws": [
+    "ONE_SEMANTIC_TREE_MULTIPLE_PROJECTIONS",
+    "HOME_DEMOTION != IDENTITY_DELETION",
+    "SURFACE_CARD != TERRAIN_CHILD_BY_DEFAULT",
+    "WORK_ITEM != PROJECT_ENTITY_BY_DEFAULT",
+    "PROJECT_COLLECTION_MEMBERSHIP != INTENT_WORKGRAPH_ACTIVITY",
+    "PROJECT_OPEN = SEMANTIC_NAVIGATION",
+    "PROJECT_DETAILS = PRESENTATION_ONLY",
+    "CURRENT_WORK_MAY_DECORATE_PROJECT_BUT_MUST_NOT_MANUFACTURE_PROJECT_MEMBERSHIP"
+  ],
+  "held": {
+    "liveProjectCatalogFormation": true,
+    "newCanonicalProjectAdmission": true,
+    "healthHomeNodeFormation": true,
+    "canonicalProductAdoption": true,
+    "referenceToLiveRename": true,
+    "merge": true,
+    "release": true
+  }
+}

@@ -3,6 +3,12 @@
   "bucketId": "e7",
   "files": [
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/project-semantic-map-01/README.md",
+      "mode": "100644",
+      "bytes": 2876,
+      "sha256": "77e14533305c4db4734b35401b8f91bfdd90a81bc22bdd6f2bf50b2e4b532b14"
+    },
+    {
       "path": "reference/browser/relationships/core.js",
       "mode": "100644",
       "bytes": 3660,

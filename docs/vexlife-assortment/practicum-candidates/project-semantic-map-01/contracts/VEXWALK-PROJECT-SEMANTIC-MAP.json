@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "vexlife-assortment.vexwalk/v1",
+  "previewRef": "preview.vexlife-assortment.r2.project-semantic-map.01",
+  "walkRef": "walk.vexlife-assortment.r2.project-semantic-map.01",
+  "purpose": "Exercise recovered Project semantic membership, Project inspection and semantic Project entry while keeping current work distinct",
+  "start": {
+    "resetToRoot": true,
+    "expectedProjection": "EVOLUTION_PROJECTION"
+  },
+  "humanPacing": {
+    "defaultStepDelayMs": 3000,
+    "proofStepDelayMs": 0
+  },
+  "steps": [
+    {
+      "human": "Home → Projects",
+      "selector": ".e27-node[data-terrain-ref=\"terrain.assortment.projects\"]",
+      "actionRef": "action.terrain.node.select",
+      "expectedSurfaceRef": "surface.vexlife.assortment-projects",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.terrain.node.select"
+    },
+    {
+      "human": "Inspect Vex Home without activating it",
+      "selector": "[data-project-ref=\"project.vex-home-product\"] .assortment-inspect",
+      "actionRef": "action.assortment.inspect",
+      "expectedSurfaceRef": "surface.vexlife.assortment-inspector",
+      "expectedTerrainLabel": "Projects",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Back to Projects presentation",
+      "selector": "#evolutionActiveSurfaceBack",
+      "actionRef": "action.presentation.back",
+      "expectedSurfaceRef": "surface.vexlife.assortment-projects",
+      "expectedTerrainLabel": "Projects",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Close Projects to reveal semantic Project children",
+      "selector": "#evolutionActiveSurfaceClose",
+      "actionRef": "action.presentation.close",
+      "expectedSurfaceRef": null,
+      "expectedTerrainLabel": "Projects",
+      "expectJourneyMutation": false
+    },
+    {
+      "human": "Projects → Vex Home",
+      "selector": ".e27-node[data-terrain-ref=\"terrain.project.vex-home-product\"]",
+      "actionRef": "action.terrain.node.select",
+      "expectedSurfaceRef": "surface.vexlife.assortment-inspector",
+      "expectedTerrainLabel": "Vex Home",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.terrain.node.select"
+    },
+    {
+      "human": "Back to Projects semantic context",
+      "selector": "#evolutionActiveSurfaceBack",
+      "actionRef": "action.navigation.back",
+      "expectedSurfaceRef": "surface.vexlife.assortment-projects",
+      "expectedTerrainLabel": "Projects",
+      "expectJourneyMutation": true,
+      "expectedJourneyActionRef": "action.navigation.back"
+    }
+  ]
+}
