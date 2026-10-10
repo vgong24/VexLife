@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "96",
+  "files": [
+    {
+      "path": "docs/vexlife-assortment/practicum-candidates/live-evolution-01/payload/assortment-fixtures.json",
+      "mode": "100644",
+      "bytes": 6271,
+      "sha256": "4246e0cb62ebccc808c8c59a42da7c2f471ba66b76f2bf2db47006f6e92bd8b9"
+    }
+  ]
+}

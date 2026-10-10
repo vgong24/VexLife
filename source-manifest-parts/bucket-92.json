@@ -9,6 +9,12 @@
       "sha256": "bd83a969ac4f279e314aae221df184c217ce6052b5883da8eb91d3c70c49ecae"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/live-evolution-01/payload/live-evolution.css",
+      "mode": "100644",
+      "bytes": 710,
+      "sha256": "2fa0549a57a2efd25b27ed9ffbf2b18e5f956a202254a9307792ebd449794d8e"
+    },
+    {
       "path": "src/core/browser-companion-bridge.mjs",
       "mode": "100644",
       "bytes": 39272,

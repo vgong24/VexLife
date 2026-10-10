@@ -15,6 +15,12 @@
       "sha256": "32de6af2cc522f8031fcdae43f92b609287a6b6aa6cc6e9d7b214c51d609902e"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/live-evolution-01/README.md",
+      "mode": "100644",
+      "bytes": 1191,
+      "sha256": "766f017c4518258e8af934d6ec563c91bf05515d0dda17ea6693dc8d30b82845"
+    },
+    {
       "path": "reference/browser/modules/relationships-cdr-persistence-binding-client.js",
       "mode": "100644",
       "bytes": 5300,
