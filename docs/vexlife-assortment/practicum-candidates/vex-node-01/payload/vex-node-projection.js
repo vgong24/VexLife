@@ -174,9 +174,18 @@ export function createVexNodePreview({app,t,capabilityRegistry}){
 
   function setCompanionTurn(projection){currentTurn=structuredClone(projection);refresh();return snapshot();}
   function ownsActiveSurface(){return activeSurface()===VEX_NODE_SURFACE_REF;}
+  function expandVexForVexNode(){
+    const guide=guideWindow();
+    app.state.guideMinimized=false;
+    globalThis.localStorage?.setItem?.('vexlife.guide.minimized','false');
+    guide?.classList?.remove?.('is-minimized');
+    app.guide?.setOpen?.(true,{focus:false,explicit:true});
+    updateCompanionStratum();
+    return guide;
+  }
   async function handleTerrainNode(terrainRef){
     if(terrainRef!==VEX_NODE_TERRAIN_REF)return false;
-    app.guide?.setOpen?.(true);
+    expandVexForVexNode();
     await app.chat.refreshCompanionAvailability?.();
     const result=await app.uxProjectionShell.openEvolutionSurface(VEX_NODE_SURFACE_REF);
     syncBack();refresh();return result;
