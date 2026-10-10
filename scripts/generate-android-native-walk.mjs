@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   ACCEPTED_ANDROID_BASE,
   ACCEPTED_MAIN_ACTIVITY_SHA256,
+  ACCEPTED_MAIN_ACTIVITY_SOURCE,
   ANDROID_NATIVE_WALK_FOUNDATION_STAGE,
   MAIN_ACTIVITY_PATH,
   renderAndroidNativeWalkFoundation,
@@ -15,8 +15,7 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function target(relativePath) { return path.join(ROOT, ...relativePath.split('/')); }
-function git(args) { return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
-function acceptedSource() { return git(['show', `${ACCEPTED_ANDROID_BASE}:${MAIN_ACTIVITY_PATH}`]); }
+function acceptedSource() { return ACCEPTED_MAIN_ACTIVITY_SOURCE; }
 function worktreeSource() { return fs.readFileSync(target(MAIN_ACTIVITY_PATH), 'utf8'); }
 function render() {
   const source = acceptedSource();
