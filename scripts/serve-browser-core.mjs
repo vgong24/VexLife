@@ -19,7 +19,7 @@ import {
 } from '../src/core/browser-companion-bridge.mjs';
 import { createCompanionVoicePlaybackAdapter } from '../src/core/companion-voice-playback.mjs';
 import { compileCompanionAvailability, formCompanionReentryPlan } from '../src/core/companion-availability-reentry.mjs';
-import { createReleaseRuntimeCompanionRecoveryOwner } from '../src/core/browser-companion-recovery-owner.mjs';
+import { createCompanionRecoveryOwner } from '../src/core/browser-companion-recovery-owner.mjs';
 import {
   CAPABILITY_ASSIMILATION_MODES,
   createCapabilityAssimilationRuntime
@@ -429,7 +429,7 @@ export function createServerOwnedBrowserCompanionBridge({
   model = process.env.VEXLIFE_COMPANION_MODEL ?? null,
   runtimeMode = process.env.VEXLIFE_CAPABILITY_RUNTIME_MODE ??
     CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN,
-  recoveryOwnerFactory = createReleaseRuntimeCompanionRecoveryOwner,
+  recoveryOwnerFactory = createCompanionRecoveryOwner,
   bridgeFactory = createBrowserCompanionBridge
 } = {}) {
   if (!Object.values(CAPABILITY_ASSIMILATION_MODES).includes(runtimeMode)) {

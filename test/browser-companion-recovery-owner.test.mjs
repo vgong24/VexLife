@@ -10,7 +10,10 @@ import {
   validateRecoveryCurrentBinding
 } from '../src/core/vex-initialization.mjs';
 import {
+  ACTIVATED_RUNTIME_RECOVERY_OWNER_REF,
   RELEASE_RUNTIME_RECOVERY_ADAPTER_REF,
+  createActivatedRuntimeCompanionRecoveryOwner,
+  createCompanionRecoveryOwner,
   createReleaseRuntimeCompanionRecoveryOwner
 } from '../src/core/browser-companion-recovery-owner.mjs';
 import { initializeLivedCompanionHome } from '../src/core/lived-companion.mjs';
@@ -21,6 +24,15 @@ const profiles = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint', 'vex-op
 const bundles = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint', 'model-bundle-registry.json'), 'utf8'));
 const macProfile = profiles.profiles.find((profile) => profile.platform === 'darwin');
 const bundle = bundles.bundles.find((item) => item.modelBundleRef === bundles.activeModelBundleRef);
+const ACTIVATED_ADAPTER_REF = 'adapter.runtime.mlx.macos-victor.post-w5.001';
+const activatedBindingFixture = Object.freeze({
+  state: 'ACTIVE_ACCEPTED',
+  bindingRef: 'binding.vexlife.activated-m4.synthetic-test',
+  generationRef: 'generation.vex.m4.synthetic-test',
+  modelRef: 'model.vex.m4.synthetic-test',
+  modelProfileRef: 'model-profile.vex.m4.synthetic-test',
+  runtime: Object.freeze({ runtimeAdapterRef: ACTIVATED_ADAPTER_REF })
+});
 
 function modelConfiguration(overrides = {}) {
   return {
@@ -47,6 +59,19 @@ function request(identity, overrides = {}) {
     effectAuthorityGranted:false, executionDisposition:'DELEGATE_TO_RIGHTFUL_RUNTIME_ADAPTER',
     requestRef:'request.vexlife.companion-recovery.test', requestSha256:'2'.repeat(64), ...overrides
   };
+}
+
+function activatedRequest(identity, overrides = {}) {
+  return request(identity, {
+    bindingRef: activatedBindingFixture.bindingRef,
+    modelRefOrNull: activatedBindingFixture.modelRef,
+    generationRefOrNull: activatedBindingFixture.generationRef,
+    runtimeAdapterRef: ACTIVATED_ADAPTER_REF,
+    runtimeObservationRef: 'observation.runtime.activated.test',
+    requestRef: 'request.vexlife.companion-recovery.activated.test',
+    requestSha256: '3'.repeat(64),
+    ...overrides
+  });
 }
 
 function makeHome() {
@@ -94,6 +119,73 @@ test('rightful recovery owner rejects foreign identity before runtime effect', a
     await assert.rejects(()=>owner.recover(request(identity,{homeRef:'vex-home.foreign'})),/RECOVERY_HOME_IDENTITY_MISMATCH/u);
     assert.equal(calls,0);
   } finally { fs.rmSync(root,{recursive:true,force:true}); }
+});
+
+test('activated recovery owner resumes only an already-current accepted binding and remains idempotent', async () => {
+  const {root,home,identity}=makeHome(); let calls=0;
+  try {
+    const owner=createActivatedRuntimeCompanionRecoveryOwner({
+      home,
+      proofClass:'SYNTHETIC',
+      loadRegistry:()=>({binding:activatedBindingFixture}),
+      readSourceIdentity:async()=>({registrySha256:'a'.repeat(64),moduleSha256:'b'.repeat(64),sourceBindingSha256:'c'.repeat(64)}),
+      startOrResumeRuntime:async(options)=>{
+        calls+=1;
+        assert.equal(options.handoffBytes,null);
+        assert.equal(options.handoffSha256,null);
+        assert.deepEqual(options.environment,{});
+        return {
+          bindingRef:activatedBindingFixture.bindingRef,
+          homeRef:identity.homeRef,
+          companionLineageRef:identity.companionLineageRef,
+          generationRef:activatedBindingFixture.generationRef,
+          modelRef:activatedBindingFixture.modelRef,
+          modelProfileRef:activatedBindingFixture.modelProfileRef,
+          runtimeAttemptRef:'attempt.vexlife.activated-recovery.test',
+          receiptRef:'receipt.vexlife.activated-runtime.test'
+        };
+      }
+    });
+    const input=activatedRequest(identity);
+    const first=await owner.recover(input);
+    const second=await owner.recover(input);
+    assert.equal(calls,1);
+    assert.deepEqual(second,first);
+    assert.equal(first.effectOwnerRef,ACTIVATED_RUNTIME_RECOVERY_OWNER_REF);
+    assert.equal(first.runtimeAdapterRef,ACTIVATED_ADAPTER_REF);
+    assert.equal(first.disposition,'PERFORMED_SAME_BINDING_REENTRY');
+    assert.equal(first.postRecoveryObservationRequired,true);
+    assert.equal(first.proofClass,'SYNTHETIC');
+  } finally { fs.rmSync(root,{recursive:true,force:true}); }
+});
+
+test('activated recovery rejects identity drift before runtime effect', async () => {
+  const {root,home,identity}=makeHome(); let calls=0;
+  try {
+    const owner=createActivatedRuntimeCompanionRecoveryOwner({
+      home,
+      proofClass:'SYNTHETIC',
+      loadRegistry:()=>({binding:activatedBindingFixture}),
+      readSourceIdentity:async()=>({registrySha256:'a'.repeat(64),moduleSha256:'b'.repeat(64),sourceBindingSha256:'c'.repeat(64)}),
+      startOrResumeRuntime:async()=>{calls+=1;throw new Error('must not run');}
+    });
+    await assert.rejects(()=>owner.recover(activatedRequest(identity,{generationRefOrNull:'generation.foreign'})),/ACTIVATED_RECOVERY_GENERATION_IDENTITY_MISMATCH/u);
+    assert.equal(calls,0);
+  } finally { fs.rmSync(root,{recursive:true,force:true}); }
+});
+
+test('composite recovery owner dispatches only exact owned runtime adapters', async () => {
+  const calls=[];
+  const owner=createCompanionRecoveryOwner({
+    home:'/tmp/vexlife-unused-composite-home',
+    proofClass:'SYNTHETIC',
+    releaseOwnerFactory:()=>Object.freeze({recover:async(input)=>{calls.push('release');return input;}}),
+    activatedOwnerFactory:()=>Object.freeze({runtimeAdapterRef:ACTIVATED_ADAPTER_REF,recover:async(input)=>{calls.push('activated');return input;}})
+  });
+  await owner.recover({runtimeAdapterRef:RELEASE_RUNTIME_RECOVERY_ADAPTER_REF});
+  await owner.recover({runtimeAdapterRef:ACTIVATED_ADAPTER_REF});
+  await assert.rejects(()=>owner.recover({runtimeAdapterRef:'adapter.runtime.foreign'}),/RECOVERY_RUNTIME_ADAPTER_UNOWNED/u);
+  assert.deepEqual(calls,['release','activated']);
 });
 
 test('server-owned Browser Companion composition binds one rightful recovery owner', () => {
