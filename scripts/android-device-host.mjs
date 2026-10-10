@@ -19,9 +19,16 @@ import {
 } from '../src/core/android-device-host.mjs';
 
 const SHA256 = /^[0-9a-f]{64}$/u;
+const DEFAULT_LAUNCH_SETTLE_TIMEOUT_MS = 12000;
+const DEFAULT_LAUNCH_POLL_INTERVAL_MS = 250;
 
 function existsExecutable(candidate) {
   try { fs.accessSync(candidate, fs.constants.X_OK); return true; } catch { return false; }
+}
+
+function sleepMs(milliseconds) {
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) return;
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 }
 
 export function resolveAdbPath({ env = process.env, which = spawnSync } = {}) {
@@ -86,8 +93,74 @@ function captureFile(filePath, data) {
   return { path: filePath, bytes: bytes.length, sha256: crypto.createHash('sha256').update(bytes).digest('hex') };
 }
 
+function foregroundMatches(output, packageName, component) {
+  const resumedMarker = /(?:^|\s)(?:mResumedActivity|ResumedActivity|topResumedActivity)\s*[:=]/u;
+  return String(output ?? '')
+    .split(/\r?\n/u)
+    .some((line) =>
+      resumedMarker.test(line) &&
+      (line.includes(packageName) || line.includes(component))
+    );
+}
+
+export function settleAndroidLaunchReadiness({
+  commands,
+  packageName,
+  component,
+  spawn = spawnSync,
+  now = Date.now,
+  sleep = sleepMs,
+  timeoutMs = DEFAULT_LAUNCH_SETTLE_TIMEOUT_MS,
+  pollIntervalMs = DEFAULT_LAUNCH_POLL_INTERVAL_MS,
+} = {}) {
+  if (!commands?.pid || !commands?.foreground) throw new Error('ANDROID_DEVICE_HOST_READINESS_COMMANDS_REQUIRED');
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new Error('ANDROID_DEVICE_HOST_LAUNCH_TIMEOUT_INVALID');
+  if (!Number.isSafeInteger(pollIntervalMs) || pollIntervalMs < 1) throw new Error('ANDROID_DEVICE_HOST_LAUNCH_POLL_INTERVAL_INVALID');
+  const startedAt = now();
+  const deadline = startedAt + timeoutMs;
+  let attempts = 0;
+  let pidObserved = false;
+  let foregroundObserved = false;
+
+  while (true) {
+    attempts += 1;
+    const pidResult = runTyped(commands.pid, { spawn, allowFailure: true });
+    const pid = pidResult.status === 0 ? String(pidResult.stdout ?? '').trim().split(/\s+/u)[0] || null : null;
+    if (pid) pidObserved = true;
+
+    const foregroundResult = runTyped(commands.foreground, { spawn, allowFailure: true });
+    if (foregroundResult.status === 0 && foregroundMatches(foregroundResult.stdout, packageName, component)) {
+      foregroundObserved = true;
+    }
+
+    const observedAt = now();
+    if (pidObserved && foregroundObserved) {
+      return Object.freeze({
+        state: 'SETTLED',
+        attempts,
+        elapsedMs: Math.max(0, observedAt - startedAt),
+        pidObserved,
+        foregroundObserved,
+      });
+    }
+    const remaining = deadline - observedAt;
+    if (remaining <= 0) {
+      return Object.freeze({
+        state: 'UNCONFIRMED',
+        attempts,
+        elapsedMs: Math.max(0, observedAt - startedAt),
+        pidObserved,
+        foregroundObserved,
+      });
+    }
+    sleep(Math.min(pollIntervalMs, remaining));
+  }
+}
+
 export function runAndroidDeviceHost(options, dependencies = {}) {
   const spawn = dependencies.spawn ?? spawnSync;
+  const now = dependencies.now ?? Date.now;
+  const sleep = dependencies.sleep ?? sleepMs;
   const adbPath = options.adbPath ?? resolveAdbPath({ env: dependencies.env ?? process.env, which: spawn });
   const operation = options.operation ?? ANDROID_DEVICE_HOST_OPERATIONS.OBSERVE;
   if (!Object.values(ANDROID_DEVICE_HOST_OPERATIONS).includes(operation)) throw new Error('ANDROID_DEVICE_HOST_OPERATION_INVALID');
@@ -150,17 +223,33 @@ export function runAndroidDeviceHost(options, dependencies = {}) {
     runTyped(exactCommands.installUpdate, { spawn, timeout: 120000 });
     runTyped(exactCommands.forceStop, { spawn });
     runTyped(exactCommands.launch, { spawn });
-    const pid = runTyped(exactCommands.pid, { spawn }).stdout.trim().split(/\s+/u)[0] || null;
-    const foreground = runTyped(exactCommands.foreground, { spawn }).stdout;
-    if (!pid) throw new Error('ANDROID_DEVICE_HOST_APP_PID_NOT_OBSERVED');
-    if (!String(foreground).includes(packageName) && !String(foreground).includes(component)) {
-      throw new Error('ANDROID_DEVICE_HOST_FOREGROUND_NOT_OBSERVED');
-    }
+    const readiness = settleAndroidLaunchReadiness({
+      commands: exactCommands,
+      packageName,
+      component,
+      spawn,
+      now,
+      sleep,
+      timeoutMs: options.launchSettleTimeoutMs ?? DEFAULT_LAUNCH_SETTLE_TIMEOUT_MS,
+      pollIntervalMs: options.launchPollIntervalMs ?? DEFAULT_LAUNCH_POLL_INTERVAL_MS,
+    });
+    const effects = { ...receipt.effects, installPerformed: true, launchPerformed: true };
+    const app = {
+      packageName,
+      component,
+      priorInstalled,
+      apkBytes: apk.bytes.length,
+      apkSha256: apk.sha256,
+      pidObserved: readiness.pidObserved,
+      foregroundObserved: readiness.foregroundObserved,
+      readinessAttempts: readiness.attempts,
+      readinessElapsedMs: readiness.elapsedMs,
+    };
     return Object.freeze({
       ...receipt,
-      state: 'INSTALL_UPDATE_LAUNCH_PASS',
-      app: { packageName, component, priorInstalled, apkBytes: apk.bytes.length, apkSha256: apk.sha256, pidObserved: true },
-      effects: { ...receipt.effects, installPerformed: true, launchPerformed: true },
+      state: readiness.state === 'SETTLED' ? 'INSTALL_UPDATE_LAUNCH_PASS' : 'INSTALL_UPDATE_LAUNCH_UNCONFIRMED',
+      app,
+      effects,
     });
   }
 
