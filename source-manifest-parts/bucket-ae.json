@@ -11,8 +11,8 @@
     {
       "path": "test/android-native-walk-foundation.test.mjs",
       "mode": "100644",
-      "bytes": 3518,
-      "sha256": "ef54e9980507a2828a3ea8ad33b6e4ea0cf9a6aa3c0bd997b4089c4372278959"
+      "bytes": 3330,
+      "sha256": "717ea2f1e1a6fd7cbe64b685b6bfc19f78248674ae2dc71047a5bbcc32415807"
     },
     {
       "path": "test/foundation-training-plan.test.mjs",

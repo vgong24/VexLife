@@ -17,8 +17,8 @@
     {
       "path": "scripts/generate-android-native-walk.mjs",
       "mode": "100644",
-      "bytes": 2325,
-      "sha256": "b85a0dc91a9cc7c16beaecabd8ae403f5150f1b545e5eff1bcd4b23ce89e01ff"
+      "bytes": 2148,
+      "sha256": "94cb1901512f058456d1e314ed1f9f5c76267f7008b7bd62915591eb816cc171"
     },
     {
       "path": "src/core/browser-prompt-context-runtime.mjs",
