@@ -32,7 +32,8 @@
     "directConversationContinuityPolicy": "PRESERVE_THREAD_AND_CHANNEL_WHERE_POSSIBLE__COLLAPSE_ACTOR_IDENTITY",
     "companionProjectionFollowsSemanticFrame": true,
     "mobileCompanionPresentationGrammar": "PRESENCE_TO_CONVERSATION_TO_FULL_FOCUS",
-    "mobileTerrainNavigationUsesCompactVexPresence": true
+    "mobileTerrainNavigationUsesCompactVexPresence": true,
+    "compactMobileVexPresence": "BOUNDED_BOTTOM_CORNER_PRESENCE_PILL"
   },
   "sourceOwners": {
     "currentSemanticFrame": "module.vexlife.core.navigation",
@@ -60,6 +61,7 @@
     "PRESERVE_CHANNEL_CONTINUITY != PRESERVE_STALE_ROLE_PERSONA",
     "PERSISTENT_VEX_PRESENCE != STALE_CONTEXT_ATTACHMENT",
     "COMPACT_VEX_PRESENCE != CONVERSATION_LOSS",
-    "MOBILE_TERRAIN_NAVIGATION != FORCED_EXPANDED_VEX_SHEET"
+    "MOBILE_TERRAIN_NAVIGATION != FORCED_EXPANDED_VEX_SHEET",
+    "COMPACT_VEX_PRESENCE != FULL_WIDTH_TERRAIN_BLOCKER"
   ]
 }
