@@ -16,7 +16,7 @@
 @media(max-width:760px){
   .vex-node-now-grid,.vex-node-grid{grid-template-columns:1fr}.vex-node-hero{display:grid}.vex-node-surface{padding:16px}
   #app[data-vex-companion-stratum="true"][data-vex-companion-rail="compact"] #guideWindow.e27-vex.is-minimized{display:none!important}
-  #app[data-vex-companion-stratum="true"][data-vex-companion-rail="compact"] #vexSummon[data-vex-presence-mode="compact"]{position:relative;border-color:var(--info);box-shadow:0 0 0 2px color-mix(in srgb,var(--info) 28%,transparent)}
+  #app[data-vex-companion-stratum="true"][data-vex-companion-rail="compact"] #vexSummon[data-vex-presence-mode="compact"]{position:relative;flex:0 0 46px!important;width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;padding:0!important;border-color:var(--info);box-shadow:0 0 0 2px color-mix(in srgb,var(--info) 28%,transparent)}
   #app[data-vex-companion-stratum="true"][data-vex-companion-rail="compact"] #vexSummon[data-vex-presence-mode="compact"]::after{content:'';position:absolute;right:4px;bottom:4px;width:8px;height:8px;border-radius:50%;background:var(--info);box-shadow:0 0 0 2px var(--surface)}
   #app[data-vex-companion-stratum="true"][data-evolution-surface-active="true"][data-vex-companion-rail="expanded"] .uxe-active-surface-host{inset:64px 0 42vh 0!important}
   #app[data-vex-companion-stratum="true"][data-evolution-surface-active="true"][data-vex-companion-rail="expanded"] #guideWindow.e27-vex{left:0!important;right:0!important;top:auto!important;bottom:0!important;width:100%!important;height:42vh!important;border-radius:16px 16px 0 0!important}
