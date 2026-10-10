@@ -80,8 +80,33 @@ test('Round-2 Vex node practicum cleans Home and composes persistent source-boun
   await waitForDebug(debugPort,browserProcess);
   cdpBrowser=await chromium.connectOverCDP(`http://127.0.0.1:${debugPort}`);
   const context=cdpBrowser.contexts()[0],page=context.pages()[0]??await context.newPage();
+  const bootstrapDiagnostics=[];
+  page.on('pageerror',(error)=>bootstrapDiagnostics.push({kind:'PAGE_ERROR',message:error?.message??String(error)}));
+  page.on('console',(message)=>{if(message.type()==='error')bootstrapDiagnostics.push({kind:'CONSOLE_ERROR',text:message.text()});});
+  page.on('requestfailed',(request)=>bootstrapDiagnostics.push({kind:'REQUEST_FAILED',url:request.url(),failure:request.failure()?.errorText??null}));
+  page.on('response',(response)=>{if(response.status()>=400)bootstrapDiagnostics.push({kind:'HTTP_ERROR',url:response.url(),status:response.status()});});
   await page.setViewportSize({width:1440,height:900});
-  await page.waitForFunction(()=>document.readyState==='complete'&&Boolean(globalThis.__VEXLIFE_APP__)&&Boolean(globalThis.__VEXLIFE_VEX_PREVIEW__));
+  try{
+    await page.waitForFunction(()=>document.readyState==='complete'&&Boolean(globalThis.__VEXLIFE_APP__)&&Boolean(globalThis.__VEXLIFE_VEX_PREVIEW__),null,{timeout:12000});
+  }catch(error){
+    const bootstrap=await page.evaluate(()=>({
+      url:location.href,
+      readyState:document.readyState,
+      app:Boolean(globalThis.__VEXLIFE_APP__),
+      assortmentPreview:Boolean(globalThis.__VEXLIFE_ASSORTMENT_PREVIEW__),
+      vexPreview:Boolean(globalThis.__VEXLIFE_VEX_PREVIEW__),
+      appRoot:Boolean(document.querySelector('#app')),
+      guideWindow:Boolean(document.querySelector('#guideWindow')),
+      activeSurfaceHost:Boolean(document.querySelector('#evolutionActiveSurfaceHost')),
+      bodyText:document.body?.innerText?.slice(0,1200)??''
+    })).catch((diagnosticError)=>({diagnosticFailure:diagnosticError?.message??String(diagnosticError)}));
+    throw new Error('VEX_NODE_BOOTSTRAP_DIAGNOSTIC:'+JSON.stringify({
+      waitError:error?.message??String(error),
+      currentUrl:page.url(),
+      bootstrap,
+      diagnostics:bootstrapDiagnostics.slice(-40)
+    }));
+  }
 
   fs.writeFileSync(runtimePath,JSON.stringify({schemaVersion:'vexlife-assortment.preview-runtime/v1',previewRef:PREVIEW_REF,sourceRoot,url,debugPort,logPath:walkReceipts},null,2)+'\n');
   const passive=JSON.parse(run(process.execPath,[path.join(sourceRoot,'docs/vexlife-assortment/practicum-kit/passive-readiness.mjs'),'--runtime',runtimePath,'--contract',path.join(CANDIDATE,'contracts/PASSIVE-READINESS.json')],{cwd:sourceRoot}));

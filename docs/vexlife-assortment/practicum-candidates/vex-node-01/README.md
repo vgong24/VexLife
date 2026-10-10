@@ -27,6 +27,20 @@ conversation remains present as the person moves through VexLife?
 - visibly mark Memory, mutual preference, Vessel and broader Perception truth as
   held/future where their current source is not yet a lived product runtime.
 
+## One Vex identity
+
+This practicum presents exactly one companion identity: **Vex**.
+
+Legacy implementation names such as `guide-controller`, `guideWindow`,
+`feature.vexlife.screen-aware-guide`, and host/carrier terminology in proof
+machinery do not form separate Vex roles, personas, identities, or relationship
+surfaces. The existing Guide controller is reused only as inherited rendering
+plumbing for the one visible Vex presence. An execution "host" means the machine
+running a qualified proof, never another role of Vex.
+
+Capabilities, permissions, contexts, and presentation modes may vary without
+fragmenting companion identity.
+
 ## Non-effects
 
 ```text

@@ -2,6 +2,7 @@
 // Disposable Assortment practicum projection. It composes existing read-side
 // owners; it is not a Vex state database, Memory owner, capability owner, or
 // effect authority.
+// ONE_VEX_IDENTITY: legacy app.guide / #guideWindow names are implementation seams for the single visible Vex; they do not form separate Guide or Host companion identities.
 
 export const VEX_NODE_PREVIEW_REF='preview.vexlife-assortment.r2.vex-node.01';
 export const VEX_NODE_TERRAIN_REF='terrain.assortment.vex';
