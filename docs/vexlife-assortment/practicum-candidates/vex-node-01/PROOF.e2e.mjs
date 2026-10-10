@@ -175,10 +175,12 @@ test('Round-2 Vex node practicum cleans Home and composes persistent source-boun
     const input=document.querySelector('#guideInput');input.value='vex-node canonical composer bridge probe';document.querySelector('#guideComposer').requestSubmit();
     await new Promise((resolve)=>setTimeout(resolve,250));
     const after=(app.messages.get(key)??[]).length;
-    return {before,after,draft:app.state.unsentLocalDraft?.content??null,currentChannelRole:channel.roleKey};
+    return {before,after,draft:app.state.unsentLocalDraft?.content??null,currentChannelRole:channel.roleKey,currentChannelActorRef:app.roles?.[channel.roleKey]?.actorRef??null,currentChannelRef:channel.channelRef,legacyDirectRoleCount:app.channels.filter((item)=>item.kind==='DIRECT'&&['guide','root'].includes(item.roleKey)).length};
   });
   assert.equal(bridgeProbe.currentChannelRole,'companion');
-  assert.ok(bridgeProbe.after>bridgeProbe.before||bridgeProbe.draft==='vex-node canonical composer bridge probe','Guide composer must route into canonical Chat send/draft semantics');
+  assert.equal(bridgeProbe.currentChannelActorRef,'role.vex.companion');
+  assert.equal(bridgeProbe.legacyDirectRoleCount,0,'legacy root/guide keys must not remain as distinct direct Vex roles in the practicum');
+  assert.ok(bridgeProbe.after>bridgeProbe.before||bridgeProbe.draft==='vex-node canonical composer bridge probe','Vex composer must route into canonical Chat send/draft semantics');
 
   const vexShot=await page.screenshot({type:'png',fullPage:false});
   console.log(`VEX_NODE_SCREENSHOT_DESKTOP_BASE64=${vexShot.toString('base64')}`);
