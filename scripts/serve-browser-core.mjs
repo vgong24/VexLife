@@ -17,6 +17,7 @@ import {
   validateBrowserCompanionRecoveryEffectContract,
   loadBrowserCompanionHomeIdentity
 } from '../src/core/browser-companion-bridge.mjs';
+import { createCompanionVoicePlaybackAdapter } from '../src/core/companion-voice-playback.mjs';
 import { compileCompanionAvailability, formCompanionReentryPlan } from '../src/core/companion-availability-reentry.mjs';
 import { createReleaseRuntimeCompanionRecoveryOwner } from '../src/core/browser-companion-recovery-owner.mjs';
 import {
@@ -520,6 +521,7 @@ export function createServerOwnedBrowserCompanionBridge({
 }
 
 const companion = createServerOwnedBrowserCompanionBridge();
+const companionVoice = createCompanionVoicePlaybackAdapter({ home });
 const relationshipsRuntime = createBrowserRelationshipsRuntimeBridge(loadBrowserRelationshipsRuntimeSources(root));
 const relationshipsCdrObservation = createBrowserRelationshipsCdrObservationBridge({
   observationPath: process.env.VEXLIFE_RELATIONSHIPS_CDR_OBSERVATION_PATH ?? null
@@ -1537,6 +1539,7 @@ async function performFamilyConversationHttpRequest({
 export function createVexLifeBrowserServer({
   staticRoot = root,
   companionBridge = companion,
+  companionVoicePlayback = null,
   relationshipsRuntimeBridge = relationshipsRuntime,
   relationshipsCdrObservationBridge = relationshipsCdrObservation,
   relationshipsPersistenceHome = home,
@@ -1672,7 +1675,16 @@ export function createVexLifeBrowserServer({
         }
         const input = await readBoundedJson(request);
         const result = await companionBridge.performTurn(input);
-        sendJson(response, 200, result);
+        if (companionVoicePlayback && typeof companionVoicePlayback.playCompletedTurn === 'function') {
+          const voicePlayback = await companionVoicePlayback.playCompletedTurn({
+            completedTurn: result,
+            threadRef: input.threadRef,
+            homeIdentity: resolveHomeIdentity()
+          });
+          sendJson(response, 200, { ...result, voicePlayback });
+        } else {
+          sendJson(response, 200, result);
+        }
         return;
       }
 
@@ -1919,7 +1931,7 @@ export function createVexLifeBrowserServer({
   });
 }
 
-const server = createVexLifeBrowserServer();
+const server = createVexLifeBrowserServer({ companionVoicePlayback: companionVoice });
 
 if (path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
   server.listen(port, '127.0.0.1', () => {
