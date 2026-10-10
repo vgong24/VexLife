@@ -163,10 +163,12 @@ test('Round-2 Vex node practicum cleans Home and composes persistent source-boun
   const syntheticTurn=await page.evaluate(()=>{
     const app=globalThis.__VEXLIFE_APP__,channel=app.chat.currentChannel();
     const projection={schemaVersion:'vexlife.companion-vessel-turn-projection/v1',truthClass:'CURRENT_LOCAL_MODEL',projectRef:channel.projectRef,threadRef:channel.threadRef,channelRef:channel.channelRef,turnRef:'turn.preview.vex-node.01',responseMessageRef:'message.preview.vex-node.01',conversationHeadSha256:'a'.repeat(64),modelNameOrBoundedTestProfileRef:'model.preview.current',content:'I am looking at the Vex node with you. This is a projection update, not a Memory write.',effectsPerformed:false};
-    app.guide.bindCompanionTurn(projection);globalThis.__VEXLIFE_VEX_PREVIEW__.setCompanionTurn(projection);return globalThis.__VEXLIFE_VEX_PREVIEW__.snapshot();
+    app.guide.bindCompanionTurn(projection);app.guide.addMessage?.('guide',projection.content);globalThis.__VEXLIFE_VEX_PREVIEW__.setCompanionTurn(projection);return globalThis.__VEXLIFE_VEX_PREVIEW__.snapshot();
   });
   assert.equal(syntheticTurn.companionTurnRef,'turn.preview.vex-node.01');
   await page.waitForFunction(()=>document.querySelector('.vex-node-primary-card p')?.textContent?.includes('projection update'));
+  assert.equal(await page.locator('#vexCompanionTurnState').evaluate((node)=>getComputedStyle(node).display),'none');
+  assert.ok(await page.locator('#guideMessages').textContent().then((text)=>text.includes('projection update')),'completed Vex turn belongs in conversation body, not rail header');
 
   const bridgeProbe=await page.evaluate(async()=>{
     const app=globalThis.__VEXLIFE_APP__,channel=app.chat.currentChannel();
