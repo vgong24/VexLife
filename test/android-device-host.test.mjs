@@ -27,7 +27,7 @@ function fakeSpawn({
   inventory = adbInventory('SERIAL123\tdevice product:dm3q model:SM-S908U device:dm3q transport_id:1'),
   priorInstalled = true,
   pidSequence = ['4242\n'],
-  foregroundSequence = ['mResumedActivity com.example/.MainActivity\n'],
+  foregroundSequence = ['mResumedActivity: ActivityRecord{fixture com.example/.MainActivity}\n'],
 } = {}) {
   const calls = [];
   let pidIndex = 0;
@@ -49,7 +49,7 @@ function fakeSpawn({
       return value == null ? { status: 1, stdout: '', stderr: 'not ready' } : { status: 0, stdout: value, stderr: '' };
     }
     if (joined.includes('shell dumpsys activity activities')) {
-      const value = sequenceValue(foregroundSequence, foregroundIndex++, 'mResumedActivity com.example/.MainActivity\n');
+      const value = sequenceValue(foregroundSequence, foregroundIndex++, 'mResumedActivity: ActivityRecord{fixture com.example/.MainActivity}\n');
       return value == null ? { status: 1, stdout: '', stderr: 'not ready' } : { status: 0, stdout: value, stderr: '' };
     }
     throw new Error(`unexpected fake command ${program} ${joined}`);
@@ -165,7 +165,7 @@ test('AHF00-09 launch readiness polls until delayed PID and foreground settle wi
   const { dir, apkPath, identity } = apkFixture();
   const fixture = fakeSpawn({
     pidSequence: [null, null, '4242\n'],
-    foregroundSequence: ['mResumedActivity com.other/.MainActivity\n', null, 'mResumedActivity com.example/.MainActivity\n'],
+    foregroundSequence: ['mResumedActivity: ActivityRecord{fixture com.other/.MainActivity}\n', null, 'mResumedActivity: ActivityRecord{fixture com.example/.MainActivity}\n'],
   });
   const clock = fakeClock();
   const receipt = runAndroidDeviceHost({
@@ -185,7 +185,7 @@ test('AHF00-10 foreground may lag an observed PID and settle later', () => {
   const { dir, apkPath, identity } = apkFixture();
   const fixture = fakeSpawn({
     pidSequence: ['4242\n'],
-    foregroundSequence: ['mResumedActivity com.other/.MainActivity\n', 'mResumedActivity com.example/.MainActivity\n'],
+    foregroundSequence: ['mResumedActivity: ActivityRecord{fixture com.other/.MainActivity}\n', 'topResumedActivity=ActivityRecord{fixture com.example/.MainActivity}\n'],
   });
   const clock = fakeClock();
   const receipt = runAndroidDeviceHost({
@@ -205,7 +205,7 @@ test('AHF00-11 launch readiness timeout returns truthful partial-effect receipt'
   const { dir, apkPath, identity } = apkFixture();
   const fixture = fakeSpawn({
     pidSequence: [null],
-    foregroundSequence: ['mResumedActivity com.other/.MainActivity\n'],
+    foregroundSequence: ['mResumedActivity: ActivityRecord{fixture com.other/.MainActivity}\n'],
   });
   const clock = fakeClock();
   const receipt = runAndroidDeviceHost({
@@ -228,7 +228,7 @@ test('AHF00-12 package history does not impersonate resumed foreground truth', (
   const fixture = fakeSpawn({
     pidSequence: ['4242\\n'],
     foregroundSequence: [
-      '  Hist #0: ActivityRecord{history com.example/.MainActivity}\\n  ResumedActivity: ActivityRecord{top com.other/.MainActivity}\\n',
+      '  Hist #0: ActivityRecord{history com.example/.MainActivity}\n  ResumedActivity: ActivityRecord{top com.other/.MainActivity}\n',
     ],
   });
   const clock = fakeClock();

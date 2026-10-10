@@ -94,9 +94,9 @@ function captureFile(filePath, data) {
 }
 
 function foregroundMatches(output, packageName, component) {
-  const resumedMarker = /(?:^|\\s)(?:m?ResumedActivity|topResumedActivity)[:=]/u;
+  const resumedMarker = /(?:^|\s)(?:mResumedActivity|ResumedActivity|topResumedActivity)\s*[:=]/u;
   return String(output ?? '')
-    .split(/\\r?\\n/u)
+    .split(/\r?\n/u)
     .some((line) =>
       resumedMarker.test(line) &&
       (line.includes(packageName) || line.includes(component))
