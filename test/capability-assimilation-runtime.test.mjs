@@ -35,6 +35,16 @@ function requestResult(requests) {
   };
 }
 
+function noReadResult() {
+  return {
+    content: JSON.stringify({
+      intentDisposition: 'NO_READ_ONLY_FUNCTION_NEEDED',
+      requests: []
+    }),
+    model: 'model.test.request-formation'
+  };
+}
+
 test('root capability kernel is always visible and projects every required frontier field', () => {
   const frame = compileCapabilityFrame(bundle.capabilities, {
     roleRef: 'role.unknown.cold-companion',
@@ -170,6 +180,47 @@ test('runtime executes independent reads concurrently, uses ToolResultRelay exac
     Object.fromEntries(ROOT_CAPABILITY_KERNEL.map((ref) => [ref, 'COMPLETED'])));
   assert.equal(result.runtimeProjection.capabilityFrameInput.effectStages.READ_ONLY, 'COMPLETED');
   assert.equal(sequence.filter((item) => item.startsWith('start:')).length, 2);
+});
+
+test('ADOPTED_READ_ONLY permits ordinary conversation without fabricating a tool read', async () => {
+  let inferenceCount = 0;
+  const runtime = createCapabilityAssimilationRuntime({
+    capabilityRegistry: structuredClone(bundle.capabilities),
+    processFactoryDefinition: bundle.factory,
+    schedulerRegistry: bundle.schedulerRegistry,
+    clock: fixedClock()
+  });
+
+  const result = await runtime.resolveTurn({
+    taskIntent: 'Hello Vex.',
+    endpointProfile: { profileRef: 'profile.test', admitted: true, endpoint: 'http://127.0.0.1:1', model: 'test' },
+    context: { taskRef: 'task.test.no-read' },
+    inference: async ({ requestContent }) => {
+      inferenceCount += 1;
+      if (inferenceCount === 1) {
+        assert.match(requestContent, /VEXLIFE_CAPABILITY_REQUEST_FORMATION\/v1/u);
+        assert.match(requestContent, /FRESH_COMPANION_FOUNDATION_FRAME=/u);
+        assert.match(requestContent, /NO_READ_ONLY_FUNCTION_NEEDED/u);
+        return noReadResult();
+      }
+      assert.match(requestContent, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
+      assert.match(requestContent, /SOURCE_BOUND_OBSERVATIONS=\[\]/u);
+      assert.match(requestContent, /FRESH_COMPANION_FOUNDATION_FRAME=/u);
+      return {
+        content: 'Hello. I can talk without inventing a tool read.',
+        model: 'model.test.no-read-synthesis'
+      };
+    }
+  });
+
+  assert.equal(inferenceCount, 2);
+  assert.equal(result.response.content, 'Hello. I can talk without inventing a tool read.');
+  assert.equal(result.runtimeProjection.mode, CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY);
+  assert.equal(result.runtimeProjection.toolRequestCount, 0);
+  assert.deepEqual(result.runtimeProjection.observationRefs, []);
+  assert.equal(result.runtimeProjection.dependencyGraphHash, null);
+  assert.equal(result.runtimeProjection.externalEffectsExecuted, false);
+  assert.ok(result.runtimeProjection.progress.some((item) => item.state === 'NO_READ_ONLY_FUNCTION_NEEDED'));
 });
 
 test('source-managed scheduler gate serializes model inference across simultaneous Companion turns', async () => {
