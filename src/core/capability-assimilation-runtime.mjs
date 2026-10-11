@@ -30,6 +30,39 @@ export const CAPABILITY_ASSIMILATION_MODES = Object.freeze({
   CANONICAL_E2_UNTAUGHT_G0: 'CANONICAL_E2_UNTAUGHT_G0'
 });
 
+export const FRESH_COMPANION_FOUNDATION_FRAME = Object.freeze({
+  schemaVersion: 'vexlife.fresh-companion-foundation-frame/v1',
+  truthClass: 'SOURCE_OWNED_ORIENTATION_AND_GROWTH_STARTING_POINT',
+  identityPosture: 'CURRENT_LOCAL_COMPANION_BOUND_TO_THIS_VEX_HOME',
+  currentTruthRule: 'Use current Home and source evidence; never invent continuity from a prior provider/chat session.',
+  mapFirstRule: 'Map first, then source-descend only into the exact owner needed for the human intent.',
+  startHereSourceRefs: Object.freeze([
+    'AGENTS.md',
+    'blueprint/orientation.json',
+    'docs/CULTURE.md',
+    'docs/FOUNDATION-CULTURE-IMPLEMENTATION-STANDARD.md',
+    'docs/NEWCOMER-MAP.md',
+    'docs/CAPABILITY-AND-TOOL-ATLAS.md',
+    'docs/FEATURE-CONSTRUCTION-RECIPE.md',
+    'blueprint/capability-registry.json'
+  ]),
+  capabilityPosture: Object.freeze({
+    ordinaryMode: CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY,
+    availableDomains: Object.freeze(['LOCAL', 'ONLINE', 'VEXHOME', 'CODE']),
+    sourceReadRule: 'Use admitted capability observations and exact source refs rather than guessing repository truth.',
+    repositoryMutationAuthority: false,
+    publicationAuthority: false,
+    effectfulChangeRoute: 'Repository changes require separately admitted effectful tooling/authority; read-only observation is not permission to write.'
+  }),
+  learningPosture: Object.freeze({
+    memoryIsWeights: false,
+    schoolOwnerRef: 'github.issue.vextreme-sdk.1399',
+    trainingPlacementOwnerRef: 'github.issue.vextreme-sdk.354',
+    convergenceRef: 'github.issue.vextreme-sdk.1801',
+    rule: 'Lived learning may be preserved through accepted context, Memory and School evidence; weight changes require separate Training Placement and an immutable candidate lifecycle.'
+  })
+});
+
 const MAXIMUM_REQUESTS = 8;
 const MAXIMUM_ARGUMENT_BYTES = 8 * 1024;
 const PROCESS_REF = 'process.vexlife.capability-assimilation.runtime-adoption';
@@ -836,6 +869,7 @@ function requestPrompt(taskIntent, frontier) {
     'Select only exact-current READ_ONLY functions from the supplied compact frontier.',
     'Return one JSON object and no prose, markdown, hidden reasoning, or chain-of-thought.',
     'Schema: {"intentDisposition":"REQUEST_READ_ONLY_FUNCTIONS","requests":[{"requestRef":"stable ref","capabilityRef":"canonical ref","arguments":{},"dependencyRefs":[],"reasonCue":"short public routing cue or null"}]}',
+    `FRESH_COMPANION_FOUNDATION_FRAME=${JSON.stringify(FRESH_COMPANION_FOUNDATION_FRAME)}`,
     `TASK_INTENT=${JSON.stringify(taskIntent)}`,
     `COMPACT_CAPABILITY_FRONTIER=${JSON.stringify(frontier)}`
   ].join('\n');
@@ -855,6 +889,7 @@ function synthesisPrompt(taskIntent, observations, held) {
     'Synthesize the human answer from the original task and exact accepted observations.',
     'Do not claim effects, sources, competence, currentness, or authority beyond the supplied evidence.',
     'Do not reveal hidden reasoning. Return only the final human-facing answer.',
+    `FRESH_COMPANION_FOUNDATION_FRAME=${JSON.stringify(FRESH_COMPANION_FOUNDATION_FRAME)}`,
     `TASK_INTENT=${JSON.stringify(taskIntent)}`,
     `SOURCE_BOUND_OBSERVATIONS=${JSON.stringify(bounded)}`,
     `HELD_OR_UNKNOWN_NODES=${JSON.stringify(held)}`
