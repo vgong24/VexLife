@@ -29,6 +29,7 @@ const EFFECTS = Object.freeze({
 
 const MEMORY_MAX_PAGES = 8;
 const MEMORY_TOKEN_CAP = 768;
+const CONTEXT_INPUT_TOKEN_BUDGET = 3584;
 const MEMORY_PACKET_SCHEMA = 'vexlife.prompt-context-memory-packet/v1';
 const MEMORY_TRUTH_CLASS = 'CURRENT_ATTRIBUTED_MEMORY_CONTEXT';
 
@@ -45,7 +46,17 @@ function memorySystemContent(core) {
   ].join('\n');
 }
 
-function memoryContextFor({ home, homeRef, deviceRef, companionLineageRef, threadRef }) {
+function memoryContextFor({
+  home,
+  homeRef,
+  deviceRef,
+  companionLineageRef,
+  threadRef,
+  memoryTokenCap = MEMORY_TOKEN_CAP
+}) {
+  if (!Number.isSafeInteger(memoryTokenCap) || memoryTokenCap < 0 || memoryTokenCap > MEMORY_TOKEN_CAP) {
+    fail('memoryTokenCap is outside the admitted bounded range');
+  }
   const projection = projectLivingJournalMemory({
     home,
     homeRef,
@@ -96,7 +107,7 @@ function memoryContextFor({ home, homeRef, deviceRef, companionLineageRef, threa
         tokenBoundedOutPageRefs: []
       };
       const estimate = estimatedMessageTokens(memorySystemContent(candidateCore));
-      if (estimate > MEMORY_TOKEN_CAP) {
+      if (estimate > memoryTokenCap) {
         tokenBoundedOutPageRefs.push(page.pageRef);
         continue;
       }
@@ -121,7 +132,7 @@ function memoryContextFor({ home, homeRef, deviceRef, companionLineageRef, threa
     boundedOutStatementRefs: Object.freeze([...(projection.boundedOutStatementRefs ?? [])]),
     tokenBoundedOutPageRefs: Object.freeze(tokenBoundedOutPageRefs),
     reasons: Object.freeze([...(projection.reasons ?? [])]),
-    memoryTokenCap: MEMORY_TOKEN_CAP
+    memoryTokenCap
   });
   const included = packet.projectionState === 'CURRENT' &&
     packet.projectionCurrentness === 'CURRENT' &&
@@ -183,7 +194,14 @@ function exactCurrentRequestBinding(context) {
   });
 }
 
-function selectionCore(prior, current, memoryContext) {
+function selectionCore(prior, current, memoryContext, currentRequestInputTokenEstimate) {
+  if (!Number.isSafeInteger(currentRequestInputTokenEstimate) || currentRequestInputTokenEstimate <= 0) {
+    fail('current request input token estimate is invalid');
+  }
+  const priorInputTokenEstimate = prior.requestInputTokenEstimate + prior.responseInputTokenEstimate;
+  if (!Number.isSafeInteger(priorInputTokenEstimate) || priorInputTokenEstimate <= 0) {
+    fail('prior completed-turn input token estimate is invalid');
+  }
   return Object.freeze({
     schemaVersion: 'vexlife.browser-prompt-context-runtime-selection/v2',
     homeRef: prior.homeRef,
@@ -192,6 +210,8 @@ function selectionCore(prior, current, memoryContext) {
     threadRef: prior.threadRef,
     priorConversationHeadSha256: prior.conversationHeadSha256,
     priorHeadSequence: prior.headSequence,
+    priorInputTokenEstimate,
+    currentRequestInputTokenEstimate,
     currentRequestEventBinding: current,
     memoryContextRef: memoryContext.memoryContextRef,
     memoryContextFingerprint: memoryContext.semanticFingerprint,
@@ -265,7 +285,7 @@ function leaseInput(selection, observedAt, ttlMs) {
     applicableCultureRefs: [],
     applicableLessonRefs: [],
     applicableReleaseRefs: [],
-    inputTokenEstimate: 3584,
+    inputTokenEstimate: CONTEXT_INPUT_TOKEN_BUDGET,
     reservedOutputTokens: 512,
     hardTokenLimit: 4096,
     formedAt: observedAt,
@@ -380,7 +400,10 @@ export function createBrowserPromptContextRuntime({
     return formed;
   };
 
-  const promptContextResolver = async ({ context }) => {
+  const promptContextResolver = async ({ context, taskIntent }) => {
+    if (typeof taskIntent !== 'string' || taskIntent.length === 0) {
+      fail('prompt-context resolver requires the exact current request content for token budgeting');
+    }
     const current = exactCurrentRequestBinding(context);
     const threadRef = safeRef(context.threadRef, 'threadRef');
     const priorHeadSha256 = context.priorConversationHeadSha256 ?? null;
@@ -406,14 +429,21 @@ export function createBrowserPromptContextRuntime({
     if (current.sequence !== prior.headSequence + 1) {
       fail('current request does not immediately follow the selected completed turn');
     }
+    const currentRequestInputTokenEstimate = estimatedMessageTokens(taskIntent);
+    const priorInputTokenEstimate = prior.requestInputTokenEstimate + prior.responseInputTokenEstimate;
+    const remainingInputTokens = Math.max(
+      0,
+      CONTEXT_INPUT_TOKEN_BUDGET - priorInputTokenEstimate - currentRequestInputTokenEstimate
+    );
     const memoryContext = memoryContextFor({
       home,
       homeRef,
       deviceRef,
       companionLineageRef,
-      threadRef
+      threadRef,
+      memoryTokenCap: Math.min(MEMORY_TOKEN_CAP, remainingInputTokens)
     });
-    const selection = selectionCore(prior, current, memoryContext);
+    const selection = selectionCore(prior, current, memoryContext, currentRequestInputTokenEstimate);
     const observedAt = now();
     canonicalTimestamp(observedAt, 'resolver observedAt');
     const lease = createContextLease(leaseInput(selection, observedAt, leaseTtlMs)).lease;
@@ -466,14 +496,26 @@ export function createBrowserPromptContextRuntime({
         threadRef: query.threadRef,
         expectedConversationHeadSha256: query.priorConversationHeadSha256
       });
+      const reboundRemainingInputTokens = Math.max(
+        0,
+        CONTEXT_INPUT_TOKEN_BUDGET -
+          (prior.requestInputTokenEstimate + prior.responseInputTokenEstimate) -
+          formed.selection.currentRequestInputTokenEstimate
+      );
       const reboundMemoryContext = memoryContextFor({
         home,
         homeRef,
         deviceRef,
         companionLineageRef,
-        threadRef: query.threadRef
+        threadRef: query.threadRef,
+        memoryTokenCap: Math.min(MEMORY_TOKEN_CAP, reboundRemainingInputTokens)
       });
-      const reboundSelection = selectionCore(prior, current, reboundMemoryContext);
+      const reboundSelection = selectionCore(
+        prior,
+        current,
+        reboundMemoryContext,
+        formed.selection.currentRequestInputTokenEstimate
+      );
       if (selectionFingerprint(reboundSelection) !== formed.selectionFingerprint) {
         fail('prompt-context prior-turn selection is no longer current');
       }
