@@ -24,17 +24,20 @@ import {
   replaceFixtureActiveAuthorityWithoutScore
 } from '../scripts/daily-memory-dream.mjs';
 
-async function startModelServer() {
+async function startModelServer(responder = null) {
   const calls = [];
   const server = http.createServer(async (request, response) => {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
     calls.push({ path: request.url, body });
+    const content = responder
+      ? await responder({ callIndex: calls.length - 1, body, calls })
+      : calls.length === 1 ? 'Prior exact reply.' : 'Current exact reply.';
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end(JSON.stringify({
       model: 'Qwen3.5-4B-Q4_K_M',
-      choices: [{ message: { content: calls.length === 1 ? 'Prior exact reply.' : 'Current exact reply.' } }]
+      choices: [{ message: { content } }]
     }));
   });
   await new Promise((resolve, reject) => {
@@ -275,6 +278,59 @@ test('Memory is bounded out when the immediate conversation consumes the shared 
     assert.ok(selected.memoryContext.tokenBoundedOutPageRefs.length >= 1);
     assert.equal(selected.contextLease.inputTokenEstimate, 3584);
   } finally {
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+test('capability-aware Companion revalidates and carries current Memory plus prior turn through request formation and synthesis', async () => {
+  const fixture = createDailyMemoryDreamFixture('browser-prompt-memory-capability');
+  const home = dailyFixtureHome(fixture);
+  commitFixtureDailyMemory(fixture);
+  const model = await startModelServer(async ({ callIndex, body }) => {
+    assert.equal(body.messages.length, 5);
+    assert.equal(body.messages[0].role, 'system');
+    assert.match(body.messages[0].content, /VEXLIFE_CURRENT_MEMORY_CONTEXT\/v1/u);
+    assert.match(body.messages[0].content, /Accepted active continuity\./u);
+    assert.deepEqual(body.messages.slice(1, 4), [
+      { role: 'user', content: 'private human source 2' },
+      { role: 'assistant', content: 'private vex source 2' },
+      { role: 'user', content: 'Can you carry the current context while deciding whether tools are needed?' }
+    ]);
+    assert.equal(body.messages[4].role, 'user');
+    if (callIndex === 0) {
+      assert.match(body.messages[4].content, /VEXLIFE_CAPABILITY_REQUEST_FORMATION\/v1/u);
+      assert.match(body.messages[4].content, /FRESH_COMPANION_FOUNDATION_FRAME=/u);
+      return JSON.stringify({ intentDisposition: 'NO_READ_ONLY_FUNCTION_NEEDED', requests: [] });
+    }
+    assert.equal(callIndex, 1);
+    assert.match(body.messages[4].content, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
+    assert.match(body.messages[4].content, /SOURCE_BOUND_OBSERVATIONS=\[\]/u);
+    return 'Capability-aware current Memory reply.';
+  });
+  try {
+    const production = createServerOwnedBrowserCompanionBridge({
+      sourceRoot: SOURCE_ROOT,
+      companionHome: home.home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      runtimeMode: 'ADOPTED_READ_ONLY'
+    });
+    const result = await production.performTurn({
+      threadRef: fixture.ids.threadRef,
+      channelRef: 'channel.g03.fixture',
+      content: 'Can you carry the current context while deciding whether tools are needed?'
+    });
+    assert.equal(result.state, 'TURN_COMPLETED');
+    assert.equal(result.content, 'Capability-aware current Memory reply.');
+    assert.equal(model.calls.length, 2);
+    assert.equal(result.capabilityRuntime.mode, 'ADOPTED_READ_ONLY');
+    assert.equal(result.capabilityRuntime.toolRequestCount, 0);
+    assert.equal(result.capabilityRuntime.inferenceCount, 2);
+    assert.equal(result.promptContextMaterialization.memoryContextIncluded, true);
+    assert.equal(result.promptContextMaterialization.providerBoundaryCurrentnessVerified, true);
+    assert.equal(result.promptContextMaterialization.providerBoundarySourceBindingsVerified, true);
+  } finally {
+    await model.close();
     fs.rmSync(home.root, { recursive: true, force: true });
   }
 });
