@@ -676,6 +676,7 @@ export function createBrowserCompanionBridge({
                     contextLease: selected.contextLease,
                     continuityProjection: selected.continuityProjection,
                     selectedConversationEventRefs: selected.selectedConversationEventRefs ?? [],
+                    memoryContext: selected.memoryContext ?? null,
                     authorityVerifier: promptContextAuthorityVerifier
                   });
                   contextualInference = async (input) => {
