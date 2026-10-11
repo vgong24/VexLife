@@ -662,6 +662,8 @@ export function createBrowserCompanionBridge({
               let consumedMaterializationReceipt = null;
               let contextualInference = invokeLivedInference;
               if (promptContextResolver) {
+                const canonicalCapabilityController =
+                  capabilityRuntime?.schemaVersion === 'vexlife.capability-assimilation-runtime-controller/v1';
                 const formCurrentMaterialization = async () => {
                   const selected = await promptContextResolver({
                     ...resolverPublicInput,
@@ -685,9 +687,13 @@ export function createBrowserCompanionBridge({
                   });
                 };
                 contextualInference = async (input) => {
+                  const contextualizeThisInference =
+                    canonicalCapabilityController ||
+                    input?.requestContent === resolverInput.requestContent;
+                  if (!contextualizeThisInference) return invokeLivedInference(input);
                   const phaseMaterialization = await formCurrentMaterialization();
                   if (phaseMaterialization === null) return invokeLivedInference(input);
-                  const contextualResponse = capabilityRuntime
+                  const contextualResponse = canonicalCapabilityController
                     ? await invokeLivedInference({
                         ...input,
                         requestContent: resolverInput.requestContent,
