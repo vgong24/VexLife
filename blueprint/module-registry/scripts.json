@@ -57,6 +57,83 @@
     "changeMap": []
   },
   {
+    "moduleRef": "module.vexlife.script.initialize-vex",
+    "path": "scripts/initialize-vex.mjs",
+    "role": "Effectful source-local initialization entrypoint for the current RELEASE_QUALIFIED normal bundle/profile path: classify Home, verify/materialize exact artifacts and runtime after authority, qualify the loopback model, and write bounded Home/recovery binding receipts.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.vex-initialization",
+      "module.vexlife.core.artifact-delivery",
+      "src/core/model-provision.mjs",
+      "blueprint/vex-operational-profiles.json",
+      "blueprint/model-bundle-registry.json"
+    ],
+    "writes": [
+      "selected Vex Home model/runtime/config/recovery state only after the admitted initialization boundary"
+    ],
+    "loadedBy": [
+      "npm run vex:initialize",
+      "install/vexlife-setup.sh",
+      "install/vexlife-setup.ps1"
+    ],
+    "tests": [
+      "test/initialize-vex.test.mjs",
+      "test/model-bundle-v2.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEXLIFE-START-AND-RUNTIME.md",
+      "docs/BOOTSTRAP-AND-MODELS.md",
+      "docs/MODEL-SOVEREIGNTY-SELECTION.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.resume-vex",
+    "path": "scripts/resume-vex.mjs",
+    "role": "Resume the exact accepted activated cultivated-model runtime binding through its existing core owner and current Home, then expose the qualified binding to the existing companion/browser route without becoming a second model, succession or Home owner.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.activated-model-runtime-binding",
+      "blueprint/activated-model-runtime-bindings.json"
+    ],
+    "writes": [
+      "selected Vex Home activated runtime binding/recovery receipts and exact owned runtime/browser process effects"
+    ],
+    "loadedBy": [
+      "npm run vex:resume"
+    ],
+    "tests": [
+      "test/activated-model-runtime-binding.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEXLIFE-START-AND-RUNTIME.md",
+      "docs/ACTIVATED-CULTIVATED-MODEL-RUNTIME-BINDING.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.macos-lifecycle",
+    "path": "scripts/macos-lifecycle.mjs",
+    "role": "Own state-first macOS setup lifecycle classification, exact-owned browser/runtime stop and reuse, continuity-preserving repair/rebuild/uninstall behavior, and reuse of current qualified G0 or activated cultivated runtime receipts without taking model-generation ownership.",
+    "platformScope": "MACOS",
+    "reads": [
+      "module.vexlife.core.vex-initialization",
+      "selected Vex Home config/recovery receipts"
+    ],
+    "writes": [
+      "exact owned browser/runtime process state and admitted continuity-preserving runtime/transient Home cleanup"
+    ],
+    "loadedBy": [
+      "install/vexlife-setup.sh"
+    ],
+    "tests": [
+      "test/macos-lifecycle.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEXLIFE-START-AND-RUNTIME.md",
+      "docs/BOOTSTRAP-AND-MODELS.md",
+      "docs/VEX-REBOOT-CROSS-PLATFORM-PROOF.md"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.script.provision-model",
     "path": "scripts/provision-model.mjs",
     "role": "External HTTPS model download with exact checksum and repository exclusion.",

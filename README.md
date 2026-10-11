@@ -122,6 +122,7 @@ The source-local setup front doors also do not choose the future full Windows or
 | --- | --- |
 | Full foundation document | [docs/FOUNDATION-README.md](docs/FOUNDATION-README.md) |
 | Newcomer map | [docs/NEWCOMER-MAP.md](docs/NEWCOMER-MAP.md) |
+| Start/runtime architecture map | [docs/VEXLIFE-START-AND-RUNTIME.md](docs/VEXLIFE-START-AND-RUNTIME.md) |
 | Bootstrap/model details | [docs/BOOTSTRAP-AND-MODELS.md](docs/BOOTSTRAP-AND-MODELS.md) |
 | Culture | [docs/CULTURE.md](docs/CULTURE.md) |
 | Roadmap | [docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md](docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md) |
