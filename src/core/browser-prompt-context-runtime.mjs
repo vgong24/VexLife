@@ -105,7 +105,7 @@ function memoryContextFor({ home, homeRef, deviceRef, companionLineageRef, threa
     }
   }
 
-  const core = Object.freeze({
+  const packet = Object.freeze({
     schemaVersion: MEMORY_PACKET_SCHEMA,
     truthClass: MEMORY_TRUTH_CLASS,
     projectionState: projection.state,
@@ -121,25 +121,33 @@ function memoryContextFor({ home, homeRef, deviceRef, companionLineageRef, threa
     boundedOutStatementRefs: Object.freeze([...(projection.boundedOutStatementRefs ?? [])]),
     tokenBoundedOutPageRefs: Object.freeze(tokenBoundedOutPageRefs),
     reasons: Object.freeze([...(projection.reasons ?? [])]),
-    memoryTokenCap: MEMORY_TOKEN_CAP,
-    estimatedSystemMessageTokens: selectedPages.length > 0 ? usedTokens : 0
+    memoryTokenCap: MEMORY_TOKEN_CAP
   });
+  const included = packet.projectionState === 'CURRENT' &&
+    packet.projectionCurrentness === 'CURRENT' &&
+    packet.pages.length > 0;
+  const systemContent = included ? memorySystemContent(packet) : null;
+  const core = Object.freeze({
+    ...packet,
+    systemMessageSha256: systemContent === null ? null : semanticHash(systemContent),
+    estimatedSystemMessageTokens: systemContent === null ? 0 : estimatedMessageTokens(systemContent)
+  });
+  if (core.estimatedSystemMessageTokens > MEMORY_TOKEN_CAP) {
+    fail('selected Memory packet exceeds its exact token cap');
+  }
   const semanticFingerprint = semanticHash(core);
   const sourceRefs = [
     ...(core.sourceOwnerRefs ?? []),
     ...(core.currentDailyStratumRef ? [core.currentDailyStratumRef] : []),
     ...core.pages.flatMap((page) => [page.pageRef, page.statementRef, page.semanticAcceptanceRef])
   ].filter(Boolean).sort();
-  const included = core.projectionState === 'CURRENT' &&
-    core.projectionCurrentness === 'CURRENT' &&
-    core.pages.length > 0;
   return Object.freeze({
     ...core,
     memoryContextRef: `memory-context.vexlife.prompt.${semanticFingerprint.slice(0, 32)}`,
     semanticFingerprint,
     sourceRefs: Object.freeze([...new Set(sourceRefs)]),
     systemMessage: included
-      ? Object.freeze({ role: 'system', content: memorySystemContent(core) })
+      ? Object.freeze({ role: 'system', content: systemContent })
       : null,
     included
   });
