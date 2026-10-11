@@ -15,6 +15,14 @@ import {
   readCurrentLivedCompanionCompletedTurn
 } from '../src/core/lived-companion.mjs';
 import { createBrowserPromptContextRuntime } from '../src/core/browser-prompt-context-runtime.mjs';
+import {
+  commitDailyMemoryDream,
+  loadDailyMemoryDreamState
+} from '../src/core/daily-memory-dream.mjs';
+import {
+  createDailyMemoryDreamFixture,
+  replaceFixtureActiveAuthorityWithoutScore
+} from '../scripts/daily-memory-dream.mjs';
 
 async function startModelServer() {
   const calls = [];
@@ -81,6 +89,33 @@ function runtime(home, overrides = {}) {
     deviceRef: home.deviceRef,
     companionLineageRef: home.companionLineageRef,
     ...overrides
+  });
+}
+
+function dailyFixtureHome(fixture) {
+  return {
+    root: path.dirname(fixture.ids.home),
+    home: fixture.ids.home,
+    homeRef: fixture.ids.homeRef,
+    deviceRef: fixture.ids.deviceRef,
+    companionLineageRef: fixture.ids.companionLineageRef
+  };
+}
+
+function commitFixtureDailyMemory(fixture) {
+  const state = loadDailyMemoryDreamState(fixture.ids);
+  return commitDailyMemoryDream({
+    ...fixture.ids,
+    instanceRef: fixture.ids.instanceRef,
+    restInvocationAuthorityRef: 'authority.manual.browser-prompt-context-memory.test',
+    dayRef: 'day.browser-prompt-context-memory.000',
+    dayIndex: 0,
+    calendarDateRef: '2026-08-17',
+    timeZoneRef: 'America/Los_Angeles',
+    observedAt: '2026-08-18T00:00:00.000Z',
+    expectedConversationHeadSha256: fixture.g01.head.conversationHeadSha256,
+    expectedScoreHeadSha256: fixture.score.head.scoreHeadSha256,
+    expectedDailyDreamHeadSha256: state.head?.dailyDreamHeadSha256 ?? null
   });
 }
 
@@ -176,6 +211,84 @@ test('runtime adopts the immediate prior completed turn into the actual loopback
     assert.equal(owner.activeSelectionCount(), 0);
   } finally {
     await model.close();
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+test('ordinary provider request receives one attributed bounded current Memory system packet plus the immediate prior turn', async () => {
+  const fixture = createDailyMemoryDreamFixture('browser-prompt-memory-current');
+  const home = dailyFixtureHome(fixture);
+  commitFixtureDailyMemory(fixture);
+  const model = await startModelServer();
+  try {
+    const owner = runtime(home);
+    const result = await bridge(home, model, owner, 'instance.vexlife.browser-prompt-context-memory-current').performTurn({
+      threadRef: fixture.ids.threadRef,
+      channelRef: 'channel.g03.fixture',
+      content: 'What should we carry forward?'
+    });
+    assert.equal(result.state, 'TURN_COMPLETED');
+    assert.equal(model.calls.length, 1);
+    const messages = model.calls[0].body.messages;
+    assert.equal(messages.length, 4);
+    assert.equal(messages[0].role, 'system');
+    assert.match(messages[0].content, /VEXLIFE_CURRENT_MEMORY_CONTEXT\/v1/u);
+    assert.match(messages[0].content, /Accepted active continuity\./u);
+    assert.doesNotMatch(messages[0].content, /Held unresolved continuity\./u);
+    assert.match(messages[0].content, /not proof of subjective recall/u);
+    assert.deepEqual(messages.slice(1), [
+      { role: 'user', content: 'private human source 2' },
+      { role: 'assistant', content: 'private vex source 2' },
+      { role: 'user', content: 'What should we carry forward?' }
+    ]);
+    assert.equal(result.promptContextMaterialization.memoryContextIncluded, true);
+    assert.match(result.promptContextMaterialization.memoryContextRefOrNull, /^memory-context\.vexlife\.prompt\./u);
+    assert.match(result.promptContextMaterialization.memoryContextFingerprintOrNull, /^[0-9a-f]{64}$/u);
+    assert.ok(result.promptContextMaterialization.memorySourceRefs.includes('statement.g03.active'));
+    assert.equal(result.promptContextMaterialization.memoryEffectPerformed, false);
+    assert.equal(result.promptContextMaterialization.providerBoundaryCurrentnessVerified, true);
+    assert.equal(result.promptContextMaterialization.providerBoundarySourceBindingsVerified, true);
+  } finally {
+    await model.close();
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+test('Memory frontier drift invalidates an already-formed prompt-context selection before materialization', async () => {
+  const fixture = createDailyMemoryDreamFixture('browser-prompt-memory-stale');
+  const home = dailyFixtureHome(fixture);
+  commitFixtureDailyMemory(fixture);
+  try {
+    const owner = runtime(home);
+    const current = {
+      threadRef: fixture.ids.threadRef,
+      currentRequestEventRef: 'event.vexlife.request.memory-stale-check',
+      currentRequestEventHash: '9'.repeat(64),
+      currentRequestSequence: fixture.g01.head.sequence + 1,
+      priorConversationHeadSha256: fixture.g01.head.conversationHeadSha256
+    };
+    const selected = await owner.promptContextResolver({ context: current });
+    assert.equal(selected.memoryContext.included, true);
+    replaceFixtureActiveAuthorityWithoutScore(fixture, 'browser-prompt-context-stale');
+
+    await assert.rejects(
+      () => owner.promptContextAuthorityVerifier({
+        schemaVersion: 'vexlife.prompt-context-authority-query/v2',
+        phase: 'MATERIALIZE',
+        lineageRef: home.companionLineageRef,
+        threadRef: current.threadRef,
+        priorConversationHeadSha256: current.priorConversationHeadSha256,
+        currentRequestEventRef: current.currentRequestEventRef,
+        currentRequestEventHash: current.currentRequestEventHash,
+        currentRequestSequence: current.currentRequestSequence,
+        selectedConversationEventRefs: selected.selectedConversationEventRefs,
+        materializationReceiptRefOrNull: null,
+        materializationReceiptFingerprintOrNull: null
+      }),
+      (error) => error instanceof LivedCompanionError && error.code === 'CONTEXT_HASH_MISMATCH'
+    );
+    assert.equal(owner.activeSelectionCount(), 0);
+  } finally {
     fs.rmSync(home.root, { recursive: true, force: true });
   }
 });
