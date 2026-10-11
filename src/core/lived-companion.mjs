@@ -1299,6 +1299,80 @@ function promptMessageTokenEstimate(message) {
   return Math.max(1, Math.ceil(Buffer.byteLength(message.content, 'utf8') / 4)) + 4;
 }
 
+function canonicalPromptContextMemory(value, contextLease) {
+  if (value === null || value === undefined) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    promptContextFailure('prompt-context Memory packet must be one object or null');
+  }
+  const cloned = structuredClone(value);
+  const {
+    memoryContextRef,
+    semanticFingerprint,
+    sourceRefs,
+    systemMessage,
+    included,
+    ...core
+  } = cloned;
+  if (core.schemaVersion !== 'vexlife.prompt-context-memory-packet/v1' ||
+      core.truthClass !== 'CURRENT_ATTRIBUTED_MEMORY_CONTEXT' ||
+      !/^[0-9a-f]{64}$/u.test(semanticFingerprint ?? '') ||
+      contentHash(core) !== semanticFingerprint ||
+      memoryContextRef !== `memory-context.vexlife.prompt.${semanticFingerprint.slice(0, 32)}`) {
+    promptContextFailure('prompt-context Memory packet identity is invalid');
+  }
+  if (!Array.isArray(sourceRefs) || sourceRefs.some((ref) => typeof ref !== 'string' || !ref) ||
+      new Set(sourceRefs).size !== sourceRefs.length) {
+    promptContextFailure('prompt-context Memory source refs are invalid');
+  }
+  const leaseSources = new Set(contextLease.selectedSourceRefs ?? []);
+  for (const ref of sourceRefs) {
+    if (!leaseSources.has(ref)) {
+      promptContextFailure('prompt-context Memory source is not authorized by the exact Context Lease', { sourceRef: ref });
+    }
+  }
+  if (!Array.isArray(core.pages) || !Array.isArray(core.sourceOwnerRefs) ||
+      !Array.isArray(core.heldOrDeferredStatementRefs) || !Array.isArray(core.boundedOutStatementRefs) ||
+      !Array.isArray(core.tokenBoundedOutPageRefs) || !Array.isArray(core.reasons) ||
+      !Number.isSafeInteger(core.memoryTokenCap) || core.memoryTokenCap <= 0 ||
+      !Number.isSafeInteger(core.estimatedSystemMessageTokens) || core.estimatedSystemMessageTokens < 0) {
+    promptContextFailure('prompt-context Memory packet shape is invalid');
+  }
+  if (typeof included !== 'boolean') promptContextFailure('prompt-context Memory included flag is invalid');
+  if (included) {
+    if (!systemMessage || typeof systemMessage !== 'object' || Array.isArray(systemMessage) ||
+        JSON.stringify(Object.keys(systemMessage).sort()) !== JSON.stringify(['content', 'role']) ||
+        systemMessage.role !== 'system' || typeof systemMessage.content !== 'string' || !systemMessage.content ||
+        core.pages.length === 0 || core.projectionState !== 'CURRENT' || core.projectionCurrentness !== 'CURRENT' ||
+        core.systemMessageSha256 !== contentHash(systemMessage.content) ||
+        core.estimatedSystemMessageTokens !== promptMessageTokenEstimate(systemMessage) ||
+        core.estimatedSystemMessageTokens > core.memoryTokenCap) {
+      promptContextFailure('prompt-context Memory system message is invalid');
+    }
+  } else if (systemMessage !== null || core.systemMessageSha256 !== null || core.estimatedSystemMessageTokens !== 0) {
+    promptContextFailure('held/empty prompt-context Memory packet must not materialize a system message');
+  }
+  for (const [index, page] of core.pages.entries()) {
+    if (!page || typeof page !== 'object' || Array.isArray(page) ||
+        typeof page.pageRef !== 'string' || !page.pageRef ||
+        typeof page.statementRef !== 'string' || !page.statementRef ||
+        typeof page.summary !== 'string' || !page.summary ||
+        !/^[0-9a-f]{64}$/u.test(page.summaryHash ?? '') ||
+        contentHash(page.summary) !== page.summaryHash ||
+        typeof page.semanticAcceptanceRef !== 'string' || !page.semanticAcceptanceRef ||
+        !/^[0-9a-f]{64}$/u.test(page.semanticAcceptanceSha256 ?? '')) {
+      promptContextFailure('prompt-context Memory page is invalid', { index });
+    }
+  }
+  return Object.freeze({
+    ...core,
+    memoryContextRef,
+    semanticFingerprint,
+    sourceRefs: Object.freeze([...sourceRefs]),
+    systemMessage: systemMessage ? Object.freeze({ ...systemMessage }) : null,
+    included
+  });
+}
+
 function assertPromptContextPriorHead(home, admitted, threadRef, paths, priorConversationHeadSha256) {
   if (priorConversationHeadSha256 === null) {
     if (fs.existsSync(paths.head)) promptContextFailure('prompt-context prior head unexpectedly exists');
@@ -1447,6 +1521,7 @@ export async function materializeLivedCompanionPromptContext({
   contextLease,
   continuityProjection,
   selectedConversationEventRefs = [],
+  memoryContext = null,
   authorityVerifier
 }) {
   const identity = loadHome(home);
@@ -1460,6 +1535,7 @@ export async function materializeLivedCompanionPromptContext({
     promptContextFailure('Context Lease is not canonical for prompt materialization', { cause: error.message });
   }
   validatePromptContextContinuityProjection(continuityProjection, canonicalLease, admitted.companionLineageRef, safeThread);
+  const canonicalMemoryContext = canonicalPromptContextMemory(memoryContext, canonicalLease);
   if (!Array.isArray(selectedConversationEventRefs) ||
       selectedConversationEventRefs.some((ref) => typeof ref !== 'string' || !ref) ||
       new Set(selectedConversationEventRefs).size !== selectedConversationEventRefs.length) {
@@ -1518,17 +1594,38 @@ export async function materializeLivedCompanionPromptContext({
       promptContextFailure('selected conversation event order does not match canonical event order');
     }
   }
-  const entries = source.selected.map((event, index) => ({
-    ordinal: index,
-    role: event.eventKind === 'REQUEST' ? 'user' : event.eventKind === 'RESPONSE' ? 'assistant' : null,
-    sourceEventRef: event.eventRef,
-    sourceEventHash: event.eventHash,
-    sourceContentHash: event.contentHash,
-    sequence: event.sequence,
-    completedHeadSha256: witness.selectedEventBindings[index].completedHeadSha256,
-    estimatedTokens: promptMessageTokenEstimate({ content: event.content })
-  }));
-  if (entries.some((entry) => entry.role === null)) promptContextFailure('selected conversation event has an unsupported role');
+  const entries = [];
+  const messages = [];
+  if (canonicalMemoryContext?.included) {
+    entries.push({
+      ordinal: entries.length,
+      role: 'system',
+      sourceEventRef: null,
+      sourceEventHash: null,
+      sourceContentHash: canonicalMemoryContext.systemMessageSha256,
+      sequence: null,
+      completedHeadSha256: null,
+      memoryContextRef: canonicalMemoryContext.memoryContextRef,
+      memoryContextFingerprint: canonicalMemoryContext.semanticFingerprint,
+      estimatedTokens: canonicalMemoryContext.estimatedSystemMessageTokens
+    });
+    messages.push({ ...canonicalMemoryContext.systemMessage });
+  }
+  for (const [index, event] of source.selected.entries()) {
+    const role = event.eventKind === 'REQUEST' ? 'user' : event.eventKind === 'RESPONSE' ? 'assistant' : null;
+    if (role === null) promptContextFailure('selected conversation event has an unsupported role');
+    entries.push({
+      ordinal: entries.length,
+      role,
+      sourceEventRef: event.eventRef,
+      sourceEventHash: event.eventHash,
+      sourceContentHash: event.contentHash,
+      sequence: event.sequence,
+      completedHeadSha256: witness.selectedEventBindings[index].completedHeadSha256,
+      estimatedTokens: promptMessageTokenEstimate({ content: event.content })
+    });
+    messages.push({ role, content: event.content });
+  }
   entries.push({
     ordinal: entries.length,
     role: 'user',
@@ -1539,10 +1636,7 @@ export async function materializeLivedCompanionPromptContext({
     completedHeadSha256: null,
     estimatedTokens: promptMessageTokenEstimate({ content: source.current.content })
   });
-  const messages = [
-    ...source.selected.map((event) => ({ role: event.eventKind === 'REQUEST' ? 'user' : 'assistant', content: event.content })),
-    { role: 'user', content: source.current.content }
-  ];
+  messages.push({ role: 'user', content: source.current.content });
   const materializedInputTokenEstimate = entries.reduce((sum, entry) => sum + entry.estimatedTokens, 0);
   const availableInputTokens = canonicalLease.hardTokenLimit - canonicalLease.reservedOutputTokens;
   if (availableInputTokens < 0 || materializedInputTokenEstimate > canonicalLease.inputTokenEstimate ||
@@ -1573,7 +1667,15 @@ export async function materializeLivedCompanionPromptContext({
     currentRequestEventRef: source.current.eventRef,
     currentRequestContentHash: source.current.contentHash,
     selectedConversationEventRefs: [...selectedRefs],
-    includedSourceRefs: [...selectedRefs, source.current.eventRef],
+    memoryContextRefOrNull: canonicalMemoryContext?.memoryContextRef ?? null,
+    memoryContextFingerprintOrNull: canonicalMemoryContext?.semanticFingerprint ?? null,
+    memoryContextIncluded: canonicalMemoryContext?.included === true,
+    memorySourceRefs: canonicalMemoryContext ? [...canonicalMemoryContext.sourceRefs] : [],
+    includedSourceRefs: [
+      ...(canonicalMemoryContext?.sourceRefs ?? []),
+      ...selectedRefs,
+      source.current.eventRef
+    ],
     orderedMaterializationEntries: entries,
     exactMessagesSha256: contentHash(messages),
     messageCount: messages.length,
@@ -1611,6 +1713,7 @@ export async function materializeLivedCompanionPromptContext({
     currentRequestBinding: witness.currentRequestEventBinding,
     selectedConversationEventRefs: Object.freeze([...selectedRefs]),
     selectedEventBindings: Object.freeze(witness.selectedEventBindings.map((binding) => Object.freeze({ ...binding }))),
+    memoryContext: canonicalMemoryContext,
     materializationAuthorityRef: witness.authorityRef,
     materializationAuthorityObservedAt: witness.observedAt
   }));
@@ -1645,7 +1748,11 @@ async function canonicalTrustedPromptMaterialization(materialization, requestCon
       receipt.wholeHistoryEventEnumerationPerformed !== false || receipt.providerBoundaryCurrentnessVerified !== false ||
       receipt.providerBoundarySourceBindingsVerified !== false || receipt.providerExactEventFileReadCount !== 0 ||
       receipt.providerHeadMetadataReadCount !== 0 || receipt.memoryEffectPerformed !== false ||
-      receipt.trainingSelectionPerformed !== false || receipt.modelWeightEffectPerformed !== false) {
+      receipt.trainingSelectionPerformed !== false || receipt.modelWeightEffectPerformed !== false ||
+      receipt.memoryContextRefOrNull !== (state.memoryContext?.memoryContextRef ?? null) ||
+      receipt.memoryContextFingerprintOrNull !== (state.memoryContext?.semanticFingerprint ?? null) ||
+      receipt.memoryContextIncluded !== (state.memoryContext?.included === true) ||
+      JSON.stringify(receipt.memorySourceRefs ?? []) !== JSON.stringify(state.memoryContext ? [...state.memoryContext.sourceRefs] : [])) {
     promptContextFailure('trusted prompt materialization receipt integrity is invalid');
   }
   const query = canonicalPromptContextAuthorityQuery({
@@ -1693,6 +1800,7 @@ async function canonicalTrustedPromptMaterialization(materialization, requestCon
     currentRequestContent: requestContent
   });
   const reboundMessages = [
+    ...(state.memoryContext?.included ? [{ ...state.memoryContext.systemMessage }] : []),
     ...source.selected.map((event) => ({ role: event.eventKind === 'REQUEST' ? 'user' : 'assistant', content: event.content })),
     { role: 'user', content: source.current.content }
   ];
@@ -2180,6 +2288,7 @@ export async function requestLivedCompanionInference({
   messages = undefined,
   promptContextMaterializationReceipt = undefined,
   familyPromptContextMaterializationReceipt = undefined,
+  supplementalRequestContent = null,
   inMemoryAuthorization = null,
   timeoutMs = 5000
 }) {
@@ -2216,7 +2325,20 @@ export async function requestLivedCompanionInference({
     : familyPromptContextMaterialization !== null
       ? await canonicalTrustedFamilyPromptMaterialization(familyPromptContextMaterialization, requestContent)
       : null;
-  const outboundMessages = trusted?.messages ?? [{ role: 'user', content: requestContent }];
+  if (supplementalRequestContent !== null) {
+    if (!trusted || typeof supplementalRequestContent !== 'string' || !supplementalRequestContent.trim()) {
+      promptContextFailure('supplemental request content requires one trusted prompt-context materialization');
+    }
+    if (Buffer.byteLength(supplementalRequestContent, 'utf8') > 256 * 1024) {
+      promptContextFailure('supplemental request content exceeds the bounded instruction size');
+    }
+  }
+  const outboundMessages = trusted
+    ? [
+        ...trusted.messages,
+        ...(supplementalRequestContent === null ? [] : [{ role: 'user', content: supplementalRequestContent }])
+      ]
+    : [{ role: 'user', content: requestContent }];
   const requestPayload = {
     model: endpointProfile.model || 'bounded-loopback-proof',
     messages: outboundMessages
@@ -3219,6 +3341,8 @@ export function readCurrentLivedCompanionCompletedTurn({
     headSequence: null,
     requestEventBinding: null,
     responseEventBinding: null,
+    requestInputTokenEstimate: null,
+    responseInputTokenEstimate: null,
     exactEventFileReadCount: 0,
     headMetadataReadCount: 0,
     wholeHistoryEventEnumerationPerformed: false,
@@ -3369,6 +3493,8 @@ export function readCurrentLivedCompanionCompletedTurn({
       sequence: response.sequence,
       contentHash: response.contentHash
     }),
+    requestInputTokenEstimate: promptMessageTokenEstimate({ content: request.content }),
+    responseInputTokenEstimate: promptMessageTokenEstimate({ content: response.content }),
     exactEventFileReadCount: 2,
     headMetadataReadCount,
     wholeHistoryEventEnumerationPerformed: false,
