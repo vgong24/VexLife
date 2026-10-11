@@ -325,6 +325,15 @@ test('VA-I06 live browser composition adds Voice only after the completed Compan
   assert.match(source, /createVexLifeBrowserServer\(\{ companionVoicePlayback: companionVoice \}\)/);
 });
 
+test('VA-I09 production browser wrapper carries Voice into the core server', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser.mjs'), 'utf8');
+  assert.match(source, /createCompanionVoicePlaybackAdapter/);
+  assert.match(source, /companionVoicePlayback\s*=\s*createCompanionVoicePlaybackAdapter\(\)/);
+  const create = source.indexOf('const coreServer = createCoreVexLifeBrowserServer({');
+  const voice = source.indexOf('companionVoicePlayback,', create);
+  assert.ok(create >= 0 && voice > create);
+});
+
 test('VA-I06 current-turn owner projects exact response identity without raw content', () => {
   const source = fs.readFileSync(path.join(ROOT, 'src/core/lived-companion.mjs'), 'utf8');
   assert.match(source, /responseMessageRef: head\.responseMessageRef/);
