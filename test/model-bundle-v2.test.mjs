@@ -36,6 +36,54 @@ test('current G0 v1 bundle remains the live release-qualified selection', () => 
   assert.equal(resolution.artifacts[1].artifactRef, resolution.bundle.projectorArtifactRef);
 });
 
+test('current M4 is registered as an exact 12-member candidate while G0 remains active', () => {
+  const candidateRef = 'model-bundle.vexlife.m4.generation-2.mlx.001';
+  const candidate = modelBundleRegistry.bundles.find((item) => item.modelBundleRef === candidateRef);
+  assert.ok(candidate);
+  assert.equal(modelBundleRegistry.activeModelBundleRef, 'model-bundle.vexlife.g0.qwen3.5-4b.q4-k-m.001');
+  assert.equal(candidate.bundleSchemaVersion, 'vexlife.model-bundle/v2');
+  assert.equal(candidate.state, 'CANDIDATE_QUALIFICATION');
+  assert.equal(candidate.generationRef, 'generation.vex.m4.generation-2');
+  assert.equal(candidate.modelProfileRef, 'model-profile.vex.m4.small.g2.certified.20260920A');
+  assert.equal(candidate.artifactBindings.length, 12);
+  assert.equal(candidate.artifactSetRef, 'artifact-set.vex.m4.generation-2.368e89e5ca219fab');
+  assert.equal(candidate.contentSetSha256, '368e89e5ca219fab3398c1830e982ef5a8a949bac1a17b8f3320bdb1e512d9cf');
+  assert.deepEqual(candidate.runtimeRealizationRefs, ['adapter.runtime.mlx.macos-victor.post-w5.001']);
+
+  const resolution = resolveModelBundleByRef({
+    registry: modelBundleRegistry,
+    artifactRegistry,
+    modelBundleRef: candidateRef
+  });
+  assert.equal(resolution.state, 'MODEL_BUNDLE_RUNTIME_REALIZATION_HELD');
+  assert.equal(resolution.artifacts.length, 12);
+  assert.equal(resolution.artifactBindings.length, 12);
+  assert.equal(resolution.contentSetSha256, candidate.contentSetSha256);
+
+  const rows = resolution.artifacts
+    .map((artifact) => ({ path: artifact.filename, bytes: artifact.expectedBytes, sha256: artifact.sha256 }))
+    .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+  assert.deepEqual(rows.map((row) => row.path), [
+    '.gitattributes',
+    'README.md',
+    'chat_template.jinja',
+    'config.json',
+    'model.safetensors',
+    'model.safetensors.index.json',
+    'preprocessor_config.json',
+    'processor_config.json',
+    'tokenizer.json',
+    'tokenizer_config.json',
+    'video_preprocessor_config.json',
+    'vocab.json'
+  ]);
+  assert.equal(rows.reduce((sum, row) => sum + row.bytes, 0), 3061132920);
+  const aggregate = crypto.createHash('sha256')
+    .update(rows.map((row) => `${row.path}|${row.bytes}|${row.sha256}\n`).join(''))
+    .digest('hex');
+  assert.equal(aggregate, candidate.contentSetSha256);
+});
+
 test('generalized v2 candidate can coexist with current G0 and resolve structurally without runtime admission', () => {
   const syntheticArtifacts = Array.from({ length: 12 }, (_, index) => {
     const ordinal = String(index + 1).padStart(2, '0');
