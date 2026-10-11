@@ -73,7 +73,7 @@ test('exact accepted Heretic persistent receipt forms one Browser/Home runtime l
   assert.equal(link.requestModel, 'default_model');
   assert.equal(link.runtimeAdapterRef, HERETIC_RUNTIME_ADAPTER_REF);
   assert.equal(link.modelRef, HERETIC_RUNTIME_IDENTITY.modelRef);
-  assert.equal(link.companionBinding.truthClass, 'FOREIGN_CANNICAL_COMPANION_BINDING');
+  assert.equal(link.companionBinding.truthClass, 'FOREIGN_CANONICAL_COMPANION_BINDING');
   assert.equal(link.companionBinding.modelRefOrNull, HERETIC_RUNTIME_IDENTITY.modelRef);
   assert.equal(link.companionBinding.generationRefOrNull, null);
   assert.equal(link.runtimeObservation.truthClass, 'FOREIGN_PLATFORM_RUNTIME_OBSERVATION');
@@ -122,7 +122,7 @@ test('non-loopback endpoint or failed qualification is rejected', () => {
       },
     })),
     /qualification/u,
-   );
+  );
 });
 
 test('receipt must bind one exact owned detached mlx_lm.server', () => {
