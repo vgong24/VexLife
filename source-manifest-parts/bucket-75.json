@@ -25,6 +25,12 @@
       "mode": "100644",
       "bytes": 8224,
       "sha256": "acabc315d4c926d4eb97b4a3561c391c524e98a11fd04871e89d47266f1533ba"
+    },
+    {
+      "path": "test/heretic-runtime-link.test.mjs",
+      "mode": "100644",
+      "bytes": 6057,
+      "sha256": "8c12e327f50602b4f60ae515f751ef13a5bbdcc307b417a8856eff7b90b1508a"
     }
   ]
 }
