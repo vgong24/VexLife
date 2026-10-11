@@ -3327,6 +3327,8 @@ export function readCurrentLivedCompanionCompletedTurn({
     headSequence: null,
     requestEventBinding: null,
     responseEventBinding: null,
+    requestInputTokenEstimate: null,
+    responseInputTokenEstimate: null,
     exactEventFileReadCount: 0,
     headMetadataReadCount: 0,
     wholeHistoryEventEnumerationPerformed: false,
@@ -3477,6 +3479,8 @@ export function readCurrentLivedCompanionCompletedTurn({
       sequence: response.sequence,
       contentHash: response.contentHash
     }),
+    requestInputTokenEstimate: promptMessageTokenEstimate({ content: request.content }),
+    responseInputTokenEstimate: promptMessageTokenEstimate({ content: response.content }),
     exactEventFileReadCount: 2,
     headMetadataReadCount,
     wholeHistoryEventEnumerationPerformed: false,
