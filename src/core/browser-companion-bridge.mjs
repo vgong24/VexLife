@@ -658,14 +658,18 @@ export function createBrowserCompanionBridge({
                 }
                 return matches[0].token;
               };
-              let materialization = null;
               let materializationConsumed = false;
               let consumedMaterializationReceipt = null;
               let contextualInference = invokeLivedInference;
               if (promptContextResolver) {
-                const selected = await promptContextResolver({ ...resolverPublicInput, taskIntent: request.content, context: runtimeContext });
-                if (selected !== null && selected !== undefined) {
-                  materialization = await materializeLivedCompanionPromptContext({
+                const formCurrentMaterialization = async () => {
+                  const selected = await promptContextResolver({
+                    ...resolverPublicInput,
+                    taskIntent: request.content,
+                    context: runtimeContext
+                  });
+                  if (selected === null || selected === undefined) return null;
+                  return materializeLivedCompanionPromptContext({
                     ...identity,
                     threadRef: request.threadRef,
                     currentRequestEventRef: resolverInput.context?.currentRequestEventRef,
@@ -679,16 +683,25 @@ export function createBrowserCompanionBridge({
                     memoryContext: selected.memoryContext ?? null,
                     authorityVerifier: promptContextAuthorityVerifier
                   });
-                  contextualInference = async (input) => {
-                    if (input?.requestContent === resolverInput.requestContent) {
-                      const contextualResponse = await invokeLivedInference({ ...input, promptContextMaterialization: materialization });
-                      consumedMaterializationReceipt = contextualResponse.promptContextMaterializationReceipt ?? null;
-                      materializationConsumed = consumedMaterializationReceipt !== null;
-                      return contextualResponse;
-                    }
-                    return invokeLivedInference(input);
-                  };
-                }
+                };
+                contextualInference = async (input) => {
+                  const phaseMaterialization = await formCurrentMaterialization();
+                  if (phaseMaterialization === null) return invokeLivedInference(input);
+                  const contextualResponse = capabilityRuntime
+                    ? await invokeLivedInference({
+                        ...input,
+                        requestContent: resolverInput.requestContent,
+                        promptContextMaterialization: phaseMaterialization,
+                        supplementalRequestContent: input.requestContent
+                      })
+                    : await invokeLivedInference({
+                        ...input,
+                        promptContextMaterialization: phaseMaterialization
+                      });
+                  consumedMaterializationReceipt = contextualResponse.promptContextMaterializationReceipt ?? null;
+                  materializationConsumed = consumedMaterializationReceipt !== null;
+                  return contextualResponse;
+                };
               }
               if (capabilityRuntime) {
                 const resolved = await capabilityRuntime.resolveTurn({ ...resolverPublicInput, taskIntent: request.content, inference: contextualInference, context: runtimeContext });
