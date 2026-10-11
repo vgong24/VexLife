@@ -38,6 +38,90 @@
         "transportClass": "DIRECT_HTTPS_FILE_V1",
         "url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF/resolve/3516418eb75fd2cdf56058f112b403ff47020775/mmproj-Qwen_Qwen3.5-4B-bf16.gguf?download=true"
       }
+    ],
+    "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.gitattributes": [
+      {
+        "channelRef": "channel.vexlife.m4.qwen3.5-4b-mlx-4bit.gitattributes.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/.gitattributes?download=true"
+      }
+    ],
+    "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.readme": [
+      {
+        "channelRef": "channel.vexlife.m4.qwen3.5-4b-mlx-4bit.readme.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/README.md?download=true"
+      }
+    ],
+    "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.chat-template": [
+      {
+        "channelRef": "channel.vexlife.m4.qwen3.5-4b-mlx-4bit.chat-template.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/chat_template.jinja?download=true"
+      }
+    ],
+    "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.config": [
+      {
+        "channelRef": "channel.vexlife.m4.qwen3.5-4b-mlx-4bit.config.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/config.json?download=true"
+      }
+    ],
+    "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.model-safetensors": [
+      {
+        "channelRef": "channel.vexlife.m4.qwen3.5-4b-mlx-4bit.model-safetensors.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/model.safetensors?download=true"
+      }
+    ],
+    "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.model-safetensors-index": [
+      {
+        "channelRef": "channel.vexlife.m4.qwen3.5-4b-mlx-4bit.model-safetensors-index.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/model.safetensors.index.json?download=true"
+      }
+    ],
+    "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.preprocessor-config": [
+      {
+        "channelRef": "channel.vexlife.m4.qwen3.5-4b-mlx-4bit.preprocessor-config.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/preprocessor_config.json?download=true"
+      }
+    ],
+    "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.processor-config": [
+      {
+        "channelRef": "channel.vexlife.m4.qwen3.5-4b-mlx-4bit.processor-config.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/processor_config.json?download=true"
+      }
+    ],
+    "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.tokenizer": [
+      {
+        "channelRef": "channel.vexlife.m4.qwen3.5-4b-mlx-4bit.tokenizer.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/tokenizer.json?download=true"
+      }
+    ],
+    "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.tokenizer-config": [
+      {
+        "channelRef": "channel.vexlife.m4.qwen3.5-4b-mlx-4bit.tokenizer-config.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/tokenizer_config.json?download=true"
+      }
+    ],
+    "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.video-preprocessor-config": [
+      {
+        "channelRef": "channel.vexlife.m4.qwen3.5-4b-mlx-4bit.video-preprocessor-config.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/video_preprocessor_config.json?download=true"
+      }
+    ],
+    "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.vocab": [
+      {
+        "channelRef": "channel.vexlife.m4.qwen3.5-4b-mlx-4bit.vocab.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/vocab.json?download=true"
+      }
     ]
   }
 }

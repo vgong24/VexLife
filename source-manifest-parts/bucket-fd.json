@@ -29,8 +29,8 @@
     {
       "path": "test/model-bundle-v2.test.mjs",
       "mode": "100644",
-      "bytes": 7893,
-      "sha256": "1cbb1d9dc834974ced2a9215fd2ba6340eb15a15066029c84ab94b6bc2aeae4b"
+      "bytes": 10255,
+      "sha256": "dfaca937740e24ec3a40f679c9d5cbc59d8dd286177eca680694cbd6a6b7d249"
     }
   ]
 }

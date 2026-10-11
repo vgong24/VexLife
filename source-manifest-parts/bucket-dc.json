@@ -5,8 +5,8 @@
     {
       "path": "blueprint/artifact-delivery-registry.json",
       "mode": "100644",
-      "bytes": 2102,
-      "sha256": "02c78970d61f010d72e920757a2de69de80726d797daceed5c81a93ad6e81747"
+      "bytes": 6868,
+      "sha256": "a676cab2cdd38619710f7c6dafe9b575d3370d27e6277d0eb6cef4877ba1d752"
     },
     {
       "path": "blueprint/module-registry/cdr-s5-closed-alpha.json",

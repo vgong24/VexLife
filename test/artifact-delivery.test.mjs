@@ -144,6 +144,40 @@ test('MIR-00 artifact identity is exact and excludes delivery/provider fields', 
   }
 });
 
+test('MIR-00A artifact identity admits safe leading-dot metadata members without admitting path forms', () => {
+  const bytes = Buffer.from('metadata');
+  const accepted = artifactFor(bytes, {
+    artifactRef: 'artifact.synthetic.leading-dot',
+    filename: '.gitattributes'
+  });
+  assert.equal(validateArtifactDescriptor(accepted).filename, '.gitattributes');
+
+  for (const filename of ['.', '..', 'trailing.', '../escape', '.git/config', 'CON']) {
+    assert.throws(() => validateArtifactDescriptor(artifactFor(bytes, {
+      artifactRef: 'artifact.synthetic.invalid-name',
+      filename
+    })), ArtifactDeliveryError, filename);
+  }
+});
+
+test('M4 candidate source registers all 12 exact members with fixed-revision direct delivery', () => {
+  const sourceArtifacts = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint', 'artifact-registry.json'), 'utf8'));
+  const sourceDelivery = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint', 'artifact-delivery-registry.json'), 'utf8'));
+  const validatedArtifacts = validateArtifactRegistry(sourceArtifacts);
+  const validatedDelivery = validateArtifactDeliveryRegistry(sourceDelivery, sourceArtifacts);
+  const prefix = 'artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.';
+  const m4 = validatedArtifacts.artifacts.filter((artifact) => artifact.artifactRef.startsWith(prefix));
+  assert.equal(m4.length, 12);
+  const revision = '32f3e8ecf65426fc3306969496342d504bfa13f3';
+  for (const artifact of m4) {
+    const channels = validatedDelivery.channelsByArtifactRef[artifact.artifactRef];
+    assert.equal(channels.length, 1, artifact.artifactRef);
+    assert.equal(channels[0].transportClass, 'DIRECT_HTTPS_FILE_V1', artifact.artifactRef);
+    assert.match(channels[0].url, new RegExp(`/resolve/${revision}/`), artifact.artifactRef);
+    assert.equal(new URL(channels[0].url).pathname.endsWith(`/${artifact.filename}`), true, artifact.filename);
+  }
+});
+
 test('MIR-01 production resolver rejects registry/channel/verifier injection and source snapshot preserves order', async () => {
   const bytes = Buffer.from('primary');
   const artifact = artifactFor(bytes);
@@ -685,8 +719,12 @@ test('MIR-21 module composition retains the additive fragment and canonical G0 r
   const deliveryRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/artifact-delivery-registry.json'), 'utf8'));
   const validatedArtifacts = validateArtifactRegistry(artifactRegistry);
   const validatedDelivery = validateArtifactDeliveryRegistry(deliveryRegistry, artifactRegistry);
-  assert.equal(validatedArtifacts.artifacts.length, 2);
-  assert.equal(Object.keys(validatedDelivery.channelsByArtifactRef).length, 2);
+  const g0Refs = new Set([
+    'model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29',
+    'model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775'
+  ]);
+  assert.equal(validatedArtifacts.artifacts.filter((artifact) => g0Refs.has(artifact.artifactRef)).length, 2);
+  assert.equal(Object.keys(validatedDelivery.channelsByArtifactRef).filter((artifactRef) => g0Refs.has(artifactRef)).length, 2);
 });
 
 test('source G0 artifact registries bind immutable GitHub first and exact Hugging Face direct fallback second', () => {
@@ -694,7 +732,7 @@ test('source G0 artifact registries bind immutable GitHub first and exact Huggin
   const deliveryRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/artifact-delivery-registry.json'), 'utf8'));
   const validatedArtifacts = validateArtifactRegistry(artifactRegistry);
   const validatedDelivery = validateArtifactDeliveryRegistry(deliveryRegistry, artifactRegistry);
-  assert.equal(validatedArtifacts.artifacts.length, 2);
+  assert.ok(validatedArtifacts.artifacts.length >= 2);
   assert.equal(validatedDelivery.defaultPolicyRef, 'policy.vexlife.artifact-delivery.default');
   const expected = new Map([
     ['model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29', 'fe0010d92648bddd22176fffb6eed052bf9c12cf2f1873f47c5b0197e07eef46'],

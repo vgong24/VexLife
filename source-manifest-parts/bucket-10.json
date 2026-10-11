@@ -5,8 +5,8 @@
     {
       "path": "blueprint/model-bundle-registry.json",
       "mode": "100644",
-      "bytes": 1080,
-      "sha256": "a9d5a4f8d18e331d7f9bdccb8b4d8d784e19cd71b0b77d5742475df21593383b"
+      "bytes": 4072,
+      "sha256": "705db56f1dc1091c24ae9104bb8630c46c9fef45a11a42b8b2a02f30842f6b3a"
     },
     {
       "path": "scripts/feature-scaffold.mjs",

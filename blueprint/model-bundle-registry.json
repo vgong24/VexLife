@@ -20,6 +20,74 @@
         "github.issue.vexlife.359",
         "github.issue.vextreme-sdk.266"
       ]
+    },
+    {
+      "bundleSchemaVersion": "vexlife.model-bundle/v2",
+      "modelBundleRef": "model-bundle.vexlife.m4.generation-2.mlx.001",
+      "generationRef": "generation.vex.m4.generation-2",
+      "modelProfileRef": "model-profile.vex.m4.small.g2.certified.20260920A",
+      "state": "CANDIDATE_QUALIFICATION",
+      "artifactBindings": [
+        {
+          "roleRef": "artifact-role.vex.m4.member.gitattributes",
+          "artifactRef": "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.gitattributes"
+        },
+        {
+          "roleRef": "artifact-role.vex.m4.member.readme",
+          "artifactRef": "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.readme"
+        },
+        {
+          "roleRef": "artifact-role.vex.m4.member.chat-template",
+          "artifactRef": "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.chat-template"
+        },
+        {
+          "roleRef": "artifact-role.vex.m4.member.config",
+          "artifactRef": "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.config"
+        },
+        {
+          "roleRef": "artifact-role.vex.m4.member.model-safetensors",
+          "artifactRef": "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.model-safetensors"
+        },
+        {
+          "roleRef": "artifact-role.vex.m4.member.model-safetensors-index",
+          "artifactRef": "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.model-safetensors-index"
+        },
+        {
+          "roleRef": "artifact-role.vex.m4.member.preprocessor-config",
+          "artifactRef": "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.preprocessor-config"
+        },
+        {
+          "roleRef": "artifact-role.vex.m4.member.processor-config",
+          "artifactRef": "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.processor-config"
+        },
+        {
+          "roleRef": "artifact-role.vex.m4.member.tokenizer",
+          "artifactRef": "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.tokenizer"
+        },
+        {
+          "roleRef": "artifact-role.vex.m4.member.tokenizer-config",
+          "artifactRef": "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.tokenizer-config"
+        },
+        {
+          "roleRef": "artifact-role.vex.m4.member.video-preprocessor-config",
+          "artifactRef": "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.video-preprocessor-config"
+        },
+        {
+          "roleRef": "artifact-role.vex.m4.member.vocab",
+          "artifactRef": "artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.vocab"
+        }
+      ],
+      "artifactSetRef": "artifact-set.vex.m4.generation-2.368e89e5ca219fab",
+      "contentSetSha256": "368e89e5ca219fab3398c1830e982ef5a8a949bac1a17b8f3320bdb1e512d9cf",
+      "runtimeRealizationRefs": [
+        "adapter.runtime.mlx.macos-victor.post-w5.001"
+      ],
+      "sourceRefs": [
+        "github.issue.vexlife.595",
+        "github.issue.vexlife.857",
+        "github.issue.vextreme-sdk.1796",
+        "github.issue.vextreme-sdk.1823"
+      ]
     }
   ]
 }
