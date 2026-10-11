@@ -160,6 +160,24 @@ test('MIR-00A artifact identity admits safe leading-dot metadata members without
   }
 });
 
+test('M4 candidate source registers all 12 exact members with fixed-revision direct delivery', () => {
+  const sourceArtifacts = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint', 'artifact-registry.json'), 'utf8'));
+  const sourceDelivery = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint', 'artifact-delivery-registry.json'), 'utf8'));
+  const validatedArtifacts = validateArtifactRegistry(sourceArtifacts);
+  const validatedDelivery = validateArtifactDeliveryRegistry(sourceDelivery, sourceArtifacts);
+  const prefix = 'artifact.vex.m4.qwen3.5-4b-mlx-4bit.32f3e8ec.member.';
+  const m4 = validatedArtifacts.artifacts.filter((artifact) => artifact.artifactRef.startsWith(prefix));
+  assert.equal(m4.length, 12);
+  const revision = '32f3e8ecf65426fc3306969496342d504bfa13f3';
+  for (const artifact of m4) {
+    const channels = validatedDelivery.channelsByArtifactRef[artifact.artifactRef];
+    assert.equal(channels.length, 1, artifact.artifactRef);
+    assert.equal(channels[0].transportClass, 'DIRECT_HTTPS_FILE_V1', artifact.artifactRef);
+    assert.match(channels[0].url, new RegExp(`/resolve/${revision}/`), artifact.artifactRef);
+    assert.equal(new URL(channels[0].url).pathname.endsWith(`/${artifact.filename}`), true, artifact.filename);
+  }
+});
+
 test('MIR-01 production resolver rejects registry/channel/verifier injection and source snapshot preserves order', async () => {
   const bytes = Buffer.from('primary');
   const artifact = artifactFor(bytes);
