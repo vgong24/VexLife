@@ -6,7 +6,10 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { CAPABILITY_ASSIMILATION_MODES } from '../src/core/capability-assimilation-runtime.mjs';
+import {
+  CAPABILITY_ASSIMILATION_MODES,
+  FRESH_COMPANION_FOUNDATION_FRAME,
+} from '../src/core/capability-assimilation-runtime.mjs';
 import { ROOT_CAPABILITY_KERNEL } from '../src/core/capability.mjs';
 import { initializeLivedCompanionHome } from '../src/core/lived-companion.mjs';
 import { sourceManifestBucketId, sourceManifestBucketPath } from '../src/core/source-manifest.mjs';
@@ -125,6 +128,21 @@ test('VA-I04 keeps the canonical five-tool root and adds one non-executable pare
   }
 });
 
+test('fresh Companion foundation frame is source-owned, map-first, and does not grant repository write authority', () => {
+  assert.equal(FRESH_COMPANION_FOUNDATION_FRAME.schemaVersion, 'vexlife.fresh-companion-foundation-frame/v1');
+  assert.equal(FRESH_COMPANION_FOUNDATION_FRAME.truthClass, 'SOURCE_OWNED_ORIENTATION_AND_GROWTH_STARTING_POINT');
+  assert.equal(FRESH_COMPANION_FOUNDATION_FRAME.capabilityPosture.ordinaryMode, CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY);
+  assert.deepEqual(FRESH_COMPANION_FOUNDATION_FRAME.capabilityPosture.availableDomains, ['LOCAL', 'ONLINE', 'VEXHOME', 'CODE']);
+  assert.equal(FRESH_COMPANION_FOUNDATION_FRAME.capabilityPosture.repositoryMutationAuthority, false);
+  assert.equal(FRESH_COMPANION_FOUNDATION_FRAME.capabilityPosture.publicationAuthority, false);
+  assert.ok(FRESH_COMPANION_FOUNDATION_FRAME.startHereSourceRefs.includes('blueprint/orientation.json'));
+  assert.ok(FRESH_COMPANION_FOUNDATION_FRAME.startHereSourceRefs.includes('docs/CAPABILITY-AND-TOOL-ATLAS.md'));
+  assert.ok(FRESH_COMPANION_FOUNDATION_FRAME.startHereSourceRefs.includes('docs/FEATURE-CONSTRUCTION-RECIPE.md'));
+  assert.equal(FRESH_COMPANION_FOUNDATION_FRAME.learningPosture.schoolOwnerRef, 'github.issue.vextreme-sdk.1399');
+  assert.equal(FRESH_COMPANION_FOUNDATION_FRAME.learningPosture.trainingPlacementOwnerRef, 'github.issue.vextreme-sdk.354');
+  assert.match(FRESH_COMPANION_FOUNDATION_FRAME.learningPosture.rule, /immutable candidate lifecycle/u);
+});
+
 test('server-owned ADOPTED_READ_ONLY activation exposes all four domains on the first request and overrides caller/model activation attempts', async () => {
   let captured = null;
   const sentinel = Object.freeze({ ref: 'bridge.va-i04.capture' });
@@ -155,6 +173,9 @@ test('server-owned ADOPTED_READ_ONLY activation exposes all four domains on the 
       inference: async ({ requestContent }) => {
         inferenceCount += 1;
         if (inferenceCount === 1) {
+          assert.match(requestContent, /FRESH_COMPANION_FOUNDATION_FRAME=/u);
+          assert.match(requestContent, /docs\/CAPABILITY-AND-TOOL-ATLAS\.md/u);
+          assert.match(requestContent, /github\.issue\.vextreme-sdk\.354/u);
           assert.match(requestContent, new RegExp(VEX_ASSEMBLY_CAPABILITY_DOMAIN_PARENT_REF.replaceAll('.', '\\.')));
           for (const capabilityRef of DOMAIN_REFS) {
             assert.match(requestContent, new RegExp(capabilityRef.replaceAll('.', '\\.')));
@@ -195,6 +216,17 @@ test('server-owned ADOPTED_READ_ONLY activation exposes all four domains on the 
   }
   assert.equal(bindVexAssemblyCapabilityDomainContext({ activeCapabilityRef: 'capability.bad' }).activeCapabilityRef,
     VEX_ASSEMBLY_CAPABILITY_DOMAIN_PARENT_REF);
+});
+
+test('ordinary server-owned Companion source defaults to the accepted ADOPTED_READ_ONLY Assembly capability mode', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser-core.mjs'), 'utf8');
+  assert.match(
+    source,
+    /runtimeMode = process\.env\.VEXLIFE_CAPABILITY_RUNTIME_MODE \?\?[\s\S]*CAPABILITY_ASSIMILATION_MODES\.ADOPTED_READ_ONLY/u
+  );
+  assert.match(source, /runtimeMode === CAPABILITY_ASSIMILATION_MODES\.ADOPTED_READ_ONLY/u);
+  assert.match(source, /createCapabilityAssimilationRuntime\(\{/u);
+  assert.match(source, /process\.env\.VEXLIFE_CAPABILITY_RUNTIME_MODE/u);
 });
 
 test('DIRECT and canonical E2 modes remain tool-free and do not receive VA-I04 domain activation', async () => {

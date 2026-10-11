@@ -30,6 +30,39 @@ export const CAPABILITY_ASSIMILATION_MODES = Object.freeze({
   CANONICAL_E2_UNTAUGHT_G0: 'CANONICAL_E2_UNTAUGHT_G0'
 });
 
+export const FRESH_COMPANION_FOUNDATION_FRAME = Object.freeze({
+  schemaVersion: 'vexlife.fresh-companion-foundation-frame/v1',
+  truthClass: 'SOURCE_OWNED_ORIENTATION_AND_GROWTH_STARTING_POINT',
+  identityPosture: 'CURRENT_LOCAL_COMPANION_BOUND_TO_THIS_VEX_HOME',
+  currentTruthRule: 'Use current Home and source evidence; never invent continuity from a prior provider/chat session.',
+  mapFirstRule: 'Map first, then source-descend only into the exact owner needed for the human intent.',
+  startHereSourceRefs: Object.freeze([
+    'AGENTS.md',
+    'blueprint/orientation.json',
+    'docs/CULTURE.md',
+    'docs/FOUNDATION-CULTURE-IMPLEMENTATION-STANDARD.md',
+    'docs/NEWCOMER-MAP.md',
+    'docs/CAPABILITY-AND-TOOL-ATLAS.md',
+    'docs/FEATURE-CONSTRUCTION-RECIPE.md',
+    'blueprint/capability-registry.json'
+  ]),
+  capabilityPosture: Object.freeze({
+    ordinaryMode: CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY,
+    availableDomains: Object.freeze(['LOCAL', 'ONLINE', 'VEXHOME', 'CODE']),
+    sourceReadRule: 'Use admitted capability observations and exact source refs rather than guessing repository truth.',
+    repositoryMutationAuthority: false,
+    publicationAuthority: false,
+    effectfulChangeRoute: 'Repository changes require separately admitted effectful tooling/authority; read-only observation is not permission to write.'
+  }),
+  learningPosture: Object.freeze({
+    memoryIsWeights: false,
+    schoolOwnerRef: 'github.issue.vextreme-sdk.1399',
+    trainingPlacementOwnerRef: 'github.issue.vextreme-sdk.354',
+    convergenceRef: 'github.issue.vextreme-sdk.1801',
+    rule: 'Lived learning may be preserved through accepted context, Memory and School evidence; weight changes require separate Training Placement and an immutable candidate lifecycle.'
+  })
+});
+
 const MAXIMUM_REQUESTS = 8;
 const MAXIMUM_ARGUMENT_BYTES = 8 * 1024;
 const PROCESS_REF = 'process.vexlife.capability-assimilation.runtime-adoption';
@@ -294,11 +327,17 @@ function createSchedulerOwnedInferenceGate(schedulerRegistry, nextTime) {
 }
 
 function requestContract(value, frame) {
+  if (value.intentDisposition === 'NO_READ_ONLY_FUNCTION_NEEDED') {
+    if (!Array.isArray(value.requests) || value.requests.length !== 0) {
+      throw new Error('NO_READ_ONLY_FUNCTION_NEEDED requires requests=[]');
+    }
+    return freeze({ requests: [] });
+  }
   if (value.intentDisposition !== 'REQUEST_READ_ONLY_FUNCTIONS') {
-    throw new Error('request-formation intentDisposition must be REQUEST_READ_ONLY_FUNCTIONS');
+    throw new Error('request-formation intentDisposition must be REQUEST_READ_ONLY_FUNCTIONS or NO_READ_ONLY_FUNCTION_NEEDED');
   }
   if (!Array.isArray(value.requests) || value.requests.length === 0 || value.requests.length > MAXIMUM_REQUESTS) {
-    throw new Error(`request-formation requests must contain 1-${MAXIMUM_REQUESTS} entries`);
+    throw new Error(`request-formation requests must contain 1-${MAXIMUM_REQUESTS} entries when reads are requested`);
   }
   const visible = new Map(frame.entries.map((entry) => [entry.capabilityRef, entry]));
   const refs = new Set();
@@ -834,8 +873,11 @@ function requestPrompt(taskIntent, frontier) {
   return [
     'VEXLIFE_CAPABILITY_REQUEST_FORMATION/v1',
     'Select only exact-current READ_ONLY functions from the supplied compact frontier.',
+    'If the human request needs no current observation, choose NO_READ_ONLY_FUNCTION_NEEDED instead of inventing a tool call.',
     'Return one JSON object and no prose, markdown, hidden reasoning, or chain-of-thought.',
-    'Schema: {"intentDisposition":"REQUEST_READ_ONLY_FUNCTIONS","requests":[{"requestRef":"stable ref","capabilityRef":"canonical ref","arguments":{},"dependencyRefs":[],"reasonCue":"short public routing cue or null"}]}',
+    'Read schema: {"intentDisposition":"REQUEST_READ_ONLY_FUNCTIONS","requests":[{"requestRef":"stable ref","capabilityRef":"canonical ref","arguments":{},"dependencyRefs":[],"reasonCue":"short public routing cue or null"}]}',
+    'No-read schema: {"intentDisposition":"NO_READ_ONLY_FUNCTION_NEEDED","requests":[]}',
+    `FRESH_COMPANION_FOUNDATION_FRAME=${JSON.stringify(FRESH_COMPANION_FOUNDATION_FRAME)}`,
     `TASK_INTENT=${JSON.stringify(taskIntent)}`,
     `COMPACT_CAPABILITY_FRONTIER=${JSON.stringify(frontier)}`
   ].join('\n');
@@ -855,6 +897,7 @@ function synthesisPrompt(taskIntent, observations, held) {
     'Synthesize the human answer from the original task and exact accepted observations.',
     'Do not claim effects, sources, competence, currentness, or authority beyond the supplied evidence.',
     'Do not reveal hidden reasoning. Return only the final human-facing answer.',
+    `FRESH_COMPANION_FOUNDATION_FRAME=${JSON.stringify(FRESH_COMPANION_FOUNDATION_FRAME)}`,
     `TASK_INTENT=${JSON.stringify(taskIntent)}`,
     `SOURCE_BOUND_OBSERVATIONS=${JSON.stringify(bounded)}`,
     `HELD_OR_UNKNOWN_NODES=${JSON.stringify(held)}`
@@ -1124,6 +1167,53 @@ export function createCapabilityAssimilationRuntime({
     progress.push(progressEvent('READ_ONLY_REQUESTS_FORMED', {
       requestCount: requestProjection.requests.length
     }));
+
+    if (requestProjection.requests.length === 0) {
+      progress.push(progressEvent('NO_READ_ONLY_FUNCTION_NEEDED', {
+        requestCount: 0
+      }));
+      const synthesisPhase = await gatedInference({
+        phaseRef: `model-phase.${context.taskRef ?? semanticHash(taskIntent).slice(0, 16)}.synthesis-no-read`,
+        inference,
+        input: {
+          endpointProfile,
+          requestContent: synthesisPrompt(taskIntent, [], []),
+          inMemoryAuthorization,
+          timeoutMs
+        },
+        label: 'synthesis-no-read'
+      });
+      modelSequenceReceipts.push(synthesisPhase.receipt);
+      const synthesis = synthesisPhase.normalized;
+      progress.push(progressEvent('LATER_SYNTHESIS_COMPLETED', {
+        inferenceCount: 2,
+        acceptedObservationCount: 0
+      }));
+      return freeze({
+        response: synthesis,
+        actualHttpCall: true,
+        contextSourceRefs: [],
+        runtimeProjection: {
+          schemaVersion: 'vexlife.capability-assimilation-runtime/v1',
+          mode,
+          capabilityFrameInput: clone(capabilityFrameInput),
+          inferenceCount: 2,
+          requestModelRef: requestInference.model,
+          synthesisModelRef: synthesis.model,
+          modelSequenceReceipts: clone(modelSequenceReceipts),
+          capabilityFrontierRef: `frontier.${semanticHash(frontier).slice(0, 24)}`,
+          dependencyGraphHash: null,
+          toolRequestCount: 0,
+          observationRefs: [],
+          heldNodes: [],
+          exactlyOnceReceipts: [],
+          schedulerDispatchReceipts: [],
+          progress,
+          hiddenReasoningIncluded: false,
+          externalEffectsExecuted: false
+        }
+      });
+    }
 
     const factory = new ProcessFactory(processDefinition(requestProjection.requests));
     const compiled = factory.compile({

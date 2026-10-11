@@ -273,13 +273,19 @@ export function assertSafeMacExtractedTree(root) {
 }
 
 export function readMacProcessEvidence(pid, { spawnSyncImpl = spawnSync } = {}) {
-  if (!Number.isInteger(Number(pid)) || Number(pid) <= 0) return null;
-  const ps = spawnSyncImpl('/bin/ps', ['-ww', '-p', String(pid), '-o', 'command='], {
+  const expectedPid = Number(pid);
+  if (!Number.isInteger(expectedPid) || expectedPid <= 0) return null;
+  const ps = spawnSyncImpl('/bin/ps', ['-ww', '-p', String(expectedPid), '-o', 'pid=,pgid=,command='], {
     encoding: 'utf8', shell: false
   });
   if (ps.error || ps.status !== 0 || !String(ps.stdout || '').trim()) return null;
-  const commandLine = String(ps.stdout).trim();
-  const lsof = spawnSyncImpl('/usr/sbin/lsof', ['-a', '-p', String(pid), '-d', 'txt', '-Fn'], {
+  const parsed = /^\s*(\d+)\s+(\d+)\s+(.*)$/u.exec(String(ps.stdout || '').trim());
+  if (!parsed) return null;
+  const processId = Number(parsed[1]);
+  const processGroupId = Number(parsed[2]);
+  const commandLine = parsed[3];
+  if (processId !== expectedPid || !Number.isInteger(processGroupId) || processGroupId <= 0 || !commandLine) return null;
+  const lsof = spawnSyncImpl('/usr/sbin/lsof', ['-a', '-p', String(expectedPid), '-d', 'txt', '-Fn'], {
     encoding: 'utf8', shell: false
   });
   if (lsof.error || lsof.status !== 0) return null;
@@ -288,6 +294,8 @@ export function readMacProcessEvidence(pid, { spawnSyncImpl = spawnSync } = {}) 
   if (!executablePath) return null;
   return {
     platform: 'darwin',
+    processId,
+    processGroupId,
     name: path.basename(executablePath),
     executablePath,
     commandLine,
@@ -544,20 +552,22 @@ function activatedRuntimeProcessEvidenceMatches(binding, processEvidence) {
     processEvidence.commandLineClass !== 'DARWIN_PS_FLATTENED_ARGV' ||
     processEvidence.argvBoundaryPreserved !== false
   ) return false;
-  let expectedReal;
-  let observedReal;
+  if (
+    processEvidence.processId !== binding.pid ||
+    processEvidence.processGroupId !== binding.pid ||
+    !Array.isArray(binding.arguments) ||
+    binding.arguments.length === 0
+  ) return false;
   try {
     const launcherStat = fs.lstatSync(binding.executablePath);
     if (!launcherStat.isFile() && !launcherStat.isSymbolicLink()) return false;
-    expectedReal = fs.realpathSync.native(binding.executablePath);
+    const expectedReal = fs.realpathSync.native(binding.executablePath);
     if (!fs.statSync(expectedReal).isFile()) return false;
-    observedReal = fs.realpathSync.native(path.resolve(processEvidence.executablePath));
   } catch {
     return false;
   }
-  if (observedReal !== expectedReal) return false;
-  const expectedCommandLine = [binding.executablePath, ...binding.arguments].join(' ');
-  return String(processEvidence.commandLine || '').trim() === expectedCommandLine;
+  const commandLine = String(processEvidence.commandLine || '').trim();
+  return commandLine.endsWith(` ${binding.arguments.join(' ')}`);
 }
 
 export function classifyMacLifecycleState(home) {

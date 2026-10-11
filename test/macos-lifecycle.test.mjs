@@ -23,6 +23,7 @@ import {
   cleanupRebuildPreserveState,
   protectedHomeSnapshot,
   qualifiedInitializationFromCurrentHome,
+  readMacProcessEvidence,
   stopOwnedRuntime,
   validateMacTarEntries,
   validateMacTarTopology
@@ -357,6 +358,26 @@ test('MAC04 Darwin process evidence binds the exact flattened ps witness to spaw
   }), false);
 });
 
+test('MAC04A Darwin process evidence retains pid/process-group ownership independently of Python launcher spelling', () => {
+  const pid = 4242;
+  const commandLine = '/Library/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -m mlx_lm.server --model /private/model --host 127.0.0.1 --port 18084';
+  const evidence = readMacProcessEvidence(pid, {
+    spawnSyncImpl: (executable, args) => {
+      if (executable === '/bin/ps') {
+        assert.deepEqual(args, ['-ww', '-p', String(pid), '-o', 'pid=,pgid=,command=']);
+        return { status: 0, stdout: ` ${pid} ${pid} ${commandLine}\n`, stderr: '' };
+      }
+      assert.equal(executable, '/usr/sbin/lsof');
+      return { status: 0, stdout: `p${pid}\nftxt\nn/Library/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python\n`, stderr: '' };
+    }
+  });
+  assert.ok(evidence);
+  assert.equal(evidence.processId, pid);
+  assert.equal(evidence.processGroupId, pid);
+  assert.equal(evidence.name, 'Python');
+  assert.equal(evidence.commandLine, commandLine);
+});
+
 test('MAC04B Windows process evidence keeps quote-aware case-insensitive token semantics', () => {
   const executable = 'C:\\Program Files\\VexLife\\llama-server.exe';
   const args = ['-m', 'C:\\Users\\Victor\\Vex Life\\model.gguf', '--host', '127.0.0.1', '--port', '18080'];
@@ -445,11 +466,23 @@ test('MAC06A lifecycle recognizes and reuses one exact activated-M4 v2 runtime b
       runtime: { pid, arguments: runtimeArgs }
     }, null, 2) + '\n');
     const evidence = {
-      platform: 'darwin', name: path.basename(realPython), executablePath: realPython,
-      commandLine: [launcher, ...runtimeArgs].join(' '),
+      platform: 'darwin',
+      processId: pid,
+      processGroupId: pid,
+      name: 'Python',
+      executablePath: '/Library/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python',
+      commandLine: ['/Library/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python', ...runtimeArgs].join(' '),
       commandLineClass: 'DARWIN_PS_FLATTENED_ARGV', argvBoundaryPreserved: false, tokens: null
     };
     assert.equal(classifyMacLifecycleState(home), 'EXISTING_HEALTHY');
+    assert.equal(qualifiedInitializationFromCurrentHome(home, {
+      pidAliveImpl: (observedPid) => observedPid === pid,
+      processEvidenceReader: () => ({ ...evidence, processGroupId: pid + 1 })
+    }), null);
+    assert.equal(qualifiedInitializationFromCurrentHome(home, {
+      pidAliveImpl: (observedPid) => observedPid === pid,
+      processEvidenceReader: () => ({ ...evidence, commandLine: evidence.commandLine.replace('--port 18084', '--port 18085') })
+    }), null);
     const current = qualifiedInitializationFromCurrentHome(home, {
       pidAliveImpl: (observedPid) => observedPid === pid,
       processEvidenceReader: () => evidence
