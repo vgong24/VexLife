@@ -1,6 +1,7 @@
 import { createContextLease } from './context-lease.mjs';
 import { assertCurrentLease } from './scheduler-runtime-trust.mjs';
 import { semanticHash } from './utils.mjs';
+import { projectLivingJournalMemory } from './living-journal-memory-projection.mjs';
 import {
   LivedCompanionError,
   readCurrentLivedCompanionCompletedTurn
@@ -25,6 +26,124 @@ const EFFECTS = Object.freeze({
   relationshipMutated: false,
   externalDisclosure: false
 });
+
+const MEMORY_MAX_PAGES = 8;
+const MEMORY_TOKEN_CAP = 768;
+const MEMORY_PACKET_SCHEMA = 'vexlife.prompt-context-memory-packet/v1';
+const MEMORY_TRUTH_CLASS = 'CURRENT_ATTRIBUTED_MEMORY_CONTEXT';
+
+function estimatedMessageTokens(content) {
+  return Math.max(1, Math.ceil(Buffer.byteLength(content, 'utf8') / 4)) + 4;
+}
+
+function memorySystemContent(core) {
+  return [
+    'VEXLIFE_CURRENT_MEMORY_CONTEXT/v1',
+    'These are current source-attributed Memory references, not proof of subjective recall or original wording by this model.',
+    'Use them as bounded continuity context. If they conflict with current source or the human, preserve the conflict rather than inventing reconciliation.',
+    JSON.stringify(core)
+  ].join('\n');
+}
+
+function memoryContextFor({ home, homeRef, deviceRef, companionLineageRef, threadRef }) {
+  const projection = projectLivingJournalMemory({
+    home,
+    homeRef,
+    deviceRef,
+    companionLineageRef,
+    threadRef,
+    maxPages: MEMORY_MAX_PAGES
+  });
+  if (projection.effects?.homeMutated !== false ||
+      projection.effects?.memoryMutated !== false ||
+      projection.effects?.modelCalled !== false ||
+      projection.effects?.trainingRan !== false ||
+      projection.effects?.modelWeightsChanged !== false ||
+      projection.rawConversationContentIncluded !== false) {
+    fail('Living Journal Memory projection violated the read-only prompt-context boundary');
+  }
+
+  const selectedPages = [];
+  const tokenBoundedOutPageRefs = [];
+  let usedTokens = 0;
+  if (projection.state === 'CURRENT' && projection.currentness === 'CURRENT') {
+    for (const page of projection.pages) {
+      const selected = Object.freeze({
+        pageRef: page.pageRef,
+        statementRef: page.statementRef,
+        summary: page.summary,
+        summaryHash: page.summaryHash,
+        memoryRelation: page.memoryRelation,
+        recordedStatementState: page.recordedStatementState,
+        effectiveState: page.effectiveState,
+        consentState: page.consentState,
+        semanticAcceptanceRef: page.semanticAcceptanceRef,
+        semanticAcceptanceSha256: page.semanticAcceptanceSha256,
+        semanticAuthorityHeadSha256: page.semanticAuthorityHeadSha256
+      });
+      const candidateCore = {
+        schemaVersion: MEMORY_PACKET_SCHEMA,
+        truthClass: MEMORY_TRUTH_CLASS,
+        sourceOwnerRefs: [...projection.sourceOwnerRefs],
+        currentDailyStratumRef: projection.daily.currentDailyStratumRef,
+        currentDailyStratumSha256: projection.daily.currentDailyStratumSha256,
+        sourceConversationHeadSha256: projection.daily.sourceConversationHeadSha256,
+        sourceScoreHeadSha256: projection.daily.sourceScoreHeadSha256,
+        sourceSemanticAuthorityHeadSha256: projection.daily.sourceSemanticAuthorityHeadSha256,
+        pages: [...selectedPages, selected],
+        heldOrDeferredStatementRefs: [...projection.heldOrDeferredStatementRefs],
+        boundedOutStatementRefs: [...projection.boundedOutStatementRefs],
+        tokenBoundedOutPageRefs: []
+      };
+      const estimate = estimatedMessageTokens(memorySystemContent(candidateCore));
+      if (estimate > MEMORY_TOKEN_CAP) {
+        tokenBoundedOutPageRefs.push(page.pageRef);
+        continue;
+      }
+      selectedPages.push(selected);
+      usedTokens = estimate;
+    }
+  }
+
+  const core = Object.freeze({
+    schemaVersion: MEMORY_PACKET_SCHEMA,
+    truthClass: MEMORY_TRUTH_CLASS,
+    projectionState: projection.state,
+    projectionCurrentness: projection.currentness,
+    sourceOwnerRefs: Object.freeze([...(projection.sourceOwnerRefs ?? [])]),
+    currentDailyStratumRef: projection.daily?.currentDailyStratumRef ?? null,
+    currentDailyStratumSha256: projection.daily?.currentDailyStratumSha256 ?? null,
+    sourceConversationHeadSha256: projection.daily?.sourceConversationHeadSha256 ?? null,
+    sourceScoreHeadSha256: projection.daily?.sourceScoreHeadSha256 ?? null,
+    sourceSemanticAuthorityHeadSha256: projection.daily?.sourceSemanticAuthorityHeadSha256 ?? null,
+    pages: Object.freeze(selectedPages),
+    heldOrDeferredStatementRefs: Object.freeze([...(projection.heldOrDeferredStatementRefs ?? [])]),
+    boundedOutStatementRefs: Object.freeze([...(projection.boundedOutStatementRefs ?? [])]),
+    tokenBoundedOutPageRefs: Object.freeze(tokenBoundedOutPageRefs),
+    reasons: Object.freeze([...(projection.reasons ?? [])]),
+    memoryTokenCap: MEMORY_TOKEN_CAP,
+    estimatedSystemMessageTokens: selectedPages.length > 0 ? usedTokens : 0
+  });
+  const semanticFingerprint = semanticHash(core);
+  const sourceRefs = [
+    ...(core.sourceOwnerRefs ?? []),
+    ...(core.currentDailyStratumRef ? [core.currentDailyStratumRef] : []),
+    ...core.pages.flatMap((page) => [page.pageRef, page.statementRef, page.semanticAcceptanceRef])
+  ].filter(Boolean).sort();
+  const included = core.projectionState === 'CURRENT' &&
+    core.projectionCurrentness === 'CURRENT' &&
+    core.pages.length > 0;
+  return Object.freeze({
+    ...core,
+    memoryContextRef: `memory-context.vexlife.prompt.${semanticFingerprint.slice(0, 32)}`,
+    semanticFingerprint,
+    sourceRefs: Object.freeze([...new Set(sourceRefs)]),
+    systemMessage: included
+      ? Object.freeze({ role: 'system', content: memorySystemContent(core) })
+      : null,
+    included
+  });
+}
 
 function fail(message, details = null) {
   throw new LivedCompanionError('CONTEXT_HASH_MISMATCH', message, details);
@@ -56,9 +175,9 @@ function exactCurrentRequestBinding(context) {
   });
 }
 
-function selectionCore(prior, current) {
+function selectionCore(prior, current, memoryContext) {
   return Object.freeze({
-    schemaVersion: 'vexlife.browser-prompt-context-runtime-selection/v1',
+    schemaVersion: 'vexlife.browser-prompt-context-runtime-selection/v2',
     homeRef: prior.homeRef,
     deviceRef: prior.deviceRef,
     lineageRef: prior.companionLineageRef,
@@ -66,6 +185,10 @@ function selectionCore(prior, current) {
     priorConversationHeadSha256: prior.conversationHeadSha256,
     priorHeadSequence: prior.headSequence,
     currentRequestEventBinding: current,
+    memoryContextRef: memoryContext.memoryContextRef,
+    memoryContextFingerprint: memoryContext.semanticFingerprint,
+    memorySourceRefs: memoryContext.sourceRefs,
+    memoryIncluded: memoryContext.included,
     selectedEventBindings: Object.freeze([
       Object.freeze({
         eventRef: prior.requestEventBinding.eventRef,
@@ -81,7 +204,7 @@ function selectionCore(prior, current) {
       })
     ]),
     wholeHistoryEventEnumerationPerformed: false,
-    memorySelectionPerformed: false,
+    memorySelectionPerformed: memoryContext.included,
     trainingSelectionPerformed: false
   });
 }
@@ -102,7 +225,12 @@ function leaseInput(selection, observedAt, ttlMs) {
     priorConversationHeadSha256: headHash,
     currentRequestEventHash: currentHash,
     currentRequestSequence: selection.currentRequestEventBinding.sequence,
-    selectedSourceRefs: selection.selectedEventBindings.map((binding) => binding.eventRef),
+    selectedSourceRefs: [
+      ...selection.selectedEventBindings.map((binding) => binding.eventRef),
+      ...selection.memorySourceRefs
+    ].sort(),
+    memoryContextRef: selection.memoryContextRef,
+    memoryContextFingerprint: selection.memoryContextFingerprint,
     effects: EFFECTS
   };
   const runtimeSnapshotFingerprint = semanticHash({ ...policy, class: 'RUNTIME_SNAPSHOT' });
@@ -115,14 +243,17 @@ function leaseInput(selection, observedAt, ttlMs) {
     runtimeSnapshotFingerprint,
     schedulerGeneration: selection.currentRequestEventBinding.sequence,
     resourceLeaseFingerprint: semanticHash({ ...policy, class: 'RESOURCE_LEASE', reads: 4 }),
-    capabilityLeaseFingerprint: semanticHash({ ...policy, class: 'CAPABILITY_LEASE', capability: 'IMMEDIATE_PRIOR_COMPLETED_TURN' }),
+    capabilityLeaseFingerprint: semanticHash({ ...policy, class: 'CAPABILITY_LEASE', capability: 'IMMEDIATE_PRIOR_PLUS_CURRENT_MEMORY' }),
     effectLeaseFingerprint: semanticHash({ ...policy, class: 'EFFECT_LEASE', effects: EFFECTS }),
     cancellationTokenRef: `cancellation.vexlife.browser-prompt-context.${currentHash.slice(0, 32)}`,
     foundationKernelRef: 'foundation.vexlife.browser-prompt-context-runtime',
     roleFrameRef: 'role-frame.vexlife.browser-prompt-context-runtime',
     intentFrameRef: `intent-frame.vexlife.browser-prompt-context.${currentHash.slice(0, 32)}`,
     selectedAtlasRefs: [],
-    selectedSourceRefs: selection.selectedEventBindings.map((binding) => binding.eventRef),
+    selectedSourceRefs: [
+      ...selection.selectedEventBindings.map((binding) => binding.eventRef),
+      ...selection.memorySourceRefs
+    ].sort(),
     applicableCultureRefs: [],
     applicableLessonRefs: [],
     applicableReleaseRefs: [],
@@ -163,12 +294,16 @@ function continuityProjection(selection, lease) {
       activeWorkNodeRefs: [],
       currentIntentReceiptRefs: [],
       openLoopRefs: [],
-      currentStatementRefs: [],
+      currentStatementRefs: selection.memoryIncluded
+        ? selection.memorySourceRefs.filter((ref) => ref.startsWith('statement.'))
+        : [],
       currentContinuityRecordRefs: [],
-      currentDailyStratumRefOrNull: null,
+      currentDailyStratumRefOrNull: selection.memoryIncluded
+        ? selection.memorySourceRefs.find((ref) => ref.startsWith('daily-stratum.')) ?? null
+        : null,
       recoveryPhaseOrNull: null
     },
-    sourceRefs: [],
+    sourceRefs: [...selection.memorySourceRefs],
     effects: { ...EFFECTS },
     projectionTruth: {
       readOnly: true,
@@ -263,7 +398,14 @@ export function createBrowserPromptContextRuntime({
     if (current.sequence !== prior.headSequence + 1) {
       fail('current request does not immediately follow the selected completed turn');
     }
-    const selection = selectionCore(prior, current);
+    const memoryContext = memoryContextFor({
+      home,
+      homeRef,
+      deviceRef,
+      companionLineageRef,
+      threadRef
+    });
+    const selection = selectionCore(prior, current, memoryContext);
     const observedAt = now();
     canonicalTimestamp(observedAt, 'resolver observedAt');
     const lease = createContextLease(leaseInput(selection, observedAt, leaseTtlMs)).lease;
@@ -275,7 +417,8 @@ export function createBrowserPromptContextRuntime({
       continuityProjection: projection,
       selectedConversationEventRefs: Object.freeze(
         selection.selectedEventBindings.map((binding) => binding.eventRef)
-      )
+      ),
+      memoryContext
     });
   };
 
@@ -315,7 +458,14 @@ export function createBrowserPromptContextRuntime({
         threadRef: query.threadRef,
         expectedConversationHeadSha256: query.priorConversationHeadSha256
       });
-      const reboundSelection = selectionCore(prior, current);
+      const reboundMemoryContext = memoryContextFor({
+        home,
+        homeRef,
+        deviceRef,
+        companionLineageRef,
+        threadRef: query.threadRef
+      });
+      const reboundSelection = selectionCore(prior, current, reboundMemoryContext);
       if (selectionFingerprint(reboundSelection) !== formed.selectionFingerprint) {
         fail('prompt-context prior-turn selection is no longer current');
       }
