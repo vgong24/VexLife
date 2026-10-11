@@ -144,6 +144,22 @@ test('MIR-00 artifact identity is exact and excludes delivery/provider fields', 
   }
 });
 
+test('MIR-00A artifact identity admits safe leading-dot metadata members without admitting path forms', () => {
+  const bytes = Buffer.from('metadata');
+  const accepted = artifactFor(bytes, {
+    artifactRef: 'artifact.synthetic.leading-dot',
+    filename: '.gitattributes'
+  });
+  assert.equal(validateArtifactDescriptor(accepted).filename, '.gitattributes');
+
+  for (const filename of ['.', '..', 'trailing.', '../escape', '.git/config', 'CON']) {
+    assert.throws(() => validateArtifactDescriptor(artifactFor(bytes, {
+      artifactRef: 'artifact.synthetic.invalid-name',
+      filename
+    })), ArtifactDeliveryError, filename);
+  }
+});
+
 test('MIR-01 production resolver rejects registry/channel/verifier injection and source snapshot preserves order', async () => {
   const bytes = Buffer.from('primary');
   const artifact = artifactFor(bytes);
