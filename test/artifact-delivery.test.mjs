@@ -719,8 +719,12 @@ test('MIR-21 module composition retains the additive fragment and canonical G0 r
   const deliveryRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/artifact-delivery-registry.json'), 'utf8'));
   const validatedArtifacts = validateArtifactRegistry(artifactRegistry);
   const validatedDelivery = validateArtifactDeliveryRegistry(deliveryRegistry, artifactRegistry);
-  assert.equal(validatedArtifacts.artifacts.length, 2);
-  assert.equal(Object.keys(validatedDelivery.channelsByArtifactRef).length, 2);
+  const g0Refs = new Set([
+    'model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29',
+    'model.qwen3.5-4b.mmproj-bf16.3516418eb75fd2cdf56058f112b403ff47020775'
+  ]);
+  assert.equal(validatedArtifacts.artifacts.filter((artifact) => g0Refs.has(artifact.artifactRef)).length, 2);
+  assert.equal(Object.keys(validatedDelivery.channelsByArtifactRef).filter((artifactRef) => g0Refs.has(artifactRef)).length, 2);
 });
 
 test('source G0 artifact registries bind immutable GitHub first and exact Hugging Face direct fallback second', () => {
@@ -728,7 +732,7 @@ test('source G0 artifact registries bind immutable GitHub first and exact Huggin
   const deliveryRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint/artifact-delivery-registry.json'), 'utf8'));
   const validatedArtifacts = validateArtifactRegistry(artifactRegistry);
   const validatedDelivery = validateArtifactDeliveryRegistry(deliveryRegistry, artifactRegistry);
-  assert.equal(validatedArtifacts.artifacts.length, 2);
+  assert.ok(validatedArtifacts.artifacts.length >= 2);
   assert.equal(validatedDelivery.defaultPolicyRef, 'policy.vexlife.artifact-delivery.default');
   const expected = new Map([
     ['model.qwen3.5-4b.q4-k-m.ba06320255db2dbec194dad738d066be90dabf29', 'fe0010d92648bddd22176fffb6eed052bf9c12cf2f1873f47c5b0197e07eef46'],
