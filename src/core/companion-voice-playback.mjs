@@ -102,17 +102,32 @@ function requireCanonicalDirectory(root, relative, label) {
 }
 
 function validateModelConfiguration(value, identity) {
-  if (
-    !value || typeof value !== 'object' || Array.isArray(value) ||
-    value.schemaVersion !== 'vexlife.model-configuration/v1' ||
-    value.state !== 'BOUND_QUALIFIED' ||
-    !safeRef(value.profileRef) ||
-    !nonempty(value.requestModel) ||
-    !safeRef(value.qualificationReceiptRef)
-  ) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new CompanionVoicePlaybackError('VOICE_OPERATIONAL_PROFILE_NOT_CURRENT', 'Current qualified operational profile is unavailable', 'HELD');
   }
-  return Object.freeze(structuredClone(value));
+  const legacyQualified =
+    value.schemaVersion === 'vexlife.model-configuration/v1' &&
+    value.state === 'BOUND_QUALIFIED' &&
+    safeRef(value.profileRef) &&
+    nonempty(value.requestModel) &&
+    safeRef(value.qualificationReceiptRef);
+  const activatedQualified =
+    value.schemaVersion === 'vexlife.activated-model-configuration/v2' &&
+    value.state === 'BOUND_ACTIVATED_CULTIVATED_MODEL' &&
+    safeRef(value.modelProfileRef) &&
+    nonempty(value.requestModel) &&
+    safeRef(value.qualificationReceiptRef) &&
+    value.homeRef === identity?.homeRef &&
+    value.companionLineageRef === identity?.companionLineageRef &&
+    value.automaticFallback === false &&
+    value.automaticDownload === false &&
+    value.automaticActivation === false;
+  if (!legacyQualified && !activatedQualified) {
+    throw new CompanionVoicePlaybackError('VOICE_OPERATIONAL_PROFILE_NOT_CURRENT', 'Current qualified operational profile is unavailable', 'HELD');
+  }
+  const normalized = structuredClone(value);
+  if (activatedQualified) normalized.profileRef = value.modelProfileRef;
+  return Object.freeze(normalized);
 }
 
 export function loadCurrentVoiceOperationalProfile(homeIdentity) {

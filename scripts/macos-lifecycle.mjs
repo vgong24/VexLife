@@ -380,15 +380,36 @@ export async function stopOwnedBrowser(home, repo) {
     receiptRepoRootPath: owned.receiptRepo
   };
 }
-export async function stopOwnedRuntime(home) {
+export async function stopOwnedRuntime(home, {
+  pidAliveImpl = pidAlive,
+  processEvidenceReader = readMacProcessEvidence,
+  stopPidImpl = stopPid
+} = {}) {
   const model = jsonRead(path.join(home, 'config', 'model.json'));
   if (!model) return { disposition: 'NO_MODEL_CONFIGURATION', pid: null };
   const pid = Number(model.runtimePid);
-  if (!pidAlive(pid)) return { disposition: 'ALREADY_STOPPED', pid: Number.isInteger(pid) ? pid : null };
+  if (!pidAliveImpl(pid)) return { disposition: 'ALREADY_STOPPED', pid: Number.isInteger(pid) ? pid : null };
+
+  if (model.schemaVersion === 'vexlife.activated-model-configuration/v2' &&
+      model.state === 'BOUND_ACTIVATED_CULTIVATED_MODEL') {
+    const homeManifest = jsonRead(path.join(home, 'config', 'home.json'));
+    const receipt = jsonRead(path.join(home, 'recovery', 'vex-initialization-receipt.json'));
+    const activated = activatedRuntimeReceiptBinding(homeManifest, model, receipt);
+    if (!activated || activated.pid !== pid) {
+      throw new Error('activated runtime PID is active but exact v2 receipt ownership is not proven; refusing stop');
+    }
+    const evidence = processEvidenceReader(pid);
+    if (!activatedRuntimeProcessEvidenceMatches(activated, evidence)) {
+      throw new Error('activated runtime PID is active but exact executable/argument ownership is not proven; refusing stop');
+    }
+    await stopPidImpl(pid);
+    return { disposition: 'EXACT_ACTIVATED_M4_RUNTIME_STOPPED', pid };
+  }
+
   if (!model.runtimeExecutablePath || !model.runtimeExecutableSha256 || !Array.isArray(model.runtimeArguments)) {
     throw new Error('runtime process is active but current exact runtime ownership fields are incomplete; refusing stop');
   }
-  const evidence = readMacProcessEvidence(pid);
+  const evidence = processEvidenceReader(pid);
   if (!evidence || !runtimeProcessEvidenceMatches({
     processEvidence: evidence,
     expectedExecutablePath: path.resolve(model.runtimeExecutablePath),
@@ -398,10 +419,9 @@ export async function stopOwnedRuntime(home) {
   }
   const actual = sha256(fs.readFileSync(path.resolve(model.runtimeExecutablePath)));
   if (actual !== model.runtimeExecutableSha256) throw new Error('runtime executable bytes moved after qualification; refusing stop');
-  await stopPid(pid);
+  await stopPidImpl(pid);
   return { disposition: 'EXACT_RUNTIME_STOPPED', pid };
 }
-
 function runtimeExcludedFromProtectedSnapshot(relative) {
   const forward = relative.split(path.sep).join('/');
   return forward === 'runtime' || forward.startsWith('runtime/');
@@ -480,16 +500,78 @@ export function cleanupRebuildPreserveState(home) {
   return removed;
 }
 
+function activatedRuntimeReceiptBinding(homeManifest, model, receipt) {
+  if (
+    !homeManifest || !model || !receipt ||
+    model.schemaVersion !== 'vexlife.activated-model-configuration/v2' ||
+    model.state !== 'BOUND_ACTIVATED_CULTIVATED_MODEL' ||
+    receipt.schemaVersion !== 'vexlife.activated-model-runtime-receipt/v2' ||
+    receipt.state !== 'ACTIVATED_MODEL_RUNTIME_QUALIFIED' ||
+    !receipt.receiptRef || model.qualificationReceiptRef !== receipt.receiptRef ||
+    !homeManifest.homeRef || model.homeRef !== homeManifest.homeRef || receipt.homeRef !== homeManifest.homeRef ||
+    !homeManifest.currentCompanionLineageRef ||
+    model.companionLineageRef !== homeManifest.currentCompanionLineageRef ||
+    receipt.companionLineageRef !== homeManifest.currentCompanionLineageRef ||
+    !model.modelProfileRef || receipt.modelProfileRef !== model.modelProfileRef ||
+    !model.endpoint || receipt.endpoint !== model.endpoint ||
+    !model.requestModel || receipt.requestModel !== model.requestModel ||
+    model.automaticFallback !== false ||
+    model.automaticDownload !== false ||
+    model.automaticActivation !== false ||
+    !model.privatePythonExecutablePath ||
+    receipt.privatePythonExecutablePath !== model.privatePythonExecutablePath ||
+    !model.privatePythonEnvironmentRootPath ||
+    receipt.privatePythonEnvironmentRootPath !== model.privatePythonEnvironmentRootPath ||
+    !Array.isArray(receipt.runtime?.arguments)
+  ) return null;
+  const pid = Number(model.runtimePid);
+  if (!Number.isInteger(pid) || pid <= 0 || Number(receipt.runtime?.pid) !== pid) return null;
+  return {
+    pid,
+    executablePath: path.resolve(model.privatePythonExecutablePath),
+    environmentRoot: path.resolve(model.privatePythonEnvironmentRootPath),
+    arguments: [...receipt.runtime.arguments],
+    profileRef: model.modelProfileRef,
+    endpoint: model.endpoint,
+    requestModel: model.requestModel,
+    receiptRef: receipt.receiptRef
+  };
+}
+
+function activatedRuntimeProcessEvidenceMatches(binding, processEvidence) {
+  if (!binding || !processEvidence || processEvidence.platform !== 'darwin') return false;
+  if (
+    processEvidence.commandLineClass !== 'DARWIN_PS_FLATTENED_ARGV' ||
+    processEvidence.argvBoundaryPreserved !== false
+  ) return false;
+  let expectedReal;
+  let observedReal;
+  try {
+    const launcherStat = fs.lstatSync(binding.executablePath);
+    if (!launcherStat.isFile() && !launcherStat.isSymbolicLink()) return false;
+    expectedReal = fs.realpathSync.native(binding.executablePath);
+    if (!fs.statSync(expectedReal).isFile()) return false;
+    observedReal = fs.realpathSync.native(path.resolve(processEvidence.executablePath));
+  } catch {
+    return false;
+  }
+  if (observedReal !== expectedReal) return false;
+  const expectedCommandLine = [binding.executablePath, ...binding.arguments].join(' ');
+  return String(processEvidence.commandLine || '').trim() === expectedCommandLine;
+}
+
 export function classifyMacLifecycleState(home) {
   const root = path.resolve(home);
   if (!fs.existsSync(root)) return 'ABSENT';
   try { canonicalMacHomeDirectory(root); } catch { return 'HELD_NONCANONICAL_HOME'; }
   const entries = fs.readdirSync(root);
-  const homeManifest = path.join(root, 'config', 'home.json');
-  if (!fs.existsSync(homeManifest)) return entries.length === 0 ? 'ABSENT' : 'HELD_NONCANONICAL_HOME';
+  const homeManifestPath = path.join(root, 'config', 'home.json');
+  if (!fs.existsSync(homeManifestPath)) return entries.length === 0 ? 'ABSENT' : 'HELD_NONCANONICAL_HOME';
+  const homeManifest = jsonRead(homeManifestPath);
   const model = jsonRead(path.join(root, 'config', 'model.json'));
   const initialization = jsonRead(path.join(root, 'recovery', 'vex-initialization-receipt.json'));
   if (model?.state === 'BOUND_QUALIFIED' && initialization?.state === 'RUNTIME_QUALIFIED') return 'EXISTING_HEALTHY';
+  if (activatedRuntimeReceiptBinding(homeManifest, model, initialization)) return 'EXISTING_HEALTHY';
   return 'EXISTING_DEGRADED_REPAIRABLE';
 }
 export function choicesForLifecycleState(state) {
@@ -557,6 +639,29 @@ export function qualifiedInitializationFromCurrentHome(home, {
   const receiptPath = path.join(root, 'recovery', 'vex-initialization-receipt.json');
   const receipt = jsonRead(receiptPath);
   if (!homeManifest || !model || !receipt) return null;
+
+  const activated = activatedRuntimeReceiptBinding(homeManifest, model, receipt);
+  if (activated) {
+    if (!pidAliveImpl(activated.pid)) return null;
+    const evidence = processEvidenceReader(activated.pid);
+    if (!activatedRuntimeProcessEvidenceMatches(activated, evidence)) return null;
+    return {
+      schemaVersion: 'vexlife.initialization-result/v1',
+      state: 'RUNTIME_QUALIFIED',
+      profileRef: activated.profileRef,
+      profileState: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
+      runtimePid: activated.pid,
+      endpoint: activated.endpoint,
+      requestModel: activated.requestModel,
+      browserBinding: {
+        endpointEnvironment: 'VEXLIFE_COMPANION_ENDPOINT',
+        modelEnvironment: 'VEXLIFE_COMPANION_MODEL'
+      },
+      receiptPath,
+      reuseDisposition: 'REUSED_CURRENT_ACTIVATED_M4_RUNTIME_RECEIPT'
+    };
+  }
+
   if (receipt.schemaVersion !== 'vexlife.initialization-receipt/v1' || receipt.state !== 'RUNTIME_QUALIFIED') return null;
   if (model.schemaVersion !== 'vexlife.model-configuration/v1' || model.state !== 'BOUND_QUALIFIED') return null;
   if (!receipt.receiptRef || model.qualificationReceiptRef !== receipt.receiptRef) return null;

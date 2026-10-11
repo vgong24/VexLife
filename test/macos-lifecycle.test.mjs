@@ -22,6 +22,8 @@ import {
   classifyMacLifecycleState,
   cleanupRebuildPreserveState,
   protectedHomeSnapshot,
+  qualifiedInitializationFromCurrentHome,
+  stopOwnedRuntime,
   validateMacTarEntries,
   validateMacTarTopology
 } from '../scripts/macos-lifecycle.mjs';
@@ -392,6 +394,84 @@ test('MAC06 lifecycle state distinguishes absent, healthy and repairable existin
   fs.writeFileSync(path.join(home, 'recovery', 'vex-initialization-receipt.json'), '{"state":"RUNTIME_QUALIFIED"}\n');
   assert.equal(classifyMacLifecycleState(home), 'EXISTING_HEALTHY');
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+
+test('MAC06A lifecycle recognizes and reuses one exact activated-M4 v2 runtime binding', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-activated-m4-'));
+  const home = path.join(root, 'home');
+  const envRoot = path.join(root, 'trainer-env');
+  const binRoot = path.join(envRoot, 'bin');
+  const realPython = path.join(envRoot, 'python-real');
+  const launcher = path.join(binRoot, 'python');
+  const pid = 4242;
+  const runtimeArgs = ['-m', 'mlx_lm.server', '--model', '/private/model', '--host', '127.0.0.1', '--port', '18084'];
+  try {
+    fs.mkdirSync(path.join(home, 'config'), { recursive: true });
+    fs.mkdirSync(path.join(home, 'recovery'), { recursive: true });
+    fs.mkdirSync(binRoot, { recursive: true });
+    fs.writeFileSync(realPython, '#!/bin/sh\n', { mode: 0o755 });
+    fs.symlinkSync('../python-real', launcher);
+    const homeRef = 'vex-home.macos-activated-m4';
+    const companionLineageRef = 'companion-lineage.vexlife.macos-activated-m4';
+    fs.writeFileSync(path.join(home, 'config', 'home.json'), JSON.stringify({
+      schemaVersion: 'vexlife.home/v0', homeRef,
+      currentDeviceRef: 'device.macos-activated-m4',
+      currentCompanionLineageRef: companionLineageRef
+    }) + '\n');
+    fs.writeFileSync(path.join(home, 'config', 'model.json'), JSON.stringify({
+      schemaVersion: 'vexlife.activated-model-configuration/v2',
+      state: 'BOUND_ACTIVATED_CULTIVATED_MODEL',
+      homeRef, companionLineageRef,
+      modelProfileRef: 'model-profile.vex.m4.fixture',
+      endpoint: 'http://127.0.0.1:18084',
+      requestModel: 'default_model',
+      runtimePid: pid,
+      privatePythonExecutablePath: launcher,
+      privatePythonEnvironmentRootPath: envRoot,
+      qualificationReceiptRef: 'receipt.vexlife.activated-model-runtime.fixture',
+      automaticFallback: false, automaticDownload: false, automaticActivation: false
+    }, null, 2) + '\n');
+    fs.writeFileSync(path.join(home, 'recovery', 'vex-initialization-receipt.json'), JSON.stringify({
+      schemaVersion: 'vexlife.activated-model-runtime-receipt/v2',
+      receiptRef: 'receipt.vexlife.activated-model-runtime.fixture',
+      state: 'ACTIVATED_MODEL_RUNTIME_QUALIFIED',
+      homeRef, companionLineageRef,
+      modelProfileRef: 'model-profile.vex.m4.fixture',
+      endpoint: 'http://127.0.0.1:18084',
+      requestModel: 'default_model',
+      privatePythonExecutablePath: launcher,
+      privatePythonEnvironmentRootPath: envRoot,
+      runtime: { pid, arguments: runtimeArgs }
+    }, null, 2) + '\n');
+    const evidence = {
+      platform: 'darwin', name: path.basename(realPython), executablePath: realPython,
+      commandLine: [launcher, ...runtimeArgs].join(' '),
+      commandLineClass: 'DARWIN_PS_FLATTENED_ARGV', argvBoundaryPreserved: false, tokens: null
+    };
+    assert.equal(classifyMacLifecycleState(home), 'EXISTING_HEALTHY');
+    const current = qualifiedInitializationFromCurrentHome(home, {
+      pidAliveImpl: (observedPid) => observedPid === pid,
+      processEvidenceReader: () => evidence
+    });
+    assert.ok(current);
+    assert.equal(current.state, 'RUNTIME_QUALIFIED');
+    assert.equal(current.profileRef, 'model-profile.vex.m4.fixture');
+    assert.equal(current.runtimePid, pid);
+    assert.equal(current.endpoint, 'http://127.0.0.1:18084');
+    assert.equal(current.requestModel, 'default_model');
+    assert.equal(current.reuseDisposition, 'REUSED_CURRENT_ACTIVATED_M4_RUNTIME_RECEIPT');
+    let stoppedPid = null;
+    const stopped = await stopOwnedRuntime(home, {
+      pidAliveImpl: (observedPid) => observedPid === pid,
+      processEvidenceReader: () => evidence,
+      stopPidImpl: async (observedPid) => { stoppedPid = observedPid; }
+    });
+    assert.equal(stopped.disposition, 'EXACT_ACTIVATED_M4_RUNTIME_STOPPED');
+    assert.equal(stoppedPid, pid);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('MAC07 rebuild-preserve cleanup removes runtime binding while preserving Home, model cache, Memory and heads', () => {

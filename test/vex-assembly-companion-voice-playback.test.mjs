@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -13,7 +14,8 @@ import {
   VOICE_RUNTIME_BINDING_SCHEMA,
   VOICE_DIRECT_PLAYBACK_BASELINE_CONTROL_BINDINGS,
   VOICE_DIRECT_PLAYBACK_BASELINE_CONTROL_REFS,
-  createCompanionVoicePlaybackAdapter
+  createCompanionVoicePlaybackAdapter,
+  loadCurrentVoiceOperationalProfile
 } from '../src/core/companion-voice-playback.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
 
@@ -56,6 +58,54 @@ const modelConfiguration = Object.freeze({
   profileRef: 'profile.vexlife.voice.fixture',
   requestModel: completedTurn.modelNameOrBoundedTestProfileRef,
   qualificationReceiptRef: 'receipt.model.fixture'
+});
+
+const activatedModelConfiguration = Object.freeze({
+  schemaVersion: 'vexlife.activated-model-configuration/v2',
+  state: 'BOUND_ACTIVATED_CULTIVATED_MODEL',
+  bindingRef: 'binding.vexlife.voice.activated-m4.fixture',
+  homeRef: homeIdentity.homeRef,
+  companionLineageRef: homeIdentity.companionLineageRef,
+  modelLineageRef: 'lineage.vex.m4.fixture',
+  generationRef: 'generation.vex.m4.fixture',
+  modelRef: 'model.vex.m4.fixture',
+  modelProfileRef: 'model-profile.vex.m4.fixture',
+  requestModel: completedTurn.modelNameOrBoundedTestProfileRef,
+  qualificationReceiptRef: 'receipt.model.activated-m4.fixture',
+  automaticFallback: false,
+  automaticDownload: false,
+  automaticActivation: false
+});
+
+test('VA-I09 Voice operational profile accepts the exact current activated-M4 v2 Home binding', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-voice-activated-m4-'));
+  const home = path.join(root, 'home');
+  try {
+    fs.mkdirSync(path.join(home, 'config'), { recursive: true });
+    fs.writeFileSync(
+      path.join(home, 'config', 'model.json'),
+      JSON.stringify(activatedModelConfiguration, null, 2) + '\n',
+      'utf8'
+    );
+    const current = loadCurrentVoiceOperationalProfile({ ...homeIdentity, home });
+    assert.equal(current.schemaVersion, 'vexlife.activated-model-configuration/v2');
+    assert.equal(current.state, 'BOUND_ACTIVATED_CULTIVATED_MODEL');
+    assert.equal(current.profileRef, activatedModelConfiguration.modelProfileRef);
+    assert.equal(current.requestModel, activatedModelConfiguration.requestModel);
+    assert.equal(current.qualificationReceiptRef, activatedModelConfiguration.qualificationReceiptRef);
+
+    fs.writeFileSync(
+      path.join(home, 'config', 'model.json'),
+      JSON.stringify({ ...activatedModelConfiguration, companionLineageRef: 'lineage.other' }, null, 2) + '\n',
+      'utf8'
+    );
+    assert.throws(
+      () => loadCurrentVoiceOperationalProfile({ ...homeIdentity, home }),
+      (error) => error?.code === 'VOICE_OPERATIONAL_PROFILE_NOT_CURRENT'
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 function binding(overrides = {}) {
