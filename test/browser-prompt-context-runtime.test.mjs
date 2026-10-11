@@ -15,18 +15,29 @@ import {
   readCurrentLivedCompanionCompletedTurn
 } from '../src/core/lived-companion.mjs';
 import { createBrowserPromptContextRuntime } from '../src/core/browser-prompt-context-runtime.mjs';
+import {
+  commitDailyMemoryDream,
+  loadDailyMemoryDreamState
+} from '../src/core/daily-memory-dream.mjs';
+import {
+  createDailyMemoryDreamFixture,
+  replaceFixtureActiveAuthorityWithoutScore
+} from '../scripts/daily-memory-dream.mjs';
 
-async function startModelServer() {
+async function startModelServer(responder = null) {
   const calls = [];
   const server = http.createServer(async (request, response) => {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
     calls.push({ path: request.url, body });
+    const content = responder
+      ? await responder({ callIndex: calls.length - 1, body, calls })
+      : calls.length === 1 ? 'Prior exact reply.' : 'Current exact reply.';
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end(JSON.stringify({
       model: 'Qwen3.5-4B-Q4_K_M',
-      choices: [{ message: { content: calls.length === 1 ? 'Prior exact reply.' : 'Current exact reply.' } }]
+      choices: [{ message: { content } }]
     }));
   });
   await new Promise((resolve, reject) => {
@@ -81,6 +92,33 @@ function runtime(home, overrides = {}) {
     deviceRef: home.deviceRef,
     companionLineageRef: home.companionLineageRef,
     ...overrides
+  });
+}
+
+function dailyFixtureHome(fixture) {
+  return {
+    root: path.dirname(fixture.ids.home),
+    home: fixture.ids.home,
+    homeRef: fixture.ids.homeRef,
+    deviceRef: fixture.ids.deviceRef,
+    companionLineageRef: fixture.ids.companionLineageRef
+  };
+}
+
+function commitFixtureDailyMemory(fixture) {
+  const state = loadDailyMemoryDreamState(fixture.ids);
+  return commitDailyMemoryDream({
+    ...fixture.ids,
+    instanceRef: fixture.ids.instanceRef,
+    restInvocationAuthorityRef: 'authority.manual.browser-prompt-context-memory.test',
+    dayRef: 'day.browser-prompt-context-memory.000',
+    dayIndex: 0,
+    calendarDateRef: '2026-08-17',
+    timeZoneRef: 'America/Los_Angeles',
+    observedAt: '2026-08-18T00:00:00.000Z',
+    expectedConversationHeadSha256: fixture.g01.head.conversationHeadSha256,
+    expectedScoreHeadSha256: fixture.score.head.scoreHeadSha256,
+    expectedDailyDreamHeadSha256: state.head?.dailyDreamHeadSha256 ?? null
   });
 }
 
@@ -180,6 +218,161 @@ test('runtime adopts the immediate prior completed turn into the actual loopback
   }
 });
 
+test('ordinary provider request receives one attributed bounded current Memory system packet plus the immediate prior turn', async () => {
+  const fixture = createDailyMemoryDreamFixture('browser-prompt-memory-current');
+  const home = dailyFixtureHome(fixture);
+  commitFixtureDailyMemory(fixture);
+  const model = await startModelServer();
+  try {
+    const owner = runtime(home);
+    const result = await bridge(home, model, owner, 'instance.vexlife.browser-prompt-context-memory-current').performTurn({
+      threadRef: fixture.ids.threadRef,
+      channelRef: 'channel.g03.fixture',
+      content: 'What should we carry forward?'
+    });
+    assert.equal(result.state, 'TURN_COMPLETED');
+    assert.equal(model.calls.length, 1);
+    const messages = model.calls[0].body.messages;
+    assert.equal(messages.length, 4);
+    assert.equal(messages[0].role, 'system');
+    assert.match(messages[0].content, /VEXLIFE_CURRENT_MEMORY_CONTEXT\/v1/u);
+    assert.match(messages[0].content, /Accepted active continuity\./u);
+    assert.doesNotMatch(messages[0].content, /Held unresolved continuity\./u);
+    assert.match(messages[0].content, /not proof of subjective recall/u);
+    assert.deepEqual(messages.slice(1), [
+      { role: 'user', content: 'private human source 2' },
+      { role: 'assistant', content: 'private vex source 2' },
+      { role: 'user', content: 'What should we carry forward?' }
+    ]);
+    assert.equal(result.promptContextMaterialization.memoryContextIncluded, true);
+    assert.match(result.promptContextMaterialization.memoryContextRefOrNull, /^memory-context\.vexlife\.prompt\./u);
+    assert.match(result.promptContextMaterialization.memoryContextFingerprintOrNull, /^[0-9a-f]{64}$/u);
+    assert.ok(result.promptContextMaterialization.memorySourceRefs.includes('statement.g03.active'));
+    assert.equal(result.promptContextMaterialization.memoryEffectPerformed, false);
+    assert.equal(result.promptContextMaterialization.providerBoundaryCurrentnessVerified, true);
+    assert.equal(result.promptContextMaterialization.providerBoundarySourceBindingsVerified, true);
+  } finally {
+    await model.close();
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+test('Memory is bounded out when the immediate conversation consumes the shared Context Lease input budget', async () => {
+  const fixture = createDailyMemoryDreamFixture('browser-prompt-memory-budget');
+  const home = dailyFixtureHome(fixture);
+  commitFixtureDailyMemory(fixture);
+  try {
+    const owner = runtime(home);
+    const current = {
+      threadRef: fixture.ids.threadRef,
+      currentRequestEventRef: 'event.vexlife.request.memory-budget-check',
+      currentRequestEventHash: 'a'.repeat(64),
+      currentRequestSequence: fixture.g01.head.sequence + 1,
+      priorConversationHeadSha256: fixture.g01.head.conversationHeadSha256
+    };
+    const taskIntent = 'x'.repeat(14000);
+    const selected = await owner.promptContextResolver({ context: current, taskIntent });
+    assert.equal(selected.memoryContext.included, false);
+    assert.equal(selected.memoryContext.estimatedSystemMessageTokens, 0);
+    assert.equal(selected.memoryContext.memoryTokenCap < 100, true);
+    assert.ok(selected.memoryContext.tokenBoundedOutPageRefs.length >= 1);
+    assert.equal(selected.contextLease.inputTokenEstimate, 3584);
+  } finally {
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+test('capability-aware Companion revalidates and carries current Memory plus prior turn through request formation and synthesis', async () => {
+  const fixture = createDailyMemoryDreamFixture('browser-prompt-memory-capability');
+  const home = dailyFixtureHome(fixture);
+  commitFixtureDailyMemory(fixture);
+  const model = await startModelServer(async ({ callIndex, body }) => {
+    assert.equal(body.messages.length, 5);
+    assert.equal(body.messages[0].role, 'system');
+    assert.match(body.messages[0].content, /VEXLIFE_CURRENT_MEMORY_CONTEXT\/v1/u);
+    assert.match(body.messages[0].content, /Accepted active continuity\./u);
+    assert.deepEqual(body.messages.slice(1, 4), [
+      { role: 'user', content: 'private human source 2' },
+      { role: 'assistant', content: 'private vex source 2' },
+      { role: 'user', content: 'Can you carry the current context while deciding whether tools are needed?' }
+    ]);
+    assert.equal(body.messages[4].role, 'user');
+    if (callIndex === 0) {
+      assert.match(body.messages[4].content, /VEXLIFE_CAPABILITY_REQUEST_FORMATION\/v1/u);
+      return JSON.stringify({ intentDisposition: 'NO_READ_ONLY_FUNCTION_NEEDED', requests: [] });
+    }
+    assert.equal(callIndex, 1);
+    assert.match(body.messages[4].content, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
+    assert.match(body.messages[4].content, /SOURCE_BOUND_OBSERVATIONS=\[\]/u);
+    return 'Capability-aware current Memory reply.';
+  });
+  try {
+    const production = createServerOwnedBrowserCompanionBridge({
+      sourceRoot: SOURCE_ROOT,
+      companionHome: home.home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      runtimeMode: 'ADOPTED_READ_ONLY'
+    });
+    const result = await production.performTurn({
+      threadRef: fixture.ids.threadRef,
+      channelRef: 'channel.g03.fixture',
+      content: 'Can you carry the current context while deciding whether tools are needed?'
+    });
+    assert.equal(result.state, 'TURN_COMPLETED');
+    assert.equal(result.content, 'Capability-aware current Memory reply.');
+    assert.equal(model.calls.length, 2);
+    assert.equal(result.capabilityRuntime.mode, 'ADOPTED_READ_ONLY');
+    assert.equal(result.capabilityRuntime.toolRequestCount, 0);
+    assert.equal(result.capabilityRuntime.inferenceCount, 2);
+    assert.equal(result.promptContextMaterialization.memoryContextIncluded, true);
+    assert.equal(result.promptContextMaterialization.providerBoundaryCurrentnessVerified, true);
+    assert.equal(result.promptContextMaterialization.providerBoundarySourceBindingsVerified, true);
+  } finally {
+    await model.close();
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+test('Memory frontier drift invalidates an already-formed prompt-context selection before materialization', async () => {
+  const fixture = createDailyMemoryDreamFixture('browser-prompt-memory-stale');
+  const home = dailyFixtureHome(fixture);
+  commitFixtureDailyMemory(fixture);
+  try {
+    const owner = runtime(home);
+    const current = {
+      threadRef: fixture.ids.threadRef,
+      currentRequestEventRef: 'event.vexlife.request.memory-stale-check',
+      currentRequestEventHash: '9'.repeat(64),
+      currentRequestSequence: fixture.g01.head.sequence + 1,
+      priorConversationHeadSha256: fixture.g01.head.conversationHeadSha256
+    };
+    const selected = await owner.promptContextResolver({ context: current, taskIntent: 'bounded current request' });
+    assert.equal(selected.memoryContext.included, true);
+    replaceFixtureActiveAuthorityWithoutScore(fixture, 'browser-prompt-context-stale');
+
+    await assert.rejects(
+      () => owner.promptContextAuthorityVerifier({
+        schemaVersion: 'vexlife.prompt-context-authority-query/v2',
+        phase: 'MATERIALIZE',
+        lineageRef: home.companionLineageRef,
+        threadRef: current.threadRef,
+        priorConversationHeadSha256: current.priorConversationHeadSha256,
+        currentRequestEventRef: current.currentRequestEventRef,
+        currentRequestEventHash: current.currentRequestEventHash,
+        currentRequestSequence: current.currentRequestSequence,
+        selectedConversationEventRefs: selected.selectedConversationEventRefs,
+        materializationReceiptRefOrNull: null,
+        materializationReceiptFingerprintOrNull: null
+      }),
+      (error) => error instanceof LivedCompanionError && error.code === 'CONTEXT_HASH_MISMATCH'
+    );
+    assert.equal(owner.activeSelectionCount(), 0);
+  } finally {
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
 test('resolver fails closed when a prior head belongs to another thread', async () => {
   const home = makeHome('cross-thread');
   const model = await startModelServer();
@@ -188,6 +381,7 @@ test('resolver fails closed when a prior head belongs to another thread', async 
     const owner = runtime(home);
     await assert.rejects(
       () => owner.promptContextResolver({
+        taskIntent: 'cross-thread request',
         context: {
           threadRef: 'thread.vexlife.browser-prompt-context-other',
           currentRequestEventRef: 'event.vexlife.request.cross-thread',
@@ -218,7 +412,7 @@ test('authority verifier rejects a stale prior head after the thread advances', 
       currentRequestSequence: 2,
       priorConversationHeadSha256: first.conversationHeadSha256
     };
-    const selected = await owner.promptContextResolver({ context: current });
+    const selected = await owner.promptContextResolver({ context: current, taskIntent: 'bounded current request' });
     await bridge(home, model, null, 'instance.vexlife.browser-prompt-context-advancer').performTurn({
       threadRef: current.threadRef,
       channelRef: 'channel.local-vex.companion',
@@ -265,7 +459,7 @@ test('authority verifier rejects an expired exact lease', async () => {
       currentRequestSequence: 2,
       priorConversationHeadSha256: first.conversationHeadSha256
     };
-    const selected = await owner.promptContextResolver({ context: current });
+    const selected = await owner.promptContextResolver({ context: current, taskIntent: 'bounded current request' });
     clock += 2_000;
     await assert.rejects(
       () => owner.promptContextAuthorityVerifier({
@@ -334,8 +528,8 @@ test('verifier failure retires only its exact active selection', async () => {
       currentRequestEventRef: 'event.vexlife.request.cleanup-second',
       currentRequestEventHash: '5'.repeat(64)
     };
-    const firstSelection = await owner.promptContextResolver({ context: firstPending });
-    await owner.promptContextResolver({ context: secondPending });
+    const firstSelection = await owner.promptContextResolver({ context: firstPending, taskIntent: 'first pending request' });
+    await owner.promptContextResolver({ context: secondPending, taskIntent: 'second pending request' });
     assert.equal(owner.activeSelectionCount(), 2);
     await assert.rejects(
       () => owner.promptContextAuthorityVerifier({
@@ -460,7 +654,7 @@ test('server-owned prompt-context binding fails closed if the canonical Home ide
       currentRequestSequence: 0,
       priorConversationHeadSha256: null
     };
-    assert.equal(await captured.promptContextResolver({ context: firstContext }), null);
+    assert.equal(await captured.promptContextResolver({ context: firstContext, taskIntent: 'identity baseline request' }), null);
     const homeManifestPath = path.join(home.home, 'config', 'home.json');
     const homeManifest = JSON.parse(fs.readFileSync(homeManifestPath, 'utf8'));
     fs.writeFileSync(homeManifestPath, `${JSON.stringify({
@@ -469,6 +663,7 @@ test('server-owned prompt-context binding fails closed if the canonical Home ide
     }, null, 2)}\n`);
     assert.throws(
       () => captured.promptContextResolver({
+        taskIntent: 'identity drift request',
         context: {
           ...firstContext,
           currentRequestEventRef: 'event.vexlife.request.identity-drift-two',
