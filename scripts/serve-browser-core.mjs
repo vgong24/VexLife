@@ -428,7 +428,7 @@ export function createServerOwnedBrowserCompanionBridge({
   endpoint = process.env.VEXLIFE_COMPANION_ENDPOINT ?? null,
   model = process.env.VEXLIFE_COMPANION_MODEL ?? null,
   runtimeMode = process.env.VEXLIFE_CAPABILITY_RUNTIME_MODE ??
-    CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN,
+    CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY,
   recoveryOwnerFactory = createCompanionRecoveryOwner,
   bridgeFactory = createBrowserCompanionBridge
 } = {}) {
