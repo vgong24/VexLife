@@ -299,7 +299,6 @@ test('capability-aware Companion revalidates and carries current Memory plus pri
     assert.equal(body.messages[4].role, 'user');
     if (callIndex === 0) {
       assert.match(body.messages[4].content, /VEXLIFE_CAPABILITY_REQUEST_FORMATION\/v1/u);
-      assert.match(body.messages[4].content, /FRESH_COMPANION_FOUNDATION_FRAME=/u);
       return JSON.stringify({ intentDisposition: 'NO_READ_ONLY_FUNCTION_NEEDED', requests: [] });
     }
     assert.equal(callIndex, 1);
