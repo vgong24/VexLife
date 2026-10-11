@@ -181,13 +181,13 @@ Depth:
 - `docs/VEX-ASSEMBLY-COMPANION-VOICE-PLAYBACK.md`
 - `docs/COMPANION-AVAILABILITY-AND-REENTRY.md`
 
-The current cultivated binding proves one accepted realization. It does not mean:
+The current cultivated binding proves one accepted realization. Do not infer any of these as permanent laws:
 
 ```text
-ALL_FUTURE_VEX_USES_MLX=false
-ALL_FUTURE_VEX_USES_PYTHON=false
-ALL_FUTURE_VEX_HAS_THIS_MEMBER_COUNT=false
-ALL_FUTURE_VEX_USES_THIS_PORT=false
+future Vex must use MLX
+future Vex must use Python
+future Vex must have the current member count
+future Vex must use the current port
 ```
 
 ## Intended architecture — generation-shaped, not G0-shaped
