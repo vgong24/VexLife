@@ -4,6 +4,7 @@ import { validateArtifactRegistry } from './artifact-delivery.mjs';
 
 export const VEX_OPERATIONAL_PROFILE_REGISTRY_SCHEMA = 'vexlife.operational-profiles/v1';
 export const VEX_MODEL_BUNDLE_REGISTRY_SCHEMA = 'vexlife.model-bundle-registry/v1';
+export const VEX_MODEL_BUNDLE_SCHEMA_V2 = 'vexlife.model-bundle/v2';
 export const NORMAL_MODEL_BUNDLE_STATE = 'RELEASE_QUALIFIED';
 export const VEX_INITIALIZATION_PLAN_SCHEMA = 'vexlife.initialization-plan/v1';
 export const NORMAL_PROFILE_STATE = 'RELEASE_QUALIFIED';
@@ -327,81 +328,179 @@ export function evaluateOperationalProfileHost(profile, host) {
   return { ok: true, state: 'HOST_ELIGIBLE' };
 }
 
+
+
+function exactModelBundleKeys(value, expected, label) {
+  requireObject(value, label);
+  const actual = Object.keys(value).sort();
+  const wanted = [...expected].sort();
+  if (JSON.stringify(actual) !== JSON.stringify(wanted)) throw new Error(label + ' fields are not exact');
+}
+
+function requireUniqueStableRefArray(value, label) {
+  if (!Array.isArray(value) || value.length === 0 || value.some((entry) => typeof entry !== 'string' || !STABLE_REF.test(entry)) || new Set(value).size !== value.length) {
+    throw new Error(label + ' must contain unique stable refs');
+  }
+}
+
+function isGeneralizedModelBundle(bundle) {
+  return bundle?.bundleSchemaVersion === VEX_MODEL_BUNDLE_SCHEMA_V2;
+}
+
+function modelBundleArtifactBindings(bundle) {
+  if (isGeneralizedModelBundle(bundle)) return bundle.artifactBindings.map((binding) => ({ ...binding }));
+  return [
+    { roleRef: 'artifact-role.vexlife.base-model', artifactRef: bundle.baseModelArtifactRef },
+    { roleRef: 'artifact-role.vexlife.projector', artifactRef: bundle.projectorArtifactRef }
+  ];
+}
+
+function validateV2ArtifactBindings(bindings, label) {
+  if (!Array.isArray(bindings) || bindings.length === 0) throw new Error(label + ' must be non-empty');
+  const roleRefs = new Set();
+  for (const [index, binding] of bindings.entries()) {
+    const entryLabel = label + '[' + index + ']';
+    exactModelBundleKeys(binding, ['roleRef', 'artifactRef'], entryLabel);
+    requireStableRef(binding.roleRef, entryLabel + '.roleRef');
+    requireStableRef(binding.artifactRef, entryLabel + '.artifactRef');
+    if (roleRefs.has(binding.roleRef)) throw new Error(label + ' roleRef values must be unique');
+    roleRefs.add(binding.roleRef);
+  }
+}
+
 export function validateModelBundleRegistry(registry, { artifactRegistry = null, operationalProfileRegistry = null } = {}) {
   const errors = [];
   try {
     requireObject(registry, 'model bundle registry');
-    const rootKeys = Object.keys(registry).sort();
-    const expectedRootKeys = ['activeModelBundleRef','bundles','registryRef','schemaVersion'].sort();
-    if (JSON.stringify(rootKeys) !== JSON.stringify(expectedRootKeys)) throw new Error('model bundle registry fields are not exact');
-    if (registry.schemaVersion !== VEX_MODEL_BUNDLE_REGISTRY_SCHEMA) throw new Error(`model bundle registry schema must be ${VEX_MODEL_BUNDLE_REGISTRY_SCHEMA}`);
+    exactModelBundleKeys(registry, ['activeModelBundleRef','bundles','registryRef','schemaVersion'], 'model bundle registry');
+    if (registry.schemaVersion !== VEX_MODEL_BUNDLE_REGISTRY_SCHEMA) {
+      throw new Error('model bundle registry schema must be ' + VEX_MODEL_BUNDLE_REGISTRY_SCHEMA);
+    }
     requireStableRef(registry.registryRef, 'model bundle registryRef');
     if (registry.registryRef !== 'registry.vexlife.model-bundles.001') throw new Error('model bundle registryRef is not canonical');
     requireStableRef(registry.activeModelBundleRef, 'model bundle activeModelBundleRef');
     if (!Array.isArray(registry.bundles) || registry.bundles.length === 0) throw new Error('model bundle registry bundles must be non-empty');
+
     const refs = new Set();
-    const bundleKeys = ['baseModelArtifactRef','compatibleOperationalProfileRefs','generationRef','modelBundleRef','modelProfileRef','projectorArtifactRef','requestModel','sourceRefs','state'].sort();
+    const v1BundleKeys = ['baseModelArtifactRef','compatibleOperationalProfileRefs','generationRef','modelBundleRef','modelProfileRef','projectorArtifactRef','requestModel','sourceRefs','state'];
+    const v2BundleKeys = ['artifactBindings','artifactSetRef','bundleSchemaVersion','contentSetSha256','generationRef','modelBundleRef','modelProfileRef','runtimeRealizationRefs','sourceRefs','state'];
+
     for (const [index, bundle] of registry.bundles.entries()) {
-      requireObject(bundle, `bundles[${index}]`);
-      if (JSON.stringify(Object.keys(bundle).sort()) !== JSON.stringify(bundleKeys)) throw new Error(`bundles[${index}] fields are not exact`);
-      for (const field of ['modelBundleRef','generationRef','modelProfileRef','baseModelArtifactRef','projectorArtifactRef']) requireStableRef(bundle[field], `bundles[${index}].${field}`);
-      requireString(bundle.requestModel, `bundles[${index}].requestModel`);
-      if (refs.has(bundle.modelBundleRef)) throw new Error(`duplicate modelBundleRef ${bundle.modelBundleRef}`);
+      const label = 'bundles[' + index + ']';
+      const generalized = isGeneralizedModelBundle(bundle);
+      exactModelBundleKeys(bundle, generalized ? v2BundleKeys : v1BundleKeys, label);
+      for (const field of ['modelBundleRef','generationRef','modelProfileRef']) requireStableRef(bundle[field], label + '.' + field);
+      if (refs.has(bundle.modelBundleRef)) throw new Error('duplicate modelBundleRef ' + bundle.modelBundleRef);
       refs.add(bundle.modelBundleRef);
-      if (![NORMAL_MODEL_BUNDLE_STATE, CANDIDATE_PROFILE_STATE, 'HELD', 'STALE', 'INVALID'].includes(bundle.state)) throw new Error(`bundles[${index}].state is unknown`);
-      for (const field of ['compatibleOperationalProfileRefs','sourceRefs']) {
-        if (!Array.isArray(bundle[field]) || bundle[field].length === 0 || bundle[field].some((value) => typeof value !== 'string' || !STABLE_REF.test(value)) || new Set(bundle[field]).size !== bundle[field].length) {
-          throw new Error(`bundles[${index}].${field} must contain unique stable refs`);
-        }
+      if (![NORMAL_MODEL_BUNDLE_STATE, CANDIDATE_PROFILE_STATE, 'HELD', 'STALE', 'INVALID'].includes(bundle.state)) {
+        throw new Error(label + '.state is unknown');
       }
-      if (bundle.baseModelArtifactRef === bundle.projectorArtifactRef) throw new Error(`bundles[${index}] model/projector artifact refs must differ`);
+      requireUniqueStableRefArray(bundle.sourceRefs, label + '.sourceRefs');
+
+      if (generalized) {
+        validateV2ArtifactBindings(bundle.artifactBindings, label + '.artifactBindings');
+        requireStableRef(bundle.artifactSetRef, label + '.artifactSetRef');
+        requireSha(bundle.contentSetSha256, label + '.contentSetSha256');
+        requireUniqueStableRefArray(bundle.runtimeRealizationRefs, label + '.runtimeRealizationRefs');
+      } else {
+        for (const field of ['baseModelArtifactRef','projectorArtifactRef']) requireStableRef(bundle[field], label + '.' + field);
+        requireString(bundle.requestModel, label + '.requestModel');
+        requireUniqueStableRefArray(bundle.compatibleOperationalProfileRefs, label + '.compatibleOperationalProfileRefs');
+        if (bundle.baseModelArtifactRef === bundle.projectorArtifactRef) throw new Error(label + ' model/projector artifact refs must differ');
+      }
     }
+
     const active = registry.bundles.find((bundle) => bundle.modelBundleRef === registry.activeModelBundleRef);
     if (!active) throw new Error('activeModelBundleRef is not registered');
     if (active.state !== NORMAL_MODEL_BUNDLE_STATE) throw new Error('activeModelBundleRef must select one RELEASE_QUALIFIED bundle');
+
     if (artifactRegistry) {
       const artifacts = validateArtifactRegistry(artifactRegistry);
       const artifactRefs = new Set(artifacts.artifacts.map((artifact) => artifact.artifactRef));
       for (const bundle of registry.bundles) {
-        if (!artifactRefs.has(bundle.baseModelArtifactRef) || !artifactRefs.has(bundle.projectorArtifactRef)) throw new Error(`bundle ${bundle.modelBundleRef} references an unregistered model artifact`);
+        for (const binding of modelBundleArtifactBindings(bundle)) {
+          if (!artifactRefs.has(binding.artifactRef)) throw new Error('bundle ' + bundle.modelBundleRef + ' references an unregistered model artifact');
+        }
       }
     }
+
     if (operationalProfileRegistry) {
       const operational = validateOperationalProfileRegistry(operationalProfileRegistry);
-      if (!operational.ok) throw new Error(`operational profile registry invalid: ${operational.errors.join('; ')}`);
+      if (!operational.ok) throw new Error('operational profile registry invalid: ' + operational.errors.join('; '));
       const profileRefs = new Set(operationalProfileRegistry.profiles.map((profile) => profile.profileRef));
       for (const bundle of registry.bundles) {
-        for (const profileRef of bundle.compatibleOperationalProfileRefs) if (!profileRefs.has(profileRef)) throw new Error(`bundle ${bundle.modelBundleRef} references unknown operational profile ${profileRef}`);
+        if (isGeneralizedModelBundle(bundle)) continue;
+        for (const profileRef of bundle.compatibleOperationalProfileRefs) {
+          if (!profileRefs.has(profileRef)) throw new Error('bundle ' + bundle.modelBundleRef + ' references unknown operational profile ' + profileRef);
+        }
       }
     }
-  } catch (error) { errors.push(error.message); }
+  } catch (error) {
+    errors.push(error.message);
+  }
   return { ok: errors.length === 0, errors };
+}
+
+export function resolveModelBundleByRef({ registry, artifactRegistry, modelBundleRef }) {
+  const validation = validateModelBundleRegistry(registry, { artifactRegistry });
+  if (!validation.ok) return { state: 'SOURCE_INVALID', errors: validation.errors, bundle: null, artifacts: [] };
+  requireStableRef(modelBundleRef, 'modelBundleRef');
+  const bundle = registry.bundles.find((item) => item.modelBundleRef === modelBundleRef);
+  if (!bundle) return { state: 'MODEL_BUNDLE_NOT_REGISTERED', bundle: null, artifacts: [], modelBundleRef };
+
+  const artifacts = validateArtifactRegistry(artifactRegistry).artifacts;
+  const byRef = new Map(artifacts.map((artifact) => [artifact.artifactRef, artifact]));
+  const artifactBindings = modelBundleArtifactBindings(bundle);
+  const selectedArtifacts = artifactBindings.map((binding) => byRef.get(binding.artifactRef));
+  if (selectedArtifacts.some((artifact) => !artifact)) {
+    return { state: 'SOURCE_INVALID', errors: ['model bundle artifact identity is missing'], bundle: null, artifacts: [] };
+  }
+
+  if (isGeneralizedModelBundle(bundle)) {
+    return {
+      state: 'MODEL_BUNDLE_RUNTIME_REALIZATION_HELD',
+      bundle,
+      artifacts: selectedArtifacts,
+      artifactBindings,
+      artifactSetRef: bundle.artifactSetRef,
+      contentSetSha256: bundle.contentSetSha256,
+      runtimeRealizationRefs: [...bundle.runtimeRealizationRefs]
+    };
+  }
+
+  return { state: 'MODEL_BUNDLE_ARTIFACT_SET_RESOLVED', bundle, artifacts: selectedArtifacts };
 }
 
 export function resolveActiveModelBundle({ registry, artifactRegistry, operationalProfile }) {
   const validation = validateModelBundleRegistry(registry, { artifactRegistry });
   if (!validation.ok) return { state: 'SOURCE_INVALID', errors: validation.errors, bundle: null, artifacts: [] };
-  requireObject(operationalProfile, 'operationalProfile');
+
   const bundle = registry.bundles.find((item) => item.modelBundleRef === registry.activeModelBundleRef);
+  const structural = resolveModelBundleByRef({
+    registry,
+    artifactRegistry,
+    modelBundleRef: bundle.modelBundleRef
+  });
+  if (structural.state === 'MODEL_BUNDLE_RUNTIME_REALIZATION_HELD') return structural;
+  if (structural.state !== 'MODEL_BUNDLE_ARTIFACT_SET_RESOLVED') return structural;
+
+  requireObject(operationalProfile, 'operationalProfile');
   if (!operationalProfile.compatibleModelBundleRefs?.includes(bundle.modelBundleRef) || !bundle.compatibleOperationalProfileRefs.includes(operationalProfile.profileRef)) {
     return { state: 'MODEL_BUNDLE_NOT_COMPATIBLE', bundle: null, artifacts: [], activeModelBundleRef: bundle.modelBundleRef };
   }
   if (operationalProfile.endpoint?.requestModel !== bundle.requestModel) {
     return { state: 'SOURCE_INVALID', errors: ['operational profile requestModel projection contradicts active model bundle'], bundle: null, artifacts: [] };
   }
-  const artifacts = validateArtifactRegistry(artifactRegistry).artifacts;
-  const byRef = new Map(artifacts.map((artifact) => [artifact.artifactRef, artifact]));
-  const selectedArtifacts = [byRef.get(bundle.baseModelArtifactRef), byRef.get(bundle.projectorArtifactRef)];
-  if (selectedArtifacts.some((artifact) => !artifact)) return { state: 'SOURCE_INVALID', errors: ['active model bundle artifact identity is missing'], bundle: null, artifacts: [] };
+  const selectedArtifacts = structural.artifacts;
   const profileArtifacts = new Map((operationalProfile.modelArtifacts || []).map((artifact) => [artifact.artifactRef, artifact]));
-  if (profileArtifacts.size !== 2 || !selectedArtifacts.every((artifact) => profileArtifacts.has(artifact.artifactRef))) {
+  if (profileArtifacts.size !== selectedArtifacts.length || !selectedArtifacts.every((artifact) => profileArtifacts.has(artifact.artifactRef))) {
     return { state: 'SOURCE_INVALID', errors: ['operational profile model qualification projection does not match active model bundle'], bundle: null, artifacts: [] };
   }
   const projectionFields = ['artifactRef','filename','sha256','expectedBytes','maxBytes','sourceRef','licenseRef'];
   for (const canonicalArtifact of selectedArtifacts) {
     const projection = profileArtifacts.get(canonicalArtifact.artifactRef);
     if (Object.hasOwn(projection, 'url') || projectionFields.some((field) => projection[field] !== canonicalArtifact[field])) {
-      return { state: 'SOURCE_INVALID', errors: [`operational profile model projection contradicts canonical artifact ${canonicalArtifact.artifactRef}`], bundle: null, artifacts: [] };
+      return { state: 'SOURCE_INVALID', errors: ['operational profile model projection contradicts canonical artifact ' + canonicalArtifact.artifactRef], bundle: null, artifacts: [] };
     }
   }
   return { state: 'MODEL_BUNDLE_RESOLVED', bundle, artifacts: selectedArtifacts };
@@ -497,6 +596,9 @@ export function buildVexInitializationPlan({ profile, modelBundle, modelArtifact
   requireString(modelBundle.modelBundleRef, 'modelBundle.modelBundleRef');
   requireString(modelBundle.generationRef, 'modelBundle.generationRef');
   requireString(modelBundle.modelProfileRef, 'modelBundle.modelProfileRef');
+  if (!Object.hasOwn(modelBundle, 'baseModelArtifactRef') || !Object.hasOwn(modelBundle, 'projectorArtifactRef') || !Object.hasOwn(modelBundle, 'requestModel')) {
+    throw new Error('generalized model bundle runtime realization is not admitted by current initializer');
+  }
   requireString(modelBundle.requestModel, 'modelBundle.requestModel');
   if (!Array.isArray(modelArtifacts) || modelArtifacts.length !== 2) throw new Error('modelArtifacts must contain the exact selected base model and projector');
   const expectedModelRefs = [modelBundle.baseModelArtifactRef, modelBundle.projectorArtifactRef];
