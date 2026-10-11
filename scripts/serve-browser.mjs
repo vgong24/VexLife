@@ -15,6 +15,7 @@ import {
 } from '../src/core/ux-evolution.mjs';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import { projectIntentStatus } from '../src/core/intent-projection.mjs';
+import { createCompanionVoicePlaybackAdapter } from '../src/core/companion-voice-playback.mjs';
 export * from './serve-browser-core.mjs';
 
 import {
@@ -176,6 +177,7 @@ export function createVexLifeBrowserServer(options = {}) {
   const {
     relationshipsInvitationProductBridge = createBrowserRelationshipsInvitationProductBridge(),
     genericFollowThroughRuntimeHome = home,
+    companionVoicePlayback = createCompanionVoicePlaybackAdapter(),
     resolveFamilyWorkProjection: callerSuppliedFamilyWorkProjection,
     resolveIntentProjectStatus: callerSuppliedIntentProjectStatus,
     ...coreOptions
@@ -195,6 +197,7 @@ export function createVexLifeBrowserServer(options = {}) {
   );
   const coreServer = createCoreVexLifeBrowserServer({
     ...coreOptions,
+    companionVoicePlayback,
     resolveFamilyWorkProjection
   });
   const coreHandlers = coreServer.listeners('request');
