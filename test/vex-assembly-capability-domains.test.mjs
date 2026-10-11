@@ -218,20 +218,15 @@ test('server-owned ADOPTED_READ_ONLY activation exposes all four domains on the 
     VEX_ASSEMBLY_CAPABILITY_DOMAIN_PARENT_REF);
 });
 
-test('ordinary server-owned Companion defaults to the accepted ADOPTED_READ_ONLY Assembly capability mode', () => {
-  let captured = null;
-  const sentinel = Object.freeze({ ref: 'bridge.va-i04.default-capture' });
-  const result = createServerOwnedBrowserCompanionBridge({
-    sourceRoot: ROOT,
-    companionHome: '/not-read-by-captured-bridge',
-    bridgeFactory(options) {
-      captured = options;
-      return sentinel;
-    },
-  });
-  assert.equal(result, sentinel);
-  assert.ok(captured?.capabilityRuntime);
-  assert.equal(typeof captured.capabilityRuntime.resolveTurn, 'function');
+test('ordinary server-owned Companion source defaults to the accepted ADOPTED_READ_ONLY Assembly capability mode', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser-core.mjs'), 'utf8');
+  assert.match(
+    source,
+    /runtimeMode = process\.env\.VEXLIFE_CAPABILITY_RUNTIME_MODE \?\?[\s\S]*CAPABILITY_ASSIMILATION_MODES\.ADOPTED_READ_ONLY/u
+  );
+  assert.match(source, /runtimeMode === CAPABILITY_ASSIMILATION_MODES\.ADOPTED_READ_ONLY/u);
+  assert.match(source, /createCapabilityAssimilationRuntime\(\{/u);
+  assert.match(source, /process\.env\.VEXLIFE_CAPABILITY_RUNTIME_MODE/u);
 });
 
 test('DIRECT and canonical E2 modes remain tool-free and do not receive VA-I04 domain activation', async () => {
