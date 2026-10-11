@@ -254,6 +254,31 @@ test('ordinary provider request receives one attributed bounded current Memory s
   }
 });
 
+test('Memory is bounded out when the immediate conversation consumes the shared Context Lease input budget', async () => {
+  const fixture = createDailyMemoryDreamFixture('browser-prompt-memory-budget');
+  const home = dailyFixtureHome(fixture);
+  commitFixtureDailyMemory(fixture);
+  try {
+    const owner = runtime(home);
+    const current = {
+      threadRef: fixture.ids.threadRef,
+      currentRequestEventRef: 'event.vexlife.request.memory-budget-check',
+      currentRequestEventHash: 'a'.repeat(64),
+      currentRequestSequence: fixture.g01.head.sequence + 1,
+      priorConversationHeadSha256: fixture.g01.head.conversationHeadSha256
+    };
+    const taskIntent = 'x'.repeat(14000);
+    const selected = await owner.promptContextResolver({ context: current, taskIntent });
+    assert.equal(selected.memoryContext.included, false);
+    assert.equal(selected.memoryContext.estimatedSystemMessageTokens, 0);
+    assert.equal(selected.memoryContext.memoryTokenCap < 100, true);
+    assert.ok(selected.memoryContext.tokenBoundedOutPageRefs.length >= 1);
+    assert.equal(selected.contextLease.inputTokenEstimate, 3584);
+  } finally {
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
 test('Memory frontier drift invalidates an already-formed prompt-context selection before materialization', async () => {
   const fixture = createDailyMemoryDreamFixture('browser-prompt-memory-stale');
   const home = dailyFixtureHome(fixture);
@@ -267,7 +292,7 @@ test('Memory frontier drift invalidates an already-formed prompt-context selecti
       currentRequestSequence: fixture.g01.head.sequence + 1,
       priorConversationHeadSha256: fixture.g01.head.conversationHeadSha256
     };
-    const selected = await owner.promptContextResolver({ context: current });
+    const selected = await owner.promptContextResolver({ context: current, taskIntent: 'bounded current request' });
     assert.equal(selected.memoryContext.included, true);
     replaceFixtureActiveAuthorityWithoutScore(fixture, 'browser-prompt-context-stale');
 
@@ -301,6 +326,7 @@ test('resolver fails closed when a prior head belongs to another thread', async 
     const owner = runtime(home);
     await assert.rejects(
       () => owner.promptContextResolver({
+        taskIntent: 'cross-thread request',
         context: {
           threadRef: 'thread.vexlife.browser-prompt-context-other',
           currentRequestEventRef: 'event.vexlife.request.cross-thread',
@@ -331,7 +357,7 @@ test('authority verifier rejects a stale prior head after the thread advances', 
       currentRequestSequence: 2,
       priorConversationHeadSha256: first.conversationHeadSha256
     };
-    const selected = await owner.promptContextResolver({ context: current });
+    const selected = await owner.promptContextResolver({ context: current, taskIntent: 'bounded current request' });
     await bridge(home, model, null, 'instance.vexlife.browser-prompt-context-advancer').performTurn({
       threadRef: current.threadRef,
       channelRef: 'channel.local-vex.companion',
@@ -378,7 +404,7 @@ test('authority verifier rejects an expired exact lease', async () => {
       currentRequestSequence: 2,
       priorConversationHeadSha256: first.conversationHeadSha256
     };
-    const selected = await owner.promptContextResolver({ context: current });
+    const selected = await owner.promptContextResolver({ context: current, taskIntent: 'bounded current request' });
     clock += 2_000;
     await assert.rejects(
       () => owner.promptContextAuthorityVerifier({
@@ -447,8 +473,8 @@ test('verifier failure retires only its exact active selection', async () => {
       currentRequestEventRef: 'event.vexlife.request.cleanup-second',
       currentRequestEventHash: '5'.repeat(64)
     };
-    const firstSelection = await owner.promptContextResolver({ context: firstPending });
-    await owner.promptContextResolver({ context: secondPending });
+    const firstSelection = await owner.promptContextResolver({ context: firstPending, taskIntent: 'first pending request' });
+    await owner.promptContextResolver({ context: secondPending, taskIntent: 'second pending request' });
     assert.equal(owner.activeSelectionCount(), 2);
     await assert.rejects(
       () => owner.promptContextAuthorityVerifier({
@@ -573,7 +599,7 @@ test('server-owned prompt-context binding fails closed if the canonical Home ide
       currentRequestSequence: 0,
       priorConversationHeadSha256: null
     };
-    assert.equal(await captured.promptContextResolver({ context: firstContext }), null);
+    assert.equal(await captured.promptContextResolver({ context: firstContext, taskIntent: 'identity baseline request' }), null);
     const homeManifestPath = path.join(home.home, 'config', 'home.json');
     const homeManifest = JSON.parse(fs.readFileSync(homeManifestPath, 'utf8'));
     fs.writeFileSync(homeManifestPath, `${JSON.stringify({
@@ -582,6 +608,7 @@ test('server-owned prompt-context binding fails closed if the canonical Home ide
     }, null, 2)}\n`);
     assert.throws(
       () => captured.promptContextResolver({
+        taskIntent: 'identity drift request',
         context: {
           ...firstContext,
           currentRequestEventRef: 'event.vexlife.request.identity-drift-two',
