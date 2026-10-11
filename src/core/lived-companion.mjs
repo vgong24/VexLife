@@ -2288,6 +2288,7 @@ export async function requestLivedCompanionInference({
   messages = undefined,
   promptContextMaterializationReceipt = undefined,
   familyPromptContextMaterializationReceipt = undefined,
+  supplementalRequestContent = null,
   inMemoryAuthorization = null,
   timeoutMs = 5000
 }) {
@@ -2324,7 +2325,20 @@ export async function requestLivedCompanionInference({
     : familyPromptContextMaterialization !== null
       ? await canonicalTrustedFamilyPromptMaterialization(familyPromptContextMaterialization, requestContent)
       : null;
-  const outboundMessages = trusted?.messages ?? [{ role: 'user', content: requestContent }];
+  if (supplementalRequestContent !== null) {
+    if (!trusted || typeof supplementalRequestContent !== 'string' || !supplementalRequestContent.trim()) {
+      promptContextFailure('supplemental request content requires one trusted prompt-context materialization');
+    }
+    if (Buffer.byteLength(supplementalRequestContent, 'utf8') > 256 * 1024) {
+      promptContextFailure('supplemental request content exceeds the bounded instruction size');
+    }
+  }
+  const outboundMessages = trusted
+    ? [
+        ...trusted.messages,
+        ...(supplementalRequestContent === null ? [] : [{ role: 'user', content: supplementalRequestContent }])
+      ]
+    : [{ role: 'user', content: requestContent }];
   const requestPayload = {
     model: endpointProfile.model || 'bounded-loopback-proof',
     messages: outboundMessages
