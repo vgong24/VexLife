@@ -23,8 +23,8 @@
     {
       "path": "docs/VEXLIFE-START-AND-RUNTIME.md",
       "mode": "100644",
-      "bytes": 12169,
-      "sha256": "d2bcae8ef0c550afbedf9bace6baf9c566b05406565d287ec76bc35ecda3c350"
+      "bytes": 12188,
+      "sha256": "74cf95fa2d69a7fb5d69d91d4c168bfc382a2bd3a345668fec63ba91f303f3ce"
     },
     {
       "path": "scripts/vex-reboot-auto-reentry-proof.mjs",
