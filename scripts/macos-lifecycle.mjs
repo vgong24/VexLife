@@ -650,15 +650,60 @@ async function waitPort(port, timeoutMs = 15000) {
   }
   return false;
 }
-function runNode(argv, { cwd = SOURCE_ROOT, accepted = [0], env = {} } = {}) {
-  const result = spawnSync(process.execPath, argv, {
-    cwd, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024,
-    env: { ...process.env, ...env }, shell: false
+async function runNode(argv, { cwd = SOURCE_ROOT, accepted = [0], env = {} } = {}) {
+  const maxBuffer = 32 * 1024 * 1024;
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, argv, {
+      cwd,
+      env: { ...process.env, ...env },
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    let stdout = '';
+    let stderr = '';
+    let outputBytes = 0;
+    let overflow = false;
+    const append = (kind, chunk) => {
+      if (overflow) return;
+      outputBytes += chunk.length;
+      if (outputBytes > maxBuffer) {
+        overflow = true;
+        try { child.kill('SIGTERM'); } catch {}
+        return;
+      }
+      if (kind === 'stdout') stdout += chunk.toString('utf8');
+      else stderr += chunk.toString('utf8');
+    };
+    const forwardSignal = (signal) => {
+      if (!child.pid) return;
+      try { child.kill(signal); } catch {}
+    };
+    const onTerm = () => forwardSignal('SIGTERM');
+    const onInt = () => forwardSignal('SIGINT');
+    const removeSignalForwarding = () => {
+      process.off('SIGTERM', onTerm);
+      process.off('SIGINT', onInt);
+    };
+    process.on('SIGTERM', onTerm);
+    process.on('SIGINT', onInt);
+    child.stdout.on('data', (chunk) => append('stdout', chunk));
+    child.stderr.on('data', (chunk) => append('stderr', chunk));
+    child.once('error', (error) => {
+      removeSignalForwarding();
+      reject(error);
+    });
+    child.once('close', (status, signal) => {
+      removeSignalForwarding();
+      if (overflow) {
+        reject(new Error(`node ${argv.join(' ')} exceeded the admitted output buffer`));
+        return;
+      }
+      if (!accepted.includes(status ?? 127)) {
+        throw reject(new Error(`node ${argv.join(' ')} failed (${status ?? signal ?? 'UNKNOWN'}): ${stderr.trim()}`));
+      }
+      resolve({ status, stdout, stderr });
+    });
   });
-  if (!accepted.includes(result.status ?? 127)) {
-    throw new Error(`node ${argv.join(' ')} failed (${result.status}): ${String(result.stderr || '').trim()}`);
-  }
-  return result;
 }
 function parseLastJson(stdout) {
   const lines = String(stdout || '').split(/\r?\n/u).map((x) => x.trim()).filter(Boolean);
@@ -667,7 +712,7 @@ function parseLastJson(stdout) {
   }
   throw new Error('command emitted no machine-readable JSON result');
 }
-function bootstrap(home, repo) {
+async function bootstrap(home, repo) {
   return runNode([path.join(repo, 'scripts', 'bootstrap.mjs'), '--device-name', os.hostname(), '--home', home], {
     cwd: repo, accepted: [0, 3]
   });
@@ -744,7 +789,7 @@ export function qualifiedInitializationFromCurrentHome(home, {
     reuseDisposition: 'REUSED_CURRENT_QUALIFIED_RUNTIME_RECEIPT'
   };
 }
-function initialize(home, repo, options) {
+async function initialize(home, repo, options) {
   if (!options.candidateProfileRef && !options.candidateAuthorityRef) {
     const current = qualifiedInitializationFromCurrentHome(home);
     if (current) return current;
@@ -758,7 +803,7 @@ function initialize(home, repo, options) {
     argv.push('--mode', 'candidate-qualification', '--profile-ref', options.candidateProfileRef,
       '--candidate-authority-ref', options.candidateAuthorityRef);
   }
-  const result = runNode(argv, { cwd: repo });
+  const result = await runNode(argv, { cwd: repo });
   return parseLastJson(result.stdout);
 }
 async function startBrowser(home, repo, initialization) {
@@ -823,8 +868,8 @@ async function startBrowser(home, repo, initialization) {
 }
 
 async function runStart(home, repo, options) {
-  bootstrap(home, repo);
-  const initialized = initialize(home, repo, options);
+  await bootstrap(home, repo);
+  const initialized = await initialize(home, repo, options);
   if (initialized.state !== 'RUNTIME_QUALIFIED') throw new Error(`initializer did not qualify runtime: ${initialized.state}`);
   const browser = await startBrowser(home, repo, initialized);
   return { initialized, browser };
