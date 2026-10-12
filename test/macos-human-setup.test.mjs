@@ -290,6 +290,15 @@ test('MACHUMAN09 one exact per-Home setup session serializes writers and cleanup
   assert.match(setup, /refusing to signal any process/);
   assert.match(setup, /if \[ "\$action" = "uninstall-preserve" \]; then stop_active_setup_session; fi/);
   assert.match(setup, /trap 'cancel_setup_session 130' HUP INT TERM/);
+
+  const controllerStart = setup.indexOf('controller_run()');
+  const controllerEnd = setup.indexOf('\nif [ "$CONTROLLER_MODE" = true ]', controllerStart);
+  const controllerRun = setup.slice(controllerStart, controllerEnd);
+  const firstStatus = controllerRun.indexOf('status_json=');
+  const reserve = controllerRun.indexOf('begin_setup_action "$CONTROLLER_ACTION"');
+  const secondStatus = controllerRun.indexOf('status_json=', firstStatus + 1);
+  assert.ok(firstStatus >= 0 && firstStatus < reserve, 'lifecycle admission must be observed before cleanup can cancel an active setup');
+  assert.ok(reserve < secondStatus, 'lifecycle state must be re-observed after exact setup reservation');
 });
 
 // [VXG RealForever]
