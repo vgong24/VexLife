@@ -699,7 +699,8 @@ async function runNode(argv, { cwd = SOURCE_ROOT, accepted = [0], env = {} } = {
         return;
       }
       if (!accepted.includes(status ?? 127)) {
-        throw reject(new Error(`node ${argv.join(' ')} failed (${status ?? signal ?? 'UNKNOWN'}): ${stderr.trim()}`));
+        reject(new Error(`node ${argv.join(' ')} failed (${status ?? signal ?? 'UNKNOWN'}): ${stderr.trim()}`));
+        return;
       }
       resolve({ status, stdout, stderr });
     });
