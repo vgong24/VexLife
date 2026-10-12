@@ -349,6 +349,11 @@ test('MAC-WIN-13B cleanup is presented as preservation-safe stop-and-clean rathe
   assert.match(windowSource, /Stop & clean \(preserve Home\)/u);
   assert.match(windowSource, /stops an exact active setup task/u);
   assert.match(windowSource, /Home, Memory, conversations, and verified model files stay preserved/u);
+  assert.match(windowSource, /Stop & clean this Home/u);
+  assert.match(windowSource, /Clean another Home…/u);
+  assert.match(windowSource, /cleanupSelectedHome/u);
+  assert.match(windowSource, /hasAction\(actionsValue, "uninstall-preserve"\)/u);
+  assert.match(windowSource, /The selected Home is not currently admitting preservation-safe cleanup/u);
   assert.doesNotMatch(windowSource, /killall|rm -rf/u);
 });
 
