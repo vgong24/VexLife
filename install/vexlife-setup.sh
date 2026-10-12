@@ -255,7 +255,9 @@ stop_active_setup_session() {
   [ "$probe_status" -eq 0 ] || fail "VexLife found setup coordination state but could not prove an exact setup owner; refusing to signal any process."
   [ "$owner_pid" != "$$" ] || return 0
   kill -TERM "$owner_pid" 2>/dev/null || true
-  for attempt in $(seq 1 80); do
+  attempt=0
+  while [ "$attempt" -lt 80 ]; do
+    attempt=$((attempt + 1))
     if ! kill -0 "$owner_pid" 2>/dev/null; then
       cleanup_stale_setup_session "$dir" || true
       return 0
