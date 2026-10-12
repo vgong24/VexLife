@@ -334,6 +334,8 @@ test('MAC-WIN-12/13 long backend work is observable, shareable, cancellable, and
   assert.match(windowSource, /setSharingType:NSWindowSharingReadOnly/u);
   assert.match(windowSource, /Cancel safely/u);
   assert.match(windowSource, /latestProgressLine/u);
+  assert.match(windowSource, /setSelectable:true/u);
+  assert.match(windowSource, /Live status is selectable for debugging/u);
   assert.match(windowSource, /\[VexLife\] /u);
   assert.match(windowSource, /task's terminate\(\)/u);
   assert.match(windowSource, /"--session-token", token/u);
