@@ -50,6 +50,7 @@ function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
     '    if [ "${VEX_FAKE_HOST_ELIGIBLE:-yes}" = "yes" ]; then printf \'%s\\n\' \'{"state":"HOME_NOT_ESTABLISHED"}\'; exit 5; else printf \'%s\\n\' \'{"state":"UNSUPPORTED_HOST"}\'; exit 6; fi',
     '    ;;',
     '  */scripts/macos-lifecycle.mjs)',
+    '    if [ -n "${VEX_LIFECYCLE_ARGS_LOG:-}" ]; then printf "%s\\n" "$*" >> "$VEX_LIFECYCLE_ARGS_LOG"; fi',
     '    if [ "${VEX_FAKE_LIFECYCLE_START_FAIL:-no}" = "yes" ] && [[ " $* " == *" --operation start "* ]]; then echo FAKE_LIFECYCLE_START_REACHED >&2; exit 92; fi',
     `    printf '%s\\n' '${lifecycleJson}'; exit 0 ;;`,
     '  *) echo "UNEXPECTED_FAKE_NODE_CALL: $*" >&2; exit 91 ;;',
@@ -74,18 +75,20 @@ function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew =
     fs.writeFileSync(path.join(bin, 'brew'), '#!/bin/bash\necho brew-effect >> "$VEX_EFFECT_LOG"\n', { mode: 0o755 });
   }
   const effectLog = path.join(temp, 'effects.log');
+  const lifecycleArgsLog = path.join(temp, 'lifecycle-args.log');
   const result = spawnSync('/bin/bash', [path.join(repo, 'install', 'vexlife-setup.sh'), repo, '--controller', '--home', selectedHome, ...extraArgs], {
     encoding: 'utf8',
     env: {
       ...process.env,
       PATH: `${bin}:${process.env.PATH}`,
       VEX_EFFECT_LOG: effectLog,
+      VEX_LIFECYCLE_ARGS_LOG: lifecycleArgsLog,
       VEX_FAKE_HOST_ELIGIBLE: hostEligible ? 'yes' : 'no',
       VEX_FAKE_EXPECT_PROBE_ROOT: selectedHome,
       VEX_FAKE_LIFECYCLE_START_FAIL: lifecycleStartFails ? 'yes' : 'no'
     }
   });
-  return { ...result, effectLog, temp, selectedHome };
+  return { ...result, effectLog, lifecycleArgsLog, temp, selectedHome };
 }
 
 test('MAC-WIN-00/03/12 exact-source bootstrap defaults to an app-hosted AppKit window and keeps explicit Terminal fallback', () => {
@@ -235,6 +238,21 @@ test('MAC-WIN-05 repair and rebuild remain host-gated after healthy-open reuse c
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /could not prove this Mac eligible/u);
     assert.equal(fs.existsSync(result.effectLog), false);
+  }
+});
+
+test('MAC-WIN-05/10 approved repair and rebuild forward runtime consent into noninteractive lifecycle start', () => {
+  for (const action of ['repair', 'rebuild-preserve']) {
+    const result = runController(['--action', action, '--node-install-consent', 'no', '--runtime-acquisition-consent', 'yes'], {
+      state: 'EXISTING_DEGRADED_REPAIRABLE',
+      choices: [action],
+      hostEligible: true
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const calls = fs.readFileSync(result.lifecycleArgsLog, 'utf8').trim().split(/\r?\n/u);
+    const actionCall = calls.find((line) => line.includes(`--operation ${action}`));
+    assert.ok(actionCall, `missing lifecycle call for ${action}`);
+    assert.match(actionCall, /(?:^|\s)--yes(?:\s|$)/u);
   }
 });
 
