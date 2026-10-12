@@ -291,6 +291,8 @@ test('MACHUMAN09 one exact per-Home setup session serializes writers and cleanup
   assert.match(setup, /refusing to signal any process/);
   assert.match(setup, /if \[ "\$action" = "uninstall-preserve" \]; then stop_active_setup_session; fi/);
   assert.match(setup, /trap 'cancel_setup_session 130' HUP INT TERM/);
+  assert.match(setup, /if \[ -e "\$dir\/child\.pid" \]; then/);
+  assert.match(setup, /if kill -0 "\$child_pid" 2>\/dev\/null; then[\s\S]*return 1/);
 
   const controllerStart = setup.indexOf('controller_run()');
   const controllerEnd = setup.indexOf('\nif [ "$CONTROLLER_MODE" = true ]', controllerStart);
