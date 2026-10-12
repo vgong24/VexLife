@@ -76,7 +76,7 @@ function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew =
   }
   const effectLog = path.join(temp, 'effects.log');
   const lifecycleArgsLog = path.join(temp, 'lifecycle-args.log');
-  const result = spawnSync('/bin/bash', [path.join(repo, 'install', 'vexlife-setup.sh'), repo, '--controller', '--home', selectedHome, ...extraArgs], {
+  const result = spawnSync('/bin/bash', [path.join(repo, 'install', 'vexlife-setup.sh'), repo, '--controller', '--home', selectedHome, '--session-token', `test-session-${process.pid}`, ...extraArgs], {
     encoding: 'utf8',
     env: {
       ...process.env,
@@ -97,8 +97,11 @@ test('MAC-WIN-00/03/12 exact-source bootstrap defaults to an app-hosted AppKit w
   assert.match(bootstrap, /WINDOW_APP="\$TMP_ROOT\/VexLife Setup\.app"/u);
   assert.match(bootstrap, /\/usr\/bin\/osacompile -o "\$WINDOW_APP" "\$WINDOW"/u);
   assert.match(bootstrap, /\/usr\/bin\/plutil -insert VexLifeSourceRoot -string "\$TARGET" "\$INFO_PLIST"/u);
+  assert.match(bootstrap, /CFBundleIdentifier -string "com\.vextreme\.vexlife\.setup"/u);
+  assert.match(bootstrap, /LSMultipleInstancesProhibited -bool true/u);
   assert.match(bootstrap, /BOUND_SOURCE_ROOT=.*VexLifeSourceRoot/u);
-  assert.match(bootstrap, /\/usr\/bin\/open -W -n "\$WINDOW_APP"/u);
+  assert.match(bootstrap, /\/usr\/bin\/open -W "\$WINDOW_APP"/u);
+  assert.doesNotMatch(bootstrap, /\/usr\/bin\/open -W -n/u);
   assert.doesNotMatch(bootstrap, /exec \/usr\/bin\/osascript "\$WINDOW" "\$TARGET"/u);
   assert.match(bootstrap, /exec \/bin\/bash "\$TARGET\/install\/vexlife-setup\.sh" "\$TARGET"/u);
   assert.match(bootstrap, /SOURCE_SHA/u);
@@ -304,7 +307,7 @@ test('MAC-WIN-09 Node installation requires an exact consent value', () => {
   fs.writeFileSync(path.join(bin, 'node'), '#!/bin/bash\nexit 127\n', { mode: 0o755 });
   const effectLog = path.join(temp, 'effects.log');
   fs.writeFileSync(path.join(bin, 'brew'), '#!/bin/bash\necho brew-effect >> "$VEX_EFFECT_LOG"\n', { mode: 0o755 });
-  const result = spawnSync('/bin/bash', [path.join(repo, 'install', 'vexlife-setup.sh'), repo, '--controller', '--home', path.join(temp, 'home'), '--action', 'install-node', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+  const result = spawnSync('/bin/bash', [path.join(repo, 'install', 'vexlife-setup.sh'), repo, '--controller', '--home', path.join(temp, 'home'), '--session-token', `test-install-node-${process.pid}`, '--action', 'install-node', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
     encoding: 'utf8',
     env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, VEX_EFFECT_LOG: effectLog }
   });
@@ -323,13 +326,28 @@ test('MAC-WIN-04/05/10/11/14 window remains a projection, not model/platform/lif
   assert.match(windowSource, /not a signed\/public build/u);
 });
 
-test('MAC-WIN-12/13 long backend work keeps an AppKit progress surface responsive and failures stay fail-closed', () => {
+test('MAC-WIN-12/13 long backend work is observable, shareable, cancellable, and failures stay fail-closed', () => {
   assert.match(windowSource, /NSProgressIndicator/u);
   assert.match(windowSource, /NSRunLoop/u);
   assert.match(windowSource, /isRunning/u);
+  assert.match(windowSource, /NSWindowStyleMaskClosable/u);
+  assert.match(windowSource, /setSharingType:NSWindowSharingReadOnly/u);
+  assert.match(windowSource, /Cancel safely/u);
+  assert.match(windowSource, /latestProgressLine/u);
+  assert.match(windowSource, /\[VexLife\] /u);
+  assert.match(windowSource, /task's terminate\(\)/u);
+  assert.match(windowSource, /"--session-token", token/u);
+  assert.match(windowSource, /cancelledByHuman:cancelledByHuman/u);
   assert.match(windowSource, /if \(exitCode of .*\) is not 0 then/u);
   assert.match(windowSource, /showBackendFailure/u);
   assert.doesNotMatch(windowSource, /try[\s\S]*?on error[\s\S]*?exitCode:0/u);
+});
+
+test('MAC-WIN-13B cleanup is presented as preservation-safe stop-and-clean rather than a blind destructive reset', () => {
+  assert.match(windowSource, /Stop & clean \(preserve Home\)/u);
+  assert.match(windowSource, /stops an exact active setup task/u);
+  assert.match(windowSource, /Home, Memory, conversations, and verified model files stay preserved/u);
+  assert.doesNotMatch(windowSource, /killall|rm -rf/u);
 });
 
 test('MAC-WIN-15 Bash sources are syntax-valid; AppleScript compile remains a qualified Mac host proof', () => {
