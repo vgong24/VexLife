@@ -87,6 +87,20 @@ test('the HTML preserves exact thirteen-stage order and five-chapter coverage', 
   assert.equal(exactAttributeValues(html, 'data-chapter-panel').length, 5);
 });
 
+test('the hero exposes the stable Mac bootstrap without executing or copying it', () => {
+  const html = read('pages/vexlife-onboarding.html');
+  const js = read('pages/vexlife-onboarding.js');
+  const readme = read('README.md');
+  const removeTemp = 'rm -f /tmp/setup-vexlife.command';
+  const downloadAndRun = 'curl -fsSL https://raw.githubusercontent.com/vgong24/VexLife/main/setup-vexlife.command -o /tmp/setup-vexlife.command && bash /tmp/setup-vexlife.command';
+
+  assert.ok(readme.includes(`${removeTemp}\n${downloadAndRun}`));
+  assert.match(html, /<summary class="button button-terminal">Copy Paste Into Mac Terminal to Begin<\/summary>/u);
+  assert.ok(html.includes(removeTemp));
+  assert.ok(html.includes(downloadAndRun.replace('&&', '&amp;&amp;')));
+  assert.doesNotMatch(js, /navigator\.clipboard|document\.execCommand/iu);
+});
+
 test('the page remains a same-origin zero-effect accepted source', () => {
   const html = read('pages/vexlife-onboarding.html');
   const css = read('pages/vexlife-onboarding.css');
