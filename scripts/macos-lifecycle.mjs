@@ -14,6 +14,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const SOURCE_ROOT = path.resolve(HERE, '..');
 export const MAC_LIFECYCLE_SCHEMA = 'vexlife.macos-lifecycle/v1';
 export const MAC_BROWSER_RECEIPT_SCHEMA = 'vexlife.browser-process-receipt/v1';
+export const MAC_STARTING_RUNTIME_RECEIPT_SCHEMA = 'vexlife.runtime-starting-receipt/v1';
 export const ALLOWED_OPERATIONS = Object.freeze([
   'auto', 'status', 'start', 'stop', 'repair', 'rebuild-preserve', 'uninstall-preserve'
 ]);
@@ -393,6 +394,38 @@ export async function stopOwnedRuntime(home, {
   processEvidenceReader = readMacProcessEvidence,
   stopPidImpl = stopPid
 } = {}) {
+  const startingPath = path.join(home, 'runtime', 'initialization', 'receipt.json');
+  const starting = jsonRead(startingPath);
+  if (starting?.schemaVersion === MAC_STARTING_RUNTIME_RECEIPT_SCHEMA &&
+      ['STARTING', 'STOP_REQUESTED'].includes(starting.state)) {
+    const startingPid = Number(starting.runtime?.pid);
+    if (!Number.isInteger(startingPid) || startingPid <= 0 ||
+        typeof starting.runtime?.executablePath !== 'string' ||
+        !Array.isArray(starting.runtime?.arguments) ||
+        typeof starting.materialization?.executableSha256 !== 'string') {
+      throw new Error('STARTING runtime receipt is incomplete; refusing stop');
+    }
+    if (!pidAliveImpl(startingPid)) {
+      writeJsonAtomic(startingPath, { ...starting, state: 'STALE_STOPPED', stoppedAtUtc: new Date().toISOString() });
+      return { disposition: 'STARTING_RUNTIME_ALREADY_STOPPED', pid: startingPid };
+    }
+    const evidence = processEvidenceReader(startingPid);
+    if (!evidence || !runtimeProcessEvidenceMatches({
+      processEvidence: evidence,
+      expectedExecutablePath: path.resolve(starting.runtime.executablePath),
+      expectedArguments: starting.runtime.arguments
+    })) {
+      throw new Error('STARTING runtime PID is active but exact executable/argument ownership is not proven; refusing stop');
+    }
+    const executablePath = path.resolve(starting.runtime.executablePath);
+    if (!fs.existsSync(executablePath) || sha256(fs.readFileSync(executablePath)) !== starting.materialization.executableSha256) {
+      throw new Error('STARTING runtime executable bytes do not match the ownership receipt; refusing stop');
+    }
+    await stopPidImpl(startingPid);
+    writeJsonAtomic(startingPath, { ...starting, state: 'STOPPED_BY_LIFECYCLE', stoppedAtUtc: new Date().toISOString() });
+    return { disposition: 'EXACT_STARTING_RUNTIME_STOPPED', pid: startingPid };
+  }
+
   const model = jsonRead(path.join(home, 'config', 'model.json'));
   if (!model) return { disposition: 'NO_MODEL_CONFIGURATION', pid: null };
   const pid = Number(model.runtimePid);
