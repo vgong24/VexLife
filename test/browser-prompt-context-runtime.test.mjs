@@ -499,7 +499,7 @@ test('post-MATERIALIZE failure retains no selection beyond the finite lease TTL'
       () => bridge(home, model, owner, 'instance.vexlife.browser-prompt-context-budget-failure').performTurn({
         threadRef: 'thread.vexlife.browser-prompt-context-runtime-test',
         channelRef: 'channel.local-vex.companion',
-        content: 'x'.repeat(16_000)
+        content: 'x'.repeat(800_000)
       })
     );
     assert.equal(model.calls.length, 1);
