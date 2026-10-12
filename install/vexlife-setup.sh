@@ -173,8 +173,19 @@ setup_session_active_owner() {
   esac
 }
 cleanup_stale_setup_session() {
-  local dir="$1" entry
+  local dir="$1" entry child_pid=""
   [ -d "$dir" ] && [ ! -L "$dir" ] || return 1
+  if [ -e "$dir/child.pid" ]; then
+    [ -f "$dir/child.pid" ] && [ ! -L "$dir/child.pid" ] || return 1
+    child_pid="$(cat "$dir/child.pid" 2>/dev/null || true)"
+    case "$child_pid" in ''|*[!0-9]*) return 1 ;; esac
+    if kill -0 "$child_pid" 2>/dev/null; then
+      # The former setup parent is gone but a recorded child still exists.
+      # PID reuse cannot be excluded from this stale record, so neither
+      # signalling nor admitting another writer is safe here.
+      return 1
+    fi
+  fi
   for entry in owner.pid owner.token owner.home owner.repo owner.action child.pid child.stdout; do
     [ ! -e "$dir/$entry" ] || /bin/rm -f -- "$dir/$entry"
   done
