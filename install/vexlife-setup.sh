@@ -210,7 +210,7 @@ cancel_setup_session() {
     case "$child_pid" in ''|*[!0-9]*) child_pid="" ;; esac
     if [ -n "$child_pid" ] && kill -0 "$child_pid" 2>/dev/null; then
       child_parent="$(/bin/ps -p "$child_pid" -o ppid= 2>/dev/null | tr -d '[:space:]' || true)"
-      if [ "$child_parent" = "$" ]; then
+      if [ "$child_parent" = "$$" ]; then
         kill -TERM "$child_pid" 2>/dev/null || true
         while [ "$attempt" -lt 80 ] && kill -0 "$child_pid" 2>/dev/null; do
           attempt=$((attempt + 1))
