@@ -179,9 +179,13 @@ NODE
   fi
 }
 run_lifecycle() {
-  local operation="$1" result
+  local operation="$1" noninteractive_authorized="${2:-no}" result
+  local lifecycle_args=("$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation "$operation" --repo "$REPO_ROOT" --home "$VEX_HOME")
   reconcile_prior_browser_source || return 1
-  if ! result="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation "$operation" --repo "$REPO_ROOT" --home "$VEX_HOME")"; then
+  if [ "$noninteractive_authorized" = "yes" ]; then
+    lifecycle_args+=(--yes)
+  fi
+  if ! result="$(node "${lifecycle_args[@]}")"; then
     printf '\nVexLife stopped safely before completing %s.\n' "$operation" >&2
     return 1
   fi
@@ -343,13 +347,13 @@ controller_run() {
       ;;
     EXISTING_HEALTHY:repair|EXISTING_DEGRADED_REPAIRABLE:repair)
       [ "$RUNTIME_ACQUISITION_CONSENT" = "yes" ] || fail "repair was not authorized to verify or reacquire required runtime files."
-      run_lifecycle repair >/dev/null
+      run_lifecycle repair yes >/dev/null
       open_vex
       controller_result "REPAIR_COMPLETE"
       ;;
     EXISTING_HEALTHY:rebuild-preserve|EXISTING_DEGRADED_REPAIRABLE:rebuild-preserve)
       [ "$RUNTIME_ACQUISITION_CONSENT" = "yes" ] || fail "rebuild-preserve was not authorized to reacquire required runtime files."
-      run_lifecycle rebuild-preserve >/dev/null
+      run_lifecycle rebuild-preserve yes >/dev/null
       open_vex
       controller_result "REBUILD_PRESERVE_COMPLETE"
       ;;
@@ -462,11 +466,11 @@ case "$STATE" in
       '' ) run_lifecycle start >/dev/null; open_vex ;;
       r )
         ask_yes_no "Repair may verify or reacquire required runtime files. Continue?" n || { say "Stopped. No repair was performed."; exit 0; }
-        run_lifecycle repair >/dev/null; open_vex
+        run_lifecycle repair yes >/dev/null; open_vex
         ;;
       b )
         ask_yes_no "Rebuild-preserve removes only runtime/transient state, preserves Home/Memory/model cache, and may reacquire runtime files. Continue?" n || { say "Stopped. No rebuild was performed."; exit 0; }
-        run_lifecycle rebuild-preserve >/dev/null; open_vex
+        run_lifecycle rebuild-preserve yes >/dev/null; open_vex
         ;;
       u )
         ask_yes_no "Uninstall-preserve stops owned processes and removes runtime/transient state while preserving Home, Memory, conversations, and verified model files. Continue?" n || { say "Stopped. Nothing was uninstalled."; exit 0; }
@@ -486,11 +490,11 @@ case "$STATE" in
     case "$CHOICE" in
       ''|r )
         ask_yes_no "Repair may verify or reacquire required runtime files. Continue?" n || { say "Stopped. No repair was performed."; exit 0; }
-        run_lifecycle repair >/dev/null; open_vex
+        run_lifecycle repair yes >/dev/null; open_vex
         ;;
       b )
         ask_yes_no "Rebuild-preserve keeps Home, Memory, conversations, and verified model cache while rebuilding runtime state. Continue?" n || { say "Stopped. No rebuild was performed."; exit 0; }
-        run_lifecycle rebuild-preserve >/dev/null; open_vex
+        run_lifecycle rebuild-preserve yes >/dev/null; open_vex
         ;;
       u )
         ask_yes_no "Uninstall-preserve keeps Home, Memory, conversations, and verified model files. Continue?" n || { say "Stopped. Nothing was uninstalled."; exit 0; }
