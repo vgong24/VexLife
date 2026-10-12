@@ -140,11 +140,12 @@ test('MACHUMAN03 fresh setup does not offer repair rebuild or uninstall before H
   assert.doesNotMatch(absent, /run_lifecycle uninstall-preserve/);
 });
 
-test('MACHUMAN04 fresh setup preserves the real initializer consent boundary', () => {
+test('MACHUMAN04 fresh Terminal setup collects consent before the owned noninteractive initializer child', () => {
   const absent = setup.slice(setup.indexOf('  ABSENT)'), setup.indexOf('  EXISTING_HEALTHY)'));
   assert.match(absent, /initialize-vex\.mjs" --home "\$VEX_HOME" --plan-only/);
-  assert.match(absent, /initialize-vex\.mjs" --home "\$VEX_HOME";/);
-  assert.doesNotMatch(absent, /initialize-vex\.mjs[^\n]*--yes/);
+  assert.match(absent, /ask_yes_no "Prepare the local Vex runtime now\?/);
+  assert.match(absent, /run_owned node "\$REPO_ROOT\/scripts\/initialize-vex\.mjs" --home "\$VEX_HOME" --yes/);
+  assert.ok(absent.indexOf('ask_yes_no "Prepare the local Vex runtime now?') < absent.indexOf('run_owned node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --yes'));
 });
 
 test('MACHUMAN05 state-derived actions are explicit and browser opens only after start-class completion', () => {
