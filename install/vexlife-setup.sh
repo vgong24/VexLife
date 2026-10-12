@@ -635,8 +635,12 @@ case "$STATE" in
       exit 1
     fi
 
-    say "This Mac is supported. VexLife will now ask before downloading several GB of verified model/runtime files and starting the local model."
-    if ! run_owned node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME"; then
+    say "This Mac is supported."
+    if ! ask_yes_no "Prepare the local Vex runtime now? This may download several GB of verified files and start a local-only model." n; then
+      say "Stopped. The Vex Home remains, but no model/runtime acquisition was authorized."
+      exit 0
+    fi
+    if ! run_owned node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --yes; then
       say "Setup stopped safely before Vex was ready."
       exit 1
     fi
