@@ -607,7 +607,7 @@ else
   esac
 fi
 VEX_HOME="$(canonicalize_home "$VEX_HOME")"
-SESSION_TOKEN="terminal-${BASHPID:-$}-${RANDOM}-${RANDOM}"
+SESSION_TOKEN="terminal-${BASHPID:-$$}-${RANDOM}-${RANDOM}"
 printf 'Vex Home: %s\n' "$VEX_HOME"
 
 STATUS_JSON="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
