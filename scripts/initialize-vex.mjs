@@ -257,7 +257,8 @@ async function existingRuntimeReuse(profile, receiptPath, { executable, modelPat
     const executableBytes = fs.statSync(executable).size;
     const executableSha256 = await sha256File(executable);
     if (!runtimeExecutableIdentityMatches({ profile, actualSha256: executableSha256, bytes: executableBytes })) return null;
-    if (!await endpointResponding(profile.endpoint.origin, profile.qualification.healthPath)) return null;
+    if (prior.state === 'RUNTIME_QUALIFIED' && !await endpointResponding(profile.endpoint.origin, profile.qualification.healthPath)) return null;
+    if (prior.state === 'STARTING' && prior.schemaVersion !== STARTING_RUNTIME_RECEIPT_SCHEMA) return null;
     return { pid, reusedReceiptRef: prior.receiptRef ?? null, priorState: prior.state };
   } catch { return null; }
 }
@@ -521,6 +522,7 @@ try {
         receiptPath: runtimeReceiptPath
       };
       progress(`Resuming exact STARTING runtime process ${runtimePid} for qualification.`);
+      await waitForRuntime(profile, runtimePid);
     } else {
       progress(`Reusing already-qualified runtime process ${runtimePid}.`);
     }
