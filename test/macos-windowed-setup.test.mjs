@@ -281,11 +281,13 @@ test('MAC-WIN-10A real duplicate setup writer is rejected and stop-and-clean can
   assert.equal(cleanup.status, 0, cleanup.stderr || cleanup.stdout);
   assert.match(cleanup.stdout, /VEXLIFE_CONTROLLER_RESULT\\tUNINSTALL_PRESERVE_COMPLETE/u);
 
-  const firstExit = await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('first setup owner did not terminate after exact stop-and-clean cancellation')), 5000);
-    first.once('close', (code, signal) => { clearTimeout(timer); resolve({ code, signal }); });
-  });
-  assert.notEqual(firstExit.code, 0);
+  const firstExit = (first.exitCode !== null || first.signalCode !== null)
+    ? { code: first.exitCode, signal: first.signalCode }
+    : await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('first setup owner did not terminate after exact stop-and-clean cancellation')), 5000);
+        first.once('close', (code, signal) => { clearTimeout(timer); resolve({ code, signal }); });
+      });
+  assert.ok(firstExit.code !== 0 || firstExit.signal !== null);
   fs.rmSync(temp, { recursive: true, force: true });
 });
 
