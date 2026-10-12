@@ -321,4 +321,22 @@ test('MACHUMAN10 exact STARTING runtime resumes readiness instead of requiring p
   assert.ok(resumeBlock.indexOf('pendingRuntimeOwner =') < resumeBlock.indexOf('await waitForRuntime'));
 });
 
+test('MACHUMAN11 lifecycle cancellation is forwarded to the exact bootstrap/initializer child', () => {
+  const runNodeStart = lifecycle.indexOf('async function runNode(');
+  const runNodeEnd = lifecycle.indexOf('\nfunction parseLastJson', runNodeStart);
+  assert.ok(runNodeStart >= 0 && runNodeEnd > runNodeStart);
+  const runNodeSource = lifecycle.slice(runNodeStart, runNodeEnd);
+  assert.match(runNodeSource, /spawn\(process\.execPath, argv/);
+  assert.match(runNodeSource, /process\.on\('SIGTERM', onTerm\)/);
+  assert.match(runNodeSource, /process\.on\('SIGINT', onInt\)/);
+  assert.match(runNodeSource, /child\.kill\(signal\)/);
+  assert.match(runNodeSource, /process\.off\('SIGTERM', onTerm\)/);
+  assert.match(runNodeSource, /process\.off\('SIGINT', onInt\)/);
+  assert.doesNotMatch(runNodeSource, /spawnSync\(process\.execPath/);
+  assert.match(lifecycle, /async function bootstrap\(home, repo\)/);
+  assert.match(lifecycle, /async function initialize\(home, repo, options\)/);
+  assert.match(lifecycle, /await bootstrap\(home, repo\)/);
+  assert.match(lifecycle, /const initialized = await initialize\(home, repo, options\)/);
+});
+
 // [VXG RealForever]
