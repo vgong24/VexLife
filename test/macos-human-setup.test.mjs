@@ -331,11 +331,14 @@ test('MACHUMAN11 lifecycle cancellation is forwarded to the exact bootstrap/init
   assert.match(runNodeSource, /process\.on\('SIGTERM', onTerm\)/);
   assert.match(runNodeSource, /process\.on\('SIGINT', onInt\)/);
   assert.match(runNodeSource, /child\.kill\(signal\)/);
+  assert.match(runNodeSource, /forwardStderr = false/);
+  assert.match(runNodeSource, /if \(forwardStderr\) process\.stderr\.write\(chunk\)/);
   assert.match(runNodeSource, /process\.off\('SIGTERM', onTerm\)/);
   assert.match(runNodeSource, /process\.off\('SIGINT', onInt\)/);
   assert.doesNotMatch(runNodeSource, /spawnSync\(process\.execPath/);
   assert.match(lifecycle, /async function bootstrap\(home, repo\)/);
   assert.match(lifecycle, /async function initialize\(home, repo, options\)/);
+  assert.match(lifecycle, /runNode\(argv, \{ cwd: repo, forwardStderr: true \}\)/);
   assert.match(lifecycle, /await bootstrap\(home, repo\)/);
   assert.match(lifecycle, /const initialized = await initialize\(home, repo, options\)/);
 });
