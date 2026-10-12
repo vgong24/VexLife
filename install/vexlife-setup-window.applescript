@@ -263,8 +263,10 @@ on beginProgress(actionName)
   label's setFrame:(current application's NSMakeRect(24, 82, 452, 48))
   label's setLineBreakMode:0
   label's setUsesSingleLineMode:false
-  set hint to current application's NSTextField's labelWithString:"Live status is shown here. Close this window or choose Cancel safely to stop the exact setup task."
+  label's setSelectable:true
+  set hint to current application's NSTextField's labelWithString:"Live status is selectable for debugging. Close this window or choose Cancel safely to stop the exact setup task."
   hint's setFrame:(current application's NSMakeRect(24, 54, 452, 18))
+  hint's setSelectable:true
   set indicator to current application's NSProgressIndicator's alloc()'s initWithFrame:(current application's NSMakeRect(24, 25, 325, 18))
   indicator's setIndeterminate:true
   indicator's startAnimation:(missing value)
