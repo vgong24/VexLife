@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -51,6 +51,11 @@ function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
     '    ;;',
     '  */scripts/macos-lifecycle.mjs)',
     '    if [ -n "${VEX_LIFECYCLE_ARGS_LOG:-}" ]; then printf "%s\\n" "$*" >> "$VEX_LIFECYCLE_ARGS_LOG"; fi',
+    '    if [ -n "${VEX_FAKE_LIFECYCLE_HOLD_FILE:-}" ] && [[ " $* " == *" --operation start "* ]]; then',
+    '      : > "$VEX_FAKE_LIFECYCLE_HOLD_FILE"',
+    '      trap "exit 143" TERM INT',
+    '      while :; do sleep 1; done',
+    '    fi',
     '    if [ "${VEX_FAKE_LIFECYCLE_START_FAIL:-no}" = "yes" ] && [[ " $* " == *" --operation start "* ]]; then echo FAKE_LIFECYCLE_START_REACHED >&2; exit 92; fi',
     `    printf '%s\\n' '${lifecycleJson}'; exit 0 ;;`,
     '  *) echo "UNEXPECTED_FAKE_NODE_CALL: $*" >&2; exit 91 ;;',
@@ -229,6 +234,59 @@ test('MAC-WIN-10 healthy open delegates reuse-or-reinitialize to lifecycle owner
   assert.notEqual(opened.status, 0);
   assert.match(opened.stderr, /FAKE_LIFECYCLE_START_REACHED|stopped safely before completing start/u);
   assert.doesNotMatch(opened.stderr, /could not prove this Mac eligible/u);
+});
+
+test('MAC-WIN-10A real duplicate setup writer is rejected and stop-and-clean can take over only after exact owner cancellation', async () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-window-lock-test-'));
+  const bin = path.join(temp, 'bin');
+  const repo = path.join(temp, 'repo');
+  const selectedHome = path.join(temp, 'home');
+  const holdFile = path.join(temp, 'first-owner-running');
+  const lifecycleArgsLog = path.join(temp, 'lifecycle-args.log');
+  fs.mkdirSync(bin, { recursive: true });
+  fs.mkdirSync(path.join(repo, 'scripts'), { recursive: true });
+  fs.mkdirSync(path.join(repo, 'install'), { recursive: true });
+  fs.copyFileSync(backendPath, path.join(repo, 'install', 'vexlife-setup.sh'));
+  makeFakeNode(bin, 'EXISTING_HEALTHY', ['start', 'uninstall-preserve']);
+  const env = {
+    ...process.env,
+    PATH: `${bin}:${process.env.PATH}`,
+    VEX_LIFECYCLE_ARGS_LOG: lifecycleArgsLog,
+    VEX_FAKE_LIFECYCLE_HOLD_FILE: holdFile,
+    VEX_FAKE_HOST_ELIGIBLE: 'yes',
+    VEX_FAKE_EXPECT_PROBE_ROOT: selectedHome
+  };
+  const argsFor = (token, action) => [
+    path.join(repo, 'install', 'vexlife-setup.sh'), repo,
+    '--controller', '--home', selectedHome, '--session-token', token,
+    '--action', action, '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'
+  ];
+  const first = spawn('/bin/bash', argsFor('owner-a', 'open'), { encoding: 'utf8', env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const firstStdout = [];
+  const firstStderr = [];
+  first.stdout.on('data', (chunk) => firstStdout.push(chunk));
+  first.stderr.on('data', (chunk) => firstStderr.push(chunk));
+  const deadline = Date.now() + 5000;
+  while (!fs.existsSync(holdFile) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  assert.equal(fs.existsSync(holdFile), true, `first setup owner did not reach held lifecycle: ${Buffer.concat(firstStderr).toString('utf8')}`);
+
+  const duplicate = spawnSync('/bin/bash', argsFor('owner-b', 'open'), { encoding: 'utf8', env });
+  assert.notEqual(duplicate.status, 0);
+  assert.match(duplicate.stderr, /another exact VexLife setup operation is already active for this Home/u);
+
+  const cleanupEnv = { ...env, VEX_FAKE_LIFECYCLE_HOLD_FILE: '' };
+  const cleanup = spawnSync('/bin/bash', argsFor('cleanup-owner', 'uninstall-preserve'), { encoding: 'utf8', env: cleanupEnv, timeout: 10000 });
+  assert.equal(cleanup.status, 0, cleanup.stderr || cleanup.stdout);
+  assert.match(cleanup.stdout, /VEXLIFE_CONTROLLER_RESULT\\tUNINSTALL_PRESERVE_COMPLETE/u);
+
+  const firstExit = await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('first setup owner did not terminate after exact stop-and-clean cancellation')), 5000);
+    first.once('close', (code, signal) => { clearTimeout(timer); resolve({ code, signal }); });
+  });
+  assert.notEqual(firstExit.code, 0);
+  fs.rmSync(temp, { recursive: true, force: true });
 });
 
 test('MAC-WIN-05 repair and rebuild remain host-gated after healthy-open reuse correction', () => {
