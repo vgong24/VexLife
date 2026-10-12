@@ -204,14 +204,25 @@ release_setup_session() {
   SETUP_SESSION_DIR=""
 }
 cancel_setup_session() {
-  local exit_code="${1:-130}" child_pid="" child_parent=""
+  local exit_code="${1:-130}" child_pid="" child_parent="" attempt=0
   if [ "$SETUP_SESSION_OWNED" = "yes" ] && [ -f "$SETUP_SESSION_DIR/child.pid" ]; then
     child_pid="$(cat "$SETUP_SESSION_DIR/child.pid" 2>/dev/null || true)"
     case "$child_pid" in ''|*[!0-9]*) child_pid="" ;; esac
     if [ -n "$child_pid" ] && kill -0 "$child_pid" 2>/dev/null; then
       child_parent="$(/bin/ps -p "$child_pid" -o ppid= 2>/dev/null | tr -d '[:space:]' || true)"
-      if [ "$child_parent" = "$$" ]; then
+      if [ "$child_parent" = "$" ]; then
         kill -TERM "$child_pid" 2>/dev/null || true
+        while [ "$attempt" -lt 80 ] && kill -0 "$child_pid" 2>/dev/null; do
+          attempt=$((attempt + 1))
+          sleep 0.1
+        done
+        if kill -0 "$child_pid" 2>/dev/null; then
+          # Keep the exact reservation and child.pid as recovery evidence. The
+          # EXIT trap must not erase ownership merely because cancellation timed out.
+          trap - EXIT
+          SETUP_SESSION_OWNED="no"
+          exit "$exit_code"
+        fi
         wait "$child_pid" 2>/dev/null || true
       fi
     fi
