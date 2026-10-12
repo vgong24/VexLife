@@ -16,6 +16,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const setupCommand = fs.readFileSync(path.join(ROOT, 'setup-vexlife.command'), 'utf8');
 const setup = fs.readFileSync(path.join(ROOT, 'install', 'vexlife-setup.sh'), 'utf8');
 const lifecycle = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
+const initializer = fs.readFileSync(path.join(ROOT, 'scripts', 'initialize-vex.mjs'), 'utf8');
 
 test('MACHUMAN01 root Mac front door resolves exact Git source before repository delegation', () => {
   assert.match(setupCommand, /^#!\/bin\/bash/m);
@@ -299,6 +300,18 @@ test('MACHUMAN09 one exact per-Home setup session serializes writers and cleanup
   const secondStatus = controllerRun.indexOf('status_json=', firstStatus + 1);
   assert.ok(firstStatus >= 0 && firstStatus < reserve, 'lifecycle admission must be observed before cleanup can cancel an active setup');
   assert.ok(reserve < secondStatus, 'lifecycle state must be re-observed after exact setup reservation');
+});
+
+test('MACHUMAN10 exact STARTING runtime resumes readiness instead of requiring pre-qualified health or respawning', () => {
+  assert.match(initializer, /\['RUNTIME_QUALIFIED', 'STARTING'\]\.includes\(prior\.state\)/);
+  assert.match(initializer, /prior\.state === 'RUNTIME_QUALIFIED' && !await endpointResponding/);
+  assert.match(initializer, /prior\.state === 'STARTING' && prior\.schemaVersion !== STARTING_RUNTIME_RECEIPT_SCHEMA/);
+  const resumeStart = initializer.indexOf("if (existing.priorState === 'STARTING')");
+  const resumeEnd = initializer.indexOf('} else {', resumeStart);
+  const resumeBlock = initializer.slice(resumeStart, resumeEnd);
+  assert.match(resumeBlock, /pendingRuntimeOwner =/);
+  assert.match(resumeBlock, /await waitForRuntime\(profile, runtimePid\)/);
+  assert.ok(resumeBlock.indexOf('pendingRuntimeOwner =') < resumeBlock.indexOf('await waitForRuntime'));
 });
 
 // [VXG RealForever]
