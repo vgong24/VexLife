@@ -148,8 +148,8 @@ test('MACHUMAN04 fresh setup preserves the real initializer consent boundary', (
 
 test('MACHUMAN05 state-derived actions are explicit and browser opens only after start-class completion', () => {
   assert.match(setup, /run_lifecycle start >\/dev\/null; open_vex/);
-  assert.match(setup, /run_lifecycle repair >\/dev\/null; open_vex/);
-  assert.match(setup, /run_lifecycle rebuild-preserve >\/dev\/null; open_vex/);
+  assert.match(setup, /run_lifecycle repair yes >\/dev\/null; open_vex/);
+  assert.match(setup, /run_lifecycle rebuild-preserve yes >\/dev\/null; open_vex/);
   assert.match(setup, /run_lifecycle uninstall-preserve >\/dev\/null/);
   const uninstallTail = setup.slice(setup.lastIndexOf('run_lifecycle uninstall-preserve >/dev/null'));
   assert.doesNotMatch(uninstallTail.split(';;')[0], /open_vex/);
@@ -276,7 +276,20 @@ test('MACHUMAN08 rerun reconciles a prior-source browser through current trusted
   const openVexStart = setup.indexOf('\nopen_vex()', runLifecycleStart);
   const runLifecycle = setup.slice(runLifecycleStart, openVexStart);
   assert.match(runLifecycle, /reconcile_prior_browser_source \|\| return 1/);
-  assert.ok(runLifecycle.indexOf('reconcile_prior_browser_source') < runLifecycle.indexOf('macos-lifecycle.mjs" --operation'));
+  assert.match(runLifecycle, /run_owned node "\$\{lifecycle_args\[@\]\}"/);
+  assert.ok(runLifecycle.indexOf('reconcile_prior_browser_source') < runLifecycle.indexOf('run_owned node'));
+});
+
+test('MACHUMAN09 one exact per-Home setup session serializes writers and cleanup stops only a proven owner', () => {
+  assert.match(setup, /setup_session_dir_for_home\(\)/);
+  assert.match(setup, /\/bin\/mkdir "\$dir"/);
+  assert.match(setup, /owner\.token/);
+  assert.match(setup, /--session-token/);
+  assert.match(setup, /setup_session_active_owner/);
+  assert.match(setup, /command_line=.*\/bin\/ps/);
+  assert.match(setup, /refusing to signal any process/);
+  assert.match(setup, /if \[ "\$action" = "uninstall-preserve" \]; then stop_active_setup_session; fi/);
+  assert.match(setup, /trap 'cancel_setup_session 130' HUP INT TERM/);
 });
 
 // [VXG RealForever]
