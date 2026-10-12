@@ -7,6 +7,8 @@ property NSAlertSecondButtonReturn : 1001
 property NSAlertThirdButtonReturn : 1002
 property NSUTF8StringEncoding : 4
 property NSWindowStyleMaskTitled : 1
+property NSWindowStyleMaskClosable : 2
+property NSWindowSharingReadOnly : 1
 property NSBackingStoreBuffered : 2
 property controllerPrefix : "VEXLIFE_CONTROLLER_STATE\t"
 property actionPrefix : "VEXLIFE_CONTROLLER_ACTIONS\t"
@@ -190,7 +192,7 @@ on chooseRecoveryAction(messageText, detailText, actionsText)
     set end of actionKeys to "rebuild-preserve"
   end if
   if my hasAction(actionsText, "uninstall-preserve") then
-    alert's addButtonWithTitle:"Uninstall preserve"
+    alert's addButtonWithTitle:"Stop & clean (preserve Home)"
     set end of actionKeys to "uninstall-preserve"
   end if
   if (count of actionKeys) is 0 then return missing value
@@ -222,7 +224,7 @@ on recoveryFlow(repoRoot, homePath, actionsText, degraded)
     if consent is not NSAlertFirstButtonReturn then return
     set actionResult to my runBackend(repoRoot, homePath, "rebuild-preserve", "no", "yes")
   else if actionName is "uninstall-preserve" then
-    set consent to my promptChoice("Uninstall while preserving Home?", "This stops owned VexLife processes and removes runtime/transient state while preserving Home, Memory, conversations, and verified model files.", "Uninstall preserve", "Cancel", missing value)
+    set consent to my promptChoice("Stop and clean VexLife?", "This first stops an exact active setup task for this Home when one is provably owned, then stops exact-owned VexLife processes and removes runtime/transient state. Home, Memory, conversations, and verified model files stay preserved.", "Stop & clean", "Cancel", missing value)
     if consent is not NSAlertFirstButtonReturn then return
     set actionResult to my runBackend(repoRoot, homePath, "uninstall-preserve", "no", "no")
   else
@@ -252,20 +254,50 @@ on progressText(actionName)
 end progressText
 
 on beginProgress(actionName)
-  set panel to current application's NSPanel's alloc()'s initWithContentRect:(current application's NSMakeRect(0, 0, 460, 118)) styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:false
+  set panelStyle to NSWindowStyleMaskTitled + NSWindowStyleMaskClosable
+  set panel to current application's NSPanel's alloc()'s initWithContentRect:(current application's NSMakeRect(0, 0, 500, 160)) styleMask:panelStyle backing:NSBackingStoreBuffered defer:false
   panel's setTitle:"VexLife setup"
+  panel's setReleasedWhenClosed:false
+  panel's setSharingType:NSWindowSharingReadOnly
   set label to current application's NSTextField's labelWithString:(my progressText(actionName))
-  label's setFrame:(current application's NSMakeRect(24, 58, 412, 36))
-  set indicator to current application's NSProgressIndicator's alloc()'s initWithFrame:(current application's NSMakeRect(24, 25, 412, 18))
+  label's setFrame:(current application's NSMakeRect(24, 82, 452, 48))
+  label's setLineBreakMode:0
+  label's setUsesSingleLineMode:false
+  set hint to current application's NSTextField's labelWithString:"Live status is shown here. Close this window or choose Cancel safely to stop the exact setup task."
+  hint's setFrame:(current application's NSMakeRect(24, 54, 452, 18))
+  set indicator to current application's NSProgressIndicator's alloc()'s initWithFrame:(current application's NSMakeRect(24, 25, 325, 18))
   indicator's setIndeterminate:true
   indicator's startAnimation:(missing value)
+  set cancelButton to current application's NSButton's buttonWithTitle:"Cancel safely" target:panel action:"performClose:"
+  cancelButton's setFrame:(current application's NSMakeRect(365, 14, 111, 32))
   panel's contentView()'s addSubview:label
+  panel's contentView()'s addSubview:hint
   panel's contentView()'s addSubview:indicator
+  panel's contentView()'s addSubview:cancelButton
   panel's |center|()
   panel's makeKeyAndOrderFront:(missing value)
   current application's NSApp's activateIgnoringOtherApps:true
-  return panel
+  return {panel, label}
 end beginProgress
+
+on latestProgressLine(filePath)
+  set progressData to current application's NSData's dataWithContentsOfFile:filePath
+  if progressData is missing value then return missing value
+  set progressString to current application's NSString's alloc()'s initWithData:progressData encoding:NSUTF8StringEncoding
+  if progressString is missing value then return missing value
+  set progressTextValue to progressString as text
+  set oldDelimiters to AppleScript's text item delimiters
+  set AppleScript's text item delimiters to linefeed
+  set sourceLines to text items of progressTextValue
+  set AppleScript's text item delimiters to oldDelimiters
+  repeat with lineIndex from (count of sourceLines) to 1 by -1
+    set lineText to item lineIndex of sourceLines as text
+    if lineText starts with "[VexLife] " then
+      if (length of lineText) > 10 then return text 11 thru -1 of lineText
+    end if
+  end repeat
+  return missing value
+end latestProgressLine
 
 on runBackend(repoRoot, homePath, actionName, nodeConsent, runtimeConsent)
   set fileManager to current application's NSFileManager's defaultManager()
@@ -280,12 +312,18 @@ on runBackend(repoRoot, homePath, actionName, nodeConsent, runtimeConsent)
 
   set task to current application's NSTask's alloc()'s init()
   task's setLaunchPath:"/bin/bash"
-  task's setArguments:{repoRoot & "/install/vexlife-setup.sh", repoRoot, "--controller", "--home", homePath, "--action", actionName, "--node-install-consent", nodeConsent, "--runtime-acquisition-consent", runtimeConsent}
+  task's setArguments:{repoRoot & "/install/vexlife-setup.sh", repoRoot, "--controller", "--home", homePath, "--action", actionName, "--session-token", token, "--node-install-consent", nodeConsent, "--runtime-acquisition-consent", runtimeConsent}
   task's setStandardOutput:outHandle
   task's setStandardError:errHandle
   set launchErrorText to ""
   set progressPanel to missing value
-  if actionName is not "inspect" then set progressPanel to my beginProgress(actionName)
+  set progressLabel to missing value
+  set cancelledByHuman to false
+  if actionName is not "inspect" then
+    set progressSurface to my beginProgress(actionName)
+    set progressPanel to item 1 of progressSurface
+    set progressLabel to item 2 of progressSurface
+  end if
   try
     task's |launch|()
     if progressPanel is missing value then
@@ -293,6 +331,16 @@ on runBackend(repoRoot, homePath, actionName, nodeConsent, runtimeConsent)
     else
       repeat while (task's isRunning() as boolean)
         current application's NSRunLoop's currentRunLoop()'s runUntilDate:(current application's NSDate's dateWithTimeIntervalSinceNow:0.1)
+        if cancelledByHuman is false and ((progressPanel's isVisible()) as boolean) is false then
+          set cancelledByHuman to true
+          try
+            task's terminate()
+          end try
+        end if
+        if progressLabel is not missing value then
+          set liveLine to my latestProgressLine(errPath)
+          if liveLine is not missing value and liveLine is not "" then progressLabel's setStringValue:liveLine
+        end if
       end repeat
     end if
     set taskStatus to task's terminationStatus() as integer
@@ -300,7 +348,11 @@ on runBackend(repoRoot, homePath, actionName, nodeConsent, runtimeConsent)
     set taskStatus to 127
     set launchErrorText to launchError as text
   end try
-  if progressPanel is not missing value then progressPanel's orderOut:(missing value)
+  if progressPanel is not missing value then
+    try
+      progressPanel's orderOut:(missing value)
+    end try
+  end if
   try
     outHandle's closeFile()
     errHandle's closeFile()
@@ -316,7 +368,7 @@ on runBackend(repoRoot, homePath, actionName, nodeConsent, runtimeConsent)
     fileManager's removeItemAtPath:outPath |error|:(missing value)
     fileManager's removeItemAtPath:errPath |error|:(missing value)
   end try
-  return {exitCode:taskStatus, stdoutText:(outText as text), stderrText:stderrValue}
+  return {exitCode:taskStatus, stdoutText:(outText as text), stderrText:stderrValue, cancelledByHuman:cancelledByHuman}
 end runBackend
 
 on prefixedValue(sourceText, prefixText)
@@ -354,6 +406,10 @@ on showMessage(titleText, detailText, buttonTitle)
 end showMessage
 
 on showBackendFailure(resultRecord)
+  if cancelledByHuman of resultRecord then
+    my showMessage("VexLife setup cancelled", "The exact setup task was asked to stop. VexLife preserves durable Home data and leaves resumable verified partial download state where the source owner admits it. You can reopen setup and choose recovery or continue later.", "OK")
+    return
+  end if
   set detailText to stderrText of resultRecord
   if detailText is "" then set detailText to stdoutText of resultRecord
   if detailText is "" then set detailText to "The accepted setup backend stopped without a readable detail."
