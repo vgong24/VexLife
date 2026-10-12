@@ -448,7 +448,6 @@ controller_run() {
   fi
 
   VEX_HOME="$(canonicalize_home "$CONTROLLER_HOME")"
-  begin_setup_action "$CONTROLLER_ACTION"
   status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
   state="$(printf '%s' "$status_json" | parse_json_state)"
   lifecycle_choices="$(printf '%s' "$status_json" | parse_json_choices)"
@@ -475,6 +474,16 @@ controller_run() {
     open|uninstall-preserve)
       ;;
   esac
+
+  begin_setup_action "$CONTROLLER_ACTION"
+
+  # Re-observe under the exact setup reservation. For stop-and-clean this is
+  # deliberately after any provably owned prior setup was stopped.
+  status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
+  state="$(printf '%s' "$status_json" | parse_json_state)"
+  lifecycle_choices="$(printf '%s' "$status_json" | parse_json_choices)"
+  csv_has_choice "$lifecycle_choices" "$required_lifecycle_action" \
+    || fail "VexLife state changed while reserving '$CONTROLLER_ACTION'; the lifecycle owner no longer admits '$required_lifecycle_action'."
 
   case "$state:$CONTROLLER_ACTION" in
     ABSENT:first-setup)
