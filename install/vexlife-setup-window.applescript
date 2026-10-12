@@ -42,7 +42,7 @@ on run
   repeat
     set inspected to my runBackend(repoRoot, homePath, "inspect", "no", "no")
     if (exitCode of inspected) is not 0 then
-      my showBackendFailure(inspected)
+      my handleBackendFailure(repoRoot, homePath, inspected)
       return
     end if
     set stateValue to my prefixedValue(stdoutText of inspected, controllerPrefix)
@@ -61,7 +61,7 @@ on run
       if choice is not NSAlertFirstButtonReturn then return
       set nodeResult to my runBackend(repoRoot, homePath, "install-node", "yes", "no")
       if (exitCode of nodeResult) is not 0 then
-        my showBackendFailure(nodeResult)
+        my handleBackendFailure(repoRoot, homePath, nodeResult)
         return
       end if
       -- Re-inspect after the accepted backend proves Node is visible.
@@ -81,7 +81,7 @@ on run
       if runtimeChoice is not NSAlertFirstButtonReturn then return
       set setupResult to my runBackend(repoRoot, homePath, "first-setup", "no", "yes")
       if (exitCode of setupResult) is not 0 then
-        my showBackendFailure(setupResult)
+        my handleBackendFailure(repoRoot, homePath, setupResult)
       else
         my showMessage("VexLife is ready", "The accepted setup engine completed first setup and opened the local VexLife experience.", "Done")
       end if
@@ -94,7 +94,7 @@ on run
         set choice to my promptChoice("VexLife is ready", "This Home is healthy. You can open Vex now or choose a preservation-safe action admitted by the current lifecycle owner.", "Open Vex", "Recovery…", "Cancel")
         if choice is NSAlertFirstButtonReturn then
           set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
-          if (exitCode of actionResult) is not 0 then my showBackendFailure(actionResult)
+          if (exitCode of actionResult) is not 0 then my handleBackendFailure(repoRoot, homePath, actionResult)
           return
         else if choice is NSAlertSecondButtonReturn then
           my recoveryFlow(repoRoot, homePath, actionsValue, false)
@@ -106,7 +106,7 @@ on run
         set choice to my promptChoice("VexLife is ready", "The current lifecycle owner admits opening this healthy Home.", "Open Vex", "Cancel", missing value)
         if choice is NSAlertFirstButtonReturn then
           set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
-          if (exitCode of actionResult) is not 0 then my showBackendFailure(actionResult)
+          if (exitCode of actionResult) is not 0 then my handleBackendFailure(repoRoot, homePath, actionResult)
         end if
         return
       else if recoveryAllowed then
@@ -233,7 +233,7 @@ on recoveryFlow(repoRoot, homePath, actionsText, degraded)
   end if
 
   if (exitCode of actionResult) is not 0 then
-    my showBackendFailure(actionResult)
+    my handleBackendFailure(repoRoot, homePath, actionResult)
   else
     set resultValue to my prefixedValue(stdoutText of actionResult, resultPrefix)
     if resultValue is "UNINSTALL_PRESERVE_COMPLETE" then
@@ -407,11 +407,42 @@ on showMessage(titleText, detailText, buttonTitle)
   alert's runModal()
 end showMessage
 
-on showBackendFailure(resultRecord)
-  if cancelledByHuman of resultRecord then
-    my showMessage("VexLife setup cancelled", "The exact setup task was asked to stop. VexLife preserves durable Home data and leaves resumable verified partial download state where the source owner admits it. You can reopen setup and choose recovery or continue later.", "OK")
+on cleanupSelectedHome(repoRoot, selectedHome)
+  set inspected to my runBackend(repoRoot, selectedHome, "inspect", "no", "no")
+  if (exitCode of inspected) is not 0 then
+    my showBackendFailure(inspected)
     return
   end if
+  set actionsValue to my prefixedValue(stdoutText of inspected, actionPrefix)
+  if actionsValue is missing value or (my hasAction(actionsValue, "uninstall-preserve")) is false then
+    my showMessage("VexLife cleanup held", "The selected Home is not currently admitting preservation-safe cleanup. Nothing was signalled or deleted.", "OK")
+    return
+  end if
+  set consent to my promptChoice("Stop and clean this Vex Home?", "VexLife will stop only exact-owned setup/runtime/browser work for this selected Home and remove transient runtime state. Home, Memory, conversations, and verified model files stay preserved.", "Stop & clean", "Cancel", missing value)
+  if consent is not NSAlertFirstButtonReturn then return
+  set cleanupResult to my runBackend(repoRoot, selectedHome, "uninstall-preserve", "no", "no")
+  if (exitCode of cleanupResult) is not 0 then
+    my showBackendFailure(cleanupResult)
+    return
+  end if
+  my showMessage("VexLife cleanup complete", "Exact-owned active work for the selected Home was stopped and transient runtime state was cleaned. Durable Home data and verified model files remain.", "Done")
+end cleanupSelectedHome
+
+on handleBackendFailure(repoRoot, homePath, resultRecord)
+  if cancelledByHuman of resultRecord then
+    set choice to my promptChoice("VexLife setup cancelled", "The exact setup task was asked to stop. Verified partial download state is left resumable where admitted. You can also clean exact-owned VexLife state now without starting another bootstrap.", "Stop & clean this Home", "Clean another Home…", "Close")
+    if choice is NSAlertFirstButtonReturn then
+      my cleanupSelectedHome(repoRoot, homePath)
+    else if choice is NSAlertSecondButtonReturn then
+      set otherHome to my chooseHome(homePath)
+      if otherHome is not missing value then my cleanupSelectedHome(repoRoot, otherHome)
+    end if
+    return
+  end if
+  my showBackendFailure(resultRecord)
+end handleBackendFailure
+
+on showBackendFailure(resultRecord)
   set detailText to stderrText of resultRecord
   if detailText is "" then set detailText to stdoutText of resultRecord
   if detailText is "" then set detailText to "The accepted setup backend stopped without a readable detail."
