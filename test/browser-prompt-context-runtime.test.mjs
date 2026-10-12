@@ -249,6 +249,9 @@ test('ordinary provider request receives one attributed bounded current Memory s
     assert.match(result.promptContextMaterialization.memoryContextFingerprintOrNull, /^[0-9a-f]{64}$/u);
     assert.ok(result.promptContextMaterialization.memorySourceRefs.includes('statement.g03.active'));
     assert.equal(result.promptContextMaterialization.memoryEffectPerformed, false);
+    assert.equal(result.promptContextMaterialization.contextLeaseInputTokenEstimate, 192_000);
+    assert.equal(result.promptContextMaterialization.reservedOutputTokens, 16_000);
+    assert.equal(result.promptContextMaterialization.hardTokenLimit, 208_000);
     assert.equal(result.promptContextMaterialization.providerBoundaryCurrentnessVerified, true);
     assert.equal(result.promptContextMaterialization.providerBoundarySourceBindingsVerified, true);
   } finally {
@@ -270,13 +273,15 @@ test('Memory is bounded out when the immediate conversation consumes the shared 
       currentRequestSequence: fixture.g01.head.sequence + 1,
       priorConversationHeadSha256: fixture.g01.head.conversationHeadSha256
     };
-    const taskIntent = 'x'.repeat(14000);
+    const taskIntent = 'x'.repeat(767_600);
     const selected = await owner.promptContextResolver({ context: current, taskIntent });
     assert.equal(selected.memoryContext.included, false);
     assert.equal(selected.memoryContext.estimatedSystemMessageTokens, 0);
     assert.equal(selected.memoryContext.memoryTokenCap < 100, true);
     assert.ok(selected.memoryContext.tokenBoundedOutPageRefs.length >= 1);
-    assert.equal(selected.contextLease.inputTokenEstimate, 3584);
+    assert.equal(selected.contextLease.inputTokenEstimate, 192_000);
+    assert.equal(selected.contextLease.reservedOutputTokens, 16_000);
+    assert.equal(selected.contextLease.hardTokenLimit, 208_000);
   } finally {
     fs.rmSync(home.root, { recursive: true, force: true });
   }
