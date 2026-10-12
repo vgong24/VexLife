@@ -17,6 +17,7 @@ RUNTIME_ACQUISITION_CONSENT="no"
 SESSION_TOKEN=""
 SETUP_SESSION_DIR=""
 SETUP_SESSION_OWNED="no"
+UNRESERVED_CHILD_PID=""
 
 say() { printf '\n%s\n' "$1"; }
 fail() { printf '\nVexLife setup stopped: %s\n' "$1" >&2; exit 1; }
@@ -288,9 +289,37 @@ stop_active_setup_session() {
   done
   fail "the exact active setup owner did not stop after cancellation; refusing to continue cleanup while it may still be writing."
 }
+cancel_unreserved_child() {
+  local exit_code="${1:-130}" child_pid="$UNRESERVED_CHILD_PID" child_parent="" attempt=0
+  case "$child_pid" in ''|*[!0-9]*) exit "$exit_code" ;; esac
+  if kill -0 "$child_pid" 2>/dev/null; then
+    child_parent="$(/bin/ps -p "$child_pid" -o ppid= 2>/dev/null | tr -d '[:space:]' || true)"
+    if [ "$child_parent" = "$$" ]; then
+      kill -TERM "$child_pid" 2>/dev/null || true
+      while [ "$attempt" -lt 80 ] && kill -0 "$child_pid" 2>/dev/null; do
+        attempt=$((attempt + 1))
+        sleep 0.1
+      done
+      wait "$child_pid" 2>/dev/null || true
+    fi
+  fi
+  exit "$exit_code"
+}
 run_owned() {
   local child_pid status
-  if [ "$SETUP_SESSION_OWNED" != "yes" ]; then "$@"; return $?; fi
+  if [ "$SETUP_SESSION_OWNED" != "yes" ]; then
+    "$@" &
+    child_pid=$!
+    UNRESERVED_CHILD_PID="$child_pid"
+    trap 'cancel_unreserved_child 130' HUP INT TERM
+    set +e
+    wait "$child_pid"
+    status=$?
+    set -e
+    trap - HUP INT TERM
+    UNRESERVED_CHILD_PID=""
+    return "$status"
+  fi
   "$@" &
   child_pid=$!
   printf '%s\n' "$child_pid" > "$SETUP_SESSION_DIR/child.pid"
@@ -456,7 +485,9 @@ controller_run() {
     fi
     [ "$NODE_INSTALL_CONSENT" = "yes" ] || fail "Node.js installation was not authorized."
     command -v brew >/dev/null 2>&1 || fail "Homebrew is unavailable; install Node.js 20+ manually, then reopen setup."
-    brew install node
+    if ! run_owned brew install node; then
+      fail "Node.js installation stopped before completion."
+    fi
     major="$(node_major)"
     if [ "$major" = "none" ] || [ "$major" -lt 20 ] 2>/dev/null; then
       fail "Node.js was installed, but this process cannot see Node.js 20+ yet. Reopen setup after the shell environment refreshes."
