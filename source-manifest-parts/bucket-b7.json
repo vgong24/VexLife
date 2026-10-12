@@ -11,8 +11,8 @@
     {
       "path": "install/vexlife-setup.sh",
       "mode": "100755",
-      "bytes": 20582,
-      "sha256": "a7a80e5b09c6d29d5c3de6bdd665fdd482f29c5bbf2f4b16ebfe140672738fea"
+      "bytes": 20776,
+      "sha256": "294c3e6aa152371c6cc5f45c5b292edf48a12acf313474486db1603858073377"
     },
     {
       "path": "src/core/tool-result-relay.mjs",
