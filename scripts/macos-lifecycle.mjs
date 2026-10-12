@@ -650,7 +650,7 @@ async function waitPort(port, timeoutMs = 15000) {
   }
   return false;
 }
-async function runNode(argv, { cwd = SOURCE_ROOT, accepted = [0], env = {} } = {}) {
+async function runNode(argv, { cwd = SOURCE_ROOT, accepted = [0], env = {}, forwardStderr = false } = {}) {
   const maxBuffer = 32 * 1024 * 1024;
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, argv, {
@@ -671,8 +671,12 @@ async function runNode(argv, { cwd = SOURCE_ROOT, accepted = [0], env = {} } = {
         try { child.kill('SIGTERM'); } catch {}
         return;
       }
-      if (kind === 'stdout') stdout += chunk.toString('utf8');
-      else stderr += chunk.toString('utf8');
+      if (kind === 'stdout') {
+        stdout += chunk.toString('utf8');
+      } else {
+        stderr += chunk.toString('utf8');
+        if (forwardStderr) process.stderr.write(chunk);
+      }
     };
     const forwardSignal = (signal) => {
       if (!child.pid) return;
@@ -804,7 +808,7 @@ async function initialize(home, repo, options) {
     argv.push('--mode', 'candidate-qualification', '--profile-ref', options.candidateProfileRef,
       '--candidate-authority-ref', options.candidateAuthorityRef);
   }
-  const result = await runNode(argv, { cwd: repo });
+  const result = await runNode(argv, { cwd: repo, forwardStderr: true });
   return parseLastJson(result.stdout);
 }
 async function startBrowser(home, repo, initialization) {
