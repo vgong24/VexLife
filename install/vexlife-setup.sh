@@ -14,6 +14,9 @@ CONTROLLER_HOME=""
 CONTROLLER_ACTION=""
 NODE_INSTALL_CONSENT="no"
 RUNTIME_ACQUISITION_CONSENT="no"
+SESSION_TOKEN=""
+SETUP_SESSION_DIR=""
+SETUP_SESSION_OWNED="no"
 
 say() { printf '\n%s\n' "$1"; }
 fail() { printf '\nVexLife setup stopped: %s\n' "$1" >&2; exit 1; }
@@ -37,6 +40,11 @@ while [ "$#" -gt 0 ]; do
       CONTROLLER_ACTION="$2"
       shift 2
       ;;
+    --session-token)
+      [ "$#" -ge 2 ] || fail "--session-token requires one value."
+      SESSION_TOKEN="$2"
+      shift 2
+      ;;
     --node-install-consent)
       [ "$#" -ge 2 ] || fail "--node-install-consent requires yes or no."
       NODE_INSTALL_CONSENT="$2"
@@ -54,6 +62,8 @@ done
 if [ "$CONTROLLER_MODE" = true ]; then
   [ -n "$CONTROLLER_ACTION" ] || fail "controller mode requires --action."
   [ -n "$CONTROLLER_HOME" ] || fail "controller mode requires --home."
+  [ -n "$SESSION_TOKEN" ] || fail "controller mode requires --session-token."
+  case "$SESSION_TOKEN" in *[!A-Za-z0-9._:-]*) fail "controller session token contains unsupported characters." ;; esac
   case "$CONTROLLER_ACTION" in
     inspect|install-node|first-setup|open|repair|rebuild-preserve|uninstall-preserve) ;;
     *) fail "unknown controller action: $CONTROLLER_ACTION" ;;
@@ -138,6 +148,141 @@ controller_choices_require_host() {
     csv_has_choice "$choices" repair ||
     csv_has_choice "$choices" rebuild-preserve
 }
+setup_session_dir_for_home() {
+  local uid key
+  uid="$(/usr/bin/id -u)"
+  key="$(printf '%s' "$VEX_HOME" | /usr/bin/cksum | /usr/bin/awk '{print $1 "-" $2}')"
+  printf '/tmp/vexlife-setup-%s-%s.lock' "$uid" "$key"
+}
+setup_session_active_owner() {
+  local dir="$1" pid token home_path repo_path command_line
+  [ -d "$dir" ] && [ ! -L "$dir" ] || return 2
+  [ -f "$dir/owner.pid" ] && [ -f "$dir/owner.token" ] && [ -f "$dir/owner.home" ] && [ -f "$dir/owner.repo" ] || return 2
+  pid="$(cat "$dir/owner.pid" 2>/dev/null || true)"
+  token="$(cat "$dir/owner.token" 2>/dev/null || true)"
+  home_path="$(cat "$dir/owner.home" 2>/dev/null || true)"
+  repo_path="$(cat "$dir/owner.repo" 2>/dev/null || true)"
+  case "$pid" in ''|*[!0-9]*) return 2 ;; esac
+  [ "$home_path" = "$VEX_HOME" ] || return 2
+  [ -n "$token" ] && [ -n "$repo_path" ] || return 2
+  if ! kill -0 "$pid" 2>/dev/null; then return 1; fi
+  command_line="$(/bin/ps -ww -p "$pid" -o command= 2>/dev/null || true)"
+  case "$command_line" in
+    *"$repo_path/install/vexlife-setup.sh"*--controller*"$token"*) printf '%s' "$pid"; return 0 ;;
+    *) return 2 ;;
+  esac
+}
+cleanup_stale_setup_session() {
+  local dir="$1" entry
+  [ -d "$dir" ] && [ ! -L "$dir" ] || return 1
+  for entry in owner.pid owner.token owner.home owner.repo owner.action child.pid child.stdout; do
+    [ ! -e "$dir/$entry" ] || /bin/rm -f -- "$dir/$entry"
+  done
+  /bin/rmdir "$dir" 2>/dev/null
+}
+release_setup_session() {
+  [ "$SETUP_SESSION_OWNED" = "yes" ] || return 0
+  [ -n "$SETUP_SESSION_DIR" ] || return 0
+  if [ -f "$SETUP_SESSION_DIR/owner.pid" ] && [ -f "$SETUP_SESSION_DIR/owner.token" ] &&
+     [ "$(cat "$SETUP_SESSION_DIR/owner.pid" 2>/dev/null || true)" = "$$" ] &&
+     [ "$(cat "$SETUP_SESSION_DIR/owner.token" 2>/dev/null || true)" = "$SESSION_TOKEN" ]; then
+    /bin/rm -f -- "$SETUP_SESSION_DIR/child.pid" "$SETUP_SESSION_DIR/child.stdout"       "$SETUP_SESSION_DIR/owner.action" "$SETUP_SESSION_DIR/owner.repo" "$SETUP_SESSION_DIR/owner.home"       "$SETUP_SESSION_DIR/owner.token" "$SETUP_SESSION_DIR/owner.pid"
+    /bin/rmdir "$SETUP_SESSION_DIR" 2>/dev/null || true
+  fi
+  SETUP_SESSION_OWNED="no"
+  SETUP_SESSION_DIR=""
+}
+cancel_setup_session() {
+  local exit_code="${1:-130}" child_pid="" child_parent=""
+  if [ "$SETUP_SESSION_OWNED" = "yes" ] && [ -f "$SETUP_SESSION_DIR/child.pid" ]; then
+    child_pid="$(cat "$SETUP_SESSION_DIR/child.pid" 2>/dev/null || true)"
+    case "$child_pid" in ''|*[!0-9]*) child_pid="" ;; esac
+    if [ -n "$child_pid" ] && kill -0 "$child_pid" 2>/dev/null; then
+      child_parent="$(/bin/ps -p "$child_pid" -o ppid= 2>/dev/null | tr -d '[:space:]' || true)"
+      if [ "$child_parent" = "$$" ]; then
+        kill -TERM "$child_pid" 2>/dev/null || true
+        wait "$child_pid" 2>/dev/null || true
+      fi
+    fi
+  fi
+  release_setup_session
+  exit "$exit_code"
+}
+acquire_setup_session() {
+  local action="$1" attempt dir owner_pid probe_status
+  if [ "$SETUP_SESSION_OWNED" = "yes" ]; then return 0; fi
+  [ -n "$SESSION_TOKEN" ] || fail "setup operation requires one session token."
+  dir="$(setup_session_dir_for_home)"
+  for attempt in 1 2; do
+    if /bin/mkdir "$dir" 2>/dev/null; then
+      printf '%s\n' "$$" > "$dir/owner.pid"
+      printf '%s\n' "$SESSION_TOKEN" > "$dir/owner.token"
+      printf '%s\n' "$VEX_HOME" > "$dir/owner.home"
+      printf '%s\n' "$REPO_ROOT" > "$dir/owner.repo"
+      printf '%s\n' "$action" > "$dir/owner.action"
+      SETUP_SESSION_DIR="$dir"
+      SETUP_SESSION_OWNED="yes"
+      trap 'cancel_setup_session 130' HUP INT TERM
+      trap 'release_setup_session' EXIT
+      return 0
+    fi
+    set +e
+    owner_pid="$(setup_session_active_owner "$dir")"
+    probe_status=$?
+    set -e
+    if [ "$probe_status" -eq 0 ]; then
+      fail "another exact VexLife setup operation is already active for this Home (pid $owner_pid). Use its Cancel safely control or choose Stop & clean from a fresh setup window."
+    fi
+    if [ "$probe_status" -eq 2 ]; then
+      fail "VexLife found setup coordination state for this Home but could not prove its exact owner. Restart the Mac or inspect the coordination state before another mutating setup action."
+    fi
+    cleanup_stale_setup_session "$dir" || fail "stale VexLife setup coordination state could not be cleared safely."
+  done
+  fail "VexLife could not reserve the exact setup operation for this Home."
+}
+stop_active_setup_session() {
+  local dir owner_pid probe_status attempt
+  dir="$(setup_session_dir_for_home)"
+  [ -e "$dir" ] || return 0
+  set +e
+  owner_pid="$(setup_session_active_owner "$dir")"
+  probe_status=$?
+  set -e
+  if [ "$probe_status" -eq 1 ]; then
+    cleanup_stale_setup_session "$dir" || fail "stale VexLife setup coordination state could not be cleared safely."
+    return 0
+  fi
+  [ "$probe_status" -eq 0 ] || fail "VexLife found setup coordination state but could not prove an exact setup owner; refusing to signal any process."
+  [ "$owner_pid" != "$$" ] || return 0
+  kill -TERM "$owner_pid" 2>/dev/null || true
+  for attempt in $(seq 1 80); do
+    if ! kill -0 "$owner_pid" 2>/dev/null; then
+      cleanup_stale_setup_session "$dir" || true
+      return 0
+    fi
+    sleep 0.1
+  done
+  fail "the exact active setup owner did not stop after cancellation; refusing to continue cleanup while it may still be writing."
+}
+run_owned() {
+  local child_pid status
+  if [ "$SETUP_SESSION_OWNED" != "yes" ]; then "$@"; return $?; fi
+  "$@" &
+  child_pid=$!
+  printf '%s\n' "$child_pid" > "$SETUP_SESSION_DIR/child.pid"
+  set +e
+  wait "$child_pid"
+  status=$?
+  set -e
+  /bin/rm -f -- "$SETUP_SESSION_DIR/child.pid"
+  return "$status"
+}
+begin_setup_action() {
+  local action="$1"
+  if [ "$action" = "uninstall-preserve" ]; then stop_active_setup_session; fi
+  acquire_setup_session "$action"
+}
+
 reconcile_prior_browser_source() {
   if ! node --input-type=module - "$REPO_ROOT/scripts/macos-lifecycle.mjs" "$VEX_HOME" "$REPO_ROOT" <<'NODE'
 import fs from 'node:fs';
@@ -179,17 +324,23 @@ NODE
   fi
 }
 run_lifecycle() {
-  local operation="$1" noninteractive_authorized="${2:-no}" result
+  local operation="$1" noninteractive_authorized="${2:-no}" result_file
   local lifecycle_args=("$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation "$operation" --repo "$REPO_ROOT" --home "$VEX_HOME")
   reconcile_prior_browser_source || return 1
-  if [ "$noninteractive_authorized" = "yes" ]; then
-    lifecycle_args+=(--yes)
+  if [ "$noninteractive_authorized" = "yes" ]; then lifecycle_args+=(--yes); fi
+  if [ "$SETUP_SESSION_OWNED" = "yes" ]; then
+    result_file="$SETUP_SESSION_DIR/child.stdout"
+    : > "$result_file"
+  else
+    result_file="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/vexlife-lifecycle.XXXXXX")"
   fi
-  if ! result="$(node "${lifecycle_args[@]}")"; then
+  if ! run_owned node "${lifecycle_args[@]}" >"$result_file"; then
+    /bin/rm -f -- "$result_file"
     printf '\nVexLife stopped safely before completing %s.\n' "$operation" >&2
     return 1
   fi
-  printf '%s' "$result"
+  /bin/cat "$result_file"
+  /bin/rm -f -- "$result_file"
 }
 open_vex() {
   /usr/bin/open "$INSTALL_URL" >/dev/null 2>&1 || true
@@ -295,6 +446,7 @@ controller_run() {
   fi
 
   VEX_HOME="$(canonicalize_home "$CONTROLLER_HOME")"
+  begin_setup_action "$CONTROLLER_ACTION"
   status_json="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
   state="$(printf '%s' "$status_json" | parse_json_state)"
   lifecycle_choices="$(printf '%s' "$status_json" | parse_json_choices)"
@@ -325,13 +477,15 @@ controller_run() {
   case "$state:$CONTROLLER_ACTION" in
     ABSENT:first-setup)
       [ "$RUNTIME_ACQUISITION_CONSENT" = "yes" ] || fail "model/runtime acquisition was not authorized."
-      node "$REPO_ROOT/scripts/bootstrap.mjs" --device-name "$(scutil --get ComputerName 2>/dev/null || hostname)" --home "$VEX_HOME" >/dev/null
+      if ! run_owned node "$REPO_ROOT/scripts/bootstrap.mjs" --device-name "$(scutil --get ComputerName 2>/dev/null || hostname)" --home "$VEX_HOME" >/dev/null; then
+        fail "Vex Home bootstrap stopped before completion."
+      fi
       if ! plan_output="$(node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --plan-only)"; then
         fail "this Mac is not currently eligible for automatic VexLife setup; no model/runtime download was started."
       fi
       plan_state="$(printf '%s' "$plan_output" | tail -n 1 | parse_json_state)"
       [ "$plan_state" = "PLAN_READY_NO_EFFECT" ] || fail "this Mac is not currently eligible for automatic VexLife setup; no model/runtime download was started."
-      if ! node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --yes; then
+      if ! run_owned node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --yes; then
         fail "setup stopped safely before Vex was ready."
       fi
       receipt="$VEX_HOME/recovery/vex-initialization-receipt.json"
@@ -416,6 +570,7 @@ else
   esac
 fi
 VEX_HOME="$(canonicalize_home "$VEX_HOME")"
+SESSION_TOKEN="terminal-${BASHPID:-$}-${RANDOM}-${RANDOM}"
 printf 'Vex Home: %s\n' "$VEX_HOME"
 
 STATUS_JSON="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
@@ -429,7 +584,8 @@ case "$STATE" in
       exit 0
     fi
 
-    node "$REPO_ROOT/scripts/bootstrap.mjs" --device-name "$(scutil --get ComputerName 2>/dev/null || hostname)" --home "$VEX_HOME" >/dev/null
+    begin_setup_action "first-setup"
+    run_owned node "$REPO_ROOT/scripts/bootstrap.mjs" --device-name "$(scutil --get ComputerName 2>/dev/null || hostname)" --home "$VEX_HOME" >/dev/null
 
     say "Checking whether this Mac matches a release-qualified VexLife profile..."
     if ! PLAN_OUTPUT="$(node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --plan-only)"; then
@@ -443,7 +599,7 @@ case "$STATE" in
     fi
 
     say "This Mac is supported. VexLife will now ask before downloading several GB of verified model/runtime files and starting the local model."
-    if ! node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME"; then
+    if ! run_owned node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME"; then
       say "Setup stopped safely before Vex was ready."
       exit 1
     fi
@@ -463,19 +619,19 @@ case "$STATE" in
     read -r CHOICE || true
     CHOICE="$(printf '%s' "$CHOICE" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
     case "$CHOICE" in
-      '' ) run_lifecycle start >/dev/null; open_vex ;;
+      '' ) begin_setup_action "open"; run_lifecycle start >/dev/null; open_vex ;;
       r )
         ask_yes_no "Repair may verify or reacquire required runtime files. Continue?" n || { say "Stopped. No repair was performed."; exit 0; }
-        run_lifecycle repair yes >/dev/null; open_vex
+        begin_setup_action "repair"; run_lifecycle repair yes >/dev/null; open_vex
         ;;
       b )
         ask_yes_no "Rebuild-preserve removes only runtime/transient state, preserves Home/Memory/model cache, and may reacquire runtime files. Continue?" n || { say "Stopped. No rebuild was performed."; exit 0; }
-        run_lifecycle rebuild-preserve yes >/dev/null; open_vex
+        begin_setup_action "rebuild-preserve"; run_lifecycle rebuild-preserve yes >/dev/null; open_vex
         ;;
       u )
         ask_yes_no "Uninstall-preserve stops owned processes and removes runtime/transient state while preserving Home, Memory, conversations, and verified model files. Continue?" n || { say "Stopped. Nothing was uninstalled."; exit 0; }
-        run_lifecycle uninstall-preserve >/dev/null
-        say "VexLife runtime was removed while your Vex Home and preserved data stayed in place."
+        begin_setup_action "uninstall-preserve"; run_lifecycle uninstall-preserve >/dev/null
+        say "VexLife active setup/runtime state was stopped and cleaned while your Vex Home and preserved data stayed in place."
         ;;
       q ) say "Stopped. No changes were made." ;;
       * ) say "That choice is not available for the current VexLife state. Nothing was changed."; exit 1 ;;
@@ -490,16 +646,16 @@ case "$STATE" in
     case "$CHOICE" in
       ''|r )
         ask_yes_no "Repair may verify or reacquire required runtime files. Continue?" n || { say "Stopped. No repair was performed."; exit 0; }
-        run_lifecycle repair yes >/dev/null; open_vex
+        begin_setup_action "repair"; run_lifecycle repair yes >/dev/null; open_vex
         ;;
       b )
         ask_yes_no "Rebuild-preserve keeps Home, Memory, conversations, and verified model cache while rebuilding runtime state. Continue?" n || { say "Stopped. No rebuild was performed."; exit 0; }
-        run_lifecycle rebuild-preserve yes >/dev/null; open_vex
+        begin_setup_action "rebuild-preserve"; run_lifecycle rebuild-preserve yes >/dev/null; open_vex
         ;;
       u )
         ask_yes_no "Uninstall-preserve keeps Home, Memory, conversations, and verified model files. Continue?" n || { say "Stopped. Nothing was uninstalled."; exit 0; }
-        run_lifecycle uninstall-preserve >/dev/null
-        say "VexLife runtime was removed while your Vex Home and preserved data stayed in place."
+        begin_setup_action "uninstall-preserve"; run_lifecycle uninstall-preserve >/dev/null
+        say "VexLife active setup/runtime state was stopped and cleaned while your Vex Home and preserved data stayed in place."
         ;;
       q ) say "Stopped. No changes were made." ;;
       * ) say "That choice is not available for the current VexLife state. Nothing was changed."; exit 1 ;;
