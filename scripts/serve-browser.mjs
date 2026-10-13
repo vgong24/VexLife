@@ -227,6 +227,8 @@ export function createVexLifeBrowserServer(options = {}) {
     companionVoicePlayback = createCompanionVoicePlaybackAdapter(),
     resolveFamilyWorkProjection: callerSuppliedFamilyWorkProjection,
     resolveIntentProjectStatus: callerSuppliedIntentProjectStatus,
+    liveWorkspaceSourceRoot: callerSuppliedLiveWorkspaceSourceRoot,
+    liveWorkspaceConvergence: callerSuppliedLiveWorkspaceConvergence,
     ...coreOptions
   } = options;
   if (callerSuppliedFamilyWorkProjection !== undefined) {
@@ -234,6 +236,12 @@ export function createVexLifeBrowserServer(options = {}) {
   }
   if (callerSuppliedIntentProjectStatus !== undefined) {
     throw new TypeError('Production VexLife browser Intent status projection is source-managed and cannot be caller supplied');
+  }
+  if (
+    callerSuppliedLiveWorkspaceSourceRoot !== undefined ||
+    callerSuppliedLiveWorkspaceConvergence !== undefined
+  ) {
+    throw new TypeError('Production VexLife browser Live Workspace projection is source-managed and cannot be caller supplied');
   }
   const invitationBridge = invitationBridgeOrThrow(relationshipsInvitationProductBridge);
   const resolveFamilyWorkProjection = sourceManagedGenericFollowThroughResolver(
