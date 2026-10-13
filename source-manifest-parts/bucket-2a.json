@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "2a",
+  "files": [
+    {
+      "path": "src/core/heretic-runtime-link.mjs",
+      "mode": "100644",
+      "bytes": 9408,
+      "sha256": "5d1a4a513eda13ddab21b9cbe85abdb9a9ed1d3b1eea774226e6241937db0b2c"
+    }
+  ]
+}

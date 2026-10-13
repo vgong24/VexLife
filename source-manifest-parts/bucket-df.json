@@ -23,8 +23,8 @@
     {
       "path": "src/core/artifact-delivery.mjs",
       "mode": "100644",
-      "bytes": 49172,
-      "sha256": "4f8857bcfe778a5a4a12e9c828193927c9047c1c40d1180e32cab309520c2efb"
+      "bytes": 49161,
+      "sha256": "f077333303af3400740dd86d03e069a4f640e47c63d1d07ded3aa6dc108112d5"
     }
   ]
 }

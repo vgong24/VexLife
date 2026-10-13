@@ -5,8 +5,8 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 4456,
-      "sha256": "838b78c47f06092baf875e6536f9621aba92c18c1848b608b7b72cbb6f2e9c3a"
+      "bytes": 4521,
+      "sha256": "545ed549800eeddf7b4c5f334a57905a619cac9557780e6e523d4f0678047bf2"
     },
     {
       "path": "src/core/feature-construction.mjs",

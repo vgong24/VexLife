@@ -25,7 +25,7 @@ export const ARTIFACT_DELIVERY_FAILURE_CODES = Object.freeze({
 
 const SHA256_RE = /^[0-9a-f]{64}$/u;
 const REF_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,254}$/u;
-const SAFE_ASSET_RE = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,254}$/u;
+const SAFE_ASSET_RE = /^[A-Za-z0-9._+-]{1,255}$/u;
 const WINDOWS_DEVICE_RE = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$/iu;
 const LOCAL_IO_CODES = new Set(['EACCES', 'EPERM', 'ENOSPC', 'EROFS', 'EIO', 'EMFILE', 'ENFILE']);
 const TRANSPORT_CODES = new Set(['ECONNABORTED', 'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_SOCKET']);

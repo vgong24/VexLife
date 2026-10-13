@@ -576,10 +576,11 @@
   {
     "moduleRef": "module.vexlife.core.repository-evidence",
     "path": "src/core/repository-evidence.mjs",
-    "role": "Separates live candidate head, tested checkout or merge, base, branch, upstream and repository identity evidence.",
+    "role": "Separates live candidate head, tested checkout or merge, base, branch, upstream and repository identity evidence, and forms bounded exact local-source observations by composing Source Manifest index identity with byte-sensitive changed worktree evidence.",
     "platformScope": "BUILD_TIME",
     "reads": [
-      "Git worktree and explicit environment receipts"
+      "Git worktree and explicit environment receipts",
+      "module.vexlife.core.source-manifest"
     ],
     "writes": [],
     "loadedBy": [
@@ -589,10 +590,12 @@
     ],
     "tests": [
       "test/orientation.test.mjs",
-      "test/foundation-health.test.mjs"
+      "test/foundation-health.test.mjs",
+      "test/live-source-observation.test.mjs"
     ],
     "changeMap": [
-      ".github/workflows/check.yml"
+      ".github/workflows/check.yml",
+      "src/core/live-workspace-observation.mjs"
     ]
   },
   {
@@ -1371,6 +1374,26 @@
       "reference/browser/evolution/living-journal.css",
       "test/ux-evolution-host.test.mjs",
       "test/ux-evolution.test.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.live-workspace-observation",
+    "path": "src/core/live-workspace-observation.mjs",
+    "role": "Coordinates revisioned read-only Live Workspace convergence over source-owned truth, including the canonical adapter to Repository Evidence local-source observation, preserving semantic no-ops, last-known-good truth and stale-result rejection without becoming an observation or Git truth owner.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.utils",
+      "module.vexlife.core.repository-evidence"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/live-workspace.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/repository-evidence.mjs",
+      "scripts/serve-browser.mjs",
+      "scripts/serve-browser-core.mjs"
     ]
   }
 ]

@@ -21,12 +21,6 @@
       "sha256": "d307fe51b0ed0bee606de19fb809babcf2e087636ba82f25d73173f11fd07084"
     },
     {
-      "path": "docs/VEXLIFE-START-AND-RUNTIME.md",
-      "mode": "100644",
-      "bytes": 12188,
-      "sha256": "74cf95fa2d69a7fb5d69d91d4c168bfc382a2bd3a345668fec63ba91f303f3ce"
-    },
-    {
       "path": "scripts/vex-reboot-auto-reentry-proof.mjs",
       "mode": "100644",
       "bytes": 10545,
