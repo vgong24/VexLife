@@ -29,8 +29,8 @@
     {
       "path": "src/core/repository-evidence.mjs",
       "mode": "100644",
-      "bytes": 32437,
-      "sha256": "c055a97b04b0cc4e9dd6cbe8f2d61bbd4b55df5dcd7c72c38d929e85f6254f92"
+      "bytes": 33675,
+      "sha256": "27ab8af5a51f39c63ba08227eaeb5abcd32e56fcfbcced5a85cfe59b771bdd46"
     },
     {
       "path": "test/validation-evidence.test.mjs",
