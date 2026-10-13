@@ -1,8 +1,6 @@
-import { collectRepositoryEvidence } from './repository-evidence.mjs';
 import { semanticHash } from './utils.mjs';
 
 export const LIVE_WORKSPACE_OBSERVATION_SCHEMA = 'vexlife.live-workspace-observation/v1';
-export const LIVE_WORKSPACE_REPOSITORY_TRUTH_SCHEMA = 'vexlife.live-workspace-repository-truth/v1';
 
 function freeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -25,54 +23,6 @@ function failureCode(error) {
   return typeof error?.code === 'string' && error.code
     ? error.code
     : 'LIVE_WORKSPACE_OBSERVATION_UNAVAILABLE';
-}
-
-export function projectRepositoryLiveWorkspaceTruth(evidence) {
-  if (!evidence || typeof evidence !== 'object' || !evidence.repository || !evidence.git) {
-    throw new TypeError('Live Workspace repository truth requires Repository Evidence');
-  }
-  const core = {
-    schemaVersion: LIVE_WORKSPACE_REPOSITORY_TRUTH_SCHEMA,
-    repository: {
-      slug: evidence.repository.slug ?? null,
-      remoteUrl: evidence.repository.remoteUrl ?? null
-    },
-    git: {
-      checkoutSha: evidence.git.checkoutSha ?? null,
-      branch: evidence.git.branch ?? null,
-      branchSource: evidence.git.branchSource ?? 'UNKNOWN',
-      checkoutKind: evidence.git.checkoutKind ?? null,
-      candidateHeadSha: evidence.git.candidateHeadSha ?? null,
-      candidateTreeSha: evidence.git.candidateTreeSha ?? null,
-      testedMergeSha: evidence.git.testedMergeSha ?? null,
-      baseSha: evidence.git.baseSha ?? null,
-      upstreamRef: evidence.git.upstreamRef ?? null,
-      upstreamSha: evidence.git.upstreamSha ?? null,
-      ahead: evidence.git.ahead ?? null,
-      behind: evidence.git.behind ?? null,
-      workingTree: evidence.git.workingTree ?? 'UNKNOWN',
-      changedPaths: evidence.git.changedPaths ?? null
-    },
-    effects: false,
-    executionAuthority: 'NONE'
-  };
-  return freeze({ ...core, semanticFingerprint: semanticHash(core) });
-}
-
-export function createRepositoryLiveWorkspaceTruthObserver({
-  root,
-  environment = process.env,
-  evidenceCollector = collectRepositoryEvidence
-} = {}) {
-  if (typeof root !== 'string' || root.length === 0) {
-    throw new TypeError('Repository Live Workspace observer requires one source root');
-  }
-  if (typeof evidenceCollector !== 'function') {
-    throw new TypeError('Repository Live Workspace evidenceCollector must be one function');
-  }
-  return async function observeRepositoryTruth() {
-    return projectRepositoryLiveWorkspaceTruth(evidenceCollector(root, environment));
-  };
 }
 
 function heldSnapshot({ revision, lastKnownGood, code, requestSequence, hintRef }) {

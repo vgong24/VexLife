@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  createLiveWorkspaceObservationConvergence,
-  createRepositoryLiveWorkspaceTruthObserver,
-  projectRepositoryLiveWorkspaceTruth
-} from '../src/core/live-workspace-observation.mjs';
+import { createLiveWorkspaceObservationConvergence } from '../src/core/live-workspace-observation.mjs';
 
 function deferred() {
   let resolve;
@@ -17,51 +13,8 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-test('Live Workspace projects Repository Evidence without becoming a second Git truth owner', async () => {
-  const evidence = {
-    repository: {
-      slug: 'vgong24/VexLife',
-      remoteUrl: 'git@github.com:vgong24/VexLife.git'
-    },
-    git: {
-      checkoutSha: 'a'.repeat(40),
-      branch: 'main',
-      branchSource: 'GIT_WORKTREE',
-      checkoutKind: 'BRANCH',
-      candidateHeadSha: 'a'.repeat(40),
-      candidateTreeSha: 'b'.repeat(40),
-      testedMergeSha: null,
-      baseSha: 'a'.repeat(40),
-      upstreamRef: 'origin/main',
-      upstreamSha: 'a'.repeat(40),
-      ahead: 0,
-      behind: 0,
-      workingTree: 'CLEAN',
-      changedPaths: 0
-    }
-  };
-
-  const projected = projectRepositoryLiveWorkspaceTruth(evidence);
-  assert.equal(projected.repository.slug, 'vgong24/VexLife');
-  assert.equal(projected.git.candidateHeadSha, 'a'.repeat(40));
-  assert.equal(projected.effects, false);
-  assert.equal(projected.executionAuthority, 'NONE');
-  assert.match(projected.semanticFingerprint, /^[0-9a-f]{64}$/u);
-
-  const observe = createRepositoryLiveWorkspaceTruthObserver({
-    root: '/source',
-    environment: {},
-    evidenceCollector(root, environment) {
-      assert.equal(root, '/source');
-      assert.deepEqual(environment, {});
-      return evidence;
-    }
-  });
-  assert.deepEqual(await observe(), projected);
-});
-
-test('Live Workspace publishes only semantic changes and preserves last-known-good on failure', async () => {
-  let current = { head: 'a', workingTree: 'CLEAN' };
+test('Live Workspace publishes only semantic truth changes and preserves last-known-good on failure', async () => {
+  let current = { head: 'a', worktreeFingerprint: 'truth-a' };
   let failure = null;
   const convergence = createLiveWorkspaceObservationConvergence({
     async observeTruth() {
@@ -88,20 +41,21 @@ test('Live Workspace publishes only semantic changes and preserves last-known-go
   assert.equal(noOp.state, 'SEMANTIC_NO_OP');
   assert.equal(noOp.published, false);
   assert.equal(noOp.snapshot.revision, 1);
+  assert.equal(noOp.snapshot.hintRef, 'hint.workspace.fs-event');
 
-  current = { head: 'b', workingTree: 'DIRTY' };
+  current = { head: 'b', worktreeFingerprint: 'truth-b' };
   const changed = await convergence.observe({ hintRef: 'hint.workspace.git-event' });
   assert.equal(changed.state, 'PUBLISHED');
   assert.equal(changed.snapshot.revision, 2);
   assert.deepEqual(changed.snapshot.observation, current);
 
-  failure = Object.assign(new Error('temporary observation failure'), { code: 'REPOSITORY_OBSERVATION_FAILED' });
+  failure = Object.assign(new Error('temporary observation failure'), { code: 'SOURCE_TRUTH_OBSERVATION_FAILED' });
   const held = await convergence.observe({ hintRef: 'hint.workspace.fs-event' });
   assert.equal(held.state, 'HELD');
   assert.equal(held.snapshot.state, 'HELD_LAST_KNOWN_GOOD');
   assert.equal(held.snapshot.currentness, 'UNKNOWN');
   assert.equal(held.snapshot.revision, 2);
-  assert.equal(held.snapshot.failureCode, 'REPOSITORY_OBSERVATION_FAILED');
+  assert.equal(held.snapshot.failureCode, 'SOURCE_TRUTH_OBSERVATION_FAILED');
   assert.equal(held.snapshot.observation, null);
   assert.deepEqual(held.snapshot.lastKnownGood.observation, current);
 
@@ -111,6 +65,24 @@ test('Live Workspace publishes only semantic changes and preserves last-known-go
   assert.equal(recovered.snapshot.state, 'CURRENT');
   assert.equal(recovered.snapshot.currentness, 'CURRENT');
   assert.equal(recovered.snapshot.revision, 2);
+});
+
+test('Live Workspace treats change hints as re-observation triggers, not truth', async () => {
+  const truth = { head: 'same', worktreeFingerprint: 'same-bytes' };
+  const convergence = createLiveWorkspaceObservationConvergence({
+    async observeTruth() {
+      return truth;
+    }
+  });
+
+  const first = await convergence.observe({ hintRef: 'hint.workspace.fs-event' });
+  const second = await convergence.observe({ hintRef: 'hint.workspace.git-event' });
+
+  assert.equal(first.state, 'PUBLISHED');
+  assert.equal(second.state, 'SEMANTIC_NO_OP');
+  assert.equal(second.snapshot.revision, 1);
+  assert.deepEqual(second.snapshot.observation, truth);
+  assert.equal(second.snapshot.hintRef, 'hint.workspace.git-event');
 });
 
 test('Live Workspace drops stale slower observations after a newer request owns publication', async () => {
@@ -127,13 +99,13 @@ test('Live Workspace drops stale slower observations after a newer request owns 
   const older = convergence.observe({ hintRef: 'hint.workspace.first' });
   const newer = convergence.observe({ hintRef: 'hint.workspace.second' });
 
-  secondObservation.resolve({ head: 'newer', workingTree: 'CLEAN' });
+  secondObservation.resolve({ head: 'newer', worktreeFingerprint: 'newer-bytes' });
   const newerResult = await newer;
   assert.equal(newerResult.state, 'PUBLISHED');
   assert.equal(newerResult.snapshot.revision, 1);
   assert.equal(newerResult.snapshot.observation.head, 'newer');
 
-  firstObservation.resolve({ head: 'older', workingTree: 'DIRTY' });
+  firstObservation.resolve({ head: 'older', worktreeFingerprint: 'older-bytes' });
   const olderResult = await older;
   assert.equal(olderResult.state, 'STALE_RESULT_DROPPED');
   assert.equal(olderResult.published, false);
