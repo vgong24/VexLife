@@ -12,6 +12,7 @@ export const LOCAL_SOURCE_OBSERVATION_TRUTH_CLASS = 'SOURCE_BOUND_LOCAL_SOURCE_O
 const DEFAULT_LOCAL_SOURCE_OBSERVATION_MAX_PATHS = 256;
 const DEFAULT_LOCAL_SOURCE_OBSERVATION_MAX_FILE_BYTES = 64 * 1024 * 1024;
 const DEFAULT_LOCAL_SOURCE_OBSERVATION_MAX_TOTAL_BYTES = 128 * 1024 * 1024;
+const SAFE_REPOSITORY_SLUG = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
 
 const SAFE_GIT_ENV_KEYS = new Set([
   'PATH', 'Path', 'PATHEXT', 'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'COMSPEC',
@@ -232,7 +233,21 @@ function collectGitChangedPaths(root, maxChangedPaths) {
   });
 }
 
-function boundedFileSha256(filePath, expectedSize, limits, budget) {
+function sameFileIdentity(left, right) {
+  return Boolean(
+    left &&
+    right &&
+    left.dev === right.dev &&
+    left.ino === right.ino &&
+    left.mode === right.mode &&
+    left.size === right.size &&
+    left.mtimeMs === right.mtimeMs &&
+    left.ctimeMs === right.ctimeMs
+  );
+}
+
+function boundedFileSha256(filePath, expectedStat, limits, budget) {
+  const expectedSize = expectedStat.size;
   if (!Number.isSafeInteger(expectedSize) || expectedSize < 0 || expectedSize > limits.maxFileBytes) {
     localSourceObservationFail(
       'LOCAL_SOURCE_OBSERVATION_FILE_LIMIT',
@@ -242,16 +257,35 @@ function boundedFileSha256(filePath, expectedSize, limits, budget) {
   if (budget.bytes + expectedSize > limits.maxTotalBytes) {
     localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_TOTAL_LIMIT', 'local source observation exceeds total byte limit');
   }
+
+  const noFollow = Number.isInteger(fs.constants.O_NOFOLLOW) ? fs.constants.O_NOFOLLOW : 0;
+  let descriptor;
+  try {
+    descriptor = fs.openSync(filePath, fs.constants.O_RDONLY | noFollow);
+  } catch (error) {
+    if (error?.code === 'ELOOP' || error?.code === 'EMLINK') {
+      localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_RACE', 'local source observation path changed before open');
+    }
+    throw error;
+  }
+
   const hash = crypto.createHash('sha256');
   const buffer = Buffer.allocUnsafe(64 * 1024);
   let observed = 0;
-  const descriptor = fs.openSync(filePath, 'r');
   try {
+    const openedStat = fs.fstatSync(descriptor);
+    if (!openedStat.isFile() || !sameFileIdentity(expectedStat, openedStat)) {
+      localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_RACE', 'local source observation descriptor identity changed before read');
+    }
     while (observed < expectedSize) {
       const bytes = fs.readSync(descriptor, buffer, 0, Math.min(buffer.length, expectedSize - observed), null);
       if (bytes === 0) break;
       hash.update(buffer.subarray(0, bytes));
       observed += bytes;
+    }
+    const finalDescriptorStat = fs.fstatSync(descriptor);
+    if (!sameFileIdentity(openedStat, finalDescriptorStat)) {
+      localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_RACE', 'local source observation descriptor changed during read');
     }
   } finally {
     fs.closeSync(descriptor);
@@ -281,7 +315,7 @@ function observedWorktreeRecord(root, relativePath, limits, budget) {
       localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_LIMIT', 'local source observation symlink exceeds byte limit: ' + relativePath);
     }
     const after = fs.lstatSync(target);
-    if (!after.isSymbolicLink() || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs) {
+    if (!after.isSymbolicLink() || !sameFileIdentity(stat, after)) {
       localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_RACE', 'local source observation symlink changed during read: ' + relativePath);
     }
     budget.bytes += bytes.length;
@@ -301,9 +335,9 @@ function observedWorktreeRecord(root, relativePath, limits, budget) {
     );
   }
 
-  const result = boundedFileSha256(target, stat.size, limits, budget);
+  const result = boundedFileSha256(target, stat, limits, budget);
   const after = fs.lstatSync(target);
-  if (!after.isFile() || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs) {
+  if (!after.isFile() || !sameFileIdentity(stat, after)) {
     localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_RACE', 'local source observation file changed during read: ' + relativePath);
   }
   return freeze({
@@ -345,8 +379,18 @@ function localSourceBasis(root, environment, maxChangedPaths) {
     { label: 'Git exact index-stage inventory' }
   ).stdout;
 
+  const rawSlug = repository.repository.slug ?? null;
+  const safeSlug = typeof rawSlug === 'string' && SAFE_REPOSITORY_SLUG.test(rawSlug) ? rawSlug : null;
+  const rawRemoteUrl = repository.repository.remoteUrl ?? null;
+  const repositoryIdentity = freeze({
+    slug: safeSlug,
+    remoteIdentitySha256: safeSlug === null && typeof rawRemoteUrl === 'string' && rawRemoteUrl
+      ? sha256(rawRemoteUrl)
+      : null
+  });
+
   const core = {
-    repositorySlug: repository.repository.slug ?? null,
+    repository: repositoryIdentity,
     git: {
       checkoutSha: repository.git.checkoutSha,
       branch: repository.git.branch,
@@ -416,7 +460,7 @@ export function collectLocalSourceObservation(root, environment = process.env, {
     schemaVersion: LOCAL_SOURCE_OBSERVATION_SCHEMA,
     truthClass: LOCAL_SOURCE_OBSERVATION_TRUTH_CLASS,
     currentness: 'CURRENT',
-    repositorySlug: basisAfter.repositorySlug,
+    repository: basisAfter.repository,
     git: basisAfter.git,
     source: basisAfter.source,
     changes: basisAfter.changes,

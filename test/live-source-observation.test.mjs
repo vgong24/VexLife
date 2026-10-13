@@ -93,6 +93,25 @@ test('local source observation distinguishes index state, unstaged state, and un
   }
 });
 
+test('local source observation hashes non-GitHub remote identity without exposing local host paths', () => {
+  const root = fixtureRepository();
+  const remote = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-local-source-remote-'));
+  try {
+    git(remote, ['init', '--bare']);
+    git(root, ['remote', 'add', 'origin', remote]);
+    const observed = collectLocalSourceObservation(root);
+
+    assert.equal(observed.repository.slug, null);
+    assert.match(observed.repository.remoteIdentitySha256, /^[0-9a-f]{64}$/u);
+    const serialized = JSON.stringify(observed);
+    assert.equal(serialized.includes(root), false);
+    assert.equal(serialized.includes(remote), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(remote, { recursive: true, force: true });
+  }
+});
+
 test('local source observation ignores Git-ignored ambient files and fails closed on truncated change sets', () => {
   const root = fixtureRepository();
   try {
