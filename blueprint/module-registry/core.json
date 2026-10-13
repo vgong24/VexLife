@@ -1372,5 +1372,24 @@
       "test/ux-evolution-host.test.mjs",
       "test/ux-evolution.test.mjs"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.live-workspace-observation",
+    "path": "src/core/live-workspace-observation.mjs",
+    "role": "Coordinates revisioned read-only Live Workspace convergence over a caller-supplied source-owned truth observer, preserving semantic no-ops, last-known-good truth and stale-result rejection without becoming an observation or Git truth owner.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/live-workspace.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/repository-evidence.mjs",
+      "scripts/serve-browser.mjs",
+      "scripts/serve-browser-core.mjs"
+    ]
   }
 ]
