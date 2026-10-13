@@ -29,8 +29,8 @@
     {
       "path": "src/core/refinement-current-runtime.mjs",
       "mode": "100644",
-      "bytes": 1910,
-      "sha256": "48baec51afed23ac85304e3caa8bfdbf6f8988ad9f1ea8711475e6c426c52192"
+      "bytes": 1986,
+      "sha256": "1cd8fdb020524a0879513ace26f00fb4182f0217ea5fc65b1aeb4a59e92c8989"
     },
     {
       "path": "test/furnishing.test.mjs",

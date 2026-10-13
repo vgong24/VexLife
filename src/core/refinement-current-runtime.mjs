@@ -38,12 +38,15 @@ export function readRefinementCurrentProjection({
   const trust = trustSnapshotFor(sources, trustSnapshot);
   const registeredProcessRefs = (sources.factory.processes ?? []).map((item) => item.processRef);
   const registeredRoleRefs = (sources.blueprint.roles ?? []).map((item) => item.roleRef);
-  const intentStatusProjections = runtime.workgraphs.map((graph) => projectIntentStatus(graph, {
-    registry: sources.intentRegistry,
-    registeredProcessRefs,
-    registeredRoleRefs,
-    trustSnapshot: trust,
-    recentLimit
+  const intentStatusProjections = runtime.workgraphs.map((graph) => ({
+    ...projectIntentStatus(graph, {
+      registry: sources.intentRegistry,
+      registeredProcessRefs,
+      registeredRoleRefs,
+      trustSnapshot: trust,
+      recentLimit
+    }),
+    graphFingerprint: graph.semanticFingerprint
   }));
 
   return projectRefinementCurrent({

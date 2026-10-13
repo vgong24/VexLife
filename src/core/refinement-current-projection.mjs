@@ -36,6 +36,13 @@ function stableRefs(value, label) {
   return refs;
 }
 
+function exactFingerprint(value, label) {
+  if (typeof value !== 'string' || !/^[0-9a-f]{64}$/u.test(value)) {
+    fail('REFINEMENT_CURRENT_INPUT_INVALID', `${label} must be one exact semantic fingerprint`);
+  }
+  return value;
+}
+
 function compactNode(node, label) {
   if (!node || typeof node !== 'object' || Array.isArray(node)) {
     fail('REFINEMENT_CURRENT_INPUT_INVALID', `${label} must be one Intent node projection`);
@@ -98,6 +105,7 @@ function compactStatus(status, index) {
     : Object.freeze([]);
   return Object.freeze({
     graphRef: stableRef(status.graphRef, `${label}.graphRef`),
+    graphFingerprint: exactFingerprint(status.graphFingerprint, `${label}.graphFingerprint`),
     intentRef: stableRef(status.intentRef, `${label}.intentRef`),
     validationState: stableRef(status.state, `${label}.state`),
     active: mapNodes('whatIsHappeningNow'),
@@ -119,9 +127,10 @@ function compactStatus(status, index) {
   });
 }
 
-function candidate(graphRef, node, disposition) {
+function candidate(graph, node, disposition) {
   return Object.freeze({
-    graphRef,
+    graphRef: graph.graphRef,
+    graphFingerprint: graph.graphFingerprint,
     workNodeRef: node.workNodeRef,
     disposition,
     state: node.state,
@@ -140,7 +149,20 @@ function candidateSort(left, right) {
     || left.workNodeRef.localeCompare(right.workNodeRef);
 }
 
-function continuationHint(candidates) {
+function continuationHint(candidates, graphs) {
+  const invalid = graphs.filter((graph) => graph.validationErrors.length > 0);
+  if (invalid.length) {
+    return Object.freeze({
+      state: 'REPAIR_REQUIRED',
+      reason: 'INVALID_CURRENT_WORKGRAPH',
+      graphRef: invalid.length === 1 ? invalid[0].graphRef : null,
+      workNodeRef: null,
+      candidateRefs: Object.freeze([]),
+      invalidGraphRefs: Object.freeze(invalid.map((graph) => graph.graphRef)),
+      authority: 'NO_EXECUTION_AUTHORITY'
+    });
+  }
+
   const active = candidates.filter((item) => item.disposition === 'ACTIVE');
   if (active.length === 1) {
     return Object.freeze({
@@ -222,11 +244,11 @@ export function projectRefinementCurrent({
 
   const candidates = [];
   for (const graph of graphs) {
-    for (const node of graph.active) candidates.push(candidate(graph.graphRef, node, 'ACTIVE'));
-    for (const node of graph.needsHuman) candidates.push(candidate(graph.graphRef, node, 'HUMAN_ATTENTION'));
-    for (const node of graph.ready) candidates.push(candidate(graph.graphRef, node, 'READY'));
-    for (const node of graph.blocked) candidates.push(candidate(graph.graphRef, node, 'BLOCKED'));
-    for (const node of graph.waiting) candidates.push(candidate(graph.graphRef, node, 'WAITING'));
+    for (const node of graph.active) candidates.push(candidate(graph, node, 'ACTIVE'));
+    for (const node of graph.needsHuman) candidates.push(candidate(graph, node, 'HUMAN_ATTENTION'));
+    for (const node of graph.ready) candidates.push(candidate(graph, node, 'READY'));
+    for (const node of graph.blocked) candidates.push(candidate(graph, node, 'BLOCKED'));
+    for (const node of graph.waiting) candidates.push(candidate(graph, node, 'WAITING'));
   }
   candidates.sort(candidateSort);
 
@@ -235,7 +257,7 @@ export function projectRefinementCurrent({
 
   return Object.freeze({
     schemaVersion: REFINEMENT_CURRENT_PROJECTION_SCHEMA,
-    state: 'CURRENT',
+    state: invalidGraphRefs.length ? 'ATTENTION' : 'CURRENT',
     currentness: 'CURRENT',
     sourceRef: REFINEMENT_CURRENT_PROJECTION_SOURCE_REF,
     runtimeSourceRef: exactRuntimeSourceRef,
@@ -249,7 +271,7 @@ export function projectRefinementCurrent({
       blocked: candidates.filter((item) => item.disposition === 'BLOCKED').length,
       waiting: candidates.filter((item) => item.disposition === 'WAITING').length
     }),
-    continuationHint: continuationHint(candidates),
+    continuationHint: continuationHint(candidates, graphs),
     continuationCandidates: Object.freeze(candidates),
     graphHealth: Object.freeze({
       invalidGraphRefs: Object.freeze(invalidGraphRefs),

@@ -8,6 +8,7 @@ import {
 } from '../src/core/refinement-current-projection.mjs';
 
 const RUNTIME_SOURCE = 'projection.vexlife.generic-follow-through-runtime.001';
+const GRAPH_FINGERPRINT = 'a'.repeat(64);
 
 function node(ref, state, overrides = {}) {
   return {
@@ -34,6 +35,7 @@ function status(suffix, overrides = {}) {
     state: 'PLAN_VALIDATED',
     currentness: 'CURRENT',
     graphRef,
+    graphFingerprint: GRAPH_FINGERPRINT,
     intentRef,
     whatIsHappeningNow: [],
     ready: [],
@@ -61,7 +63,7 @@ function status(suffix, overrides = {}) {
   };
 }
 
-test('RCP-01 one active node becomes the bounded no-authority continuation hint', () => {
+test('REFCUR-01 one active node becomes the bounded no-authority continuation hint', () => {
   const active = node('work.vexlife.refinement.live-workspace', 'RUNNING');
   const projection = projectRefinementCurrent({
     runtimeSourceRef: RUNTIME_SOURCE,
@@ -79,6 +81,8 @@ test('RCP-01 one active node becomes the bounded no-authority continuation hint'
   assert.equal(projection.schemaVersion, REFINEMENT_CURRENT_PROJECTION_SCHEMA);
   assert.equal(projection.sourceRef, REFINEMENT_CURRENT_PROJECTION_SOURCE_REF);
   assert.equal(projection.runtimeSourceRef, RUNTIME_SOURCE);
+  assert.equal(projection.graphs[0].graphFingerprint, GRAPH_FINGERPRINT);
+  assert.equal(projection.continuationCandidates[0].graphFingerprint, GRAPH_FINGERPRINT);
   assert.equal(projection.effects, false);
   assert.equal(projection.executionAuthority, 'NONE');
   assert.deepEqual(projection.counts, {
@@ -99,7 +103,7 @@ test('RCP-01 one active node becomes the bounded no-authority continuation hint'
   });
 });
 
-test('RCP-02 multiple active nodes remain explicitly ambiguous instead of inventing foreground', () => {
+test('REFCUR-02 multiple active nodes remain explicitly ambiguous instead of inventing foreground', () => {
   const first = node('work.vexlife.refinement.first', 'RUNNING');
   const second = node('work.vexlife.refinement.second', 'VERIFYING');
   const projection = projectRefinementCurrent({
@@ -120,7 +124,7 @@ test('RCP-02 multiple active nodes remain explicitly ambiguous instead of invent
   ]);
 });
 
-test('RCP-03 bounded human attention outranks ready work when no work is active', () => {
+test('REFCUR-03 bounded human attention outranks ready work when no work is active', () => {
   const human = node('work.vexlife.refinement.human', 'WAITING_HUMAN', {
     waitingReason: 'WAITING_HUMAN',
     requiredHumanDecisionRef: 'decision.refinement.choose-path'
@@ -141,25 +145,42 @@ test('RCP-03 bounded human attention outranks ready work when no work is active'
   assert.equal(projection.continuationCandidates[1].disposition, 'READY');
 });
 
-test('RCP-04 validation health is visible without making the projection itself stale', () => {
+test('REFCUR-04 invalid current Workgraph remains current evidence but blocks continuation until repair', () => {
+  const unsafeActive = node('work.vexlife.refinement.invalid-active', 'RUNNING');
   const projection = projectRefinementCurrent({
     runtimeSourceRef: RUNTIME_SOURCE,
     intentStatusProjections: [status('health', {
+      whatIsHappeningNow: [unsafeActive],
       validation: {
         errors: ['WORKGRAPH:test-error'],
         attentions: ['test-attention'],
         topologicalOrder: []
+      },
+      nextSafeAction: {
+        action: 'REPAIR_INVALID_WORKGRAPH',
+        workNodeRef: null,
+        reason: 'WORKGRAPH:test-error',
+        authority: 'NO_EXECUTION_AUTHORITY'
       }
     })]
   });
 
-  assert.equal(projection.state, 'CURRENT');
+  assert.equal(projection.state, 'ATTENTION');
   assert.equal(projection.currentness, 'CURRENT');
   assert.deepEqual(projection.graphHealth.invalidGraphRefs, ['intent-workgraph.refinement.health']);
   assert.deepEqual(projection.graphHealth.attentionGraphRefs, ['intent-workgraph.refinement.health']);
+  assert.deepEqual(projection.continuationHint, {
+    state: 'REPAIR_REQUIRED',
+    reason: 'INVALID_CURRENT_WORKGRAPH',
+    graphRef: 'intent-workgraph.refinement.health',
+    workNodeRef: null,
+    candidateRefs: [],
+    invalidGraphRefs: ['intent-workgraph.refinement.health'],
+    authority: 'NO_EXECUTION_AUTHORITY'
+  });
 });
 
-test('RCP-05 caller cannot smuggle execution authority through a current-work projection', () => {
+test('REFCUR-05 caller cannot smuggle execution authority through a current-work projection', () => {
   assert.throws(() => projectRefinementCurrent({
     runtimeSourceRef: RUNTIME_SOURCE,
     intentStatusProjections: [status('authority', {
@@ -173,12 +194,17 @@ test('RCP-05 caller cannot smuggle execution authority through a current-work pr
   }), /NO_EXECUTION_AUTHORITY/);
 });
 
-test('RCP-06 duplicate graph identity fails closed and empty current work stays explicit', () => {
+test('REFCUR-06 duplicate graph identity fails closed and empty current work stays explicit', () => {
   const duplicate = status('duplicate');
   assert.throws(() => projectRefinementCurrent({
     runtimeSourceRef: RUNTIME_SOURCE,
     intentStatusProjections: [duplicate, structuredClone(duplicate)]
   }), /duplicate graphRef/);
+
+  assert.throws(() => projectRefinementCurrent({
+    runtimeSourceRef: RUNTIME_SOURCE,
+    intentStatusProjections: [status('fingerprint', { graphFingerprint: 'stale' })]
+  }), /semantic fingerprint/);
 
   const empty = projectRefinementCurrent({
     runtimeSourceRef: RUNTIME_SOURCE,
