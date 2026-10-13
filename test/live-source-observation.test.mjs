@@ -93,22 +93,39 @@ test('local source observation distinguishes index state, unstaged state, and un
   }
 });
 
-test('local source observation hashes non-GitHub remote identity without exposing local host paths', () => {
+test('local source observation requires actual GitHub remote provenance before emitting owner/repo identity', () => {
   const root = fixtureRepository();
-  const remote = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-local-source-remote-'));
+  const remoteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-local-source-remote-'));
   try {
-    git(remote, ['init', '--bare']);
-    git(root, ['remote', 'add', 'origin', remote]);
-    const observed = collectLocalSourceObservation(root);
+    const deceptiveLocal = path.join(remoteRoot, 'github.com', 'fake-owner', 'fake-repo.git');
+    fs.mkdirSync(path.dirname(deceptiveLocal), { recursive: true });
+    git(deceptiveLocal, ['init', '--bare']);
+    git(root, ['remote', 'add', 'origin', deceptiveLocal]);
 
-    assert.equal(observed.repository.slug, null);
-    assert.match(observed.repository.remoteIdentitySha256, /^[0-9a-f]{64}$/u);
-    const serialized = JSON.stringify(observed);
+    const localObserved = collectLocalSourceObservation(root);
+    assert.equal(localObserved.repository.slug, null);
+    assert.match(localObserved.repository.remoteIdentitySha256, /^[0-9a-f]{64}$/u);
+    let serialized = JSON.stringify(localObserved);
     assert.equal(serialized.includes(root), false);
-    assert.equal(serialized.includes(remote), false);
+    assert.equal(serialized.includes(remoteRoot), false);
+
+    git(root, ['remote', 'set-url', 'origin', 'https://evilgithub.com/fake-owner/fake-repo.git']);
+    const foreignObserved = collectLocalSourceObservation(root);
+    assert.equal(foreignObserved.repository.slug, null);
+    assert.match(foreignObserved.repository.remoteIdentitySha256, /^[0-9a-f]{64}$/u);
+
+    git(root, ['remote', 'set-url', 'origin', 'https://github.com/vgong24/VexLife.git']);
+    const githubObserved = collectLocalSourceObservation(root);
+    assert.equal(githubObserved.repository.slug, 'vgong24/VexLife');
+    assert.equal(githubObserved.repository.remoteIdentitySha256, null);
+
+    git(root, ['remote', 'set-url', 'origin', 'git@github.com:vgong24/VexLife.git']);
+    const scpObserved = collectLocalSourceObservation(root);
+    assert.equal(scpObserved.repository.slug, 'vgong24/VexLife');
+    assert.equal(scpObserved.repository.remoteIdentitySha256, null);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
-    fs.rmSync(remote, { recursive: true, force: true });
+    fs.rmSync(remoteRoot, { recursive: true, force: true });
   }
 });
 

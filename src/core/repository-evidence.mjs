@@ -13,6 +13,7 @@ const DEFAULT_LOCAL_SOURCE_OBSERVATION_MAX_PATHS = 256;
 const DEFAULT_LOCAL_SOURCE_OBSERVATION_MAX_FILE_BYTES = 64 * 1024 * 1024;
 const DEFAULT_LOCAL_SOURCE_OBSERVATION_MAX_TOTAL_BYTES = 128 * 1024 * 1024;
 const SAFE_REPOSITORY_SLUG = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
+const SAFE_REPOSITORY_COMPONENT = /^[A-Za-z0-9_.-]+$/u;
 
 const SAFE_GIT_ENV_KEYS = new Set([
   'PATH', 'Path', 'PATHEXT', 'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'COMSPEC',
@@ -349,6 +350,41 @@ function observedWorktreeRecord(root, relativePath, limits, budget) {
   });
 }
 
+function githubRepositorySlugFromRemote(remoteUrl) {
+  if (typeof remoteUrl !== 'string' || remoteUrl.length === 0) return null;
+
+  const scp = /^git@github\.com:([^/]+)\/([^/]+)$/iu.exec(remoteUrl);
+  if (scp) {
+    const owner = scp[1];
+    const repo = scp[2].replace(/\.git$/iu, '');
+    return SAFE_REPOSITORY_COMPONENT.test(owner) && SAFE_REPOSITORY_COMPONENT.test(repo)
+      ? owner + '/' + repo
+      : null;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(remoteUrl);
+  } catch {
+    return null;
+  }
+  if (parsed.hostname.toLowerCase() !== 'github.com') return null;
+  if (!['https:', 'http:', 'ssh:', 'git:'].includes(parsed.protocol)) return null;
+
+  const parts = parsed.pathname.split('/').filter(Boolean);
+  if (parts.length !== 2) return null;
+  let owner;
+  let repo;
+  try {
+    owner = decodeURIComponent(parts[0]);
+    repo = decodeURIComponent(parts[1]).replace(/\.git$/iu, '');
+  } catch {
+    return null;
+  }
+  if (!SAFE_REPOSITORY_COMPONENT.test(owner) || !SAFE_REPOSITORY_COMPONENT.test(repo)) return null;
+  return owner + '/' + repo;
+}
+
 function localSourceBasis(root, environment, maxChangedPaths) {
   const repository = collectRepositoryEvidence(root, environment);
   const manifest = buildSourceManifest(root, { maxPathDiagnostics: maxChangedPaths });
@@ -379,9 +415,11 @@ function localSourceBasis(root, environment, maxChangedPaths) {
     { label: 'Git exact index-stage inventory' }
   ).stdout;
 
-  const rawSlug = repository.repository.slug ?? null;
-  const safeSlug = typeof rawSlug === 'string' && SAFE_REPOSITORY_SLUG.test(rawSlug) ? rawSlug : null;
   const rawRemoteUrl = repository.repository.remoteUrl ?? null;
+  const safeSlug = githubRepositorySlugFromRemote(rawRemoteUrl);
+  if (safeSlug !== null && !SAFE_REPOSITORY_SLUG.test(safeSlug)) {
+    localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_REPOSITORY_IDENTITY_INVALID', 'derived GitHub repository identity is invalid');
+  }
   const repositoryIdentity = freeze({
     slug: safeSlug,
     remoteIdentitySha256: safeSlug === null && typeof rawRemoteUrl === 'string' && rawRemoteUrl
