@@ -9,6 +9,12 @@
       "sha256": "813122473c1cd5915426588df9a4369b6ab4a20a2bfdbee7ce0d163a763c5a25"
     },
     {
+      "path": "src/core/refinement-current-projection.mjs",
+      "mode": "100644",
+      "bytes": 12003,
+      "sha256": "18e599caec8cfa989770177543f4dbc7cb2b519fedce6034958bd8b8f7ce86e9"
+    },
+    {
       "path": "test/companion-auto-reentry-policy.test.mjs",
       "mode": "100644",
       "bytes": 9275,

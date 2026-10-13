@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 1244,
       "sha256": "562a7891eed3c30472da049cceae329ae72a9bf2022a7e6f1ceb39e5a113fe87"
+    },
+    {
+      "path": "test/refinement-current-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 7731,
+      "sha256": "1b34ecbeee2730d1524db3971ae50c616f4b0425710fe743f596bcf75d91db9e"
     }
   ]
 }
