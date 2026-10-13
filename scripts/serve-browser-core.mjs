@@ -82,11 +82,13 @@ import { createIntentSchedulerState } from '../src/core/state.mjs';
 import { projectConcernAggregate } from '../src/core/concern-watch.mjs';
 import { FAMILY_SECURITY_AWARENESS_SCHEMA } from '../src/core/family-security-projection.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
+import { createLocalSourceLiveWorkspaceConvergence } from '../src/core/live-workspace-observation.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
 const home = path.resolve(process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.vexlife'));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
+export const BROWSER_LIVE_WORKSPACE_CURRENT_PATH = '/api/v1/workspace/current';
 export const BROWSER_COMPANION_AVAILABILITY_PATH = '/api/v1/companion/availability';
 export const BROWSER_COMPANION_RECOVERY_ACTION_PATH = '/api/v1/companion/recovery-action';
 export const BROWSER_COMPANION_RECOVERY_ACTION_MAX_BODY_BYTES = 4 * 1024;
@@ -1284,7 +1286,9 @@ export async function resolveCurrentFamilyRoomBootstrap({
   resolveAuthority,
   nowProvider,
   resolveFamilyWorkProjection = null,
-  resolveFamilySecurityProjection = null
+  resolveFamilySecurityProjection = null,
+  liveWorkspaceSourceRoot = root,
+  liveWorkspaceConvergence = null
 } = {}) {
   let authority;
   try {
@@ -1576,9 +1580,26 @@ export function createVexLifeBrowserServer({
     resolveCompanionRuntimeObservation,
     availabilityCompiler: companionAvailabilityCompiler
   });
+  const liveWorkspace = liveWorkspaceConvergence ?? createLocalSourceLiveWorkspaceConvergence({
+    sourceRoot: liveWorkspaceSourceRoot
+  });
+  if (!liveWorkspace || typeof liveWorkspace.observe !== 'function' || typeof liveWorkspace.snapshot !== 'function') {
+    throw new TypeError('Live Workspace current projection requires one convergence owner');
+  }
   return http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url, `http://${request.headers.host || `127.0.0.1:${port}`}`);
+
+      if (url.pathname === BROWSER_LIVE_WORKSPACE_CURRENT_PATH) {
+        if (request.method !== 'GET') {
+          response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        const outcome = await liveWorkspace.observe({ hintRef: 'hint.workspace.http-current' });
+        sendJson(response, 200, outcome.snapshot);
+        return;
+      }
 
       if (url.pathname === BROWSER_COMPANION_AVAILABILITY_PATH) {
         if (request.method !== 'GET') {
