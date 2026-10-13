@@ -98,7 +98,7 @@ test('local source observation requires actual GitHub remote provenance before e
   const remoteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-local-source-remote-'));
   try {
     const deceptiveLocal = path.join(remoteRoot, 'github.com', 'fake-owner', 'fake-repo.git');
-    fs.mkdirSync(path.dirname(deceptiveLocal), { recursive: true });
+    fs.mkdirSync(deceptiveLocal, { recursive: true });
     git(deceptiveLocal, ['init', '--bare']);
     git(root, ['remote', 'add', 'origin', deceptiveLocal]);
 
