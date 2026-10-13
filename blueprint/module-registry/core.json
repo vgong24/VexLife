@@ -1386,9 +1386,12 @@
       "module.vexlife.core.repository-evidence"
     ],
     "writes": [],
-    "loadedBy": [],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
     "tests": [
-      "test/live-workspace.test.mjs"
+      "test/live-workspace.test.mjs",
+      "test/browser-live-workspace-current-http-route.test.mjs"
     ],
     "changeMap": [
       "src/core/repository-evidence.mjs",
