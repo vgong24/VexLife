@@ -1,3 +1,4 @@
+import { collectLocalSourceObservation } from './repository-evidence.mjs';
 import { semanticHash } from './utils.mjs';
 
 export const LIVE_WORKSPACE_OBSERVATION_SCHEMA = 'vexlife.live-workspace-observation/v1';
@@ -62,6 +63,31 @@ function currentSnapshot({ revision, requestSequence, hintRef, observationFinger
     failureCode: null,
     effects: false,
     executionAuthority: 'NONE'
+  });
+}
+
+export function createLocalSourceLiveWorkspaceConvergence({
+  sourceRoot,
+  environment = process.env,
+  observationOptions = {}
+} = {}) {
+  if (typeof sourceRoot !== 'string' || sourceRoot.length === 0) {
+    throw new TypeError('Local-source Live Workspace convergence requires one sourceRoot');
+  }
+  if (!environment || typeof environment !== 'object' || Array.isArray(environment)) {
+    throw new TypeError('Local-source Live Workspace environment must be one object');
+  }
+  if (!observationOptions || typeof observationOptions !== 'object' || Array.isArray(observationOptions)) {
+    throw new TypeError('Local-source Live Workspace observationOptions must be one object');
+  }
+
+  const environmentSnapshot = Object.freeze({ ...environment });
+  const optionsSnapshot = Object.freeze(structuredClone(observationOptions));
+
+  return createLiveWorkspaceObservationConvergence({
+    observeTruth() {
+      return collectLocalSourceObservation(sourceRoot, environmentSnapshot, optionsSnapshot);
+    }
   });
 }
 
