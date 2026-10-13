@@ -576,10 +576,11 @@
   {
     "moduleRef": "module.vexlife.core.repository-evidence",
     "path": "src/core/repository-evidence.mjs",
-    "role": "Separates live candidate head, tested checkout or merge, base, branch, upstream and repository identity evidence.",
+    "role": "Separates live candidate head, tested checkout or merge, base, branch, upstream and repository identity evidence, and forms bounded exact local-source observations by composing Source Manifest index identity with byte-sensitive changed worktree evidence.",
     "platformScope": "BUILD_TIME",
     "reads": [
-      "Git worktree and explicit environment receipts"
+      "Git worktree and explicit environment receipts",
+      "module.vexlife.core.source-manifest"
     ],
     "writes": [],
     "loadedBy": [
@@ -589,10 +590,12 @@
     ],
     "tests": [
       "test/orientation.test.mjs",
-      "test/foundation-health.test.mjs"
+      "test/foundation-health.test.mjs",
+      "test/live-source-observation.test.mjs"
     ],
     "changeMap": [
-      ".github/workflows/check.yml"
+      ".github/workflows/check.yml",
+      "src/core/live-workspace-observation.mjs"
     ]
   },
   {
