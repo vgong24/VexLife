@@ -5,8 +5,16 @@ import { semanticHash, writeJson } from './utils.mjs';
 import { validateSemanticRelay } from './conversation.mjs';
 import { createContextLease } from './context-lease.mjs';
 import { assertCurrentLease } from './scheduler-runtime-trust.mjs';
-import { normalizeModelRuntimeResponse } from './model-runtime-adapter.mjs';
-import { formModelRuntimeInvocationEvidence, formModelTurnWitness, verifyModelTurnWitness } from './model-turn-witness.mjs';
+import {
+  LivedCompanionConnectionError,
+  invokeLivedCompanionEndpoint,
+  isLivedCompanionLoopbackHost,
+  sanitizeEndpointOrigin,
+  validateLivedCompanionEndpointProfile
+} from './lived-companion-connection.mjs';
+import { formModelTurnWitness, verifyModelTurnWitness } from './model-turn-witness.mjs';
+
+export { sanitizeEndpointOrigin };
 
 export const LIVED_COMPANION_FAILURE_CODES = Object.freeze([
   'HOME_NOT_INITIALIZED',
@@ -462,29 +470,6 @@ function verifyContentAddressedReceipt(receipt, hashField, code, label) {
     fail(code, `${label} content hash does not match`);
   }
   return receipt;
-}
-
-function isLoopbackHost(hostname) {
-  const normalized = String(hostname).toLowerCase().replace(/^\[|\]$/gu, '');
-  return normalized === '127.0.0.1' || normalized === '::1';
-}
-
-export function sanitizeEndpointOrigin(endpoint) {
-  const parsed = new URL(endpoint);
-  parsed.username = '';
-  parsed.password = '';
-  parsed.search = '';
-  parsed.hash = '';
-  return parsed.origin;
-}
-
-function endpointRequestUrl(endpoint) {
-  const base = new URL(endpoint);
-  const prefix = base.pathname.endsWith('/') ? base.pathname : `${base.pathname}/`;
-  base.pathname = `${prefix}v1/chat/completions`.replace(/\/{2,}/gu, '/');
-  base.search = '';
-  base.hash = '';
-  return base;
 }
 
 function homePaths(home, companionLineageRef, threadRef) {
@@ -2299,26 +2284,13 @@ export async function requestLivedCompanionInference({
   if (promptContextMaterialization !== null && familyPromptContextMaterialization !== null) {
     promptContextFailure('direct Companion and Family prompt materializations are mutually exclusive');
   }
-  if (
-    !endpointProfile?.admitted ||
-    !isNonEmptyString(endpointProfile.profileRef) ||
-    !isNonEmptyString(endpointProfile.endpoint) ||
-    (
-      endpointProfile.model !== undefined &&
-      endpointProfile.model !== null &&
-      !isNonEmptyString(endpointProfile.model)
-    )
-  ) {
-    fail('ENDPOINT_PROFILE_NOT_ADMITTED', 'an admitted endpoint profile with string identity and endpoint metadata is required');
-  }
-  let parsed;
   try {
-    parsed = new URL(endpointProfile.endpoint);
-  } catch {
-    fail('ENDPOINT_PROFILE_NOT_ADMITTED', 'endpoint profile URL is invalid');
-  }
-  if (!isLoopbackHost(parsed.hostname)) {
-    fail('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'G01 accepts loopback endpoints only; non-loopback use requires a separately admitted adapter');
+    validateLivedCompanionEndpointProfile(endpointProfile);
+  } catch (error) {
+    if (error instanceof LivedCompanionConnectionError) {
+      fail(error.code, error.message, error.details ?? null);
+    }
+    throw error;
   }
   const trusted = promptContextMaterialization !== null
     ? await canonicalTrustedPromptMaterialization(promptContextMaterialization, requestContent)
@@ -2339,78 +2311,31 @@ export async function requestLivedCompanionInference({
         ...(supplementalRequestContent === null ? [] : [{ role: 'user', content: supplementalRequestContent }])
       ]
     : [{ role: 'user', content: requestContent }];
-  const requestPayload = {
-    model: endpointProfile.model || 'bounded-loopback-proof',
-    messages: outboundMessages
-  };
-  const requestBody = JSON.stringify(requestPayload);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let connection;
   try {
-    const headers = { 'content-type': 'application/json' };
-    if (inMemoryAuthorization) headers.authorization = inMemoryAuthorization;
-    const response = await fetch(endpointRequestUrl(endpointProfile.endpoint), {
-      method: 'POST',
-      headers,
-      body: requestBody,
-      signal: controller.signal,
-      redirect: 'manual'
+    connection = await invokeLivedCompanionEndpoint({
+      endpointProfile,
+      messages: outboundMessages,
+      inMemoryAuthorization,
+      timeoutMs
     });
-    if (response.status >= 300 && response.status < 400) {
-      fail('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'G01 rejects endpoint redirects because the redirected destination is not part of the admitted loopback effect', { status: response.status });
-    }
-    if (!response.ok) fail('ENDPOINT_HTTP_ERROR', `endpoint returned HTTP ${response.status}`, { status: response.status });
-    let body;
-    try {
-      body = await response.json();
-    } catch {
-      fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response was not valid JSON');
-    }
-    if (body?.model !== undefined && body?.model !== null && !isNonEmptyString(body.model)) {
-      fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response model provenance must be one non-empty string');
-    }
-    let normalized;
-    try {
-      normalized = normalizeModelRuntimeResponse({
-        responseBody: body,
-        endpointProfile,
-        observedAt: new Date().toISOString()
-      });
-    } catch (error) {
-      fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response could not form a closed runtime observation', { cause: error.message });
-    }
-    let invocationEvidence;
-    try {
-      invocationEvidence = formModelRuntimeInvocationEvidence({
-        endpointProfileRef: endpointProfile.profileRef,
-        sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpointProfile.endpoint),
-        requestBodySha256: crypto.createHash('sha256').update(Buffer.from(requestBody, 'utf8')).digest('hex'),
-        runtimeObservation: normalized.runtimeObservation,
-        httpStatus: response.status,
-        actualHttpCall: true,
-        formedAt: new Date().toISOString()
-      });
-    } catch (error) {
-      fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response could not form closed invocation evidence', { cause: error.message });
-    }
-    const responseValue = {
-      content: normalized.content,
-      model: normalized.model,
-      ...(trusted ? { promptContextMaterializationReceipt: trusted.receipt } : {})
-    };
-    assertInMemoryAuthorizationNotPersisted(responseValue, inMemoryAuthorization, 'endpoint response');
-    TRUSTED_MODEL_RUNTIME_RESPONSES.set(responseValue, Object.freeze({
-      runtimeObservation: normalized.runtimeObservation,
-      invocationEvidence
-    }));
-    return responseValue;
   } catch (error) {
-    if (error instanceof LivedCompanionError) throw error;
-    if (error?.name === 'AbortError') fail('ENDPOINT_TIMEOUT', 'endpoint request timed out');
-    fail('ENDPOINT_UNREACHABLE', 'endpoint could not be reached', { cause: error.message });
-  } finally {
-    clearTimeout(timeout);
+    if (error instanceof LivedCompanionConnectionError) {
+      fail(error.code, error.message, error.details ?? null);
+    }
+    throw error;
   }
+  const responseValue = {
+    content: connection.content,
+    model: connection.model,
+    ...(trusted ? { promptContextMaterializationReceipt: trusted.receipt } : {})
+  };
+  assertInMemoryAuthorizationNotPersisted(responseValue, inMemoryAuthorization, 'endpoint response');
+  TRUSTED_MODEL_RUNTIME_RESPONSES.set(responseValue, Object.freeze({
+    runtimeObservation: connection.runtimeObservation,
+    invocationEvidence: connection.invocationEvidence
+  }));
+  return responseValue;
 }
 
 
@@ -2723,7 +2648,7 @@ export async function performLivedCompanionTurn({
       state: 'TURN_COMPLETED',
       writerLeaseReleased,
       actualHttpCall,
-      loopbackOnly: isLoopbackHost(new URL(endpointProfile.endpoint).hostname),
+      loopbackOnly: isLivedCompanionLoopbackHost(new URL(endpointProfile.endpoint).hostname),
       runtimeProjection: runtimeProjection ? structuredClone(runtimeProjection) : null,
       promptContextMaterializationReceipt: promptContextMaterializationReceipt ? structuredClone(promptContextMaterializationReceipt) : null,
       modelTurnWitness: modelTurnWitness ? structuredClone(modelTurnWitness) : null,
@@ -2857,7 +2782,7 @@ function assertEventRecord(event, expected = null, fileName = null) {
       !isNonEmptyString(event.modelNameOrBoundedTestProfileRef) ||
       !endpointOrigin ||
       endpointOrigin.origin !== event.sanitizedEndpointOrigin ||
-      !isLoopbackHost(endpointOrigin.hostname)
+      !isLivedCompanionLoopbackHost(endpointOrigin.hostname)
     ) {
       fail('EVENT_CHAIN_CORRUPT', 'response event provenance is invalid', {
         eventHash: event.eventHash
