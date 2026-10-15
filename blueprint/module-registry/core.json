@@ -975,6 +975,27 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.lived-companion-connection",
+    "path": "src/core/lived-companion-connection.mjs",
+    "role": "Own admitted numeric-loopback Companion model-runtime HTTP invocation, redirect/timeout confinement, closed runtime normalization and invocation evidence without owning prompt context, turn persistence, Conversation state, model identity or execution scheduling.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "src/core/model-runtime-adapter.mjs",
+      "src/core/model-turn-witness.mjs"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.lived-companion"
+    ],
+    "tests": [
+      "test/lived-companion-connection.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/lived-companion.mjs",
+      "docs/LIVED-COMPANION-CONNECTION.md"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.lived-companion",
     "path": "src/core/lived-companion.mjs",
     "role": "Provider-neutral device-private companion turn persistence, typed failures, atomic heads, clean shutdown, and exact fresh-process resume.",
@@ -984,7 +1005,8 @@
       "state.device-family",
       "state.messages",
       "state.context",
-      "state.model"
+      "state.model",
+      "module.vexlife.core.lived-companion-connection"
     ],
     "writes": [
       "selected Vex Home conversations/context/runtime/recovery"
