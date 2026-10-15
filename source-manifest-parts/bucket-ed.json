@@ -21,6 +21,12 @@
       "sha256": "ca99f9e2142dace7f6b3424b3d1e8cbda80a27513798ada8cc104e6872a08c56"
     },
     {
+      "path": "test/conversation-companion-action-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 6387,
+      "sha256": "60d7c386f561348206dfffa1c53ac3597567d59b3a84f110a478aa9fc1e6f88f"
+    },
+    {
       "path": "test/security-access-projection.test.mjs",
       "mode": "100644",
       "bytes": 11768,

@@ -25,6 +25,12 @@
       "mode": "100644",
       "bytes": 3545,
       "sha256": "1702751be8439f43a6d61c4e9dbde8784a934c3d3a09c3e5b80ada83cc864edf"
+    },
+    {
+      "path": "src/core/conversation-companion-action-projection.mjs",
+      "mode": "100644",
+      "bytes": 7950,
+      "sha256": "ba34dc19722ec1a8c773d862c507f388964514c9ad134c5baf1e894be4c22171"
     }
   ]
 }

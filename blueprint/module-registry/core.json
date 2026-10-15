@@ -221,6 +221,27 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.conversation-companion-action-projection",
+    "path": "src/core/conversation-companion-action-projection.mjs",
+    "role": "Project source-bound no-effect action decisions for one current Companion Conversation by composing canonical addressed-Conversation action identity with canonical Companion availability/recovery truth without becoming either semantic owner or any effect/runtime/presentation owner.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.conversation",
+      "module.vexlife.core.companion-availability-reentry",
+      "foundation.vexlife.experience.001"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/conversation-companion-action-projection.test.mjs"
+    ],
+    "changeMap": [
+      "docs/CONVERSATION-COMPANION-ACTION-PROJECTION.md",
+      "reference/browser/modules/chat-controller.js",
+      "reference/browser/evolution/conversation-projection.js"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.conversation-store",
     "path": "src/core/conversation-store.mjs",
     "role": "Canonical Vex Home durable multi-human channel event store with immutable hash-linked message events and append receipts, atomic current heads, explicit single-writer recovery, exact retry semantics and bounded local read/export independently of model turns.",

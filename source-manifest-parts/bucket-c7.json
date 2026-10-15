@@ -9,6 +9,12 @@
       "sha256": "f2137bc9a0b916ab72d78bf653b00034af55713cd49e7516546237a468f40a05"
     },
     {
+      "path": "docs/CONVERSATION-COMPANION-ACTION-PROJECTION.md",
+      "mode": "100644",
+      "bytes": 5067,
+      "sha256": "564dadcf670c037f384445b0f0e967a3032bf9c7766ead43517ec7a57c556f14"
+    },
+    {
       "path": "src/core/g04b-native-provisioning-integrity.mjs",
       "mode": "100644",
       "bytes": 23833,
