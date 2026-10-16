@@ -31,6 +31,12 @@
       "mode": "100644",
       "bytes": 51009,
       "sha256": "9f6af3b2cdbe7d2328bd9dd22c9f36525ac817ef72d7c0cd5f0f5220e024e0ca"
+    },
+    {
+      "path": "test/core-state-module-boundary.test.mjs",
+      "mode": "100644",
+      "bytes": 3021,
+      "sha256": "0a392f1c030aabc9c81ecc6d606afb36ad92230d1d3f36e0c10033f166b85f3f"
     }
   ]
 }
