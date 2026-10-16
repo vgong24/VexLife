@@ -15,6 +15,12 @@
       "sha256": "48d4a0ac50aa595250905d83063e95a8db916ea76b387a82b9673e2427d26f80"
     },
     {
+      "path": "test/family-companion-prompt-context.test.mjs",
+      "mode": "100644",
+      "bytes": 7416,
+      "sha256": "21c57d2406fbc9eb71ff88bbd6babb2456af383271422aad7335c19213867fa3"
+    },
+    {
       "path": "test/registry.test.mjs",
       "mode": "100644",
       "bytes": 19131,

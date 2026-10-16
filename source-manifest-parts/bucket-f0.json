@@ -3,6 +3,12 @@
   "bucketId": "f0",
   "files": [
     {
+      "path": "docs/FAMILY-COMPANION-PROMPT-CONTEXT.md",
+      "mode": "100644",
+      "bytes": 4401,
+      "sha256": "3732cbbd1464a8dac3ee09fb2c5b6baa29c15c971fc213882e229b738070f973"
+    },
+    {
       "path": "reference/browser/cdr-s5-closed-alpha/app.js",
       "mode": "100644",
       "bytes": 9150,
