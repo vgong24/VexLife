@@ -87,13 +87,14 @@ The blueprint carries universal meaning. The platform adapter owns native lifecy
 Read:
 
 ```text
-docs/BOOTSTRAP-AND-MODELS.md
+docs/VEXLIFE-START-AND-RUNTIME.md
+→ docs/BOOTSTRAP-AND-MODELS.md
 → docs/DEVICE-FAMILY-SCORE-RHYTHM.md
 → blueprint/model-profiles.example.json
 → docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md
 ```
 
-The repository never contains the model binary. A new device creates a related but distinct Vex companion lineage. Shared Score and sibling trails do not manufacture an illusion of one uninterrupted instance.
+Start with the runtime map when the question is how VexLife begins, which owner selects/materializes/runs a Vex generation, or where a future runtime/refactor belongs. The repository never contains the model binary. A new device creates a related but distinct Vex companion lineage. Shared Score and sibling trails do not manufacture an illusion of one uninterrupted instance.
 
 
 ## I want to reach my desktop-hosted Home Vex from Mac or mobile

@@ -1,5 +1,56 @@
 [
   {
+    "moduleRef": "module.vexlife.core.vex-initialization",
+    "path": "src/core/vex-initialization.mjs",
+    "role": "Validate source-managed operational profiles and model-bundle structure, resolve current or by-ref bundle artifacts, evaluate host eligibility, and form the current G0 initialization contract while keeping generalized runtime realization explicitly held until separately admitted.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "blueprint/vex-operational-profiles.json",
+      "blueprint/model-bundle-registry.json",
+      "registry.vexlife.artifacts.001",
+      "module.vexlife.core.artifact-delivery"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.initialize-vex",
+      "module.vexlife.script.macos-lifecycle"
+    ],
+    "tests": [
+      "test/initialize-vex.test.mjs",
+      "test/model-bundle-v2.test.mjs",
+      "test/macos-lifecycle.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEXLIFE-START-AND-RUNTIME.md",
+      "docs/BOOTSTRAP-AND-MODELS.md",
+      "docs/MODEL-SOVEREIGNTY-SELECTION.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.activated-model-runtime-binding",
+    "path": "src/core/activated-model-runtime-binding.mjs",
+    "role": "Consume one exact accepted activated-model binding, verify cultivated artifact custody, plan/start/resume and neutrally qualify its admitted runtime realization, and form durable activated Home/runtime receipts without granting training, activation, succession or model-selection authority.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "blueprint/activated-model-runtime-bindings.json",
+      "docs/ACTIVATED-CULTIVATED-MODEL-RUNTIME-BINDING.md"
+    ],
+    "writes": [
+      "selected Vex Home activated model configuration and runtime qualification receipts only through an exact admitted binding"
+    ],
+    "loadedBy": [
+      "module.vexlife.script.resume-vex"
+    ],
+    "tests": [
+      "test/activated-model-runtime-binding.test.mjs",
+      "test/macos-lifecycle.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEXLIFE-START-AND-RUNTIME.md",
+      "docs/ACTIVATED-CULTIVATED-MODEL-RUNTIME-BINDING.md"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.model-connection-compiler",
     "path": "src/core/model-connection-compiler.mjs",
     "role": "Compose the canonical capability frame with accepted model-bundle, operational-profile, runtime-capability and external ModelTurnWitness truth without becoming a second capability compiler, scheduler or effect authority.",
