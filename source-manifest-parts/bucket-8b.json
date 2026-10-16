@@ -11,8 +11,8 @@
     {
       "path": "blueprint/module-registry/core.json",
       "mode": "100644",
-      "bytes": 50280,
-      "sha256": "cbe6e767914d647128a2941f5c7c34b2da41041366a14222897797bfa8d8afa1"
+      "bytes": 51575,
+      "sha256": "2f7335ad7dba1d641c776e3ad81535cdc0f2f69d4004dc944f6127a7e3290cfa"
     },
     {
       "path": "docs/PURPOSE-WORKSPACE-AND-EXPERIENCE-TOPOLOGY.md",
