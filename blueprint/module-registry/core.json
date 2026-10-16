@@ -1006,7 +1006,8 @@
       "state.messages",
       "state.context",
       "state.model",
-      "module.vexlife.core.lived-companion-connection"
+      "module.vexlife.core.lived-companion-connection",
+      "module.vexlife.core.family-companion-prompt-context"
     ],
     "writes": [
       "selected Vex Home conversations/context/runtime/recovery"
