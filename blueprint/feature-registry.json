@@ -1303,7 +1303,11 @@
         "test.lived-companion.fresh-process-resume",
         "test.lived-companion.identity-head-replay",
         "test.lived-companion.privacy",
-        "test.lived-companion.windows-proof"
+        "test.lived-companion.windows-proof",
+        "test.lived-companion.thread-writer-currentness-idle",
+        "test.lived-companion.thread-writer-currentness-active",
+        "test.lived-companion.thread-writer-currentness-recovery-required",
+        "test.lived-companion.thread-writer-currentness-held-unverifiable"
       ],
       "platformRefs": [
         "platform.windows"
@@ -1333,7 +1337,8 @@
       "rollbackRouteRef": "recovery.lived-companion.last-valid-head",
       "projectionRefs": [
         "projection.lived-companion.current-head",
-        "projection.lived-companion.failure"
+        "projection.lived-companion.failure",
+        "projection.lived-companion.thread-writer-currentness"
       ],
       "knownGaps": [
         "automatic abandoned or unverifiable writer lease recovery remains held; G01 classifies proven-absent owners and invalid lease evidence, preserves the exact blocking evidence, and routes to explicit recovery/attention",
