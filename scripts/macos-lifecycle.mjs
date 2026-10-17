@@ -14,6 +14,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const SOURCE_ROOT = path.resolve(HERE, '..');
 export const MAC_LIFECYCLE_SCHEMA = 'vexlife.macos-lifecycle/v1';
 export const MAC_BROWSER_RECEIPT_SCHEMA = 'vexlife.browser-process-receipt/v1';
+export const MAC_STARTING_RUNTIME_RECEIPT_SCHEMA = 'vexlife.runtime-starting-receipt/v1';
 export const ALLOWED_OPERATIONS = Object.freeze([
   'auto', 'status', 'start', 'stop', 'repair', 'rebuild-preserve', 'uninstall-preserve'
 ]);
@@ -393,6 +394,38 @@ export async function stopOwnedRuntime(home, {
   processEvidenceReader = readMacProcessEvidence,
   stopPidImpl = stopPid
 } = {}) {
+  const startingPath = path.join(home, 'runtime', 'initialization', 'receipt.json');
+  const starting = jsonRead(startingPath);
+  if (starting?.schemaVersion === MAC_STARTING_RUNTIME_RECEIPT_SCHEMA &&
+      ['STARTING', 'STOP_REQUESTED'].includes(starting.state)) {
+    const startingPid = Number(starting.runtime?.pid);
+    if (!Number.isInteger(startingPid) || startingPid <= 0 ||
+        typeof starting.runtime?.executablePath !== 'string' ||
+        !Array.isArray(starting.runtime?.arguments) ||
+        typeof starting.materialization?.executableSha256 !== 'string') {
+      throw new Error('STARTING runtime receipt is incomplete; refusing stop');
+    }
+    if (!pidAliveImpl(startingPid)) {
+      writeJsonAtomic(startingPath, { ...starting, state: 'STALE_STOPPED', stoppedAtUtc: new Date().toISOString() });
+      return { disposition: 'STARTING_RUNTIME_ALREADY_STOPPED', pid: startingPid };
+    }
+    const evidence = processEvidenceReader(startingPid);
+    if (!evidence || !runtimeProcessEvidenceMatches({
+      processEvidence: evidence,
+      expectedExecutablePath: path.resolve(starting.runtime.executablePath),
+      expectedArguments: starting.runtime.arguments
+    })) {
+      throw new Error('STARTING runtime PID is active but exact executable/argument ownership is not proven; refusing stop');
+    }
+    const executablePath = path.resolve(starting.runtime.executablePath);
+    if (!fs.existsSync(executablePath) || sha256(fs.readFileSync(executablePath)) !== starting.materialization.executableSha256) {
+      throw new Error('STARTING runtime executable bytes do not match the ownership receipt; refusing stop');
+    }
+    await stopPidImpl(startingPid);
+    writeJsonAtomic(startingPath, { ...starting, state: 'STOPPED_BY_LIFECYCLE', stoppedAtUtc: new Date().toISOString() });
+    return { disposition: 'EXACT_STARTING_RUNTIME_STOPPED', pid: startingPid };
+  }
+
   const model = jsonRead(path.join(home, 'config', 'model.json'));
   if (!model) return { disposition: 'NO_MODEL_CONFIGURATION', pid: null };
   const pid = Number(model.runtimePid);
@@ -617,15 +650,65 @@ async function waitPort(port, timeoutMs = 15000) {
   }
   return false;
 }
-function runNode(argv, { cwd = SOURCE_ROOT, accepted = [0], env = {} } = {}) {
-  const result = spawnSync(process.execPath, argv, {
-    cwd, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024,
-    env: { ...process.env, ...env }, shell: false
+async function runNode(argv, { cwd = SOURCE_ROOT, accepted = [0], env = {}, forwardStderr = false } = {}) {
+  const maxBuffer = 32 * 1024 * 1024;
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, argv, {
+      cwd,
+      env: { ...process.env, ...env },
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    let stdout = '';
+    let stderr = '';
+    let outputBytes = 0;
+    let overflow = false;
+    const append = (kind, chunk) => {
+      if (overflow) return;
+      outputBytes += chunk.length;
+      if (outputBytes > maxBuffer) {
+        overflow = true;
+        try { child.kill('SIGTERM'); } catch {}
+        return;
+      }
+      if (kind === 'stdout') {
+        stdout += chunk.toString('utf8');
+      } else {
+        stderr += chunk.toString('utf8');
+        if (forwardStderr) process.stderr.write(chunk);
+      }
+    };
+    const forwardSignal = (signal) => {
+      if (!child.pid) return;
+      try { child.kill(signal); } catch {}
+    };
+    const onTerm = () => forwardSignal('SIGTERM');
+    const onInt = () => forwardSignal('SIGINT');
+    const removeSignalForwarding = () => {
+      process.off('SIGTERM', onTerm);
+      process.off('SIGINT', onInt);
+    };
+    process.on('SIGTERM', onTerm);
+    process.on('SIGINT', onInt);
+    child.stdout.on('data', (chunk) => append('stdout', chunk));
+    child.stderr.on('data', (chunk) => append('stderr', chunk));
+    child.once('error', (error) => {
+      removeSignalForwarding();
+      reject(error);
+    });
+    child.once('close', (status, signal) => {
+      removeSignalForwarding();
+      if (overflow) {
+        reject(new Error(`node ${argv.join(' ')} exceeded the admitted output buffer`));
+        return;
+      }
+      if (!accepted.includes(status ?? 127)) {
+        reject(new Error(`node ${argv.join(' ')} failed (${status ?? signal ?? 'UNKNOWN'}): ${stderr.trim()}`));
+        return;
+      }
+      resolve({ status, stdout, stderr });
+    });
   });
-  if (!accepted.includes(result.status ?? 127)) {
-    throw new Error(`node ${argv.join(' ')} failed (${result.status}): ${String(result.stderr || '').trim()}`);
-  }
-  return result;
 }
 function parseLastJson(stdout) {
   const lines = String(stdout || '').split(/\r?\n/u).map((x) => x.trim()).filter(Boolean);
@@ -634,7 +717,7 @@ function parseLastJson(stdout) {
   }
   throw new Error('command emitted no machine-readable JSON result');
 }
-function bootstrap(home, repo) {
+async function bootstrap(home, repo) {
   return runNode([path.join(repo, 'scripts', 'bootstrap.mjs'), '--device-name', os.hostname(), '--home', home], {
     cwd: repo, accepted: [0, 3]
   });
@@ -711,7 +794,7 @@ export function qualifiedInitializationFromCurrentHome(home, {
     reuseDisposition: 'REUSED_CURRENT_QUALIFIED_RUNTIME_RECEIPT'
   };
 }
-function initialize(home, repo, options) {
+async function initialize(home, repo, options) {
   if (!options.candidateProfileRef && !options.candidateAuthorityRef) {
     const current = qualifiedInitializationFromCurrentHome(home);
     if (current) return current;
@@ -725,7 +808,7 @@ function initialize(home, repo, options) {
     argv.push('--mode', 'candidate-qualification', '--profile-ref', options.candidateProfileRef,
       '--candidate-authority-ref', options.candidateAuthorityRef);
   }
-  const result = runNode(argv, { cwd: repo });
+  const result = await runNode(argv, { cwd: repo, forwardStderr: true });
   return parseLastJson(result.stdout);
 }
 async function startBrowser(home, repo, initialization) {
@@ -790,8 +873,8 @@ async function startBrowser(home, repo, initialization) {
 }
 
 async function runStart(home, repo, options) {
-  bootstrap(home, repo);
-  const initialized = initialize(home, repo, options);
+  await bootstrap(home, repo);
+  const initialized = await initialize(home, repo, options);
   if (initialized.state !== 'RUNTIME_QUALIFIED') throw new Error(`initializer did not qualify runtime: ${initialized.state}`);
   const browser = await startBrowser(home, repo, initialized);
   return { initialized, browser };

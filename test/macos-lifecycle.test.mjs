@@ -507,6 +507,52 @@ test('MAC06A lifecycle recognizes and reuses one exact activated-M4 v2 runtime b
   }
 });
 
+test('MAC06B preservation-safe cleanup stops an exact STARTING runtime without requiring final model configuration', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-starting-runtime-'));
+  const home = path.join(root, 'home');
+  const runtimeDir = path.join(home, 'runtime', 'initialization');
+  const executable = path.join(home, 'runtime', 'llama-server');
+  const pid = 5151;
+  const args = ['-m', path.join(home, 'models', 'model.gguf'), '--host', '127.0.0.1', '--port', '18080'];
+  try {
+    fs.mkdirSync(runtimeDir, { recursive: true });
+    fs.writeFileSync(executable, 'exact-starting-runtime-bytes');
+    const executableSha256 = crypto.createHash('sha256').update(fs.readFileSync(executable)).digest('hex');
+    fs.writeFileSync(path.join(runtimeDir, 'receipt.json'), JSON.stringify({
+      schemaVersion: 'vexlife.runtime-starting-receipt/v1',
+      state: 'STARTING',
+      profileRef: 'profile.vexlife.test.starting',
+      endpoint: { origin: 'http://127.0.0.1:18080', requestModel: 'test-model' },
+      runtime: { pid, executablePath: executable, arguments: args },
+      materialization: { executableSha256, sourcePinnedExecutableSha256: executableSha256 }
+    }, null, 2) + '\n');
+    const evidence = {
+      platform: 'darwin',
+      processId: pid,
+      processGroupId: pid,
+      name: 'llama-server',
+      executablePath: executable,
+      commandLine: [executable, ...args].join(' '),
+      commandLineClass: 'DARWIN_PS_FLATTENED_ARGV',
+      argvBoundaryPreserved: false,
+      tokens: null
+    };
+    let stoppedPid = null;
+    const stopped = await stopOwnedRuntime(home, {
+      pidAliveImpl: (observedPid) => observedPid === pid,
+      processEvidenceReader: () => evidence,
+      stopPidImpl: async (observedPid) => { stoppedPid = observedPid; }
+    });
+    assert.equal(stopped.disposition, 'EXACT_STARTING_RUNTIME_STOPPED');
+    assert.equal(stoppedPid, pid);
+    const after = JSON.parse(fs.readFileSync(path.join(runtimeDir, 'receipt.json'), 'utf8'));
+    assert.equal(after.state, 'STOPPED_BY_LIFECYCLE');
+    assert.equal(after.runtime.pid, pid);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('MAC07 rebuild-preserve cleanup removes runtime binding while preserving Home, model cache, Memory and heads', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-rebuild-'));
   const home = path.join(root, 'home');

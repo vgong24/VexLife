@@ -815,11 +815,26 @@ async function resolveArtifactDeliveryFromRegistrySnapshot({
   fail(ARTIFACT_DELIVERY_FAILURE_CODES.CHANNEL_UNAVAILABLE, 'no artifact delivery channel completed', { artifactRef, attemptedChannelRefs });
 }
 
+function sourceManagedProgressReporter(artifact) {
+  let lastPercent = -1;
+  return (event) => {
+    const bytes = Number(event?.committedBytes ?? event?.bytes);
+    if (!Number.isSafeInteger(bytes) || bytes < 0 || !Number.isSafeInteger(artifact.expectedBytes) || artifact.expectedBytes <= 0) return;
+    const percent = Math.min(100, Math.floor((bytes * 100) / artifact.expectedBytes));
+    if (percent === lastPercent && bytes !== artifact.expectedBytes) return;
+    lastPercent = percent;
+    const receivedMiB = Math.floor(bytes / (1024 * 1024));
+    const expectedMiB = Math.ceil(artifact.expectedBytes / (1024 * 1024));
+    console.error(`[VexLife] Downloading ${artifact.filename}: ${receivedMiB} / ${expectedMiB} MiB (${percent}%)`);
+  };
+}
+
 export async function resolveAndDownloadArtifact(input) {
   allowedKeys(input, SOURCE_RESOLVER_FIELDS, 'resolveAndDownloadArtifact input');
   const { artifactRef, deliveryPolicyRef = null, finalPath } = input;
   const artifactRegistry = loadSourceJson(SOURCE_ARTIFACT_REGISTRY_PATH, 'source-managed artifact registry');
   const deliveryRegistry = loadSourceJson(SOURCE_DELIVERY_REGISTRY_PATH, 'source-managed artifact delivery registry');
+  const sourceArtifact = artifactRegistry?.artifacts?.find((artifact) => artifact.artifactRef === artifactRef);
   return resolveArtifactDeliveryFromRegistrySnapshot({
     artifactRef,
     deliveryPolicyRef,
@@ -827,7 +842,8 @@ export async function resolveAndDownloadArtifact(input) {
     artifactRegistry,
     deliveryRegistry,
     directDownload: downloadVerifiedArtifact,
-    fetchImpl: fetch
+    fetchImpl: fetch,
+    onProgress: sourceArtifact ? sourceManagedProgressReporter(sourceArtifact) : () => {}
   });
 }
 

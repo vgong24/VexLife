@@ -17,8 +17,8 @@
     {
       "path": "install/vexlife-setup-window.applescript",
       "mode": "100644",
-      "bytes": 19195,
-      "sha256": "aa2562cf5f538a2a2d1ef0c9016af723cf27f2af7b847013578aa1130d887e04"
+      "bytes": 24167,
+      "sha256": "68636b95b1ed4c47b5fc451d6fc305a168b4895f6955c427a173c4cf37ff39ba"
     },
     {
       "path": "src/core/android-remote-vessel-projection.mjs",

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -50,6 +50,12 @@ function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
     '    if [ "${VEX_FAKE_HOST_ELIGIBLE:-yes}" = "yes" ]; then printf \'%s\\n\' \'{"state":"HOME_NOT_ESTABLISHED"}\'; exit 5; else printf \'%s\\n\' \'{"state":"UNSUPPORTED_HOST"}\'; exit 6; fi',
     '    ;;',
     '  */scripts/macos-lifecycle.mjs)',
+    '    if [ -n "${VEX_LIFECYCLE_ARGS_LOG:-}" ]; then printf "%s\\n" "$*" >> "$VEX_LIFECYCLE_ARGS_LOG"; fi',
+    '    if [ -n "${VEX_FAKE_LIFECYCLE_HOLD_FILE:-}" ] && [[ " $* " == *" --operation start "* ]]; then',
+    '      : > "$VEX_FAKE_LIFECYCLE_HOLD_FILE"',
+    '      trap "exit 143" TERM INT',
+    '      while :; do sleep 1; done',
+    '    fi',
     '    if [ "${VEX_FAKE_LIFECYCLE_START_FAIL:-no}" = "yes" ] && [[ " $* " == *" --operation start "* ]]; then echo FAKE_LIFECYCLE_START_REACHED >&2; exit 92; fi',
     `    printf '%s\\n' '${lifecycleJson}'; exit 0 ;;`,
     '  *) echo "UNEXPECTED_FAKE_NODE_CALL: $*" >&2; exit 91 ;;',
@@ -74,18 +80,20 @@ function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew =
     fs.writeFileSync(path.join(bin, 'brew'), '#!/bin/bash\necho brew-effect >> "$VEX_EFFECT_LOG"\n', { mode: 0o755 });
   }
   const effectLog = path.join(temp, 'effects.log');
-  const result = spawnSync('/bin/bash', [path.join(repo, 'install', 'vexlife-setup.sh'), repo, '--controller', '--home', selectedHome, ...extraArgs], {
+  const lifecycleArgsLog = path.join(temp, 'lifecycle-args.log');
+  const result = spawnSync('/bin/bash', [path.join(repo, 'install', 'vexlife-setup.sh'), repo, '--controller', '--home', selectedHome, '--session-token', `test-session-${process.pid}`, ...extraArgs], {
     encoding: 'utf8',
     env: {
       ...process.env,
       PATH: `${bin}:${process.env.PATH}`,
       VEX_EFFECT_LOG: effectLog,
+      VEX_LIFECYCLE_ARGS_LOG: lifecycleArgsLog,
       VEX_FAKE_HOST_ELIGIBLE: hostEligible ? 'yes' : 'no',
       VEX_FAKE_EXPECT_PROBE_ROOT: selectedHome,
       VEX_FAKE_LIFECYCLE_START_FAIL: lifecycleStartFails ? 'yes' : 'no'
     }
   });
-  return { ...result, effectLog, temp, selectedHome };
+  return { ...result, effectLog, lifecycleArgsLog, temp, selectedHome };
 }
 
 test('MAC-WIN-00/03/12 exact-source bootstrap defaults to an app-hosted AppKit window and keeps explicit Terminal fallback', () => {
@@ -94,8 +102,11 @@ test('MAC-WIN-00/03/12 exact-source bootstrap defaults to an app-hosted AppKit w
   assert.match(bootstrap, /WINDOW_APP="\$TMP_ROOT\/VexLife Setup\.app"/u);
   assert.match(bootstrap, /\/usr\/bin\/osacompile -o "\$WINDOW_APP" "\$WINDOW"/u);
   assert.match(bootstrap, /\/usr\/bin\/plutil -insert VexLifeSourceRoot -string "\$TARGET" "\$INFO_PLIST"/u);
+  assert.match(bootstrap, /CFBundleIdentifier -string "com\.vextreme\.vexlife\.setup"/u);
+  assert.match(bootstrap, /LSMultipleInstancesProhibited -bool true/u);
   assert.match(bootstrap, /BOUND_SOURCE_ROOT=.*VexLifeSourceRoot/u);
-  assert.match(bootstrap, /\/usr\/bin\/open -W -n "\$WINDOW_APP"/u);
+  assert.match(bootstrap, /\/usr\/bin\/open -W "\$WINDOW_APP"/u);
+  assert.doesNotMatch(bootstrap, /\/usr\/bin\/open -W -n/u);
   assert.doesNotMatch(bootstrap, /exec \/usr\/bin\/osascript "\$WINDOW" "\$TARGET"/u);
   assert.match(bootstrap, /exec \/bin\/bash "\$TARGET\/install\/vexlife-setup\.sh" "\$TARGET"/u);
   assert.match(bootstrap, /SOURCE_SHA/u);
@@ -225,6 +236,61 @@ test('MAC-WIN-10 healthy open delegates reuse-or-reinitialize to lifecycle owner
   assert.doesNotMatch(opened.stderr, /could not prove this Mac eligible/u);
 });
 
+test('MAC-WIN-10A real duplicate setup writer is rejected and stop-and-clean can take over only after exact owner cancellation', async () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-window-lock-test-'));
+  const bin = path.join(temp, 'bin');
+  const repo = path.join(temp, 'repo');
+  const selectedHome = path.join(temp, 'home');
+  const holdFile = path.join(temp, 'first-owner-running');
+  const lifecycleArgsLog = path.join(temp, 'lifecycle-args.log');
+  fs.mkdirSync(bin, { recursive: true });
+  fs.mkdirSync(path.join(repo, 'scripts'), { recursive: true });
+  fs.mkdirSync(path.join(repo, 'install'), { recursive: true });
+  fs.copyFileSync(backendPath, path.join(repo, 'install', 'vexlife-setup.sh'));
+  makeFakeNode(bin, 'EXISTING_HEALTHY', ['start', 'uninstall-preserve']);
+  const env = {
+    ...process.env,
+    PATH: `${bin}:${process.env.PATH}`,
+    VEX_LIFECYCLE_ARGS_LOG: lifecycleArgsLog,
+    VEX_FAKE_LIFECYCLE_HOLD_FILE: holdFile,
+    VEX_FAKE_HOST_ELIGIBLE: 'yes',
+    VEX_FAKE_EXPECT_PROBE_ROOT: selectedHome
+  };
+  const argsFor = (token, action) => [
+    path.join(repo, 'install', 'vexlife-setup.sh'), repo,
+    '--controller', '--home', selectedHome, '--session-token', token,
+    '--action', action, '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'
+  ];
+  const first = spawn('/bin/bash', argsFor('owner-a', 'open'), { encoding: 'utf8', env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const firstStdout = [];
+  const firstStderr = [];
+  first.stdout.on('data', (chunk) => firstStdout.push(chunk));
+  first.stderr.on('data', (chunk) => firstStderr.push(chunk));
+  const deadline = Date.now() + 5000;
+  while (!fs.existsSync(holdFile) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  assert.equal(fs.existsSync(holdFile), true, `first setup owner did not reach held lifecycle: ${Buffer.concat(firstStderr).toString('utf8')}`);
+
+  const duplicate = spawnSync('/bin/bash', argsFor('owner-b', 'open'), { encoding: 'utf8', env });
+  assert.notEqual(duplicate.status, 0);
+  assert.match(duplicate.stderr, /another exact VexLife setup operation is already active for this Home/u);
+
+  const cleanupEnv = { ...env, VEX_FAKE_LIFECYCLE_HOLD_FILE: '' };
+  const cleanup = spawnSync('/bin/bash', argsFor('cleanup-owner', 'uninstall-preserve'), { encoding: 'utf8', env: cleanupEnv, timeout: 10000 });
+  assert.equal(cleanup.status, 0, cleanup.stderr || cleanup.stdout);
+  assert.match(cleanup.stdout, /VEXLIFE_CONTROLLER_RESULT\\tUNINSTALL_PRESERVE_COMPLETE/u);
+
+  const firstExit = (first.exitCode !== null || first.signalCode !== null)
+    ? { code: first.exitCode, signal: first.signalCode }
+    : await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('first setup owner did not terminate after exact stop-and-clean cancellation')), 5000);
+        first.once('close', (code, signal) => { clearTimeout(timer); resolve({ code, signal }); });
+      });
+  assert.ok(firstExit.code !== 0 || firstExit.signal !== null);
+  fs.rmSync(temp, { recursive: true, force: true });
+});
+
 test('MAC-WIN-05 repair and rebuild remain host-gated after healthy-open reuse correction', () => {
   for (const action of ['repair', 'rebuild-preserve']) {
     const result = runController(['--action', action, '--node-install-consent', 'no', '--runtime-acquisition-consent', 'yes'], {
@@ -235,6 +301,21 @@ test('MAC-WIN-05 repair and rebuild remain host-gated after healthy-open reuse c
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /could not prove this Mac eligible/u);
     assert.equal(fs.existsSync(result.effectLog), false);
+  }
+});
+
+test('MAC-WIN-05/10 approved repair and rebuild forward runtime consent into noninteractive lifecycle start', () => {
+  for (const action of ['repair', 'rebuild-preserve']) {
+    const result = runController(['--action', action, '--node-install-consent', 'no', '--runtime-acquisition-consent', 'yes'], {
+      state: 'EXISTING_DEGRADED_REPAIRABLE',
+      choices: [action],
+      hostEligible: true
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const calls = fs.readFileSync(result.lifecycleArgsLog, 'utf8').trim().split(/\r?\n/u);
+    const actionCall = calls.find((line) => line.includes(`--operation ${action}`));
+    assert.ok(actionCall, `missing lifecycle call for ${action}`);
+    assert.match(actionCall, /(?:^|\s)--yes(?:\s|$)/u);
   }
 });
 
@@ -286,7 +367,7 @@ test('MAC-WIN-09 Node installation requires an exact consent value', () => {
   fs.writeFileSync(path.join(bin, 'node'), '#!/bin/bash\nexit 127\n', { mode: 0o755 });
   const effectLog = path.join(temp, 'effects.log');
   fs.writeFileSync(path.join(bin, 'brew'), '#!/bin/bash\necho brew-effect >> "$VEX_EFFECT_LOG"\n', { mode: 0o755 });
-  const result = spawnSync('/bin/bash', [path.join(repo, 'install', 'vexlife-setup.sh'), repo, '--controller', '--home', path.join(temp, 'home'), '--action', 'install-node', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+  const result = spawnSync('/bin/bash', [path.join(repo, 'install', 'vexlife-setup.sh'), repo, '--controller', '--home', path.join(temp, 'home'), '--session-token', `test-install-node-${process.pid}`, '--action', 'install-node', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
     encoding: 'utf8',
     env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, VEX_EFFECT_LOG: effectLog }
   });
@@ -305,13 +386,35 @@ test('MAC-WIN-04/05/10/11/14 window remains a projection, not model/platform/lif
   assert.match(windowSource, /not a signed\/public build/u);
 });
 
-test('MAC-WIN-12/13 long backend work keeps an AppKit progress surface responsive and failures stay fail-closed', () => {
+test('MAC-WIN-12/13 long backend work is observable, shareable, cancellable, and failures stay fail-closed', () => {
   assert.match(windowSource, /NSProgressIndicator/u);
   assert.match(windowSource, /NSRunLoop/u);
   assert.match(windowSource, /isRunning/u);
+  assert.match(windowSource, /NSWindowStyleMaskClosable/u);
+  assert.match(windowSource, /setSharingType:NSWindowSharingReadOnly/u);
+  assert.match(windowSource, /Cancel safely/u);
+  assert.match(windowSource, /latestProgressLine/u);
+  assert.match(windowSource, /setSelectable:true/u);
+  assert.match(windowSource, /Live status is selectable for debugging/u);
+  assert.match(windowSource, /\[VexLife\] /u);
+  assert.match(windowSource, /task's terminate\(\)/u);
+  assert.match(windowSource, /"--session-token", token/u);
+  assert.match(windowSource, /cancelledByHuman:cancelledByHuman/u);
   assert.match(windowSource, /if \(exitCode of .*\) is not 0 then/u);
   assert.match(windowSource, /showBackendFailure/u);
   assert.doesNotMatch(windowSource, /try[\s\S]*?on error[\s\S]*?exitCode:0/u);
+});
+
+test('MAC-WIN-13B cleanup is presented as preservation-safe stop-and-clean rather than a blind destructive reset', () => {
+  assert.match(windowSource, /Stop & clean \(preserve Home\)/u);
+  assert.match(windowSource, /stops an exact active setup task/u);
+  assert.match(windowSource, /Home, Memory, conversations, and verified model files stay preserved/u);
+  assert.match(windowSource, /Stop & clean this Home/u);
+  assert.match(windowSource, /Clean another Home…/u);
+  assert.match(windowSource, /cleanupSelectedHome/u);
+  assert.match(windowSource, /hasAction\(actionsValue, "uninstall-preserve"\)/u);
+  assert.match(windowSource, /The selected Home is not currently admitting preservation-safe cleanup/u);
+  assert.doesNotMatch(windowSource, /killall|rm -rf/u);
 });
 
 test('MAC-WIN-15 Bash sources are syntax-valid; AppleScript compile remains a qualified Mac host proof', () => {
