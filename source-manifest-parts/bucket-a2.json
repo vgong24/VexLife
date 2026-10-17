@@ -43,6 +43,12 @@
       "mode": "100644",
       "bytes": 18652,
       "sha256": "d08a2cab9c5149b863a1d1e379e2fafb66f62c19140da60ab983b7e65c604c78"
+    },
+    {
+      "path": "src/core/semantic-relay.mjs",
+      "mode": "100644",
+      "bytes": 24465,
+      "sha256": "ef5a940cde9970950a72e9ed670ade0c1b9612a9cce86f7f59a6d655aaca02f6"
     }
   ]
 }
