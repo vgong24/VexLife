@@ -1387,14 +1387,35 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.interaction-control",
+    "path": "src/core/interaction-control.mjs",
+    "role": "Projects read-only active-turn identity/currentness over real interaction lifecycle and current cancellation-target evidence; explicit ABSENT, UNKNOWN and STALE states fail closed and never grant send or effect authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.browser-companion-bridge"
+    ],
+    "tests": [
+      "test/interaction-control.test.mjs",
+      "test/browser-companion-bridge.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/browser-companion-bridge.mjs"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.browser-companion-bridge",
     "path": "src/core/browser-companion-bridge.mjs",
-    "role": "Server-side browser Companion bridge that binds canonical Vex Home identity, admitted loopback runtime identity, semantic relay input, and durable Lived Companion turns; capability assimilation remains an optional server-owned runtime policy and internal tool observations never become human messages.",
+    "role": "Server-side browser Companion bridge that binds canonical Vex Home identity, admitted loopback runtime identity, semantic relay input, durable Lived Companion turns, and read-only Interaction Control active-turn currentness when a validated current Context Lease supplies the rightful cancellation target; capability assimilation remains optional server-owned runtime policy and internal tool observations never become human messages.",
     "platformScope": "BROWSER",
     "reads": [
       "module.vexlife.core.lived-companion",
       "module.vexlife.core.conversation",
-      "module.vexlife.core.capability-assimilation-runtime"
+      "module.vexlife.core.capability-assimilation-runtime",
+      "module.vexlife.core.interaction-control"
     ],
     "writes": [],
     "loadedBy": [
@@ -1407,7 +1428,8 @@
     "changeMap": [
       "src/core/lived-companion.mjs",
       "scripts/serve-browser.mjs",
-      "docs/CAPABILITY-ASSIMILATION-RUNTIME.md"
+      "docs/CAPABILITY-ASSIMILATION-RUNTIME.md",
+      "src/core/interaction-control.mjs"
     ]
   },
   {
