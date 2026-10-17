@@ -85,10 +85,12 @@
         "permission.conversation.send"
       ],
       "processRefs": [
-        "process.vexlife.communication.translate-and-refine"
+        "process.vexlife.communication.translate-and-refine",
+        "process.vexlife.conversation.send-addressed"
       ],
       "moduleRefs": [
         "module.vexlife.core.conversation",
+        "module.vexlife.core.conversation-send-admission",
         "module.vexlife.browser.chat-controller"
       ],
       "localizationRefs": [
