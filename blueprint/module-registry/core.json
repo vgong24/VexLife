@@ -204,20 +204,42 @@
   {
     "moduleRef": "module.vexlife.core.conversation",
     "path": "src/core/conversation.mjs",
-    "role": "Addressed direct/group channel and immutable message-envelope contracts.",
+    "role": "Addressed direct/group channel and immutable message-envelope contracts, retaining the stable Semantic Relay compatibility export surface while dedicated Relay interpretation/projection logic is owned by module.vexlife.core.semantic-relay.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "state.channels",
-      "state.messages"
+      "state.messages",
+      "module.vexlife.core.semantic-relay"
     ],
     "writes": [],
     "loadedBy": [],
     "tests": [
-      "test/core.test.mjs"
+      "test/core.test.mjs",
+      "test/core-semantic-relay-module-boundary.test.mjs"
     ],
     "changeMap": [
       "reference/browser/app.js",
-      "src/core/localization.mjs"
+      "src/core/localization.mjs",
+      "src/core/semantic-relay.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.semantic-relay",
+    "path": "src/core/semantic-relay.mjs",
+    "role": "Reference-only Semantic Relay composition and validation: preserves attributed source/intent/meaning/currentness evidence, exact human confirmation/correction boundaries, target projection-mode derivation, semantic-equivalence classification, and message attachment without owning message persistence, translation generation, model runtime, delivery, or UI.",
+    "platformScope": "UNIVERSAL",
+    "reads": [],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.conversation"
+    ],
+    "tests": [
+      "test/core.test.mjs",
+      "test/core-semantic-relay-module-boundary.test.mjs",
+      "test/experience-command-projection.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/conversation.mjs"
     ]
   },
   {
