@@ -38,6 +38,49 @@ For the first personal pilot, use an established private overlay rather than bui
 NAT traversal and an internet-facing identity service. The product must remain
 transport-neutral so a user may later choose a self-managed WireGuard path.
 
+## Hosted capabilities behind Home Bridge
+
+Home Bridge answers **who/which device may ask the Home to do something**. It does not define the
+internal engine used to satisfy that product question.
+
+A future hosted capability therefore composes like this:
+
+~~~text
+remote VexLife surface
+    authenticated principal + paired device + current capability lease
+        |
+        v
+Home Bridge request admission
+        |
+        v
+Vex Home hosted capability contract
+        |
+        +--> in-process realization
+        +--> sibling service/container
+        +--> another owned machine
+        +--> explicitly selected cloud/managed realization
+~~~
+
+Permanent distinctions:
+
+~~~text
+HOME_BRIDGE_AUTHORITY != CAPABILITY_IMPLEMENTATION
+CAPABILITY_LEASE != GENERIC_HOME_EXECUTION
+CAPABILITY_CONTRACT != PROVIDER_ENGINE
+DEPLOYMENT_LOCATION != HUMAN_IDENTITY
+REMOTE_SURFACE != HOME_WRITER
+~~~
+
+For example, a future Maps search capability may be realized by a self-hosted geocoder without making
+that geocoder a phone-facing authority. A third-party credential, if later admitted, belongs to the
+Home/provider realization rather than to the Android application.
+
+This document does not mint Maps, Stream or other capability refs. Each real hosted capability must
+be separately registered, bound to explicit actions/permissions/effects and proven before its ref may
+appear in a membership or lease.
+
+See [`VEXHOME-HOSTED-CAPABILITIES.md`](VEXHOME-HOSTED-CAPABILITIES.md).
+
 ## Why a VexLife account is not required initially
 
 The desktop is the Home Authority. A trusted device is enrolled by a short-lived pairing

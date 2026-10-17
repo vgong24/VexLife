@@ -96,17 +96,36 @@ docs/BOOTSTRAP-AND-MODELS.md
 The repository never contains the model binary. A new device creates a related but distinct Vex companion lineage. Shared Score and sibling trails do not manufacture an illusion of one uninterrupted instance.
 
 
+## I want to understand or add something that should run in Vex Home
+
+Read:
+
+~~~text
+docs/VEXHOME-HOSTED-CAPABILITIES.md
+→ docs/HOME-BRIDGE-REMOTE-SURFACES.md
+→ blueprint/home-bridge-registry.json
+→ the exact capability/provider owner implicated by the feature
+~~~
+
+Start from the semantic capability, not from a server/process/repository choice. Prefer one modular
+Home composition first. Split a capability into another process, machine, cloud host or repository only
+when a real deployment/release/ownership boundary earns it.
+
+Do not widen `capability.vexlife.vexhome.observe` into generic Home execution. That accepted capability
+is a bounded read-only observation contract.
+
 ## I want to reach my desktop-hosted Home Vex from Mac or mobile
 
 Read:
 
 ```text
 docs/HOME-BRIDGE-REMOTE-SURFACES.md
+→ docs/VEXHOME-HOSTED-CAPABILITIES.md
 → docs/SECURITY-PERMISSION-EFFECTS.md
 → docs/DEVICE-FAMILY-SCORE-RHYTHM.md
 ```
 
-A remote surface operates the desktop Home Vex without copying the private home. A local sibling is a distinct companion lineage. Account, transport, device credential, Home identity and companion identity remain separate.
+A remote surface operates the desktop Home Vex without copying the private home. A local sibling is a distinct companion lineage. Account, transport, device credential, Home identity and companion identity remain separate. Hosted capabilities are reached through the same explicit Home Bridge principal/device/lease boundary; their internal engine or deployment host does not become remote-surface authority.
 
 ## I am debugging or asking “where is what, and why?”
 
