@@ -3,6 +3,31 @@
 
 VexLife is a local-first, lifelong AI companion. It runs on your own computer, and its Home, conversation state, model binding, and recovery receipts stay local unless a separate capability explicitly says otherwise.
 
+## What Vex Home means
+
+Vex Home is the person's durable local custody boundary: identity, companion/runtime state, recovery
+material and private product data live there under source-managed owners.
+
+It is also the architectural home for **hosted capabilities** that are too persistent, heavy or
+credential-sensitive to belong directly to a phone or presentation surface. The intended direction is:
+
+~~~text
+Vex Home
+    core identity / lifecycle / recovery
+
+    hosted capability: Conversation
+    hosted capability: Maps
+    hosted capability: Stream
+    future hosted capabilities...
+~~~
+
+This is an architecture direction, not a claim that every listed capability is already implemented as
+a Home service today. A hosted capability keeps one semantic contract even when its realization later
+moves between the same process, a sibling service, another owned machine, a human-selected cloud host,
+or an optional managed host.
+
+See [docs/VEXHOME-HOSTED-CAPABILITIES.md](docs/VEXHOME-HOSTED-CAPABILITIES.md).
+
 ## Before you start
 
 The current **release-qualified source-local companion profiles** are deliberately narrow:
@@ -123,6 +148,8 @@ The source-local setup front doors also do not choose the future full Windows or
 | Full foundation document | [docs/FOUNDATION-README.md](docs/FOUNDATION-README.md) |
 | Newcomer map | [docs/NEWCOMER-MAP.md](docs/NEWCOMER-MAP.md) |
 | Bootstrap/model details | [docs/BOOTSTRAP-AND-MODELS.md](docs/BOOTSTRAP-AND-MODELS.md) |
+| Vex Home hosted-capability architecture | [docs/VEXHOME-HOSTED-CAPABILITIES.md](docs/VEXHOME-HOSTED-CAPABILITIES.md) |
+| Home Bridge / remote surfaces | [docs/HOME-BRIDGE-REMOTE-SURFACES.md](docs/HOME-BRIDGE-REMOTE-SURFACES.md) |
 | Culture | [docs/CULTURE.md](docs/CULTURE.md) |
 | Roadmap | [docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md](docs/ROADMAP-AND-IMPLEMENTATION-PACKETS.md) |
 | Governance | [GOVERNANCE.md](GOVERNANCE.md) |
