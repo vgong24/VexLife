@@ -25,6 +25,12 @@
       "mode": "100644",
       "bytes": 16559,
       "sha256": "d2f527e2fe77b1c0dac5164e24694f10eb61723455f22861f4e8baed67a4d355"
+    },
+    {
+      "path": "test/conversation-send-admission.test.mjs",
+      "mode": "100644",
+      "bytes": 10488,
+      "sha256": "4e267bc002307ebc0cfe565ec317da790f9b425c0e05ddaa8d18af1b58467a88"
     }
   ]
 }

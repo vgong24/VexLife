@@ -243,6 +243,32 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.conversation-send-admission",
+    "path": "src/core/conversation-send-admission.mjs",
+    "role": "Forms content-addressed no-effect admission receipts binding one exact addressed Conversation send attempt to current source, membership, COMPOSER_SEND, active-turn, writer, resource and context evidence without owning append, inference or generic authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils",
+      "module.vexlife.core.conversation",
+      "blueprint/fragments/actions.json",
+      "blueprint/fragments/permissions.json",
+      "blueprint/process-factory/processes-conversation-and-interface.json",
+      "module.vexlife.core.lived-companion",
+      "module.vexlife.core.resource-admission",
+      "module.vexlife.core.context-lease"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/conversation-send-admission.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/feature-registry.json",
+      "src/core/browser-companion-bridge.mjs",
+      "reference/browser/modules/chat-controller.js"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.conversation-store",
     "path": "src/core/conversation-store.mjs",
     "role": "Canonical Vex Home durable multi-human channel event store with immutable hash-linked message events and append receipts, atomic current heads, explicit single-writer recovery, exact retry semantics and bounded local read/export independently of model turns.",
