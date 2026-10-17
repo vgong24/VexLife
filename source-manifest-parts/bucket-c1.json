@@ -53,8 +53,8 @@
     {
       "path": "test/browser-family-conversation-bridge.test.mjs",
       "mode": "100644",
-      "bytes": 14058,
-      "sha256": "07f74df7e8a8d2f07d5e72fd74ac2d0df03260e781096069ae9dc965c9e8f1c5"
+      "bytes": 18431,
+      "sha256": "fd8575d3d4c88334eb9e3c58c6d02101403cf2d034738f67b735291996faa48b"
     },
     {
       "path": "test/browser-relationships-persistence-http-route.test.mjs",

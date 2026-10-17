@@ -62,7 +62,8 @@ import {
   BrowserFamilyConversationBridgeError,
   appendBrowserFamilyMessage,
   listBrowserFamilyChannels,
-  readBrowserFamilyConversation
+  readBrowserFamilyConversation,
+  readBrowserFamilyThreadHistory
 } from '../src/core/browser-family-conversation-bridge.mjs';
 import {
   BrowserFamilyLifecycleBridgeError,
@@ -129,7 +130,7 @@ export const BROWSER_FAMILY_LIFECYCLE_MAX_BODY_BYTES = 8 * 1024;
 export const BROWSER_FAMILY_CONVERSATION_LIST_MAX = 1000;
 const RELATIONSHIPS_PERSISTENCE_REQUEST_KEYS = new Set(['localOwnerBinding', 'input']);
 const FAMILY_CONVERSATION_REQUEST_KEYS = new Set(['operation', 'intent']);
-const FAMILY_CONVERSATION_OPERATIONS = new Set(['APPEND', 'READ', 'LIST']);
+const FAMILY_CONVERSATION_OPERATIONS = new Set(['APPEND', 'READ', 'READ_THREAD_HISTORY', 'LIST']);
 const FAMILY_LIFECYCLE_REQUEST_KEYS = new Set(['operation', 'intent']);
 const FAMILY_LIFECYCLE_OPERATIONS = new Set(['HOST', 'JOIN', 'LEAVE']);
 
@@ -1521,6 +1522,12 @@ async function performFamilyConversationHttpRequest({
   }
   if (admitted.operation === 'READ') {
     return readBrowserFamilyConversation({
+      ...common,
+      channel: currentFamilyConversationChannel(familyHome, admitted.intent)
+    });
+  }
+  if (admitted.operation === 'READ_THREAD_HISTORY') {
+    return readBrowserFamilyThreadHistory({
       ...common,
       channel: currentFamilyConversationChannel(familyHome, admitted.intent)
     });
