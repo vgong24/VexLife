@@ -1185,6 +1185,6 @@
   },
   {
     "testRef": "test.lived-companion.thread-writer-currentness-held-unverifiable",
-    "brief": "Malformed, hash-invalid or identity-invalid writer evidence projects HELD_UNVERIFIABLE with attention routing while preserving the evidence and performing no mutation."
+    "brief": "Malformed, hash-invalid, identity-invalid, non-regular, symlink, or unreadable writer evidence projects HELD_UNVERIFIABLE with attention routing while preserving the evidence and performing no mutation."
   }
 ]

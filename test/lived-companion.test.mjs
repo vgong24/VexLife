@@ -1235,6 +1235,65 @@ test('thread writer currentness projection preserves unverifiable evidence and f
   assert.equal(value.leaseValidationState, 'LOCK_PATH_NOT_REGULAR_FILE');
   assert.equal(value.observedLeaseFileSha256, null);
   assert.equal(fs.lstatSync(lockPath).isDirectory(), true);
+
+  if (process.platform !== 'win32') {
+    const linkedHome = makeHome('writer-currentness-symlink');
+    const linkedThreadRef = ref('thread.writer-currentness-symlink');
+    const linkedLockPath = writerLeasePath(linkedHome, linkedThreadRef);
+    const outside = path.join(temp('writer-currentness-symlink-target'), 'outside.lock');
+    fs.mkdirSync(path.dirname(linkedLockPath), { recursive: true });
+    fs.writeFileSync(outside, 'outside-writer-evidence\n', 'utf8');
+    const outsideBytes = fs.readFileSync(outside);
+    fs.symlinkSync(outside, linkedLockPath, 'file');
+    const linkedValue = readCurrentLivedCompanionThreadWriterCurrentness({
+      ...linkedHome,
+      threadRef: linkedThreadRef
+    });
+    assert.equal(linkedValue.state, 'HELD_UNVERIFIABLE');
+    assert.equal(linkedValue.ownerState, 'UNVERIFIABLE');
+    assert.equal(linkedValue.leaseValidationState, 'LOCK_PATH_NOT_REGULAR_FILE');
+    assert.equal(linkedValue.observedLeaseFileSha256, null);
+    assert.equal(linkedValue.exactNextSafeRoute, 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER');
+    assert.equal(fs.lstatSync(linkedLockPath).isSymbolicLink(), true);
+    assert.deepEqual(fs.readFileSync(outside), outsideBytes);
+  }
+
+  {
+    const unreadableHome = makeHome('writer-currentness-unreadable');
+    const unreadableThreadRef = ref('thread.writer-currentness-unreadable');
+    const evidence = writeActiveWriterLease(unreadableHome, unreadableThreadRef);
+    const beforeBytes = fs.readFileSync(evidence.lockPath);
+    const originalExistsSync = fs.existsSync;
+    const originalLstatSync = fs.lstatSync;
+    const isUnreadableLock = (value) => typeof value === 'string' && value === evidence.lockPath;
+    try {
+      fs.existsSync = (value) => isUnreadableLock(value) ? false : originalExistsSync(value);
+      fs.lstatSync = (value, ...args) => {
+        if (isUnreadableLock(value)) {
+          const error = new Error('synthetic unreadable thread-writer lease');
+          error.code = 'EACCES';
+          throw error;
+        }
+        return originalLstatSync(value, ...args);
+      };
+      const unreadableValue = readCurrentLivedCompanionThreadWriterCurrentness({
+        ...unreadableHome,
+        threadRef: unreadableThreadRef
+      });
+      assert.equal(unreadableValue.state, 'HELD_UNVERIFIABLE');
+      assert.equal(unreadableValue.ownerState, 'UNVERIFIABLE');
+      assert.equal(unreadableValue.leaseValidationState, 'LOCK_PATH_UNREADABLE');
+      assert.equal(unreadableValue.observedLeaseFileSha256, null);
+      assert.equal(unreadableValue.exactNextSafeRoute, 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER');
+      assert.equal(unreadableValue.activeWriterPresent, false);
+      assert.equal(unreadableValue.recoveryRequired, false);
+      assert.equal(unreadableValue.attentionRequired, true);
+    } finally {
+      fs.existsSync = originalExistsSync;
+      fs.lstatSync = originalLstatSync;
+    }
+    assert.deepEqual(fs.readFileSync(evidence.lockPath), beforeBytes);
+  }
 });
 
 test('abandoned writer lease is classified for explicit recovery instead of impossible retry', async () => {

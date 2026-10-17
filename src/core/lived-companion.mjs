@@ -2817,13 +2817,13 @@ export function readCurrentLivedCompanionThreadWriterCurrentness({
   const identity = loadHome(home);
   const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
   const safeThread = ensureSafeRef(threadRef, 'threadRef');
-  const lockPath = resolveHomePath(
+  const lockDirectory = resolveHomePath(
     identity.homeRoot,
     'runtime',
     'thread-writer-locks',
-    admitted.companionLineageRef,
-    safeThread + '.lock'
+    admitted.companionLineageRef
   );
+  const lockPath = path.join(lockDirectory, safeThread + '.lock');
   const base = {
     schemaVersion: 'vexlife.lived-companion-thread-writer-currentness/v1',
     projectionRef: 'projection.lived-companion.thread-writer-currentness',
@@ -2837,19 +2837,24 @@ export function readCurrentLivedCompanionThreadWriterCurrentness({
     exactTurnIdentityAvailable: false
   };
 
-  if (!fs.existsSync(lockPath)) {
-    return Object.freeze({
-      ...base,
-      state: 'IDLE',
-      ownerState: 'NONE',
-      leaseSha256: null,
-      observedLeaseFileSha256: null,
-      leaseValidationState: 'NOT_PRESENT',
-      exactNextSafeRoute: 'NONE_REQUIRED',
-      activeWriterPresent: false,
-      recoveryRequired: false,
-      attentionRequired: false
-    });
+  try {
+    fs.lstatSync(lockPath);
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return Object.freeze({
+        ...base,
+        state: 'IDLE',
+        ownerState: 'NONE',
+        leaseSha256: null,
+        observedLeaseFileSha256: null,
+        leaseValidationState: 'NOT_PRESENT',
+        exactNextSafeRoute: 'NONE_REQUIRED',
+        activeWriterPresent: false,
+        recoveryRequired: false,
+        attentionRequired: false
+      });
+    }
+    // Preserve uncertainty: the existing classifier owns unreadable final-path disposition.
   }
 
   try {
