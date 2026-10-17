@@ -1,0 +1,218 @@
+{
+  "schemaVersion": "vexlife.vexhome-context-spine-interface/v0",
+  "entryClass": "DESIGN_SOURCE_CANDIDATE__COMPOSITION_INTERFACE",
+  "continuity": "[VXG RealForever]",
+  "parentInterfaceCandidateRef": "github.pull.vexlife.402",
+  "sourceOwnerRefs": [
+    "github.issue.vextreme-sdk.300",
+    "github.issue.vextreme-sdk.486",
+    "github.issue.vextreme-sdk.508"
+  ],
+  "purpose": "Provide one bounded navigational/context layer over physically fragmented personal-world sources without collapsing placement, chronology, meaning, or history into one folder tree or model context.",
+  "axes": {
+    "placementMap": {
+      "owns": [
+        "storage bindings",
+        "repository/storage shards",
+        "vault locators",
+        "replica/currentness/capacity state"
+      ],
+      "doesNotOwn": [
+        "semantic meaning",
+        "chronological identity",
+        "human-facing folder identity"
+      ]
+    },
+    "contextSpine": {
+      "canonicalIndexGrammar": [
+        "ARCHIVE",
+        "COLLECTION",
+        "BATCH",
+        "OBJECT",
+        "SEGMENT"
+      ],
+      "optionalPartitionAxes": [
+        "YEAR",
+        "TIME_PARTITION",
+        "SOURCE_EXPORT_PARTITION"
+      ],
+      "candidatePhotoNavigation": [
+        "ARCHIVE",
+        "COLLECTION",
+        "YEAR",
+        "BATCH",
+        "OBJECT",
+        "SEGMENT"
+      ],
+      "rules": [
+        "YEAR is a partition/index axis, not semantic ownership",
+        "UNKNOWN_YEAR and DATE_CONFLICT remain explicit",
+        "later interpretation updates maps rather than forcing file moves",
+        "large child sets are paged or referenced rather than embedded"
+      ]
+    },
+    "meaningGraph": {
+      "candidateRelationshipClasses": [
+        "PERSON",
+        "RELATIONSHIP",
+        "PLACE",
+        "MOMENT",
+        "JOURNAL",
+        "PROJECT",
+        "AFFINITY",
+        "QUESTION",
+        "DECISION",
+        "MEANING_GENERATION"
+      ],
+      "rule": "One stable object may participate in many meaning views without duplication or semantic folder ownership."
+    }
+  },
+  "contextNode": {
+    "fields": [
+      "contextNodeRef",
+      "nodeClass",
+      "logicalPath",
+      "parentContextRef",
+      "breadcrumbRefs[]",
+      "childIndexRef",
+      "childCount",
+      "objectCount",
+      "byteCount",
+      "coveredTimeRange",
+      "sourceClassCounts{}",
+      "knownDateCount",
+      "unknownDateCount",
+      "conflictCount",
+      "currentStorageBindingRefs[]",
+      "representativeObjectRefs[]",
+      "relationshipSummaryRefs[]",
+      "meaningSummaryRefs[]",
+      "recentDeltaRefs[]",
+      "openQuestionRefs[]",
+      "integrityFingerprint",
+      "contextGenerationRef",
+      "formedFromSourceRefs[]",
+      "formedAt"
+    ],
+    "humanProjectionFields": [
+      "label",
+      "shortSummary",
+      "whatChangedSincePriorGeneration",
+      "whyThisRegionMightMatterNow",
+      "nextUsefulDescentRefs[]"
+    ],
+    "boundedness": {
+      "rawChildListAmbient": false,
+      "rawPayloadAmbient": false,
+      "historicalGenerationsAmbient": false,
+      "representativeRefsBounded": true,
+      "relationshipSummariesBounded": true,
+      "recentDeltasBounded": true
+    }
+  },
+  "storageModes": {
+    "sourcePreservingOrReadableArchive": {
+      "mayUse": "year -> manageable batch -> files",
+      "identityDependsOnPath": false
+    },
+    "protectedCanonicalVault": {
+      "mayUse": "content-addressed encrypted object store",
+      "identityDependsOnPath": false
+    },
+    "personalWorldNavigation": {
+      "uses": "logical collection/year/batch/object context spine over either storage mode"
+    }
+  },
+  "shardContract": {
+    "rule": "Storage shard boundaries are orthogonal to year/time partitions.",
+    "validCases": [
+      "one year spans multiple shards",
+      "one shard spans multiple years",
+      "one logical collection spans repository, local-vault, and replica bindings"
+    ],
+    "rollover": {
+      "trigger": "admitted capacity/health threshold",
+      "steps": [
+        "stop new allocation to current shard",
+        "form or select successor storage shard",
+        "register predecessor/successor and capacity receipt",
+        "continue allocating stable object refs",
+        "update placement bindings",
+        "leave logical paths and object identities unchanged"
+      ],
+      "capacityScopeRequired": true,
+      "newRepositoryDoesNotImplyNewAccountQuota": true
+    },
+    "physicalShardManifestFields": [
+      "shardRef",
+      "providerRef",
+      "capacityScope",
+      "allocationState",
+      "predecessorShardRef",
+      "successorShardRef",
+      "objectBindingCount",
+      "usedBytes",
+      "thresholdPolicyRef",
+      "integrityReceiptRef",
+      "currentnessRef"
+    ]
+  },
+  "contextEvolution": {
+    "currentPointerMovesForward": true,
+    "priorGenerationsRemainAddressable": true,
+    "silentHistoricalRewrite": false,
+    "candidateTransitionQuestions": [
+      "What did this region mean then?",
+      "What does it mean now?",
+      "What changed?",
+      "Which source caused the reinterpretation?"
+    ]
+  },
+  "modelContextProjection": {
+    "include": [
+      "current Personal World frame",
+      "current implicated context-node envelopes",
+      "breadcrumb refs",
+      "relevant recent deltas",
+      "bounded child-index window",
+      "exact source/object refs required by the current question"
+    ],
+    "excludeAmbient": [
+      "all photo metadata",
+      "all journal days",
+      "all repositories",
+      "all historical context generations",
+      "all conversations",
+      "raw media payloads"
+    ],
+    "navigationPattern": "BREADTH_MAP -> SELECTIVE_DESCENT -> EXACT_SOURCE"
+  },
+  "awarenessHorizonComposition": {
+    "recents": "meaningful recent deltas and returning patterns",
+    "now": "current focus and current accepted world projection",
+    "ahead": "open loops, tasks, commitments, planned branches and waiting state",
+    "archiveDescent": "Context Spine",
+    "sourceDescent": "placement resolver -> shard/vault/replica -> exact source"
+  },
+  "invariants": [
+    "PLACEMENT != TIME_ORGANIZATION",
+    "TIME_ORGANIZATION != MEANING",
+    "MEANING != PHYSICAL_LOCATION",
+    "LOGICAL_PATH != PHYSICAL_PATH",
+    "YEAR_REF != REPOSITORY_REF",
+    "BATCH_REF != SHARD_REF",
+    "CONTEXT_ENVELOPE != RAW_CHILD_LIST",
+    "CONTEXT_ENVELOPE != MODEL_MEMORY",
+    "SUMMARY != SOURCE",
+    "CURRENT_CONTEXT_GENERATION != HISTORICAL_REWRITE",
+    "PHYSICAL_FRAGMENTATION != CONTEXTUAL_FRAGMENTATION"
+  ],
+  "authority": {
+    "runtimeImplementationAuthority": false,
+    "storageMutationAuthority": false,
+    "repositoryCreationAuthority": false,
+    "personalDataIngestionAuthority": false,
+    "trainingAuthority": false,
+    "mergeAuthority": false
+  }
+}

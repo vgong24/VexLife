@@ -1,0 +1,343 @@
+{
+  "schemaVersion": "vexlife.companion-continuity-awareness-interface/v1",
+  "contractRef": "contract.vexlife.companion-continuity-awareness-interface.v1",
+  "state": "DESIGN_SOURCE_CANDIDATE",
+  "sourcePlacementRef": "github.pull.vexlife.402",
+  "evolveContextRef": "github.issue.vexlife.401",
+  "inputTransportDefectRef": "github.issue.vexlife.399",
+  "purpose": "Project one current human/companion continuity horizon from existing source owners while keeping raw history and historical presentation revisions out of ambient model context.",
+  "nonCollapse": [
+    "CURRENT_AWARENESS != RAW_HISTORY",
+    "RECENTS != LIFETIME_MEMORY",
+    "HISTORICAL_AT_DAY != CURRENT_NOW",
+    "OPEN_LOOP != TASK",
+    "TASK != COMMITMENT",
+    "COMMITMENT != SCHEDULED_EVENT",
+    "UI_PROJECTION != SEMANTIC_OWNER",
+    "MODEL_CONTEXT_PROJECTION != UI_BODY",
+    "EVOLVE_CONTEXT != SCHEDULER",
+    "ROUND_ESTIMATE != COMPLETION_TRUTH",
+    "DISMISSED_FOR_NOW != FORGOTTEN_FOREVER",
+    "RECURRENCE != PROOF",
+    "SHARED_SOURCE_STATE != SHARED_PRESENTATION",
+    "SHARED_PRESENTATION != SHARED_IDENTITY"
+  ],
+  "sourceOwners": {
+    "continuityStream": {
+      "contractRef": "contract.vextreme.vex-continuity-stream.v1",
+      "repository": "vgong24/Vextreme-SDK",
+      "path": "docs/private-continuity/vex-continuity-stream/continuity-stream-contract.json"
+    },
+    "score": {
+      "repository": "vgong24/VexLife",
+      "path": "src/core/score-context-continuity.mjs"
+    },
+    "dailyMemory": {
+      "repository": "vgong24/VexLife",
+      "path": "src/core/daily-memory-dream.mjs"
+    },
+    "livingJournalArchive": {
+      "ownerRef": "github.issue.vexlife.151",
+      "repository": "vgong24/VexLife",
+      "path": "src/core/living-journal-memory-archive.mjs"
+    },
+    "continuityEvolution": {
+      "repository": "vgong24/VexLife",
+      "path": "src/core/continuity-evolution-router.mjs"
+    },
+    "intentWorkgraph": {
+      "repository": "vgong24/VexLife",
+      "path": "src/core/intent-workgraph.mjs"
+    },
+    "intentScheduler": {
+      "repository": "vgong24/VexLife",
+      "path": "docs/INTENT-ORCHESTRATION-SCHEDULER.md"
+    },
+    "contextLease": {
+      "repository": "vgong24/VexLife",
+      "path": "src/core/context-lease.mjs"
+    },
+    "nativeWorker": {
+      "repository": "vgong24/VexLife",
+      "path": "docs/NATIVE-WORKER-SUPERVISOR.md"
+    }
+  },
+  "temporalBands": [
+    {
+      "bandRef": "RECENTS",
+      "direction": "BACKWARD_NEAR",
+      "purpose": "Bounded near-term re-access for meaningful deltas, corrections, returning patterns and held opportunities without loading lifetime history.",
+      "candidateInputs": [
+        "recentCorrectionRefs",
+        "lastDeltaRefs",
+        "heldOpportunityRefs",
+        "recurrenceWatchCandidateRefs",
+        "recentDailyStratumRefs",
+        "recentlyAdvancedOpenLoopRefs",
+        "recentRevisionRefs"
+      ],
+      "preferredHumanWindowPolicy": {
+        "approximateHours": 48,
+        "adaptive": true,
+        "boundedByItems": true,
+        "semanticTruth": false
+      },
+      "dispositions": [
+        "VISIBLE_NOW",
+        "QUIET_HELD",
+        "DISMISSED_FOR_NOW",
+        "REACTIVATED_BY_NEW_EVIDENCE",
+        "ARCHIVED",
+        "SUPERSEDED"
+      ]
+    },
+    {
+      "bandRef": "NOW",
+      "direction": "CURRENT",
+      "purpose": "Smallest current continuity frame needed to understand present scene, focus, intent, questions, current truth and attention.",
+      "candidateInputs": [
+        "currentSceneRefs",
+        "currentFocusRefOrNull",
+        "activeIntentRefs",
+        "activeQuestionRefs",
+        "activeWorkNodeRefs",
+        "currentScoreStatementRefs",
+        "openLoopRefs",
+        "activeRelationshipRefs",
+        "currentAuthorityRefs",
+        "currentConsentRefs",
+        "currentSafetyRefs",
+        "currentSourceRefs"
+      ]
+    },
+    {
+      "bandRef": "AHEAD",
+      "direction": "FORWARD",
+      "purpose": "Typed future-oriented projection over unresolved work, commitments, waiting states, planned phases and optionally source-bound scheduled events.",
+      "candidateInputs": [
+        "openLoopRefs",
+        "openCommitmentRefs",
+        "activeWorkNodeRefs",
+        "readyWorkNodeRefs",
+        "blockedWorkNodeRefs",
+        "remainingWorkNodeRefs",
+        "completionGateRefs",
+        "waitingStateRefs",
+        "checkpointContinuationRefs",
+        "plannedPhaseRefs",
+        "scheduledEventRefs"
+      ],
+      "typedItemClasses": [
+        "OPEN_LOOP",
+        "TASK",
+        "COMMITMENT",
+        "WAITING",
+        "PLANNED_PHASE",
+        "SCHEDULED_EVENT"
+      ],
+      "scheduledEventOwnerRequired": true,
+      "scheduledEventOwnerCurrent": "UNPROVEN"
+    },
+    {
+      "bandRef": "ARCHIVE",
+      "direction": "BACKWARD_DEEP",
+      "purpose": "Deliberate historical source descent through committed Daily Strata and Living Journal pages.",
+      "ambientModelContext": false,
+      "historicalTruthClass": "HISTORICAL_AT_DAY"
+    }
+  ],
+  "currentProjection": {
+    "projectionRefPattern": "continuity-awareness.current.<lineage-or-home>",
+    "replaceInPlace": true,
+    "immutableHistoryExternalByRef": true,
+    "fields": [
+      "formedAt",
+      "currentness",
+      "recents",
+      "now",
+      "ahead",
+      "trajectorySummaries",
+      "attentionItems",
+      "archiveEntryRefs",
+      "sourceRefs"
+    ]
+  },
+  "recurrenceContract": {
+    "observationType": "REPEATED_BEHAVIOR_RECURRENCE",
+    "linkedDestination": "RECURRENCE_WATCH_CANDIDATE",
+    "requiresNewTriggerForReactivation": true,
+    "automaticFactPromotion": false,
+    "automaticMemoryPromotion": false,
+    "automaticTrainingPromotion": false,
+    "modelFields": [
+      "recurrenceWatchCandidateRef",
+      "currentDisposition",
+      "triggerRef",
+      "sourceObservationRefs",
+      "relevanceToCurrentIntentRef"
+    ]
+  },
+  "evolveContextProjection": {
+    "mutableCurrentProjection": true,
+    "fields": [
+      "trajectoryRef",
+      "originatingHumanEventRef",
+      "currentPhaseRef",
+      "currentPhasePurpose",
+      "continuationReason",
+      "completedWorkNodeRefs",
+      "remainingWorkNodeRefs",
+      "completionGateRefs",
+      "nextStopCondition",
+      "estimatedSemanticRoundsRemaining",
+      "interruptPolicyRef"
+    ],
+    "estimateContract": {
+      "advisory": true,
+      "confidence": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "basis": [
+        "WORK_NODE_COUNT",
+        "KNOWN_PHASES",
+        "TOOL_WAIT",
+        "UNKNOWN"
+      ],
+      "materialEstimateChangeRequiresReason": true
+    },
+    "continuationMustNotCreateHumanEvent": true
+  },
+  "modelContextProjection": {
+    "layers": [
+      "STABLE_FOUNDATION_IDENTITY_REFS",
+      "CURRENT_CONTINUITY_FRAME",
+      "CURRENT_TRAJECTORY_STATE",
+      "CURRENT_INPUT_EVENT",
+      "BOUNDED_RECENTS_RELEVANT_TO_CURRENT_INTENT",
+      "IMPLICATED_DELTAS_ONLY",
+      "IMPLICATED_SOURCE_EXCERPTS_OR_ANSWER_PACKETS_ONLY",
+      "CURRENT_AUTHORITY_CONSENT_SAFETY_ENVELOPE",
+      "OUTPUT_CONTRACT"
+    ],
+    "forbiddenAmbientClasses": [
+      "FULL_MESSAGE_HISTORY",
+      "FULL_JOURNAL",
+      "PRIOR_EVOLVE_CONTEXT_CARD_HISTORY",
+      "PRIOR_TASK_STATE_REVISION_HISTORY",
+      "ALL_SOURCE_DOCUMENTS",
+      "RAW_LOGS",
+      "RAW_TOOL_PAYLOADS",
+      "HIDDEN_REASONING",
+      "SCRATCHPAD",
+      "UNRELATED_RELATIONSHIP_HISTORY",
+      "UNRELATED_RECENTS"
+    ],
+    "successorRule": "CURRENT_STATE_PLUS_RELEVANT_DELTA_NOT_ALL_PRIOR_STATES",
+    "tokenBudgetOwner": "CONTEXT_LEASE"
+  },
+  "lenses": {
+    "HUMAN": [
+      "plainLanguageMeaning",
+      "whyItMatters",
+      "unfinished",
+      "expectedNext",
+      "attentionNeeded",
+      "pauseRedirectDismissRevisit"
+    ],
+    "VEX": [
+      "relationalContext",
+      "currentHumanIntent",
+      "recentCorrections",
+      "returningPatterns",
+      "openLoops",
+      "commitments",
+      "devexDepthTrigger"
+    ],
+    "DEVEX": [
+      "sourceRefs",
+      "sourceCurrentness",
+      "workNodes",
+      "completionGates",
+      "blockedWaitingStates",
+      "toolNativeWorkerObservations",
+      "checkpointContinuationReason",
+      "sourceDescentRoutes"
+    ]
+  },
+  "attentionTriggers": [
+    "CURRENT_INTENT_RELEVANCE_CHANGED",
+    "OPEN_LOOP_MATERIALLY_ADVANCED_OR_STALLED",
+    "COMMITMENT_DUE_OR_BLOCKED",
+    "SOURCE_CURRENTNESS_MATERIALLY_CHANGED",
+    "CORRECTION_CONTRADICTS_CURRENT_ASSUMPTION",
+    "RETURNING_PATTERN_GAINED_NEW_EVIDENCE",
+    "TRAJECTORY_NEEDS_HUMAN_DECISION",
+    "FUTURE_EVENT_ENTERED_ACTIONABLE_HORIZON"
+  ],
+  "quietClasses": [
+    "UNCHANGED_WORKER_HEARTBEAT",
+    "REPEATED_SOURCE_READ_WITH_NO_MEANING_CHANGE",
+    "SAME_STATE_MODEL_NARRATION"
+  ],
+  "interactionActions": [
+    "DISMISS_PRESENTATION",
+    "KEEP_QUIET",
+    "REVISIT_SOURCE",
+    "PAUSE_TRAJECTORY",
+    "REDIRECT_INTENT",
+    "CANCEL_TRAJECTORY",
+    "ASK_VEX"
+  ],
+  "accessibility": {
+    "requiredProjectionModes": [
+      "DESKTOP_MULTI_BAND",
+      "MOBILE_SINGLE_BAND",
+      "SCREEN_READER_ORDERED_SECTIONS",
+      "REDUCED_MOTION",
+      "KEYBOARD_NAVIGATION",
+      "HIGH_ZOOM_REFLOW"
+    ],
+    "colorOnlySignalForbidden": true
+  },
+  "localizationKeyCandidates": [
+    "continuity.horizon.recents",
+    "continuity.horizon.now",
+    "continuity.horizon.ahead",
+    "continuity.horizon.archive",
+    "continuity.pattern.returning",
+    "continuity.pattern.dismissForNow",
+    "continuity.pattern.reactivated",
+    "continuity.trajectory.whyAnotherRound",
+    "continuity.trajectory.currentPhase",
+    "continuity.trajectory.progress",
+    "continuity.trajectory.estimatedRemaining",
+    "continuity.trajectory.stopWhen",
+    "continuity.trajectory.pause",
+    "continuity.trajectory.redirect",
+    "continuity.trajectory.cancel"
+  ],
+  "effects": {
+    "homeMutated": false,
+    "memoryMutated": false,
+    "semanticAcceptanceCreated": false,
+    "schedulerAuthorityGranted": false,
+    "modelCalled": false,
+    "trainingRan": false,
+    "modelWeightsChanged": false,
+    "networkCalled": false,
+    "publicationPerformed": false
+  },
+  "maturity": {
+    "interfaceContract": "SOURCE_CANDIDATE",
+    "wireframe": "SOURCE_CANDIDATE",
+    "runtimeImplementation": "NOT_PROVEN",
+    "browserImplementation": "NOT_PROVEN",
+    "calendarOwner": "UNPROVEN",
+    "localizationImplementation": "NOT_PROVEN",
+    "sourceManifestClosure": "NOT_RUN",
+    "independentReview": "NOT_RUN",
+    "merge": false
+  }
+}
