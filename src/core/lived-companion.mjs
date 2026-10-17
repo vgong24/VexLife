@@ -2807,6 +2807,94 @@ export function livedCompanionReceiptSha256(file) {
   return fileSha256(file);
 }
 
+export function readCurrentLivedCompanionThreadWriterCurrentness({
+  home,
+  homeRef = null,
+  deviceRef = null,
+  companionLineageRef,
+  threadRef
+}) {
+  const identity = loadHome(home);
+  const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
+  const safeThread = ensureSafeRef(threadRef, 'threadRef');
+  const lockPath = resolveHomePath(
+    identity.homeRoot,
+    'runtime',
+    'thread-writer-locks',
+    admitted.companionLineageRef,
+    safeThread + '.lock'
+  );
+  const base = {
+    schemaVersion: 'vexlife.lived-companion-thread-writer-currentness/v1',
+    projectionRef: 'projection.lived-companion.thread-writer-currentness',
+    currentness: 'CURRENT',
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThread,
+    effectAuthorityGranted: false,
+    recoveryEffectPerformed: false,
+    exactTurnIdentityAvailable: false
+  };
+
+  if (!fs.existsSync(lockPath)) {
+    return Object.freeze({
+      ...base,
+      state: 'IDLE',
+      ownerState: 'NONE',
+      leaseSha256: null,
+      observedLeaseFileSha256: null,
+      leaseValidationState: 'NOT_PRESENT',
+      exactNextSafeRoute: 'NONE_REQUIRED',
+      activeWriterPresent: false,
+      recoveryRequired: false,
+      attentionRequired: false
+    });
+  }
+
+  try {
+    classifyExistingThreadWriterLease(identity.homeRoot, lockPath, admitted.companionLineageRef, safeThread);
+  } catch (error) {
+    if (!(error instanceof LivedCompanionError)) throw error;
+    if (error.code === 'THREAD_WRITER_RECOVERY_REQUIRED') {
+      return Object.freeze({
+        ...base,
+        state: 'RECOVERY_REQUIRED',
+        ownerState: 'ABSENT',
+        leaseSha256: error.details?.leaseSha256 ?? null,
+        observedLeaseFileSha256: error.details?.observedLeaseFileSha256 ?? null,
+        leaseValidationState: error.details?.leaseValidationState ?? 'VALID',
+        exactNextSafeRoute: 'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED',
+        activeWriterPresent: false,
+        recoveryRequired: true,
+        attentionRequired: false
+      });
+    }
+    if (error.code === 'THREAD_WRITER_CONFLICT') {
+      const active = error.details?.ownerState === 'ACTIVE';
+      const unverifiable = error.details?.ownerState === 'UNVERIFIABLE';
+      if (!active && !unverifiable) throw error;
+      return Object.freeze({
+        ...base,
+        state: active ? 'ACTIVE' : 'HELD_UNVERIFIABLE',
+        ownerState: active ? 'ACTIVE' : 'UNVERIFIABLE',
+        leaseSha256: error.details?.leaseSha256 ?? null,
+        observedLeaseFileSha256: error.details?.observedLeaseFileSha256 ?? null,
+        leaseValidationState: error.details?.leaseValidationState ?? (active ? 'VALID' : 'UNKNOWN'),
+        exactNextSafeRoute: active
+          ? 'WAIT_FOR_ACTIVE_THREAD_WRITER_OR_RETRY'
+          : 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER',
+        activeWriterPresent: active,
+        recoveryRequired: false,
+        attentionRequired: unverifiable
+      });
+    }
+    throw error;
+  }
+
+  throw new Error('thread writer lease classifier returned without a disposition');
+}
+
 export function readCurrentLivedCompanionCompletedTurn({
   home,
   homeRef = null,
