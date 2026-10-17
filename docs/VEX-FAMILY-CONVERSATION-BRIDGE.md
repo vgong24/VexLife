@@ -30,7 +30,10 @@ Conversation Store
   -> append/read the immutable hash-linked event lineage and preserve exact retry identity
 ```
 
-The first source phase does not register HTTP routes. `scripts/serve-browser.mjs` and its Source Manifest bucket remain a separately held server-tail stage.
+The original bridge source phase did not register HTTP routes. That server tail is now accepted:
+`/api/v1/family/conversation` resolves authenticated Family authority server-side and admits bounded
+APPEND / READ / LIST operations. The current successor extends that same route with a separately named
+READ_THREAD_HISTORY operation rather than creating another endpoint or authority owner.
 
 ## Caller authority membrane
 
@@ -44,7 +47,7 @@ expectedMembershipGeneration
 idempotencyKey
 ```
 
-For read, caller intent is limited to:
+For current-channel read **and** cross-generation thread-history read, caller intent is limited to:
 
 ```text
 spaceRef
@@ -65,7 +68,7 @@ The server-side caller supplies the current paired Home Bridge membership and le
 
 ## Currentness and visibility
 
-Every operation requires the caller's `expectedMembershipGeneration` to equal the current Family Space generation. The authenticated principal must still be an `ACTIVE` Family member. Append/read then revalidate the exact Family channel binding against that current record.
+Every operation requires the caller's `expectedMembershipGeneration` to equal the current Family Space generation. The authenticated principal must still be an `ACTIVE` Family member. Append/current-channel read/thread-history read then revalidate the exact current Family channel binding against that current record.
 
 The bridge additionally requires a channel audience containing at least two distinct human principals before consuming it. This keeps reconstructed PRIVATE or GROUP projections fail-closed at the adapter boundary even when the object was not formed by `createFamilyChannel()` in the same process.
 
@@ -98,7 +101,7 @@ The bridge itself is stateless; restart behavior is inherited from the durable F
 
 ## Response projection
 
-Bridge responses expose only the bounded product projection needed by the authenticated member, such as:
+Current-channel APPEND / READ responses remain intentionally narrow:
 
 ```text
 messageRef
@@ -114,11 +117,40 @@ contentHash
 createdAt
 ```
 
-They do not expose device credentials, capability lease material, filesystem paths, raw Home paths, model endpoints, principal-binding references, writer locks, or another member's unauthorized private-channel metadata.
+Cross-generation `READ_THREAD_HISTORY` is a different projection because a second consumer must
+preserve immutable historical audience truth instead of reconstructing it from current membership:
+
+```text
+spaceRef
+threadRef
+currentChannelRef
+membershipGeneration
+ordered segmentRefs[]
+messages[]:
+    messageRef
+    spaceRef
+    threadRef
+    original channelRef
+    speakerRef
+    recipientRefs[]
+    witnessRefs[]
+    original membershipGeneration
+    sequence
+    content
+    contentHash
+    createdAt
+truncated
+```
+
+The thread-history projection delegates the actual segment/currentness/FROM_JOIN law to
+`readFamilyThreadHistory(...)`. It does not expose that owner's `principalBindingRef`,
+`membershipSnapshotRef`, Family record hashes, raw store paths, or other persistence internals.
+
+Bridge responses do not expose device credentials, capability lease material, filesystem paths, raw Home paths, model endpoints, principal-binding references, writer locks, or another member's unauthorized private-channel metadata.
 
 ## Model-free boundary
 
-`src/core/browser-family-conversation-bridge.mjs` imports no model/provider client and accepts no inference dependency. Its append/read/list path is entirely Home Bridge + Family Space + Family Conversation + Conversation Store composition.
+`src/core/browser-family-conversation-bridge.mjs` imports no model/provider client and accepts no inference dependency. Its append/read/read-thread-history/list path is entirely Home Bridge + Family Space + Family Conversation + Conversation Store composition. Cross-generation history additionally consumes the accepted Family Membership Runtime projection; that import delegates to the existing owner and does not transfer ownership into the bridge.
 
 Accordingly this first phase can be tested with synthetic Family members and paired-device contracts while preserving:
 
@@ -148,21 +180,26 @@ VFB-10 restart preserves the same durable event identities
 VFB-11 no Relationship/Memory/training/publication effect
 VFB-12 response projection excludes credentials, endpoints, filesystem paths,
        principal-binding refs, and unauthorized private-channel metadata
+VFB-13 authenticated thread-history projection preserves canonical segment order,
+       original channel/generation/recipient/witness truth and FROM_JOIN visibility
 ```
 
-## Held reconnection
+## Current server boundary
 
-Real server integration remains a separate obligation. Before that stage:
+The same-origin Family server composition and real session-authority chain are accepted current
+predecessors. This bridge document does not reopen or duplicate them.
 
 ```text
-bind current accepted owner modules and exact schemas
-recheck scripts/serve-browser.mjs writer custody and its generated bucket
-register only same-origin bounded routes
-run real authenticated append/read/revocation/FROM_JOIN/idempotency checks
-prove model/provider call count remains zero for human chat
-rebind exact-head proof and fresh Assurance
+GET  /api/v1/family/bootstrap
+POST /api/v1/family/conversation
+     operation = APPEND | READ | READ_THREAD_HISTORY | LIST
 ```
 
-No server-tail, Home, Memory, Relationship, model, training, activation, network, or public-release authority is created by this document.
+Bootstrap remains current room/current principal/current audience truth. Thread history remains
+cross-generation immutable history truth. A consumer such as Android composes both and must fail
+closed if the current space/thread/channel/generation coordinates disagree.
+
+No Home, Safety, session, Memory, Relationship, model, training, activation, broader network, or
+public-release authority is created by this projection extension.
 
 <!-- [VF-02C][VEX-FAMILY][MODEL-FREE-CONVERSATION-BRIDGE][VXG RealForever] -->

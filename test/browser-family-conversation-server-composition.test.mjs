@@ -11,13 +11,15 @@ import {
 } from '../src/core/home-bridge.mjs';
 import {
   addFamilyMember,
-  createFamilySpace
+  createFamilySpace,
+  readFamilySpace
 } from '../src/core/family-space-store.mjs';
 import { createFamilyChannel } from '../src/core/family-conversation.mjs';
 import {
   materializeConversationChannel,
   readConversationChannelBinding
 } from '../src/core/conversation-store.mjs';
+import { leaveFamilyAndContinueConversation } from '../src/core/family-membership-runtime.mjs';
 import {
   BROWSER_FAMILY_CONVERSATION_API_PATH,
   createVexLifeBrowserServer
@@ -29,6 +31,7 @@ const T2 = '2026-09-13T20:20:00.000Z';
 const T3 = '2026-09-13T20:30:00.000Z';
 const T4 = '2026-09-13T20:40:00.000Z';
 const T5 = '2026-09-13T20:50:00.000Z';
+const T6 = '2026-09-13T21:00:00.000Z';
 const T9 = '2026-09-14T02:00:00.000Z';
 const SPACE = 'space.vex-family.server-composition-test';
 const GROUP = 'channel.vex-family.server-composition-group';
@@ -228,6 +231,117 @@ test('SC-00/SC-01/SC-02/SC-07: real HTTP composition resolves durable channel an
   assert.equal(modelCounter.count, 0);
 });
 
+test('TH-00/TH-01/TH-02/TH-06/TH-07: real HTTP thread history spans Family generations without changing current READ', async (t) => {
+  const { home, record, channel } = setupFamily(t);
+  const identities = new Map([
+    ['session-victor', trustedIdentity('victor')],
+    ['session-bri', trustedIdentity('bri')]
+  ]);
+  const modelCounter = { count: 0 };
+  let now = T3;
+  const server = createVexLifeBrowserServer({
+    companionBridge: fakeCompanion(modelCounter),
+    familyConversationHome: home,
+    familyConversationNow: () => now,
+    familyConversationInstanceRef: 'instance.server-composition.thread-history',
+    resolveFamilyConversationAuthority: ({ request }) => identities.get(request.headers['x-vex-test-session']) ?? null
+  });
+  const base = await listen(server, t);
+
+  const before = await postFamily(base, {
+    operation: 'APPEND',
+    intent: appendIntent(record, 'Before Alex left.', 'thread-history-before-leave')
+  }, 'session-victor');
+  assert.equal(before.status, 200);
+
+  const continued = leaveFamilyAndContinueConversation({
+    home,
+    spaceRef: SPACE,
+    priorChannelRef: channel.channelRef,
+    currentPrincipalRef: 'principal.alex',
+    expectedRevision: record.revision,
+    expectedMembershipGeneration: record.membershipGeneration,
+    observedAt: T4,
+    instanceRef: 'instance.server-composition.thread-history.leave-alex'
+  });
+  const currentRecord = readFamilySpace({ home, spaceRef: SPACE }).record;
+  const currentBinding = readConversationChannelBinding({
+    home,
+    channelRef: continued.successorChannelRef
+  });
+  assert.equal(currentBinding.state, 'CURRENT');
+  assert.ok(currentBinding.channel);
+
+  now = T5;
+  const after = await postFamily(base, {
+    operation: 'APPEND',
+    intent: {
+      spaceRef: SPACE,
+      channelRef: continued.successorChannelRef,
+      content: 'After Alex left.',
+      expectedMembershipGeneration: currentRecord.membershipGeneration,
+      idempotencyKey: 'thread-history-after-leave'
+    }
+  }, 'session-bri');
+  assert.equal(after.status, 200);
+
+  now = T6;
+  const history = await postFamily(base, {
+    operation: 'READ_THREAD_HISTORY',
+    intent: {
+      spaceRef: SPACE,
+      channelRef: continued.successorChannelRef,
+      expectedMembershipGeneration: currentRecord.membershipGeneration
+    }
+  }, 'session-bri');
+  assert.equal(history.status, 200);
+  assert.equal(history.body.state, 'CURRENT');
+  assert.equal(history.body.spaceRef, SPACE);
+  assert.equal(history.body.threadRef, channel.threadRef);
+  assert.equal(history.body.currentChannelRef, continued.successorChannelRef);
+  assert.equal(history.body.membershipGeneration, currentRecord.membershipGeneration);
+  assert.deepEqual(
+    history.body.segmentRefs,
+    [channel.channelRef, continued.successorChannelRef]
+  );
+  assert.deepEqual(
+    history.body.messages.map((message) => message.messageRef),
+    [before.body.message.messageRef, after.body.message.messageRef]
+  );
+  assert.deepEqual(
+    history.body.messages.map((message) => message.channelRef),
+    [channel.channelRef, continued.successorChannelRef]
+  );
+  assert.deepEqual(
+    history.body.messages.map((message) => message.membershipGeneration),
+    [record.membershipGeneration, currentRecord.membershipGeneration]
+  );
+  assert.ok(history.body.messages[0].recipientRefs.includes('principal.bri'));
+  assert.ok(history.body.messages[0].witnessRefs.includes('principal.alex'));
+  assert.ok(history.body.messages[0].witnessRefs.includes('principal.bri'));
+  assert.equal(history.body.messages[1].witnessRefs.includes('principal.alex'), false);
+  assert.ok(history.body.messages[1].witnessRefs.includes('principal.bri'));
+  assert.equal(Object.hasOwn(history.body.messages[0], 'principalBindingRef'), false);
+  assert.equal(Object.hasOwn(history.body.messages[0], 'membershipSnapshotRef'), false);
+  assert.equal(Object.hasOwn(history.body.messages[0], 'familySpaceRecordSha256'), false);
+
+  const currentRead = await postFamily(base, {
+    operation: 'READ',
+    intent: {
+      spaceRef: SPACE,
+      channelRef: continued.successorChannelRef,
+      expectedMembershipGeneration: currentRecord.membershipGeneration
+    }
+  }, 'session-bri');
+  assert.equal(currentRead.status, 200);
+  assert.deepEqual(
+    currentRead.body.messages.map((message) => message.messageRef),
+    [after.body.message.messageRef]
+  );
+  assert.equal(Object.hasOwn(currentRead.body.messages[0], 'witnessRefs'), false);
+  assert.equal(modelCounter.count, 0);
+});
+
 test('SC-03/SC-04/SC-05: browser authority forgery, revoked authority, and stale Family generation fail closed independently', async (t) => {
   const { home, record, channel } = setupFamily(t);
   const victor = trustedIdentity('victor');
@@ -286,6 +400,29 @@ test('SC-03/SC-04/SC-05: browser authority forgery, revoked authority, and stale
   }, 'session-victor');
   assert.equal(stale.status, 409);
   assert.equal(stale.body.failureCode, 'BROWSER_FAMILY_BRIDGE_STALE');
+
+  const staleHistory = await postFamily(base, {
+    operation: 'READ_THREAD_HISTORY',
+    intent: {
+      spaceRef: SPACE,
+      channelRef: GROUP,
+      expectedMembershipGeneration: record.membershipGeneration - 1
+    }
+  }, 'session-victor');
+  assert.equal(staleHistory.status, 409);
+  assert.equal(staleHistory.body.failureCode, 'BROWSER_FAMILY_BRIDGE_STALE');
+
+  const forgedHistory = await postFamily(base, {
+    operation: 'READ_THREAD_HISTORY',
+    intent: {
+      spaceRef: SPACE,
+      channelRef: GROUP,
+      expectedMembershipGeneration: record.membershipGeneration,
+      principalBindingRef: 'principal-binding.forged'
+    }
+  }, 'session-victor');
+  assert.equal(forgedHistory.status, 400);
+  assert.equal(forgedHistory.body.failureCode, 'BROWSER_FAMILY_BRIDGE_UNTRUSTED_FIELD');
 });
 
 test('SC-06: production-default Family route has no synthetic session fallback and fails closed', async (t) => {
