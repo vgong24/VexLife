@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 15329,
       "sha256": "f865d91188cc4b03aea97d13fbf8d8b548545e949e627f0df82cd8650d6e0013"
+    },
+    {
+      "path": "test/home-maps-photon-place-search.test.mjs",
+      "mode": "100644",
+      "bytes": 12135,
+      "sha256": "d14890d8dbf4194c4eaa0bf6c8fe90b26c2b6b60ab14c554379cf1808be3ebfb"
     }
   ]
 }

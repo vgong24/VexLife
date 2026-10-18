@@ -5,8 +5,8 @@
     {
       "path": "docs/VEXHOME-MAPS-PLACE-SEARCH.md",
       "mode": "100644",
-      "bytes": 4799,
-      "sha256": "fb172409dd010b87a887db5edcb8221688ef3dbcb77255b96fbbf0c6f5ec6ee8"
+      "bytes": 10494,
+      "sha256": "dd8abf4f0e2d587d2261090d254d355bc6119a42c7d68fe2e1ac20bd8dbdff49"
     },
     {
       "path": "fixtures/companion-navigation/vnav-00.synthetic.json",
