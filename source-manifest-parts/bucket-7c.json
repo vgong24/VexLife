@@ -23,8 +23,8 @@
     {
       "path": "test/capability.test.mjs",
       "mode": "100644",
-      "bytes": 3356,
-      "sha256": "b65980022e24cb78cddffe7fb8883b6c38c5db596267b3c403d0a719ba3a596c"
+      "bytes": 4925,
+      "sha256": "c62acc65243c4e62a42693e98b6a2c620f37319c5fd64c8f2a8d0fa358e30b89"
     },
     {
       "path": "test/intent-scheduler.test.mjs",

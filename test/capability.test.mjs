@@ -66,4 +66,36 @@ test('companion physical-navigation vocabulary is requestable and non-executable
   }
 });
 
+test('VexHome Maps place-search vocabulary is requestable and non-executable at C0', () => {
+  const bundle = loadBlueprint();
+  assert.equal(bundle.capabilities.registryVersion, 5);
+
+  const mapsSearch = bundle.capabilities.capabilities.find(
+    (item) => item.capabilityRef === 'capability.vexlife.maps-place-search'
+  );
+  assert.ok(mapsSearch);
+  assert.equal(mapsSearch.defaultStage, 'REQUESTABLE');
+  assert.equal(mapsSearch.effectClass, 'MAPS_PLACE_SEARCH_REQUEST');
+  assert.equal(mapsSearch.permissionRef, 'permission.none');
+  assert.deepEqual(mapsSearch.actionRefs, []);
+  assert.equal(mapsSearch.toolContract, undefined);
+  assert.match(mapsSearch.purpose, /provider-neutral place-search/u);
+  assert.ok(mapsSearch.notes.some((note) => /VexMapsDestinationSearchSession/u.test(note)));
+  assert.ok(mapsSearch.notes.some((note) => /Photon\/OpenStreetMap.*candidate later realization/u.test(note)));
+
+  for (const roleRef of mapsSearch.roleRefs) {
+    for (const platformRef of mapsSearch.platformRefs) {
+      const frame = compileCapabilityFrame(bundle.capabilities, { roleRef, platformRef });
+      const entry = frame.entries.find(
+        (item) => item.capabilityRef === 'capability.vexlife.maps-place-search'
+      );
+      assert.ok(entry, `${roleRef}/${platformRef} omitted Maps place search`);
+      assert.equal(entry.stage, 'REQUESTABLE');
+      assert.equal(entry.executable, false);
+      assert.deepEqual(entry.actionRefs, []);
+      assert.equal(requireExecutable(frame, entry.capabilityRef).state, 'BLOCKED_CAPABILITY_STAGE');
+    }
+  }
+});
+
 // [VXG RealForever]

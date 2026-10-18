@@ -1519,5 +1519,26 @@
       "scripts/serve-browser.mjs",
       "scripts/serve-browser-core.mjs"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.home-maps-place-search",
+    "path": "src/core/home-maps-place-search.mjs",
+    "role": "Deterministic provider-neutral Home-routed Maps place-search admission over current Home Bridge session authority and exact runtime capability scope; performs no provider request or Home write.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.home-bridge",
+      "src/core/home-bridge-session-authority.mjs",
+      "capability.vexlife.maps-place-search"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/home-maps-place-search.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/fragments/actions.json",
+      "blueprint/capability-registry.json",
+      "docs/VEXHOME-MAPS-PLACE-SEARCH.md"
+    ]
   }
 ]

@@ -93,7 +93,7 @@ function capabilityRegistry() {
 
 test('VA-I04 keeps the canonical five-tool root and adds one non-executable parent with four exact-current read-only children', () => {
   const registry = capabilityRegistry();
-  assert.equal(registry.registryVersion, 4);
+  assert.equal(registry.registryVersion, 5);
   assert.deepEqual(registry.rootCapabilityKernel, ROOT_CAPABILITY_KERNEL);
   assert.deepEqual(registry.rootCapabilityKernel, [
     'capability.search',
@@ -119,12 +119,12 @@ test('VA-I04 keeps the canonical five-tool root and adds one non-executable pare
     assert.equal(child.resourceClass, 'IO_BOUNDED');
     assert.equal(child.currentness.state, 'CURRENT');
     assert.equal(child.currentness.compatibility, 'COMPATIBLE');
-    assert.equal(child.currentness.sourceVersionRef, 'capability-registry.v4');
+    assert.equal(child.currentness.sourceVersionRef, 'capability-registry.v5');
     assert.equal(child.toolContract.externalEffectsExecuted, false);
   }
   for (const capabilityRef of ROOT_CAPABILITY_KERNEL) {
     const root = registry.capabilities.find((item) => item.capabilityRef === capabilityRef);
-    assert.equal(root.currentness.sourceVersionRef, 'capability-registry.v4');
+    assert.equal(root.currentness.sourceVersionRef, 'capability-registry.v5');
   }
 });
 

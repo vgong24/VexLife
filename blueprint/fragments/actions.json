@@ -1006,5 +1006,16 @@
     },
     "effectClass": "LOCAL_DRAFT",
     "outputStateRefs": []
+  },
+  {
+    "actionRef": "action.maps-place-search.home-routed-request",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "requestRef": "ref",
+      "query": "string",
+      "limit": "integer"
+    },
+    "effectClass": "PRIVATE_HOME_ROUTED_READ_ADMIT_MAPS_PLACE_SEARCH",
+    "outputStateRefs": []
   }
 ]
