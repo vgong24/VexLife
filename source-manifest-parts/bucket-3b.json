@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 77802,
       "sha256": "cfba4bfc0d4453d500149362e2b0699b36bea6bfbd4919b47271b940b3a0e6ae"
+    },
+    {
+      "path": "src/core/portable-behavior-contract.mjs",
+      "mode": "100644",
+      "bytes": 15192,
+      "sha256": "6f8f1e9a2c9fc2689213e0679435feb83c86f34d46072d86710b4bb224162ed8"
     }
   ]
 }
