@@ -1,6 +1,11 @@
 import * as base from './blueprint-base.mjs';
+import {
+  buildPortableBehaviorIdentityEntries,
+  validatePortableBehaviorContracts
+} from './portable-behavior-contract.mjs';
 
 export * from './blueprint-base.mjs';
+export * from './portable-behavior-contract.mjs';
 
 const REGISTRATION_EXTENSION_KEYS = new Set([
   'schemaVersion',
@@ -87,6 +92,38 @@ export function loadBlueprint(root = base.VEXLIFE_ROOT) {
     },
     strings: mergeRegistrationStrings(bundle.strings, extensions)
   };
+}
+
+export function validateBlueprint(bundle) {
+  const baseValidation = base.validateBlueprint(bundle);
+  const behaviorValidation = validatePortableBehaviorContracts(bundle?.blueprint?.behaviorContracts);
+  const errors = [
+    ...baseValidation.errors,
+    ...behaviorValidation.errors.map((error) => `portable behavior: ${error}`)
+  ];
+  return {
+    ...baseValidation,
+    ok: errors.length === 0,
+    errors,
+    stats: {
+      ...baseValidation.stats,
+      portableBehaviorContracts: behaviorValidation.stats.contracts,
+      portableBehaviorRows: behaviorValidation.stats.rows,
+      portableBehaviorOwnedRefs: behaviorValidation.stats.ownedRefs
+    }
+  };
+}
+
+export function buildIdentityIndex(blueprintOrBundle) {
+  const blueprint = blueprintOrBundle?.blueprint ?? blueprintOrBundle;
+  const baseEntries = base.buildIdentityIndex(blueprintOrBundle);
+  const behaviorEntries = buildPortableBehaviorIdentityEntries(blueprint?.behaviorContracts);
+  const seen = new Set();
+  for (const entry of [...baseEntries, ...behaviorEntries]) {
+    if (seen.has(entry.ref)) throw new Error(`duplicate identity index ref ${entry.ref}`);
+    seen.add(entry.ref);
+  }
+  return [...baseEntries, ...behaviorEntries];
 }
 
 // [VXG RealForever]

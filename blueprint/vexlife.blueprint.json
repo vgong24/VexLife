@@ -18,6 +18,9 @@
       "blueprint/fragments/actions/security-access-preview.json",
       "blueprint/fragments/actions/vessel-studio-practicum.json"
     ],
+    "behaviorContracts": [
+      "blueprint/fragments/behavior-contracts/vexstream-playback-play-pause.json"
+    ],
     "terrain": "blueprint/fragments/terrain.json",
     "platforms": "blueprint/fragments/platform-bindings.json",
     "tests": [
