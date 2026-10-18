@@ -186,7 +186,8 @@ test('VCS03 Photon prepared request carries no endpoint, credential, location bi
     'longitude',
     'https://',
     'apiKey',
-    'credential'
+    'providerCredential',
+    'authorizationToken'
   ]) {
     assert.equal(serialized.includes(forbidden), false, forbidden);
   }
