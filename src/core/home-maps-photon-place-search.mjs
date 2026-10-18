@@ -219,6 +219,11 @@ function validatePrepared(prepared) {
     credentialIncluded: prepared.credentialIncluded,
     effects: prepared.effects
   };
+  const expectedKeys = [...Object.keys(core), 'preparedRef', 'semanticFingerprint'].sort();
+  const observedKeys = Object.keys(prepared).sort();
+  if (JSON.stringify(observedKeys) !== JSON.stringify(expectedKeys)) {
+    fail('PHOTON_PREPARED_REQUEST_INVALID', 'prepared Photon request shape is not exact');
+  }
   const semanticFingerprint = semanticHash(core);
   if (semanticFingerprint !== prepared.semanticFingerprint
       || prepared.preparedRef !== `request.vexlife.maps.photon.${semanticFingerprint.slice(0, 32)}`) {

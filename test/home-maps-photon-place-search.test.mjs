@@ -194,6 +194,26 @@ test('VCS03 Photon prepared request carries no endpoint, credential, location bi
   assert.equal(serialized.includes('/api'), true);
 });
 
+test('VCS03 Photon projection rejects same-ref prepared-request widening through extra endpoint, credential, location or principal fields', () => {
+  const prepared = prepareHomeMapsPhotonPlaceSearch({ admission: admission() });
+  const extras = [
+    ['endpoint', 'endpoint.maps.photon.synthetic'],
+    ['providerCredential', 'credential.synthetic'],
+    ['locationBias', { latitude: 34.5794, longitude: -118.1165 }],
+    ['principalRef', 'person.synthetic']
+  ];
+  for (const [field, value] of extras) {
+    assert.throws(
+      () => projectHomeMapsPhotonPlaceSearch({
+        prepared: { ...prepared, [field]: value },
+        response: photonResponse()
+      }),
+      (error) => error?.code === 'PHOTON_PREPARED_REQUEST_INVALID',
+      field
+    );
+  }
+});
+
 test('VCS03 Photon projection validates GeoJSON and returns bounded provider-result candidates without selection/routing', () => {
   const prepared = prepareHomeMapsPhotonPlaceSearch({ admission: admission() });
   const result = projectHomeMapsPhotonPlaceSearch({ prepared, response: photonResponse() });
