@@ -23,7 +23,7 @@ test('P4 portable VexStream Play/Pause contract composes and validates', () => {
   const validation = validateBlueprint(bundle);
   assert.equal(validation.ok, true, validation.errors.join('\n'));
   assert.equal(validation.stats.portableBehaviorContracts, 1);
-  assert.equal(validation.stats.portableBehaviorRows, 14);
+  assert.equal(validation.stats.portableBehaviorRows, 17);
   assert.equal(contract.ownerBlueprintRef, bundle.blueprint.blueprintRef);
   assert.equal(contract.authority.portableMeaningOwner, true);
   assert.equal(contract.authority.platformRealizationOwner, false);
@@ -100,6 +100,30 @@ test('pending intent changes projection, survives stale observation and clears o
     row('law.vexstream.playback.pending-pause.clears-on-paused-acknowledgement').admission,
     'CLEARED_MATCHING_PROVIDER_ACKNOWLEDGEMENT'
   );
+  assert.equal(
+    row('law.vexstream.playback.pending-play.newer-pause-replaces-pending-play').effectRefOrNull,
+    'effect.vexstream.playback.request-pause'
+  );
+  assert.equal(
+    row('law.vexstream.playback.pending-play.newer-pause-replaces-pending-play').expectedProjectionRefOrNull,
+    'projection.vexstream.playback.play-available'
+  );
+  assert.equal(
+    row('law.vexstream.playback.pending-pause.newer-play-replaces-pending-pause').effectRefOrNull,
+    'effect.vexstream.playback.request-play'
+  );
+  assert.equal(
+    row('law.vexstream.playback.pending-pause.newer-play-replaces-pending-pause').expectedProjectionRefOrNull,
+    'projection.vexstream.playback.pause-available'
+  );
+  assert.equal(
+    row('law.vexstream.playback.pending-intent.clears-on-no-media-observation').admission,
+    'CLEARED_INCOMPATIBLE_TERMINAL_OBSERVATION'
+  );
+  assert.equal(
+    row('law.vexstream.playback.pending-intent.clears-on-no-media-observation').expectedProjectionRefOrNull,
+    'projection.vexstream.playback.play-pause-unavailable'
+  );
 });
 
 test('effects and projections never claim provider success or execution authority', () => {
@@ -117,6 +141,15 @@ test('effects and projections never claim provider success or execution authorit
       item.conditions.some((condition) => condition.startsWith('providerPlayRequested='))
   );
   assert.equal(providerMediaObservations.length, 6);
+  assert.equal(
+    contract.stateIdentities
+      .filter((item) =>
+        item.stateRef === 'state.vexstream.playback.media.play-request-pending' ||
+        item.stateRef === 'state.vexstream.playback.media.pause-request-pending'
+      )
+      .every((item) => item.conditions.includes('playPauseAvailable=true')),
+    true
+  );
   assert.equal(
     providerMediaObservations.every(
       (item) => item.conditions.includes('providerPlayPauseAvailable=true')
