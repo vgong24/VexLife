@@ -6,6 +6,7 @@ import {
 } from './home-maps-place-search.mjs';
 
 export const HOME_MAPS_PHOTON_ENGINE_REF = 'engine.vexlife.maps.photon';
+export const HOME_MAPS_PHOTON_OPERATION = 'FORWARD_PLACE_SEARCH';
 export const HOME_MAPS_PHOTON_REQUEST_SCHEMA = 'vexlife.home-maps-photon-place-search-request/v1';
 export const HOME_MAPS_PHOTON_RESULT_SCHEMA = 'vexlife.home-maps-photon-place-search-result/v1';
 
@@ -148,6 +149,7 @@ function preparedCore(admission) {
     schemaVersion: HOME_MAPS_PHOTON_REQUEST_SCHEMA,
     state: 'PHOTON_FORWARD_SEARCH_PREPARED_NO_EFFECT',
     engineRef: HOME_MAPS_PHOTON_ENGINE_REF,
+    operation: HOME_MAPS_PHOTON_OPERATION,
     requestRef: admission.requestRef,
     admissionRef: admission.admissionRef,
     requestHash: admission.requestHash,
@@ -179,7 +181,8 @@ function validatePrepared(prepared) {
   if (!object(prepared)
       || prepared.schemaVersion !== HOME_MAPS_PHOTON_REQUEST_SCHEMA
       || prepared.state !== 'PHOTON_FORWARD_SEARCH_PREPARED_NO_EFFECT'
-      || prepared.engineRef !== HOME_MAPS_PHOTON_ENGINE_REF) {
+      || prepared.engineRef !== HOME_MAPS_PHOTON_ENGINE_REF
+      || prepared.operation !== HOME_MAPS_PHOTON_OPERATION) {
     fail('PHOTON_PREPARED_REQUEST_INVALID', 'prepared Photon request identity is invalid');
   }
   safeRef(prepared.requestRef, 'prepared.requestRef');
@@ -193,6 +196,12 @@ function validatePrepared(prepared) {
       || prepared.transportRequest.path !== '/api'
       || !object(prepared.transportRequest.query)) {
     fail('PHOTON_PREPARED_REQUEST_INVALID', 'prepared Photon transport descriptor is invalid');
+  }
+  if (JSON.stringify(Object.keys(prepared.transportRequest).sort()) !== JSON.stringify(['method', 'path', 'query'])) {
+    fail('PHOTON_PREPARED_REQUEST_INVALID', 'prepared Photon transport descriptor shape is not exact');
+  }
+  if (JSON.stringify(Object.keys(prepared.transportRequest.query).sort()) !== JSON.stringify(['limit', 'q'])) {
+    fail('PHOTON_PREPARED_REQUEST_INVALID', 'prepared Photon query shape is not exact');
   }
   const { q, limit } = prepared.transportRequest.query;
   if (typeof q !== 'string' || q !== q.trim() || [...q].length < 1 || [...q].length > 256
@@ -209,6 +218,7 @@ function validatePrepared(prepared) {
     schemaVersion: prepared.schemaVersion,
     state: prepared.state,
     engineRef: prepared.engineRef,
+    operation: prepared.operation,
     requestRef: prepared.requestRef,
     admissionRef: prepared.admissionRef,
     requestHash: prepared.requestHash,

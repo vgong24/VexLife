@@ -149,6 +149,7 @@ accepted C1 admission
 prepareHomeMapsPhotonPlaceSearch(...)
     |
     +-- engineRef = engine.vexlife.maps.photon
+    +-- operation = FORWARD_PLACE_SEARCH
     +-- GET /api
     +-- q = accepted query
     +-- limit = accepted limit

@@ -12,6 +12,7 @@ import {
 import {
   HOME_MAPS_PHOTON_ATTRIBUTION,
   HOME_MAPS_PHOTON_ENGINE_REF,
+  HOME_MAPS_PHOTON_OPERATION,
   HOME_MAPS_PHOTON_PREPARE_EFFECTS,
   HOME_MAPS_PHOTON_PROJECTION_EFFECTS,
   HOME_MAPS_PHOTON_REQUEST_SCHEMA,
@@ -144,6 +145,7 @@ test('VCS03 Photon adapter prepares one exact no-effect /api q+limit descriptor 
   assert.equal(prepared.schemaVersion, HOME_MAPS_PHOTON_REQUEST_SCHEMA);
   assert.equal(prepared.state, 'PHOTON_FORWARD_SEARCH_PREPARED_NO_EFFECT');
   assert.equal(prepared.engineRef, HOME_MAPS_PHOTON_ENGINE_REF);
+  assert.equal(prepared.operation, HOME_MAPS_PHOTON_OPERATION);
   assert.equal(prepared.requestRef, accepted.searchRequest.requestRef);
   assert.equal(prepared.admissionRef, accepted.admissionRef);
   assert.equal(prepared.requestHash, accepted.requestHash);
@@ -194,22 +196,39 @@ test('VCS03 Photon prepared request carries no endpoint, credential, location bi
   assert.equal(serialized.includes('/api'), true);
 });
 
-test('VCS03 Photon projection rejects same-ref prepared-request widening through extra endpoint, credential, location or principal fields', () => {
+test('VCS03 Photon projection rejects prepared-request shape widening even after fingerprint/ref recomputation', () => {
   const prepared = prepareHomeMapsPhotonPlaceSearch({ admission: admission() });
-  const extras = [
-    ['endpoint', 'endpoint.maps.photon.synthetic'],
-    ['providerCredential', 'credential.synthetic'],
-    ['locationBias', { latitude: 34.5794, longitude: -118.1165 }],
-    ['principalRef', 'person.synthetic']
+  const rehashPrepared = (value) => {
+    const core = structuredClone(value);
+    delete core.preparedRef;
+    delete core.semanticFingerprint;
+    const semanticFingerprint = semanticHash(core);
+    return {
+      ...core,
+      preparedRef: `request.vexlife.maps.photon.${semanticFingerprint.slice(0, 32)}`,
+      semanticFingerprint
+    };
+  };
+  const invalid = [
+    rehashPrepared({ ...prepared, endpoint: 'endpoint.maps.photon.synthetic' }),
+    rehashPrepared({ ...prepared, providerCredential: 'credential.synthetic' }),
+    rehashPrepared({ ...prepared, principalRef: 'person.synthetic' }),
+    rehashPrepared({
+      ...prepared,
+      transportRequest: { ...prepared.transportRequest, endpoint: 'https://photon.invalid' }
+    }),
+    rehashPrepared({
+      ...prepared,
+      transportRequest: {
+        ...prepared.transportRequest,
+        query: { ...prepared.transportRequest.query, lat: 34.5794, lon: -118.1165 }
+      }
+    })
   ];
-  for (const [field, value] of extras) {
+  for (const widened of invalid) {
     assert.throws(
-      () => projectHomeMapsPhotonPlaceSearch({
-        prepared: { ...prepared, [field]: value },
-        response: photonResponse()
-      }),
-      (error) => error?.code === 'PHOTON_PREPARED_REQUEST_INVALID',
-      field
+      () => projectHomeMapsPhotonPlaceSearch({ prepared: widened, response: photonResponse() }),
+      (error) => error?.code === 'PHOTON_PREPARED_REQUEST_INVALID'
     );
   }
 });
