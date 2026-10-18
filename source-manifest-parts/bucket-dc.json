@@ -11,8 +11,8 @@
     {
       "path": "blueprint/fragments/behavior-contracts/vexstream-playback-play-pause.json",
       "mode": "100644",
-      "bytes": 19637,
-      "sha256": "c19ec9a31263f9d1d0ff008ec85fa94ec82d88915171a5edadd4bf9c41a416a9"
+      "bytes": 24856,
+      "sha256": "f1ec5c9bba02d7ff8eccd293a62b6fb948e47f30541d933998136835a89a99a0"
     },
     {
       "path": "blueprint/module-registry/cdr-s5-closed-alpha.json",

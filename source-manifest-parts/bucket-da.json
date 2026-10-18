@@ -29,8 +29,8 @@
     {
       "path": "test/vexstream-playback-behavior-contract.test.mjs",
       "mode": "100644",
-      "bytes": 8012,
-      "sha256": "45074750f484dc697a1ccd25114e6c66ea7b4bd01d67224851a032091d666fac"
+      "bytes": 10209,
+      "sha256": "d36d73b873244eb358e4ad72a57dbcae9c1166401269ee4f1323fdd0ac557a23"
     }
   ]
 }
