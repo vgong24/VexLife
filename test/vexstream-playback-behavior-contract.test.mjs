@@ -81,6 +81,18 @@ test('pending intent changes projection, survives stale observation and clears o
     'projection.vexstream.playback.play-pause-unavailable'
   );
   assert.equal(
+    row('law.vexstream.playback.pending-restart.media-paused-observation-preserves-play-intent').admission,
+    'PRESERVED_NEWER_ADMITTED_INTENT'
+  );
+  assert.equal(
+    row('law.vexstream.playback.pending-restart.media-paused-observation-preserves-play-intent').expectedProjectionRefOrNull,
+    'projection.vexstream.playback.pause-available'
+  );
+  assert.equal(
+    row('law.vexstream.playback.pending-restart.clears-on-playing-media-acknowledgement').admission,
+    'CLEARED_MATCHING_PROVIDER_ACKNOWLEDGEMENT'
+  );
+  assert.equal(
     row('law.vexstream.playback.pending-play.clears-on-playing-acknowledgement').admission,
     'CLEARED_MATCHING_PROVIDER_ACKNOWLEDGEMENT'
   );
@@ -94,6 +106,12 @@ test('effects and projections never claim provider success or execution authorit
   assert.equal(contract.effectIdentities.every((item) => item.providerSuccessClaimed === false), true);
   assert.equal(contract.projectionIdentities.every((item) => item.executionAuthority === false), true);
   assert.equal(contract.stateIdentities.every((item) => item.semanticState && !item.displayState), true);
+  const pausedRestartObservation = contract.stateIdentities.find(
+    (item) => item.stateRef ===
+      'state.vexstream.playback.ended.restart-request-pending.media-paused-observation.play-request-remains-pending'
+  );
+  assert.ok(pausedRestartObservation);
+  assert.ok(pausedRestartObservation.conditions.includes('reconciledPendingIntent=REQUEST_PLAY'));
 });
 
 test('portable behavior identities enter the canonical Blueprint index and Atlas', () => {
