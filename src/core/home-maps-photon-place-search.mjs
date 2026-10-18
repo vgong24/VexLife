@@ -13,9 +13,42 @@ export const HOME_MAPS_PHOTON_RESULT_SCHEMA = 'vexlife.home-maps-photon-place-se
 const REF = /^[A-Za-z0-9][A-Za-z0-9._:/#@+-]{0,511}$/u;
 const HEX64 = /^[0-9a-f]{64}$/u;
 const OSM_TYPES = new Set(['N', 'W', 'R']);
+const MAX_OSM_ID = 9223372036854775807n;
 const MAX_RESPONSE_BYTES = 1_000_000;
 const MAX_TEXT = 512;
 const MAX_OSM_TEXT = 128;
+const C1_ADMISSION_KEYS = Object.freeze([
+  'actionRef',
+  'admissionRef',
+  'admittedCapabilityRefs',
+  'authorityReceiptRef',
+  'canonicalWriter',
+  'capabilityRef',
+  'currentnessRefs',
+  'remoteWriterGranted',
+  'requestHash',
+  'schemaVersion',
+  'searchIntentHash',
+  'searchRequest',
+  'sourceReceiptRefs',
+  'standingHomeAuthority',
+  'state',
+  'truth'
+].sort());
+const C1_SEARCH_REQUEST_KEYS = Object.freeze(['limit', 'query', 'requestRef']);
+const C1_NO_EFFECT_TRUTH = Object.freeze({
+  admissionEqualsProviderExecution: false,
+  providerRequestPerformed: false,
+  providerCredentialExposed: false,
+  queryPersisted: false,
+  providerResultPersisted: false,
+  locationReadOrRetained: false,
+  destinationSelected: false,
+  routePrepared: false,
+  navigationStarted: false,
+  remoteHomeWriteGranted: false,
+  memoryMutation: false
+});
 
 export const HOME_MAPS_PHOTON_ATTRIBUTION = Object.freeze({
   sourceRef: 'data.openstreetmap',
@@ -64,14 +97,30 @@ function object(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function safeRef(value, label) {
-  if (typeof value !== 'string' || !REF.test(value)) fail('PHOTON_ADAPTER_INPUT_INVALID', `${label} must be one safe opaque ref`);
+function safeRef(value, label, code = 'PHOTON_ADAPTER_INPUT_INVALID') {
+  if (typeof value !== 'string' || !REF.test(value)) fail(code, `${label} must be one safe opaque ref`);
   return value;
 }
 
-function safeHash(value, label) {
-  if (typeof value !== 'string' || !HEX64.test(value)) fail('PHOTON_ADAPTER_INPUT_INVALID', `${label} must be one SHA-256 semantic hash`);
+function safeHash(value, label, code = 'PHOTON_ADAPTER_INPUT_INVALID') {
+  if (typeof value !== 'string' || !HEX64.test(value)) fail(code, `${label} must be one SHA-256 semantic hash`);
   return value;
+}
+
+function exactObjectKeys(value, expectedKeys, code, label) {
+  if (!object(value)) fail(code, `${label} must be one object`);
+  const observed = Object.keys(value).sort();
+  if (JSON.stringify(observed) !== JSON.stringify(expectedKeys)) {
+    fail(code, `${label} shape is not exact`);
+  }
+  return value;
+}
+
+function safeRefArray(value, label, { nonEmpty = false, code = 'PHOTON_ADAPTER_INPUT_INVALID' } = {}) {
+  if (!Array.isArray(value) || (nonEmpty && value.length === 0)) fail(code, `${label} must be a ref array`);
+  const normalized = value.map((item, index) => safeRef(item, `${label}[${index}]`, code));
+  if (new Set(normalized).size !== normalized.length) fail(code, `${label} must not contain duplicate refs`);
+  return normalized;
 }
 
 function safeText(value, label, { required = false, max = MAX_TEXT } = {}) {
@@ -84,16 +133,27 @@ function safeText(value, label, { required = false, max = MAX_TEXT } = {}) {
   return normalized || null;
 }
 
-function exactFalseEffects(value, expected, label) {
-  if (!object(value)) fail('PHOTON_ADAPTER_INPUT_INVALID', `${label} is required`);
+function exactFalseEffects(value, expected, label, code = 'PHOTON_ADAPTER_INPUT_INVALID') {
+  if (!object(value)) fail(code, `${label} is required`);
   const expectedKeys = Object.keys(expected).sort();
   const observedKeys = Object.keys(value).sort();
-  if (JSON.stringify(observedKeys) !== JSON.stringify(expectedKeys)) fail('PHOTON_ADAPTER_INPUT_INVALID', `${label} shape is not exact`);
-  for (const key of expectedKeys) if (value[key] !== false) fail('PHOTON_ADAPTER_INPUT_INVALID', `${label} unexpectedly grants ${key}`);
+  if (JSON.stringify(observedKeys) !== JSON.stringify(expectedKeys)) fail(code, `${label} shape is not exact`);
+  for (const key of expectedKeys) if (value[key] !== false) fail(code, `${label} unexpectedly grants ${key}`);
 }
 
 function normalizeAdmission(admission) {
   if (!object(admission)) fail('PHOTON_ADMISSION_REQUIRED', 'one accepted Maps Home admission is required');
+  exactObjectKeys(admission, C1_ADMISSION_KEYS, 'PHOTON_ADMISSION_MISMATCH', 'admission');
+  exactObjectKeys(admission.searchRequest, C1_SEARCH_REQUEST_KEYS, 'PHOTON_ADMISSION_MISMATCH', 'admission.searchRequest');
+  exactFalseEffects(admission.truth, C1_NO_EFFECT_TRUTH, 'admission.truth', 'PHOTON_ADMISSION_MISMATCH');
+  if (!Array.isArray(admission.admittedCapabilityRefs)
+      || admission.admittedCapabilityRefs.length !== 1
+      || admission.admittedCapabilityRefs[0] !== MAPS_PLACE_SEARCH_CAPABILITY_REF) {
+    fail('PHOTON_ADMISSION_MISMATCH', 'accepted admission must contain exactly the Maps place-search capability');
+  }
+  safeRef(admission.authorityReceiptRef, 'admission.authorityReceiptRef', 'PHOTON_ADMISSION_MISMATCH');
+  safeRefArray(admission.sourceReceiptRefs, 'admission.sourceReceiptRefs', { nonEmpty: true, code: 'PHOTON_ADMISSION_MISMATCH' });
+  safeRefArray(admission.currentnessRefs, 'admission.currentnessRefs', { nonEmpty: true, code: 'PHOTON_ADMISSION_MISMATCH' });
   if (admission.schemaVersion !== HOME_MAPS_PLACE_SEARCH_ADMISSION_SCHEMA
       || admission.state !== 'HOME_ROUTED_PLACE_SEARCH_ADMITTED') {
     fail('PHOTON_ADMISSION_REQUIRED', 'Photon preparation requires accepted C1 Home-routed place-search admission');
@@ -107,13 +167,13 @@ function normalizeAdmission(admission) {
       || admission.standingHomeAuthority !== false) {
     fail('PHOTON_ADMISSION_MISMATCH', 'Photon preparation cannot widen the accepted Home writer boundary');
   }
-  safeRef(admission.admissionRef, 'admission.admissionRef');
-  safeRef(admission.searchRequest?.requestRef, 'admission.searchRequest.requestRef');
-  safeHash(admission.requestHash, 'admission.requestHash');
-  safeHash(admission.searchIntentHash, 'admission.searchIntentHash');
+  safeRef(admission.admissionRef, 'admission.admissionRef', 'PHOTON_ADMISSION_MISMATCH');
+  safeRef(admission.searchRequest.requestRef, 'admission.searchRequest.requestRef', 'PHOTON_ADMISSION_MISMATCH');
+  safeHash(admission.requestHash, 'admission.requestHash', 'PHOTON_ADMISSION_MISMATCH');
+  safeHash(admission.searchIntentHash, 'admission.searchIntentHash', 'PHOTON_ADMISSION_MISMATCH');
 
-  const query = admission.searchRequest?.query;
-  const limit = admission.searchRequest?.limit;
+  const query = admission.searchRequest.query;
+  const limit = admission.searchRequest.limit;
   if (typeof query !== 'string' || query !== query.trim() || [...query].length < 1 || [...query].length > 256
       || /[\u0000-\u001f\u007f]/u.test(query)) {
     fail('PHOTON_ADMISSION_MISMATCH', 'accepted search query is outside the C1 boundary');
@@ -121,18 +181,13 @@ function normalizeAdmission(admission) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 20) {
     fail('PHOTON_ADMISSION_MISMATCH', 'accepted search limit is outside the C1 boundary');
   }
-  if (!object(admission.truth)
-      || admission.truth.providerRequestPerformed !== false
-      || admission.truth.providerCredentialExposed !== false
-      || admission.truth.queryPersisted !== false
-      || admission.truth.providerResultPersisted !== false
-      || admission.truth.locationReadOrRetained !== false
-      || admission.truth.destinationSelected !== false
-      || admission.truth.routePrepared !== false
-      || admission.truth.navigationStarted !== false
-      || admission.truth.remoteHomeWriteGranted !== false
-      || admission.truth.memoryMutation !== false) {
-    fail('PHOTON_ADMISSION_MISMATCH', 'Photon preparation must start before provider/location/selection/routing effects');
+  const expectedSearchIntentHash = semanticHash({
+    requestRef: admission.searchRequest.requestRef,
+    query,
+    limit
+  });
+  if (admission.searchIntentHash !== expectedSearchIntentHash) {
+    fail('PHOTON_ADMISSION_MISMATCH', 'accepted C1 search intent hash does not match requestRef/query/limit');
   }
   return Object.freeze({
     requestRef: admission.searchRequest.requestRef,
@@ -185,12 +240,12 @@ function validatePrepared(prepared) {
       || prepared.operation !== HOME_MAPS_PHOTON_OPERATION) {
     fail('PHOTON_PREPARED_REQUEST_INVALID', 'prepared Photon request identity is invalid');
   }
-  safeRef(prepared.requestRef, 'prepared.requestRef');
-  safeRef(prepared.admissionRef, 'prepared.admissionRef');
-  safeHash(prepared.requestHash, 'prepared.requestHash');
-  safeHash(prepared.searchIntentHash, 'prepared.searchIntentHash');
-  safeHash(prepared.semanticFingerprint, 'prepared.semanticFingerprint');
-  safeRef(prepared.preparedRef, 'prepared.preparedRef');
+  safeRef(prepared.requestRef, 'prepared.requestRef', 'PHOTON_PREPARED_REQUEST_INVALID');
+  safeRef(prepared.admissionRef, 'prepared.admissionRef', 'PHOTON_PREPARED_REQUEST_INVALID');
+  safeHash(prepared.requestHash, 'prepared.requestHash', 'PHOTON_PREPARED_REQUEST_INVALID');
+  safeHash(prepared.searchIntentHash, 'prepared.searchIntentHash', 'PHOTON_PREPARED_REQUEST_INVALID');
+  safeHash(prepared.semanticFingerprint, 'prepared.semanticFingerprint', 'PHOTON_PREPARED_REQUEST_INVALID');
+  safeRef(prepared.preparedRef, 'prepared.preparedRef', 'PHOTON_PREPARED_REQUEST_INVALID');
   if (!object(prepared.transportRequest)
       || prepared.transportRequest.method !== 'GET'
       || prepared.transportRequest.path !== '/api'
@@ -209,10 +264,14 @@ function validatePrepared(prepared) {
       || !Number.isInteger(limit) || limit < 1 || limit > 20) {
     fail('PHOTON_PREPARED_REQUEST_INVALID', 'prepared Photon query does not preserve C1 bounds');
   }
+  const expectedSearchIntentHash = semanticHash({ requestRef: prepared.requestRef, query: q, limit });
+  if (prepared.searchIntentHash !== expectedSearchIntentHash) {
+    fail('PHOTON_PREPARED_REQUEST_INVALID', 'prepared Photon query does not match the admitted C1 search intent hash');
+  }
   if (prepared.locationBiasIncluded !== false || prepared.endpointIncluded !== false || prepared.credentialIncluded !== false) {
     fail('PHOTON_PREPARED_REQUEST_INVALID', 'prepared Photon request widens held transport/location authority');
   }
-  exactFalseEffects(prepared.effects, HOME_MAPS_PHOTON_PREPARE_EFFECTS, 'prepared.effects');
+  exactFalseEffects(prepared.effects, HOME_MAPS_PHOTON_PREPARE_EFFECTS, 'prepared.effects', 'PHOTON_PREPARED_REQUEST_INVALID');
 
   const core = {
     schemaVersion: prepared.schemaVersion,
@@ -252,9 +311,18 @@ function responseBytes(response) {
 }
 
 function normalizeOsmId(value) {
-  if (Number.isSafeInteger(value) && value >= 0) return String(value);
-  if (typeof value === 'string' && /^\d{1,20}$/u.test(value)) return value;
-  fail('PHOTON_RESPONSE_INVALID', 'Photon OSM identity is invalid');
+  let normalized;
+  if (Number.isSafeInteger(value)) {
+    normalized = BigInt(value);
+  } else if (typeof value === 'string' && /^\d{1,20}$/u.test(value)) {
+    normalized = BigInt(value);
+  } else {
+    fail('PHOTON_RESPONSE_INVALID', 'Photon OSM identity is invalid');
+  }
+  if (normalized <= 0n || normalized > MAX_OSM_ID) {
+    fail('PHOTON_RESPONSE_INVALID', 'Photon OSM identity must be one positive 64-bit OSM element id');
+  }
+  return normalized.toString();
 }
 
 function optionalAddress(properties) {

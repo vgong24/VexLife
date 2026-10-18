@@ -168,7 +168,14 @@ test('VCS03 Photon adapter refuses unavailable/non-C1 admission instead of minti
     { ...accepted, state: 'HOME_ROUTED_PLACE_SEARCH_UNAVAILABLE' },
     { ...accepted, canonicalWriter: 'REMOTE_DEVICE' },
     { ...accepted, remoteWriterGranted: true },
-    { ...accepted, truth: { ...accepted.truth, providerRequestPerformed: true } }
+    { ...accepted, truth: { ...accepted.truth, providerRequestPerformed: true } },
+    { ...accepted, truth: { ...accepted.truth, admissionEqualsProviderExecution: true } },
+    { ...accepted, unexpectedAuthority: 'not-admitted' },
+    { ...accepted, searchRequest: { ...accepted.searchRequest, locationBias: true } },
+    { ...accepted, admittedCapabilityRefs: [] },
+    { ...accepted, sourceReceiptRefs: [] },
+    { ...accepted, currentnessRefs: [] },
+    { ...accepted, searchIntentHash: '0'.repeat(64) }
   ]) {
     assert.throws(
       () => prepareHomeMapsPhotonPlaceSearch({ admission: invalid }),
@@ -223,6 +230,17 @@ test('VCS03 Photon projection rejects prepared-request shape widening even after
         ...prepared.transportRequest,
         query: { ...prepared.transportRequest.query, lat: 34.5794, lon: -118.1165 }
       }
+    }),
+    rehashPrepared({
+      ...prepared,
+      transportRequest: {
+        ...prepared.transportRequest,
+        query: { ...prepared.transportRequest.query, q: 'Different query under old C1 hash' }
+      }
+    }),
+    rehashPrepared({
+      ...prepared,
+      requestRef: 'request.vexlife.vcs03.maps-search.forged'
     })
   ];
   for (const widened of invalid) {
@@ -296,6 +314,9 @@ test('VCS03 Photon projection rejects malformed coordinates and provider identit
     { ...base, geometry: { type: 'Point', coordinates: [-118, -91] } },
     { ...base, properties: { ...base.properties, osm_type: 'X' } },
     { ...base, properties: { ...base.properties, osm_id: -1 } },
+    { ...base, properties: { ...base.properties, osm_id: 0 } },
+    { ...base, properties: { ...base.properties, osm_id: '0' } },
+    { ...base, properties: { ...base.properties, osm_id: '9223372036854775808' } },
     { ...base, properties: { ...base.properties, name: '' } }
   ];
   for (const feature of invalid) {
@@ -312,7 +333,11 @@ test('VCS03 Photon projection rejects duplicate provider identity instead of sil
   const duplicate = {
     ...first,
     geometry: { type: 'Point', coordinates: [-118.2, 34.6] },
-    properties: { ...first.properties, name: 'Different label, same OSM identity' }
+    properties: {
+      ...first.properties,
+      name: 'Different label, same OSM identity',
+      osm_id: '000123456789'
+    }
   };
   assert.throws(
     () => projectHomeMapsPhotonPlaceSearch({ prepared, response: photonResponse([first, duplicate]) }),

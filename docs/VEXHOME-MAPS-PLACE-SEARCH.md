@@ -252,6 +252,8 @@ osm_id
     -> deterministic candidateRef
 ~~~
 
+Existing OpenStreetMap element IDs are positive 64-bit identities. Stage A normalizes numeric/decimal-string `osm_id` values to one canonical positive decimal representation before deriving `candidateRef`, so leading-zero or numeric/string representations cannot split one OSM identity into multiple candidates.
+
 The adapter whitelists the bounded fields it needs and ignores unowned upstream metadata.
 
 Provider-result coordinates mean only:
@@ -324,11 +326,13 @@ The adapter fails closed when:
 ~~~text
 input is not exact accepted C1 admission
 C1 writer/authority boundary was widened
+C1 searchIntentHash does not match requestRef/query/limit
 prepared request identity was forged
+prepared request query/request identity no longer matches the admitted C1 search intent
 response is not bounded GeoJSON FeatureCollection
 feature is not a valid Point
 coordinate is out of range
-OSM provider identity is invalid
+OSM provider identity is zero, negative, outside positive 64-bit range, or otherwise invalid
 provider returns more features than admitted limit
 provider repeats one exact OSM identity
 response exceeds bounded projection size
