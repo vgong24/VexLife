@@ -23,7 +23,7 @@ test('P4 portable VexStream Play/Pause contract composes and validates', () => {
   const validation = validateBlueprint(bundle);
   assert.equal(validation.ok, true, validation.errors.join('\n'));
   assert.equal(validation.stats.portableBehaviorContracts, 1);
-  assert.equal(validation.stats.portableBehaviorRows, 17);
+  assert.equal(validation.stats.portableBehaviorRows, 19);
   assert.equal(contract.ownerBlueprintRef, bundle.blueprint.blueprintRef);
   assert.equal(contract.authority.portableMeaningOwner, true);
   assert.equal(contract.authority.platformRealizationOwner, false);
@@ -122,6 +122,14 @@ test('pending intent changes projection, survives stale observation and clears o
   );
   assert.equal(
     row('law.vexstream.playback.pending-intent.clears-on-no-media-observation').expectedProjectionRefOrNull,
+    'projection.vexstream.playback.play-pause-unavailable'
+  );
+  assert.equal(
+    row('law.vexstream.playback.media-pending-intent.clears-on-restartable-ended-observation').expectedProjectionRefOrNull,
+    'projection.vexstream.playback.play-available'
+  );
+  assert.equal(
+    row('law.vexstream.playback.media-pending-intent.clears-on-unrestartable-ended-observation').expectedProjectionRefOrNull,
     'projection.vexstream.playback.play-pause-unavailable'
   );
 });
