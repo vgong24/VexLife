@@ -112,6 +112,17 @@ test('effects and projections never claim provider success or execution authorit
   );
   assert.ok(pausedRestartObservation);
   assert.ok(pausedRestartObservation.conditions.includes('reconciledPendingIntent=REQUEST_PLAY'));
+  const providerMediaObservations = contract.stateIdentities.filter(
+    (item) => item.kind === 'MEDIA_OBSERVATION' &&
+      item.conditions.some((condition) => condition.startsWith('providerPlayRequested='))
+  );
+  assert.equal(providerMediaObservations.length, 6);
+  assert.equal(
+    providerMediaObservations.every(
+      (item) => item.conditions.includes('providerPlayPauseAvailable=true')
+    ),
+    true
+  );
 });
 
 test('portable behavior identities enter the canonical Blueprint index and Atlas', () => {
