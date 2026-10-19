@@ -379,4 +379,35 @@ test('VFA-03: VEX_CORE resolver failure remains a 503 server-authority hold', as
   assert.equal(result.body.failureCode, 'FAMILY_SESSION_AUTHORITY_UNAVAILABLE');
 });
 
+
+test('VFA-00B: READ_THREAD_HISTORY is admitted without widening the reduced Family authority tuple', async () => {
+  const identity = trustedIdentity('victor');
+  const projection = vexCoreProjection(identity, 'victor');
+  let observedContext = null;
+  const resolver = createVexCoreFamilySessionAuthorityResolver({
+    resolveVexCoreAuthority: async (context) => {
+      observedContext = context;
+      return projection;
+    }
+  });
+
+  const request = Object.freeze({ serverOwned: true });
+  const result = await resolver({
+    request,
+    operation: 'READ_THREAD_HISTORY',
+    target: { spaceRef: SPACE, channelRef: CHANNEL }
+  });
+
+  assert.deepEqual(Object.keys(result).sort(), [
+    'currentRevocationGeneration',
+    'lease',
+    'membership'
+  ]);
+  assert.equal(observedContext.operation, 'READ_THREAD_HISTORY');
+  assert.equal(observedContext.request, request);
+  assert.deepEqual(observedContext.target, { spaceRef: SPACE, channelRef: CHANNEL });
+  assert.equal(Object.hasOwn(result, 'stableSessionBindingRef'), false);
+  assert.equal(Object.hasOwn(result, 'effects'), false);
+});
+
 // [VXG RealForever]
