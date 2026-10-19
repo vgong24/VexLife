@@ -210,7 +210,8 @@ function architectureFeaturePurposes(registry, entries, entry) {
       if (prior && prior.distance <= anchor.distance) continue;
       found.set(feature.ref, Object.freeze({
         featureRef: feature.ref,
-        purpose: feature.brief ?? null,
+        sourcePurpose: feature.brief ?? null,
+        purposeStringRef: feature.purposeStringRef ?? null,
         viaRef: anchor.ref,
         distance: anchor.distance,
         moduleRefs: Object.freeze([...(feature.moduleRefs ?? [])].slice(0, 12)),

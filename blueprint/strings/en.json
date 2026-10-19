@@ -126,6 +126,7 @@
   "guide.architecture.purpose-unresolved": "No source-linked purpose is registered for this node yet.",
   "guide.architecture.features-none": "No related feature owner is linked.",
   "guide.architecture.sources-none": "No deeper source path is registered.",
+  "feature.addressed-conversation.purpose": "Direct and group channels preserve speaker, recipient, witness, membership and channel-isolated continuity.",
   "guide.answer.current": "You are on {screenRef}, route {routeRef}, in project {projectRef}, thread {threadRef}, channel {channelRef}. The selected node is {selectedNodeRef}. This frame comes from semantic identities and journey events, not raw pointer recording.",
   "guide.answer.freeform": "I received “{question}”. Use a stable Guide action for a grounded current-frame, next-step, or protection explanation.",
   "guide.answer.next.chat": "Continue in the selected addressed channel, or add explicit participants to a group. Switching channels never silently changes the responder.",

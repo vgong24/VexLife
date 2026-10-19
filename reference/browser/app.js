@@ -167,7 +167,7 @@ async function explainSelectedArchitectureNode(){
       throw new Error('Architecture node projection is not exact-current read-only truth');
     }
     const featurePurposes=Array.isArray(value.featurePurposes)?value.featurePurposes:[];
-    const purposes=[...new Set(featurePurposes.map((item)=>item?.purpose).filter((item)=>typeof item==='string'&&item.length>0))];
+    const purposes=[...new Set(featurePurposes.map((item)=>architectureDisplayValue(item?.purposeStringRef)).filter((item)=>typeof item==='string'&&item.length>0))];
     const featureRefs=uniqueArchitectureRefs(featurePurposes.map((item)=>item?.featureRef),12);
     const sourceRefs=uniqueArchitectureRefs([
       value.sourcePath,

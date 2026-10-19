@@ -18,12 +18,14 @@ test('direct-root executable chain has no transitional Stage-B overlay',()=>{ass
 test('browser modules remain syntactically valid',()=>{for(const name of ['app.js',...moduleNames.map((name)=>`modules/${name}`)]){const result=spawnSync(process.execPath,['--check',fileURLToPath(new URL(name,browserRoot))],{encoding:'utf8'});assert.equal(result.status,0,`${name}: ${result.stderr}`)}});
 test('current semantic owners remain present beneath the E2.7 body',()=>{for(const marker of ['createChatController','createNavigationController','createGuideController','createTerrainController','conversationKey','UNSENT_LOCAL_DRAFT','vexAvailability','vex.visible.name'])assert.match(allJs,new RegExp(marker.replaceAll('.','\\.')));assert.doesNotMatch(`${html}\n${allJs}`,/VexOrg Demo Company|Maya Chen/)});
 test('demo conversations remain relation-owned browser evidence',()=>{const data=createDemoData({storage:{getItem:()=>null},loadJson:(_key,fallback)=>fallback});for(const channel of data.channels){const project=data.projects.find((candidate)=>candidate.projectRef===channel.projectRef);assert.ok(project?.threads.some((thread)=>thread.threadRef===channel.threadRef));const key=conversationKey(channel.projectRef,channel.threadRef,channel.channelRef);assert.ok(data.messages.has(key));for(const message of data.messages.get(key)){assert.equal(message.projectRef,channel.projectRef);assert.equal(message.threadRef,channel.threadRef);assert.equal(message.channelRef,channel.channelRef)}}});
-test('required localization remains available',()=>{for(const ref of ['product.vexlife.name','vex.visible.name','vex.summon','terrain.reset','terrain.center-current-context','composer.send','health.reference.summary','guide.answer.current','guide.answer.architecture-node','guide.answer.architecture-node-unavailable','guide.architecture.purpose-unresolved','guide.architecture.features-none','guide.architecture.sources-none'])for(const language of bundle.blueprint.product.requiredLanguages)assert.ok(bundle.strings[language][ref],`${language} missing ${ref}`);assert.match(app,/data-i18n-aria-label/)});
+test('required localization remains available',()=>{for(const ref of ['product.vexlife.name','vex.visible.name','vex.summon','terrain.reset','terrain.center-current-context','composer.send','health.reference.summary','guide.answer.current','guide.answer.architecture-node','guide.answer.architecture-node-unavailable','guide.architecture.purpose-unresolved','guide.architecture.features-none','guide.architecture.sources-none','feature.addressed-conversation.purpose'])for(const language of bundle.blueprint.product.requiredLanguages)assert.ok(bundle.strings[language][ref],`${language} missing ${ref}`);assert.match(app,/data-i18n-aria-label/)});
 test('lived architecture affordance source-descends the selected semantic node',()=>{
   assert.match(app,/BROWSER_ARCHITECTURE_NODE_API_PATH='\/api\/v1\/architecture\/node'/u);
   assert.match(app,/async function explainSelectedArchitectureNode\(\)/u);
   assert.match(app,/guide\.answer\.architecture-node/u);
   assert.match(app,/SOURCE_BOUND_READ_ONLY_ARCHITECTURE_NODE/u);
+  assert.match(app,/architectureDisplayValue\(item\?\.purposeStringRef\)/u);
+  assert.doesNotMatch(app,/featurePurposes\.map\(\(item\)=>item\?\.purpose\)/u);
   assert.doesNotMatch(app,/guide\.askIntent\(GUIDE_INTENTS\.ARCHITECTURE\)/u);
 });
 test('integration source proves direct-root and carried truth',()=>{const integration=fs.readFileSync(new URL('integration-test.js',browserRoot),'utf8');for(const marker of ['exact E2.7 body is the first rendered product surface','canonical VexLife topology is projected into the E2.7 body','UNSENT_LOCAL_DRAFT','semantic auto-entry remains opt-in','one visible Vex occupies the E2.7 ambient vessel',"state:'PASS'"])assert.match(integration,new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))});
@@ -79,8 +81,11 @@ test('browser server serves direct root app and bounded selected-node source des
   assert.equal(architecture.truthClass,'SOURCE_BOUND_READ_ONLY_ARCHITECTURE_NODE');
   assert.equal(architecture.ref,'terrain.thread.open-conversation');
   assert.equal(architecture.kind,'TERRAIN');
-  assert.ok(architecture.featurePurposes.some((item)=>item.featureRef==='feature.vexlife.addressed-conversation'));
-  assert.ok(architecture.featurePurposes.some((item)=>item.processRefs.includes('process.vexlife.conversation.send-addressed')));
+  const addressedPurpose=architecture.featurePurposes.find((item)=>item.featureRef==='feature.vexlife.addressed-conversation');
+  assert.ok(addressedPurpose);
+  assert.equal(addressedPurpose.purposeStringRef,'feature.addressed-conversation.purpose');
+  assert.equal(addressedPurpose.sourcePurpose,'Direct and group channels preserve speaker, recipient, witness, membership and channel-isolated continuity.');
+  assert.ok(addressedPurpose.processRefs.includes('process.vexlife.conversation.send-addressed'));
   assert.ok(architecture.relationships.outgoing.length<=24);
   assert.ok(architecture.relationships.incoming.length<=24);
   assert.equal(Object.values(architecture.effects).every((value)=>value===false),true);

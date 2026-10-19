@@ -126,6 +126,7 @@
   "guide.architecture.purpose-unresolved": "此节点尚未注册与源码绑定的用途。",
   "guide.architecture.features-none": "没有关联的功能所有者。",
   "guide.architecture.sources-none": "尚未注册更深的源码路径。",
+  "feature.addressed-conversation.purpose": "直接和群组频道保留发言者、接收者、见证信息、成员关系以及按频道隔离的连续性。",
   "guide.answer.current": "你位于 {screenRef}，路由 {routeRef}，项目 {projectRef}，线程 {threadRef}，频道 {channelRef}。所选节点为 {selectedNodeRef}。此框架来自语义身份和行程事件，而非原始指针记录。",
   "guide.answer.freeform": "我收到了“{question}”。请使用稳定的 Guide 操作获取基于当前框架、下一步或保护机制的说明。",
   "guide.answer.next.chat": "继续使用所选的定址频道，或明确将参与者加入群组。切换频道绝不会静默更换响应者。",

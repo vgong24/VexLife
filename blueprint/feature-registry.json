@@ -59,6 +59,7 @@
     {
       "featureRef": "feature.vexlife.addressed-conversation",
       "purpose": "Direct and group channels preserve speaker, recipient, witness, membership and channel-isolated continuity.",
+      "purposeStringRef": "feature.addressed-conversation.purpose",
       "status": "IMPLEMENTED_REFERENCE",
       "humanIntroduction": {
         "disposition": "DISCOVERABLE_ONLY",
@@ -94,7 +95,8 @@
         "module.vexlife.browser.chat-controller"
       ],
       "localizationRefs": [
-        "screen.chat.title"
+        "screen.chat.title",
+        "feature.addressed-conversation.purpose"
       ],
       "testRefs": [
         "test.channel.direction",
