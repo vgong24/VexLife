@@ -216,8 +216,9 @@ function validateAdmissionProjection(value, label) {
     sourceRefs: sorted(strings(value.sourceRefs, `${label}.sourceRefs`, { min: 1 }))
   };
 }
+
 function receiptCore(input) {
-  exactKeysinput, INPUT_KEYS, 'input');
+  exactKeys(input, INPUT_KEYS, 'input');
   assertNoCallerAuthorityBooleans(input.staticSource, 'staticSource');
   assertNoCallerAuthorityBooleans(input.conversation, 'conversation');
   assertNoCallerAuthorityBooleans(input.confirmationWitness, 'confirmationWitness');
