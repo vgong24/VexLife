@@ -175,13 +175,33 @@ function boundedArchitectureRelationships(entries, nodeRef, direction) {
   return Object.freeze(rows.slice(0, BROWSER_ARCHITECTURE_NODE_RELATION_LIMIT).map((row) => Object.freeze(row)));
 }
 
-function architectureFeaturePurposes(registry, entries, entry) {
-  const anchors = [];
-  let cursor = entry;
-  for (let distance = 0; cursor && distance <= 4; distance += 1) {
-    anchors.push({ ref: cursor.ref, distance });
-    cursor = cursor.parentRef ? registry.get(cursor.parentRef) : null;
+function architectureFeaturePurposeAnchors(registry, entries, entry) {
+  const found = new Map();
+  const addAncestry = (start, baseDistance) => {
+    let cursor = start;
+    for (let depth = 0; cursor && depth <= 6; depth += 1) {
+      const distance = baseDistance + depth;
+      const prior = found.get(cursor.ref);
+      if (prior === undefined || distance < prior) found.set(cursor.ref, distance);
+      cursor = cursor.parentRef ? registry.get(cursor.parentRef) : null;
+    }
+  };
+  addAncestry(entry, 0);
+
+  for (const candidate of entries) {
+    const linksToSelected = (candidate.edges ?? []).some((edge) =>
+      edge.to === entry.ref && ['TERRAIN', 'CANONICAL_NODE', 'PRESENTS'].includes(edge.type)
+    );
+    if (linksToSelected) addAncestry(candidate, 1);
   }
+
+  return [...found.entries()]
+    .map(([ref, distance]) => Object.freeze({ ref, distance }))
+    .sort((left, right) => left.distance - right.distance || left.ref.localeCompare(right.ref));
+}
+
+function architectureFeaturePurposes(registry, entries, entry) {
+  const anchors = architectureFeaturePurposeAnchors(registry, entries, entry);
   const found = new Map();
   for (const feature of entries.filter((candidate) => candidate.kind === 'FEATURE')) {
     for (const anchor of anchors) {
