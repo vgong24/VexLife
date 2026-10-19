@@ -207,6 +207,13 @@ export function validateFeatureRegistry(registry, bundle) {
     for (const [field, allowed] of referenceGroups) {
       for (const ref of feature[field] ?? []) if (!allowed.has(ref)) errors.push(`${feature.featureRef} ${field} references missing ${ref}`);
     }
+    if (feature.purposeStringRef !== undefined) {
+      if (typeof feature.purposeStringRef !== 'string' || !sets.stringRefs.has(feature.purposeStringRef)) {
+        errors.push(`${feature.featureRef} purposeStringRef references missing ${feature.purposeStringRef ?? 'null'}`);
+      } else if (!(feature.localizationRefs ?? []).includes(feature.purposeStringRef)) {
+        errors.push(`${feature.featureRef} purposeStringRef must also be registered in localizationRefs`);
+      }
+    }
     for (const ref of feature.reviewLensRefs ?? []) if (!lensRefs.has(ref)) errors.push(`${feature.featureRef} references missing review lens ${ref}`);
     for (const required of deriveRequiredLensRefs(feature)) if (!(feature.reviewLensRefs ?? []).includes(required)) errors.push(`${feature.featureRef} missing derived review lens ${required}`);
   }
