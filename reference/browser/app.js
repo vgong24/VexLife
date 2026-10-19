@@ -9,7 +9,7 @@ import {
 } from './modules/chat-controller.js';
 import { createFamilyRoomController } from './modules/family-room-controller.js';
 import { createTerrainController } from './modules/terrain-controller.js';
-import { createGuideController, GUIDE_INTENTS } from './modules/guide-controller.js';
+import { createGuideController } from './modules/guide-controller.js';
 import { createFeatureWalkthroughGuideAdapter } from './modules/feature-walkthrough-guide-adapter.js';
 import { createLivingJournalController } from './modules/living-journal-controller.js';
 import { createLivingJournalDemoData } from './modules/living-journal-demo-data.js';
@@ -72,6 +72,7 @@ function ensureConversationEvolutionStylesheet(){const href=new URL('./evolution
 const uxInitialProjectionParam=new URLSearchParams(globalThis.location?.search??'').get('projection');
 state.uxProjection=uxInitialProjectionParam==='evolution'&&uxLoopbackHostnames.has(globalThis.location?.hostname??'')?UX_EVOLUTION_PROJECTION:UX_REFERENCE_PROJECTION;
 state.uxActiveSurfaceRef=null;
+const BROWSER_ARCHITECTURE_NODE_API_PATH='/api/v1/architecture/node';
 const LIVING_JOURNAL_MEMORY_API_PATH='/api/v1/living-journal/memory';
 const LIVING_JOURNAL_ARCHIVE_API_PATH='/api/v1/living-journal/archive';
 const LIVING_JOURNAL_MEMORY_MAX_PAGES=24;
@@ -142,6 +143,60 @@ const semanticPatchForNode = (nodeRef) => {
 
 let navigation; let chat; let familyRoom; let terrain; let guide; let livingJournal; let relationships; let securityAccess;
 function visibleVexName(){return t('vex.visible.name');}
+function architectureDisplayValue(value){
+  if(typeof value!=='string'||value.length===0)return null;
+  return catalogs[state.language]?.[value]??catalogs.en?.[value]??value;
+}
+function uniqueArchitectureRefs(values,limit=16){
+  return [...new Set(values.filter((value)=>typeof value==='string'&&value.length>0))].slice(0,limit);
+}
+async function explainSelectedArchitectureNode(){
+  const selectedNodeRef=navigation.semanticFrame().selectedNodeRef;
+  guide.setOpen(true);
+  guide.addMessage('user',{contentRef:'architecture.open'});
+  try{
+    const response=await fetch(`${BROWSER_ARCHITECTURE_NODE_API_PATH}?ref=${encodeURIComponent(selectedNodeRef)}`,{method:'GET',cache:'no-store'});
+    const value=await response.json();
+    if(!response.ok||
+      value?.schemaVersion!=='vexlife.browser-architecture-node/v1'||
+      value?.state!=='CURRENT'||
+      value?.truthClass!=='SOURCE_BOUND_READ_ONLY_ARCHITECTURE_NODE'||
+      value?.ref!==selectedNodeRef||
+      !value.effects||
+      Object.values(value.effects).some((effect)=>effect!==false)){
+      throw new Error('Architecture node projection is not exact-current read-only truth');
+    }
+    const featurePurposes=Array.isArray(value.featurePurposes)?value.featurePurposes:[];
+    const purposes=[...new Set(featurePurposes.map((item)=>item?.purpose).filter((item)=>typeof item==='string'&&item.length>0))];
+    const featureRefs=uniqueArchitectureRefs(featurePurposes.map((item)=>item?.featureRef),12);
+    const sourceRefs=uniqueArchitectureRefs([
+      value.sourcePath,
+      value.sourceRef,
+      ...featurePurposes.flatMap((item)=>[
+        ...(Array.isArray(item?.moduleRefs)?item.moduleRefs:[]),
+        ...(Array.isArray(item?.processRefs)?item.processRefs:[])
+      ])
+    ]);
+    guide.addMessage('guide',{
+      contentRef:'guide.answer.architecture-node',
+      contentParams:{
+        label:architectureDisplayValue(value.brief)??value.ref,
+        kind:value.kind,
+        ref:value.ref,
+        purpose:purposes.join(' · ')||t('guide.architecture.purpose-unresolved'),
+        features:featureRefs.join(' · ')||t('guide.architecture.features-none'),
+        sources:sourceRefs.join(' · ')||t('guide.architecture.sources-none')
+      }
+    });
+    return Object.freeze(structuredClone(value));
+  }catch{
+    guide.addMessage('guide',{
+      contentRef:'guide.answer.architecture-node-unavailable',
+      contentParams:{selectedNodeRef}
+    });
+    return null;
+  }
+}
 function canonicalRoleLabel(key){const role=roles[key];return role?.labelRef?t(role.labelRef):role?.label??String(key??'');}
 function vexRoleQualifier(key){const label=canonicalRoleLabel(key);const name=visibleVexName();const qualifier=label.split(name).join(' ').replace(/[\s·•—–:：-]+/g,' ').trim();return qualifier||label;}
 function visibleRoleLabel(key){const role=roles[key];if(key==='victor'||!role?.actorRef||role.actorRef.startsWith('person.'))return canonicalRoleLabel(key);return `${visibleVexName()} · ${vexRoleQualifier(key)}`;}
@@ -345,7 +400,7 @@ $('#evolutionReferenceFallback').addEventListener('click',()=>{void setUxProject
 $('#livingJournalArchiveOpen')?.addEventListener('click',()=>{void loadLivingJournalArchive({dayOffset:0});});$('#livingJournalArchiveOlder')?.addEventListener('click',()=>{const packet=state.livingJournalArchivePacket;if(packet?.nextDayOffset!==null&&packet?.nextDayOffset!==undefined)void loadLivingJournalArchive({dayOffset:packet.nextDayOffset});});$('#livingJournalArchiveNewer')?.addEventListener('click',()=>{const packet=state.livingJournalArchivePacket;if(packet)void loadLivingJournalArchive({dayOffset:Math.max(0,Number(packet.dayOffset||0)-LIVING_JOURNAL_ARCHIVE_MAX_DAYS)});});$('#livingJournalArchiveDay')?.addEventListener('change',(event)=>{const packet=state.livingJournalArchivePacket;if(packet)void loadLivingJournalArchive({dayOffset:Number(packet.dayOffset||0),selectedDailyStratumSha256:event.currentTarget.value});});$('#livingJournalReturnNow')?.addEventListener('click',()=>{void returnLivingJournalToNow();});
 $('#livingJournalWalkthroughShow').addEventListener('click',()=>patientZeroWalkthrough.show());$('#livingJournalWalkthroughLater').addEventListener('click',()=>patientZeroWalkthrough.later());$('#livingJournalWalkthroughSuppress').addEventListener('click',()=>patientZeroWalkthrough.suppress());$('#livingJournalWalkthroughReplay').addEventListener('click',()=>patientZeroWalkthrough.replay());$('#livingJournalWalkthroughNextStep').addEventListener('click',()=>patientZeroWalkthrough.next());
 $('#contextWorkspaceDock').addEventListener('change',(event)=>setContextWorkspaceDock(event.currentTarget.value));$('#contextWorkspaceSplit').addEventListener('change',(event)=>setContextWorkspaceSplitFocus(event.currentTarget.checked));$('#contextWorkspaceReset').addEventListener('click',resetContextWorkspaceLayout);$$('[data-context-workspace-resize-corner][data-node-ref^="element.context-workspace.resize."]').forEach((handle)=>{handle.addEventListener('pointerdown',beginContextWorkspaceResize);handle.addEventListener('keydown',keyboardContextWorkspaceResize)});globalThis.addEventListener('resize',applyContextWorkspaceLayout);
-$('#languageSelect').addEventListener('change',(event)=>{state.language=event.target.value;localStorage.setItem('vexlife.language',state.language);navigation.navigate('element.language.selector',{},'action.language.select');applyLocalization();});$('#architectureButton').addEventListener('click',()=>{guide.setOpen(true);guide.askIntent(GUIDE_INTENTS.ARCHITECTURE);});
+$('#languageSelect').addEventListener('change',(event)=>{state.language=event.target.value;localStorage.setItem('vexlife.language',state.language);navigation.navigate('element.language.selector',{},'action.language.select');applyLocalization();});$('#architectureButton').addEventListener('click',()=>{void explainSelectedArchitectureNode();});
 document.addEventListener('vexlife:open-context',(event)=>{if(event.detail?.context==='health')void openHealth();else openContext('chat');});
 $$('[data-terrain-context]').forEach((button)=>button.addEventListener('click',()=>{const action=button.dataset.terrainContext;if(action==='center')terrain.centerOn();else if(action==='projection')terrain.cycleProjection();else if(action==='workspace')terrain.toggleWorkspace();else if(action==='chat')openContext('chat');else if(action==='health')void openHealth();closeTerrainContext();}));
 document.addEventListener('pointerdown',(event)=>{if(!event.target.closest('#surfaceMenu,#surfaceMenuButton'))toggleSurfaceMenu(false);if(!event.target.closest('#terrainContext'))closeTerrainContext();});
@@ -355,7 +410,7 @@ chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.render
 void familyRoom.refresh();
 
 const purposeWorkspaceEvolution=createPurposeWorkspaceEvolutionAdapter({t,projectRefForTerrain:(terrainRef)=>TERRAIN_CONTEXT[terrainRef]?.projectRef??null});
-globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,familyRoom,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,openHealth,refreshHealthCompanionAvailability,healthCompanionAvailability:healthCompanionAvailabilitySnapshot,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,familyComposerIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout,purposeWorkspaceEvolution,uxProjectionShell};
+globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,familyRoom,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,openHealth,refreshHealthCompanionAvailability,healthCompanionAvailability:healthCompanionAvailabilitySnapshot,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,explainSelectedArchitectureNode,familyComposerIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout,purposeWorkspaceEvolution,uxProjectionShell};
 ensureConversationEvolutionStylesheet();
 ensurePurposeWorkspaceEvolutionStylesheet();
 registerEvolutionSurfaceAdapter(CONVERSATION_EVOLUTION_SURFACE_REF,createConversationEvolutionAdapter({state,chat,roles,messages,conversationKey,t}));
