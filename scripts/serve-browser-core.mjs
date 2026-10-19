@@ -28,6 +28,7 @@ import {
   createVexAssemblyCapabilityDomainSupport
 } from '../src/core/vex-assembly-capability-domains.mjs';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
+import { compileRegistryPack } from '../src/core/registry.mjs';
 import {
   createModelConnectionTurnComposer,
   loadModelConnectionTurnSources
@@ -88,6 +89,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
 const home = path.resolve(process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.vexlife'));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
+export const BROWSER_ARCHITECTURE_NODE_API_PATH = '/api/v1/architecture/node';
+export const BROWSER_ARCHITECTURE_NODE_SCHEMA = 'vexlife.browser-architecture-node/v1';
+export const BROWSER_ARCHITECTURE_NODE_FAILURE_SCHEMA = 'vexlife.browser-architecture-node-failure/v1';
+export const BROWSER_ARCHITECTURE_NODE_RELATION_LIMIT = 24;
 export const BROWSER_COMPANION_AVAILABILITY_PATH = '/api/v1/companion/availability';
 export const BROWSER_COMPANION_RECOVERY_ACTION_PATH = '/api/v1/companion/recovery-action';
 export const BROWSER_COMPANION_RECOVERY_ACTION_MAX_BODY_BYTES = 4 * 1024;
@@ -133,6 +138,178 @@ const FAMILY_CONVERSATION_REQUEST_KEYS = new Set(['operation', 'intent']);
 const FAMILY_CONVERSATION_OPERATIONS = new Set(['APPEND', 'READ', 'READ_THREAD_HISTORY', 'LIST']);
 const FAMILY_LIFECYCLE_REQUEST_KEYS = new Set(['operation', 'intent']);
 const FAMILY_LIFECYCLE_OPERATIONS = new Set(['HOST', 'JOIN', 'LEAVE']);
+
+export class BrowserArchitectureNodeError extends Error {
+  constructor(code, message, httpStatus = 400) {
+    super(message);
+    this.name = 'BrowserArchitectureNodeError';
+    this.code = code;
+    this.httpStatus = httpStatus;
+  }
+}
+
+function architectureNodeRef(value) {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 512 || /[\u0000-\u001f\u007f]/u.test(value)) {
+    throw new BrowserArchitectureNodeError(
+      'ARCHITECTURE_NODE_REF_INVALID',
+      'Architecture node ref must be one bounded canonical ref',
+      400
+    );
+  }
+  return value;
+}
+
+function boundedArchitectureRelationships(entries, nodeRef, direction) {
+  const rows = [];
+  if (direction === 'OUTGOING') {
+    const node = entries.find((entry) => entry.ref === nodeRef);
+    for (const edge of node?.edges ?? []) rows.push({ type: edge.type, ref: edge.to });
+  } else {
+    for (const entry of entries) {
+      for (const edge of entry.edges ?? []) {
+        if (edge.to === nodeRef) rows.push({ type: edge.type, ref: entry.ref, kind: entry.kind });
+      }
+    }
+  }
+  rows.sort((left, right) => `${left.type}:${left.ref}`.localeCompare(`${right.type}:${right.ref}`));
+  return Object.freeze(rows.slice(0, BROWSER_ARCHITECTURE_NODE_RELATION_LIMIT).map((row) => Object.freeze(row)));
+}
+
+function architectureFeaturePurposeAnchors(registry, entries, entry) {
+  const found = new Map();
+  const addAncestry = (start, baseDistance) => {
+    let cursor = start;
+    for (let depth = 0; cursor && depth <= 6; depth += 1) {
+      const distance = baseDistance + depth;
+      const prior = found.get(cursor.ref);
+      if (prior === undefined || distance < prior) found.set(cursor.ref, distance);
+      cursor = cursor.parentRef ? registry.get(cursor.parentRef) : null;
+    }
+  };
+  addAncestry(entry, 0);
+
+  for (const candidate of entries) {
+    const linksToSelected = (candidate.edges ?? []).some((edge) =>
+      edge.to === entry.ref && ['TERRAIN', 'CANONICAL_NODE', 'PRESENTS'].includes(edge.type)
+    );
+    if (linksToSelected) addAncestry(candidate, 1);
+  }
+
+  return [...found.entries()]
+    .map(([ref, distance]) => Object.freeze({ ref, distance }))
+    .sort((left, right) => left.distance - right.distance || left.ref.localeCompare(right.ref));
+}
+
+function architectureFeaturePurposes(registry, entries, entry) {
+  const anchors = architectureFeaturePurposeAnchors(registry, entries, entry);
+  const found = new Map();
+  for (const feature of entries.filter((candidate) => candidate.kind === 'FEATURE')) {
+    for (const anchor of anchors) {
+      if (!(feature.canonicalNodeRefs ?? []).includes(anchor.ref)) continue;
+      const prior = found.get(feature.ref);
+      if (prior && prior.distance <= anchor.distance) continue;
+      found.set(feature.ref, Object.freeze({
+        featureRef: feature.ref,
+        sourcePurpose: feature.brief ?? null,
+        purposeStringRef: feature.purposeStringRef ?? null,
+        viaRef: anchor.ref,
+        distance: anchor.distance,
+        moduleRefs: Object.freeze([...(feature.moduleRefs ?? [])].slice(0, 12)),
+        processRefs: Object.freeze([...(feature.processRefs ?? [])].slice(0, 12))
+      }));
+    }
+  }
+  return Object.freeze(
+    [...found.values()].sort((left, right) => left.distance - right.distance || left.featureRef.localeCompare(right.featureRef)).slice(0, 12)
+  );
+}
+
+function architectureAncestry(registry, entry) {
+  const rows = [];
+  let cursor = entry;
+  for (let depth = 0; cursor?.parentRef && depth < 6; depth += 1) {
+    const parent = registry.get(cursor.parentRef);
+    if (!parent) break;
+    rows.push(Object.freeze({ ref: parent.ref, kind: parent.kind, brief: parent.brief ?? null }));
+    cursor = parent;
+  }
+  return Object.freeze(rows);
+}
+
+export function createServerOwnedArchitectureNodeResolver({ sourceRoot = root } = {}) {
+  const registry = compileRegistryPack(loadBlueprint(sourceRoot));
+  const entries = [...registry.entries.values()];
+  return Object.freeze({
+    describe(requestedRef) {
+      const ref = architectureNodeRef(requestedRef);
+      const entry = registry.get(ref);
+      if (!entry) {
+        throw new BrowserArchitectureNodeError(
+          'ARCHITECTURE_NODE_NOT_FOUND',
+          'The selected semantic node is not registered in current VexLife source',
+          404
+        );
+      }
+      const featurePurposes = architectureFeaturePurposes(registry, entries, entry);
+      return Object.freeze({
+        schemaVersion: BROWSER_ARCHITECTURE_NODE_SCHEMA,
+        state: 'CURRENT',
+        truthClass: 'SOURCE_BOUND_READ_ONLY_ARCHITECTURE_NODE',
+        ref: entry.ref,
+        kind: entry.kind,
+        brief: entry.brief ?? null,
+        parentRef: entry.parentRef ?? null,
+        screenRef: entry.screenRef ?? null,
+        actionRef: entry.actionRef ?? null,
+        permissionRef: entry.permissionRef ?? null,
+        conceptRef: entry.conceptRef ?? null,
+        interactionRef: entry.interactionRef ?? null,
+        navigationRef: entry.navigationRef ?? null,
+        sourceRef: entry.sourceRef ?? null,
+        sourcePath: entry.path ?? null,
+        ancestry: architectureAncestry(registry, entry),
+        featurePurposes,
+        relationships: Object.freeze({
+          outgoing: boundedArchitectureRelationships(entries, entry.ref, 'OUTGOING'),
+          incoming: boundedArchitectureRelationships(entries, entry.ref, 'INCOMING')
+        }),
+        effects: Object.freeze({
+          navigationMutation: false,
+          HomeMutation: false,
+          MemoryMutation: false,
+          modelRuntimeEffect: false,
+          networkEffect: false,
+          sourceMutation: false
+        })
+      });
+    }
+  });
+}
+
+function browserArchitectureNodeFailurePayload(error) {
+  const typed = error instanceof BrowserArchitectureNodeError
+    ? error
+    : new BrowserArchitectureNodeError(
+      'ARCHITECTURE_NODE_READ_FAILED',
+      'Architecture node source descent failed safely',
+      500
+    );
+  return Object.freeze({
+    schemaVersion: BROWSER_ARCHITECTURE_NODE_FAILURE_SCHEMA,
+    state: 'HELD',
+    truthClass: 'SOURCE_BOUND_READ_ONLY_ARCHITECTURE_NODE_FAILURE',
+    failureCode: typed.code,
+    message: typed.message,
+    effects: Object.freeze({
+      navigationMutation: false,
+      HomeMutation: false,
+      MemoryMutation: false,
+      modelRuntimeEffect: false,
+      networkEffect: false,
+      sourceMutation: false
+    })
+  });
+}
 
 function readRelationshipsRuntimeSourceJson(sourceRoot, relativePath, label) {
   const file = path.resolve(sourceRoot, relativePath);
@@ -1571,6 +1748,7 @@ export function createVexLifeBrowserServer({
   resolveFamilyWorkProjection = null,
   resolveFamilySecurityProjection = null
 } = {}) {
+  const architectureNodeResolver = createServerOwnedArchitectureNodeResolver({ sourceRoot: staticRoot });
   const resolveCompanionAvailability = createServerOwnedCompanionAvailabilityResolver({
     sourceRoot: companionAvailabilitySourceRoot,
     resolveCompanionBinding,
@@ -1586,6 +1764,35 @@ export function createVexLifeBrowserServer({
   return http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url, `http://${request.headers.host || `127.0.0.1:${port}`}`);
+
+      if (url.pathname === BROWSER_ARCHITECTURE_NODE_API_PATH) {
+        if (request.method !== 'GET') {
+          response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          const refs = url.searchParams.getAll('ref');
+          if (refs.length !== 1) {
+            throw new BrowserArchitectureNodeError(
+              'ARCHITECTURE_NODE_REF_REQUIRED',
+              'Architecture node lookup requires exactly one ref',
+              400
+            );
+          }
+          sendJson(response, 200, architectureNodeResolver.describe(refs[0]));
+        } catch (error) {
+          const typed = error instanceof BrowserArchitectureNodeError
+            ? error
+            : new BrowserArchitectureNodeError(
+              'ARCHITECTURE_NODE_READ_FAILED',
+              'Architecture node source descent failed safely',
+              500
+            );
+          sendJson(response, typed.httpStatus, browserArchitectureNodeFailurePayload(typed));
+        }
+        return;
+      }
 
       if (url.pathname === BROWSER_COMPANION_AVAILABILITY_PATH) {
         if (request.method !== 'GET') {

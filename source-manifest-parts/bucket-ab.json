@@ -35,8 +35,8 @@
     {
       "path": "src/core/feature-registry.mjs",
       "mode": "100644",
-      "bytes": 12127,
-      "sha256": "493b7b5632f0da5b7d875fde790c08fd1420f42ef7ba9fb19896e4424fe3e28f"
+      "bytes": 12615,
+      "sha256": "b49401aa3d2ddc105aac8995fb63355294fcc708d1ac2c788bea1cf7c76c098b"
     },
     {
       "path": "src/core/intent-scheduler.mjs",
