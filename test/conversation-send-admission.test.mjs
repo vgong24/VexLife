@@ -2,6 +2,8 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import {
+  ADDRESSED_CONVERSATION_CURRENTNESS_SCHEMA,
+  CONVERSATION_SEND_ADMISSION_SCHEMA,
   assertConversationSendAdmissionMatches,
   formConversationSendAdmission,
   verifyConversationSendAdmission
@@ -29,10 +31,11 @@ function currentStaticSource() {
       'blueprint/fragments/permissions.json',
       'blueprint/process-factory/processes-conversation-and-interface.json'
     ],
-    action, permission, process
+    action,
+    permission,
+    process
   };
 }
-
 
 function baseInput() {
   const content = 'A bounded addressed message.';
@@ -62,34 +65,24 @@ function baseInput() {
       contentHash,
       sourceRef: 'source.browser.composer-submit.stage-a.001'
     },
-    activeTurnCurrentness: {
-      projectionRef: 'projection.interaction.active-turn.stage-a.001',
-      turnRef: 'turn.stage-a.001',
-      phase: 'ACTIVE',
+    addressedConversationCurrentness: {
+      schemaVersion: ADDRESSED_CONVERSATION_CURRENTNESS_SCHEMA,
+      projectionRef: 'projection.conversation.addressed-currentness.stage-a.001',
       currentness: 'CURRENT',
-      cancellationTargetRef: 'cancel-target.turn.stage-a.001',
-      sourceRefs: ['source.interaction-control.stage-a.synthetic-current']
-    },
-    writerCurrentness: {
-      schemaVersion: 'vexlife.lived-companion-thread-writer-currentness/v1',
-      projectionRef: 'projection.lived-companion.thread-writer-currentness',
-      currentness: 'CURRENT',
-      homeRef: 'home.stage-a',
-      deviceRef: 'device.stage-a',
-      companionLineageRef: 'lineage.stage-a',
       threadRef: 'thread.self-development.open-conversation',
-      effectAuthorityGranted: false,
-      recoveryEffectPerformed: false,
-      exactTurnIdentityAvailable: false,
-      state: 'IDLE',
-      ownerState: 'NONE',
-      leaseSha256: null,
-      observedLeaseFileSha256: null,
-      leaseValidationState: 'NOT_PRESENT',
-      exactNextSafeRoute: 'NONE_REQUIRED',
-      activeWriterPresent: false,
-      recoveryRequired: false,
-      attentionRequired: false
+      channelRef: 'channel.local-vex.companion',
+      channelState: 'ACTIVE',
+      memberRefs: ['person.victor', 'role.vex.companion'],
+      channelSha256: 'c'.repeat(64),
+      channelRecordSha256: 'd'.repeat(64),
+      headMessageRefOrNull: 'message.conversation.prior.001',
+      headSequenceOrNull: 4,
+      headSha256OrNull: 'e'.repeat(64),
+      nextMessageSequence: 5,
+      sourceRefs: [
+        'src/core/conversation-store.mjs#readConversationChannelBinding',
+        'src/core/conversation-store.mjs#readConversationChannel'
+      ]
     },
     resourceAdmission: {
       admissionRef: 'admission.resource.stage-a.001',
@@ -114,12 +107,13 @@ function mustFail(mutator, pattern) {
   assert.throws(() => formConversationSendAdmission(input), pattern);
 }
 
-test('forms deterministic exact-attempt no-effect admission from current source truth', () => {
+test('forms deterministic Conversation-first no-effect admission from current source truth', () => {
   const input = baseInput();
   const first = formConversationSendAdmission(input);
   const second = formConversationSendAdmission(baseInput());
   assert.deepEqual(first, second);
   assert.equal(verifyConversationSendAdmission(first), true);
+  assert.equal(first.schemaVersion, CONVERSATION_SEND_ADMISSION_SCHEMA);
   assert.equal(first.state, 'ADMITTED');
   assert.equal(first.permission.permissionRef, 'permission.conversation.send');
   assert.equal(first.permission.state, 'ADMITTED');
@@ -128,11 +122,16 @@ test('forms deterministic exact-attempt no-effect admission from current source 
   assert.equal(first.effect.performed, false);
   assert.equal(first.messageAppendPerformed, false);
   assert.equal(first.modelCallPerformed, false);
+  assert.equal(first.activeTurnCurrentnessRequired, false);
+  assert.equal(first.livedCompanionWriterCurrentnessRequired, false);
   assert.equal(first.rawContentIncluded, false);
   assert.equal(JSON.stringify(first).includes(input.conversation.content), false);
   assert.deepEqual(first.memberRefs, ['person.victor', 'role.vex.companion']);
   assert.deepEqual(first.recipientRefs, ['role.vex.companion']);
   assert.equal(first.contentHash, semanticHash(input.conversation.content));
+  assert.equal(first.priorMessageRefOrNull, 'message.conversation.prior.001');
+  assert.equal(first.priorMessageSequenceOrNull, 4);
+  assert.equal(first.nextMessageSequence, 5);
 });
 
 test('same exact receipt verification is a semantic no-op, not a consume mutation', () => {
@@ -143,15 +142,18 @@ test('same exact receipt verification is a semantic no-op, not a consume mutatio
   assert.equal(verifyConversationSendAdmission(receipt), true);
 });
 
-test('attempt, turn, content, addressing, membership and source drift invalidate reuse', () => {
+test('attempt, conversation head, content, addressing, membership and source drift invalidate reuse', () => {
   const input = baseInput();
   const receipt = formConversationSendAdmission(input);
   for (const mutate of [
     (next) => { next.sendAttemptRef = 'send-attempt.conversation.stage-a.002'; next.confirmationWitness.sendAttemptRef = next.sendAttemptRef; },
-    (next) => { next.activeTurnCurrentness.turnRef = 'turn.stage-a.002'; },
+    (next) => { next.addressedConversationCurrentness.headMessageRefOrNull = 'message.conversation.prior.002'; },
     (next) => { next.conversation.content = 'Changed content.'; next.confirmationWitness.contentHash = semanticHash(next.conversation.content); },
     (next) => { next.conversation.recipientRefs = ['person.victor']; },
-    (next) => { next.conversation.memberRefs = ['person.victor', 'role.vex.companion', 'role.vex.guide']; },
+    (next) => {
+      next.conversation.memberRefs = ['person.victor', 'role.vex.companion', 'role.vex.guide'];
+      next.addressedConversationCurrentness.memberRefs = [...next.conversation.memberRefs];
+    },
     (next) => { next.staticSource.sourceVersionRef = 'source.vexlife.main.changed'; }
   ]) {
     const next = baseInput();
@@ -168,22 +170,33 @@ test('fails closed on confirmation and channel-membership/currentness errors', (
   mustFail((x) => { x.conversation.recipientRefs = ['role.foreign']; }, /not a current channel member/);
 });
 
-test('fails closed on stale or absent active-turn currentness', () => {
-  mustFail((x) => { x.activeTurnCurrentness.currentness = 'STALE'; }, /CURRENT/);
-  mustFail((x) => { x.activeTurnCurrentness.phase = 'ABSENT'; }, /ACTIVE/);
-  mustFail((x) => { delete x.activeTurnCurrentness.turnRef; }, /turnRef/);
+test('fails closed on stale, mismatched or incoherent addressed Conversation currentness', () => {
+  mustFail((x) => { x.addressedConversationCurrentness.currentness = 'STALE'; }, /CURRENT/);
+  mustFail((x) => { x.addressedConversationCurrentness.channelRef = 'channel.foreign'; }, /channel\.local-vex\.companion/);
+  mustFail((x) => { x.addressedConversationCurrentness.memberRefs = ['person.victor', 'role.vex.guide']; }, /does not match current source/);
+  mustFail((x) => { x.addressedConversationCurrentness.headSha256OrNull = null; }, /entirely present or entirely absent/);
+  mustFail((x) => { x.addressedConversationCurrentness.nextMessageSequence = 7; }, /advance the exact current head/);
+  mustFail((x) => {
+    x.addressedConversationCurrentness.headMessageRefOrNull = null;
+    x.addressedConversationCurrentness.headSequenceOrNull = null;
+    x.addressedConversationCurrentness.headSha256OrNull = null;
+    x.addressedConversationCurrentness.nextMessageSequence = 1;
+  }, /must be 0 without a head/);
 });
 
-test('fails closed when writer currentness is active, recovery-required or unverifiable', () => {
+test('pre-existing model-turn and Lived-writer currentness are rejected rather than gating human append', () => {
   mustFail((x) => {
-    Object.assign(x.writerCurrentness, { state: 'ACTIVE', ownerState: 'ACTIVE', activeWriterPresent: true, exactNextSafeRoute: 'WAIT_FOR_ACTIVE_THREAD_WRITER_OR_RETRY' });
-  }, /writerCurrentness.state must be IDLE/);
+    x.activeTurnCurrentness = {
+      phase: 'ACTIVE',
+      cancellationTargetRef: 'cancel-target.turn.stage-a.001'
+    };
+  }, /input\.activeTurnCurrentness is not admitted/);
   mustFail((x) => {
-    Object.assign(x.writerCurrentness, { state: 'RECOVERY_REQUIRED', ownerState: 'ABSENT', recoveryRequired: true, exactNextSafeRoute: 'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED' });
-  }, /writerCurrentness.state must be IDLE/);
-  mustFail((x) => {
-    Object.assign(x.writerCurrentness, { state: 'HELD_UNVERIFIABLE', ownerState: 'UNVERIFIABLE', attentionRequired: true, exactNextSafeRoute: 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER' });
-  }, /writerCurrentness.state must be IDLE/);
+    x.writerCurrentness = {
+      state: 'IDLE',
+      ownerState: 'NONE'
+    };
+  }, /input\.writerCurrentness is not admitted/);
 });
 
 test('fails closed when resource or context admission is not current and admitted', () => {
@@ -202,8 +215,8 @@ test('fails closed on static action/permission/process drift', () => {
 });
 
 test('caller-supplied authority booleans cannot widen admission', () => {
-  mustFail((x) => { x.permissionGranted = true; }, /cannot supply authority/);
-  mustFail((x) => { x.activeTurnCurrentness.authorized = true; }, /cannot supply authority/);
+  mustFail((x) => { x.permissionGranted = true; }, /cannot supply authority|not admitted/);
+  mustFail((x) => { x.addressedConversationCurrentness.authorized = true; }, /cannot supply authority/);
   mustFail((x) => { x.resourceAdmission.effectAuthorityGranted = true; }, /cannot supply authority/);
 });
 

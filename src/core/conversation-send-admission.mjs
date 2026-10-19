@@ -1,7 +1,8 @@
 import { semanticHash } from './utils.mjs';
 
-export const CONVERSATION_SEND_ADMISSION_SCHEMA = 'vexlife.conversation-send-admission/v1';
+export const CONVERSATION_SEND_ADMISSION_SCHEMA = 'vexlife.conversation-send-admission/v2';
 export const CONVERSATION_SEND_ADMISSION_TRUTH_CLASS = 'EXACT_SEND_ATTEMPT_NO_EFFECT_ADMISSION';
+export const ADDRESSED_CONVERSATION_CURRENTNESS_SCHEMA = 'vexlife.addressed-conversation-currentness/v1';
 
 const STATIC = Object.freeze({
   actionRef: 'action.message.send',
@@ -23,6 +24,15 @@ const FORBIDDEN_AUTHORITY_KEYS = new Set([
   'effectAuthorityGranted',
   'appendAuthorized',
   'executionAuthorityGranted'
+]);
+const INPUT_KEYS = new Set([
+  'sendAttemptRef',
+  'staticSource',
+  'conversation',
+  'confirmationWitness',
+  'addressedConversationCurrentness',
+  'resourceAdmission',
+  'contextAdmission'
 ]);
 
 function object(value, label) {
@@ -55,19 +65,24 @@ function exactKeys(value, allowed, label) {
   object(value, label);
   for (const key of Object.keys(value)) if (!allowed.has(key)) throw new TypeError(`${label}.${key} is not admitted`);
 }
+function sha256(value, label) {
+  if (!HEX64.test(value ?? '')) throw new TypeError(`${label} must be one SHA-256`);
+  return value;
+}
+function nonNegativeInteger(value, label) {
+  if (!Number.isSafeInteger(value) || value < 0) throw new TypeError(`${label} must be one non-negative safe integer`);
+  return value;
+}
 function freezeDeep(value) {
   if (Array.isArray(value)) return Object.freeze(value.map(freezeDeep));
   if (value && typeof value === 'object') return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, item]) => [key, freezeDeep(item)])));
   return value;
 }
-function assertNoCallerAuthorityBooleans(value, label = 'input', { allowWriterFalse = false } = {}) {
+function assertNoCallerAuthorityBooleans(value, label = 'input') {
   if (!value || typeof value !== 'object') return;
   for (const [key, item] of Object.entries(value)) {
-    if (FORBIDDEN_AUTHORITY_KEYS.has(key)) {
-      if (allowWriterFalse && key === 'effectAuthorityGranted' && item === false) continue;
-      throw new TypeError(`${label}.${key} cannot supply authority`);
-    }
-    if (item && typeof item === 'object') assertNoCallerAuthorityBooleans(item, `${label}.${key}`, { allowWriterFalse: false });
+    if (FORBIDDEN_AUTHORITY_KEYS.has(key)) throw new TypeError(`${label}.${key} cannot supply authority`);
+    if (item && typeof item === 'object') assertNoCallerAuthorityBooleans(item, `${label}.${key}`);
   }
 }
 
@@ -144,41 +159,48 @@ function validateConfirmation(value, expected) {
   return { witnessRef, sourceRef: string(value.sourceRef, 'confirmationWitness.sourceRef') };
 }
 
-function validateActiveTurn(value) {
-  const allowed = new Set(['projectionRef', 'turnRef', 'phase', 'currentness', 'cancellationTargetRef', 'sourceRefs']);
-  exactKeys(value, allowed, 'activeTurnCurrentness');
-  exact(value.phase, 'ACTIVE', 'activeTurnCurrentness.phase');
-  exact(value.currentness, 'CURRENT', 'activeTurnCurrentness.currentness');
-  return {
-    projectionRef: string(value.projectionRef, 'activeTurnCurrentness.projectionRef'),
-    turnRef: string(value.turnRef, 'activeTurnCurrentness.turnRef'),
-    cancellationTargetRef: string(value.cancellationTargetRef, 'activeTurnCurrentness.cancellationTargetRef'),
-    sourceRefs: sorted(strings(value.sourceRefs, 'activeTurnCurrentness.sourceRefs', { min: 1 }))
-  };
-}
+function validateAddressedConversationCurrentness(value, conversation) {
+  const allowed = new Set([
+    'schemaVersion', 'projectionRef', 'currentness', 'threadRef', 'channelRef', 'channelState', 'memberRefs',
+    'channelSha256', 'channelRecordSha256', 'headMessageRefOrNull', 'headSequenceOrNull', 'headSha256OrNull',
+    'nextMessageSequence', 'sourceRefs'
+  ]);
+  exactKeys(value, allowed, 'addressedConversationCurrentness');
+  exact(value.schemaVersion, ADDRESSED_CONVERSATION_CURRENTNESS_SCHEMA, 'addressedConversationCurrentness.schemaVersion');
+  exact(value.currentness, 'CURRENT', 'addressedConversationCurrentness.currentness');
+  exact(value.threadRef, conversation.threadRef, 'addressedConversationCurrentness.threadRef');
+  exact(value.channelRef, conversation.channelRef, 'addressedConversationCurrentness.channelRef');
+  exact(value.channelState, conversation.channelState, 'addressedConversationCurrentness.channelState');
+  const memberRefs = sorted(strings(value.memberRefs, 'addressedConversationCurrentness.memberRefs', { min: 2 }));
+  exactArray(memberRefs, conversation.memberRefs, 'addressedConversationCurrentness.memberRefs');
 
-function validateWriterCurrentness(value, threadRef) {
-  object(value, 'writerCurrentness');
-  assertNoCallerAuthorityBooleans(value, 'writerCurrentness', { allowWriterFalse: true });
-  exact(value.schemaVersion, 'vexlife.lived-companion-thread-writer-currentness/v1', 'writerCurrentness.schemaVersion');
-  exact(value.currentness, 'CURRENT', 'writerCurrentness.currentness');
-  exact(value.threadRef, threadRef, 'writerCurrentness.threadRef');
-  exact(value.state, 'IDLE', 'writerCurrentness.state');
-  exact(value.ownerState, 'NONE', 'writerCurrentness.ownerState');
-  exact(value.effectAuthorityGranted, false, 'writerCurrentness.effectAuthorityGranted');
-  exact(value.recoveryEffectPerformed, false, 'writerCurrentness.recoveryEffectPerformed');
-  exact(value.exactTurnIdentityAvailable, false, 'writerCurrentness.exactTurnIdentityAvailable');
-  exact(value.activeWriterPresent, false, 'writerCurrentness.activeWriterPresent');
-  exact(value.recoveryRequired, false, 'writerCurrentness.recoveryRequired');
-  exact(value.attentionRequired, false, 'writerCurrentness.attentionRequired');
-  exact(value.exactNextSafeRoute, 'NONE_REQUIRED', 'writerCurrentness.exactNextSafeRoute');
+  const headMessageRefOrNull = optionalString(value.headMessageRefOrNull, 'addressedConversationCurrentness.headMessageRefOrNull');
+  const headSequenceOrNull = value.headSequenceOrNull == null
+    ? null
+    : nonNegativeInteger(value.headSequenceOrNull, 'addressedConversationCurrentness.headSequenceOrNull');
+  const headSha256OrNull = value.headSha256OrNull == null
+    ? null
+    : sha256(value.headSha256OrNull, 'addressedConversationCurrentness.headSha256OrNull');
+  const nextMessageSequence = nonNegativeInteger(value.nextMessageSequence, 'addressedConversationCurrentness.nextMessageSequence');
+  const headAbsent = headMessageRefOrNull === null && headSequenceOrNull === null && headSha256OrNull === null;
+  const headPresent = headMessageRefOrNull !== null && headSequenceOrNull !== null && headSha256OrNull !== null;
+  if (!headAbsent && !headPresent) throw new TypeError('addressedConversationCurrentness head identity must be entirely present or entirely absent');
+  if (headAbsent && nextMessageSequence !== 0) throw new TypeError('addressedConversationCurrentness.nextMessageSequence must be 0 without a head');
+  if (headPresent && nextMessageSequence !== headSequenceOrNull + 1) {
+    throw new TypeError('addressedConversationCurrentness.nextMessageSequence must advance the exact current head');
+  }
+
   return {
-    projectionRef: string(value.projectionRef, 'writerCurrentness.projectionRef'),
-    state: 'IDLE',
-    ownerState: 'NONE',
-    leaseSha256OrNull: value.leaseSha256 ?? null,
-    observedLeaseFileSha256OrNull: value.observedLeaseFileSha256 ?? null,
-    leaseValidationState: string(value.leaseValidationState, 'writerCurrentness.leaseValidationState')
+    schemaVersion: ADDRESSED_CONVERSATION_CURRENTNESS_SCHEMA,
+    projectionRef: string(value.projectionRef, 'addressedConversationCurrentness.projectionRef'),
+    currentness: 'CURRENT',
+    channelSha256: sha256(value.channelSha256, 'addressedConversationCurrentness.channelSha256'),
+    channelRecordSha256: sha256(value.channelRecordSha256, 'addressedConversationCurrentness.channelRecordSha256'),
+    headMessageRefOrNull,
+    headSequenceOrNull,
+    headSha256OrNull,
+    nextMessageSequence,
+    sourceRefs: sorted(strings(value.sourceRefs, 'addressedConversationCurrentness.sourceRefs', { min: 1 }))
   };
 }
 
@@ -194,14 +216,12 @@ function validateAdmissionProjection(value, label) {
     sourceRefs: sorted(strings(value.sourceRefs, `${label}.sourceRefs`, { min: 1 }))
   };
 }
-
 function receiptCore(input) {
-  object(input, 'input');
-  for (const key of FORBIDDEN_AUTHORITY_KEYS) if (Object.hasOwn(input, key)) throw new TypeError(`input.${key} cannot supply authority`);
+  exactKeysinput, INPUT_KEYS, 'input');
   assertNoCallerAuthorityBooleans(input.staticSource, 'staticSource');
   assertNoCallerAuthorityBooleans(input.conversation, 'conversation');
   assertNoCallerAuthorityBooleans(input.confirmationWitness, 'confirmationWitness');
-  assertNoCallerAuthorityBooleans(input.activeTurnCurrentness, 'activeTurnCurrentness');
+  assertNoCallerAuthorityBooleans(input.addressedConversationCurrentness, 'addressedConversationCurrentness');
   assertNoCallerAuthorityBooleans(input.resourceAdmission, 'resourceAdmission');
   assertNoCallerAuthorityBooleans(input.contextAdmission, 'contextAdmission');
 
@@ -213,15 +233,14 @@ function receiptCore(input) {
     channelRef: conversation.channelRef,
     contentHash: conversation.contentHash
   });
-  const activeTurn = validateActiveTurn(input.activeTurnCurrentness);
-  const writer = validateWriterCurrentness(input.writerCurrentness, conversation.threadRef);
+  const addressedCurrentness = validateAddressedConversationCurrentness(input.addressedConversationCurrentness, conversation);
   const resource = validateAdmissionProjection(input.resourceAdmission, 'resourceAdmission');
   const context = validateAdmissionProjection(input.contextAdmission, 'contextAdmission');
 
   const sourceRefs = sorted([...new Set([
     ...staticSource.sourceRefs,
     confirmation.sourceRef,
-    ...activeTurn.sourceRefs,
+    ...addressedCurrentness.sourceRefs,
     ...resource.sourceRefs,
     ...context.sourceRefs
   ])]);
@@ -255,12 +274,14 @@ function receiptCore(input) {
     originalLanguage: conversation.originalLanguage,
     replyToMessageRefOrNull: conversation.replyToMessageRefOrNull,
     contextRangeRefs: conversation.contextRangeRefs,
-    turnRef: activeTurn.turnRef,
-    activeTurnProjectionRef: activeTurn.projectionRef,
-    activeTurnPhase: 'ACTIVE',
-    cancellationTargetRef: activeTurn.cancellationTargetRef,
+    addressedConversationCurrentnessRef: addressedCurrentness.projectionRef,
+    channelSha256: addressedCurrentness.channelSha256,
+    channelRecordSha256: addressedCurrentness.channelRecordSha256,
+    priorMessageRefOrNull: addressedCurrentness.headMessageRefOrNull,
+    priorMessageSequenceOrNull: addressedCurrentness.headSequenceOrNull,
+    priorHeadSha256OrNull: addressedCurrentness.headSha256OrNull,
+    nextMessageSequence: addressedCurrentness.nextMessageSequence,
     confirmationWitnessRef: confirmation.witnessRef,
-    writerCurrentness: writer,
     resourceAdmissionRef: resource.admissionRef,
     resourceAdmissionFingerprint: resource.semanticFingerprint,
     contextAdmissionRef: context.admissionRef,
@@ -270,6 +291,8 @@ function receiptCore(input) {
     rawContentIncluded: false,
     messageAppendPerformed: false,
     modelCallPerformed: false,
+    activeTurnCurrentnessRequired: false,
+    livedCompanionWriterCurrentnessRequired: false,
     authorityWideningPerformed: false,
     duplicateEffectSuppressionOwner: 'CONVERSATION_EFFECT_OWNER'
   };
@@ -303,6 +326,8 @@ export function verifyConversationSendAdmission(receipt) {
     && core.rawContentIncluded === false
     && core.messageAppendPerformed === false
     && core.modelCallPerformed === false
+    && core.activeTurnCurrentnessRequired === false
+    && core.livedCompanionWriterCurrentnessRequired === false
     && core.authorityWideningPerformed === false
     && core.duplicateEffectSuppressionOwner === 'CONVERSATION_EFFECT_OWNER';
 }
