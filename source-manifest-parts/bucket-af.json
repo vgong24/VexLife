@@ -3,6 +3,12 @@
   "bucketId": "af",
   "files": [
     {
+      "path": "src/core/home-bridge-remote-authenticated-session.mjs",
+      "mode": "100644",
+      "bytes": 16484,
+      "sha256": "e27a7fb5fc6ac161d75860e029ca9f763ae4bb9f8058a293c156508e4c11c2ae"
+    },
+    {
       "path": "start-vexlife.cmd",
       "mode": "100644",
       "bytes": 164,

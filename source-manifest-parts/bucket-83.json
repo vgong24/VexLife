@@ -3,6 +3,12 @@
   "bucketId": "83",
   "files": [
     {
+      "path": "docs/HOME-BRIDGE-REMOTE-AUTHENTICATED-SESSION.md",
+      "mode": "100644",
+      "bytes": 2946,
+      "sha256": "a352f6287b0379de08222ac3c2dbd04bb12f2f16aaa4a87e611d39916a746fda"
+    },
+    {
       "path": "scripts/pr-ready.mjs",
       "mode": "100644",
       "bytes": 17575,
