@@ -1540,5 +1540,23 @@
       "blueprint/capability-registry.json",
       "docs/VEXHOME-MAPS-PLACE-SEARCH.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.home-maps-photon-place-search",
+    "path": "src/core/home-maps-photon-place-search.mjs",
+    "role": "Photon-specific no-effect forward place-search protocol adapter over exact accepted Home Maps admission; forms a typed /api descriptor and projects supplied bounded GeoJSON Point results with canonical OpenStreetMap identity and attribution without owning transport, endpoint selection, persistence, location authority, destination selection, routing or navigation.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.home-maps-place-search",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/home-maps-photon-place-search.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEXHOME-MAPS-PLACE-SEARCH.md"
+    ]
   }
 ]
