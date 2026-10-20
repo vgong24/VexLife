@@ -41,7 +41,7 @@ B05 consumes:
 - one exact CURRENT `vexlife.project-continuity-snapshot/v1`;
 - one source-managed BOARD ViewDefinition;
 - the canonical Intent lifecycle registry;
-- optional exact Project Planning pointer/snapshot truth;
+- optional exact Project Planning runtime pointer/snapshot truth, including the canonical pointer schema/owner/source/currentness and pointer fingerprint;
 - optional B04 reconciliation values bound to the same Project snapshot.
 
 The Board and Graph themselves are delegated to the existing Project Continuity
@@ -62,10 +62,16 @@ allowed next lifecycle states
 target Project Board lane for each next state
 ```
 
-A pointer drop identifies a target lane. It is admissible only if exactly one
-currently allowed next lifecycle state maps to that lane. If two or more states
-map to the same lane, B05 returns `AMBIGUOUS_REJECTED`; it never chooses a
-hidden state.
+A pointer drop identifies a target lane. It is admissible only if the target
+is a different Board lane and exactly one currently allowed next lifecycle
+state maps to that lane. If two or more states map to the same lane, B05 returns
+`AMBIGUOUS_REJECTED`; it never chooses a hidden state.
+
+A lane-only drop back into the card's current lane is also
+`AMBIGUOUS_REJECTED`, even when exactly one intra-lane transition is currently
+allowed. The pointer gesture cannot distinguish "leave this card here" from
+"change hidden lifecycle state while leaving the card here." Same-lane
+transitions therefore require an exact-state control.
 
 Keyboard/screen-reader interaction selects one exact next lifecycle state and
 uses the same request constructor as pointer interaction.

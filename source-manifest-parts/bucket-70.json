@@ -11,8 +11,8 @@
     {
       "path": "blueprint/purpose-workspace-registry.json",
       "mode": "100644",
-      "bytes": 20355,
-      "sha256": "c10fe26d665faceee2c544eb5835fa8da03e80122bf51adeea58b7b8325b6ccc"
+      "bytes": 20551,
+      "sha256": "a356bdf01375b1bef495b0334d727a66f1725d4bc3d3b22efdbbec8f8d435c28"
     },
     {
       "path": "docs/release/public-onboarding-distribution-claim.md",

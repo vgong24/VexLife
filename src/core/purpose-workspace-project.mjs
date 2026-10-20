@@ -90,11 +90,24 @@ function planningProjection(runtime, projectRef) {
     throw new TypeError('Purpose Workspace planning snapshot is not exact CURRENT Project Planning truth');
   }
   const { semanticFingerprint, ...snapshotCore } = snapshot;
-  if (semanticHash(snapshotCore) !== semanticFingerprint ||
+  if (semanticHash(snapshotCore) !== semanticFingerprint) {
+    throw new TypeError('Purpose Workspace planning snapshot semanticFingerprint mismatch');
+  }
+  const { pointerSha256, ...pointerCore } = pointer;
+  if (pointer.schemaVersion !== 'vexlife.project-planning-runtime-snapshot/v1' ||
+      pointer.ownerRef !== 'owner.vexlife.project-planning' ||
+      pointer.sourceRef !== 'source.vexlife.project-planning.runtime-snapshot.001' ||
+      pointer.currentness !== 'CURRENT' ||
       pointer.projectRef !== projectRef ||
       pointer.snapshotFingerprint !== semanticFingerprint ||
-      !SHA256.test(pointer.pointerSha256 ?? '')) {
-    throw new TypeError('Purpose Workspace planning pointer/snapshot binding mismatch');
+      pointer.payloadSha256 !== semanticHash(snapshot) ||
+      pointer.eventCount !== snapshot.eventCount ||
+      pointer.lastEventRefOrNull !== snapshot.lastEventRefOrNull ||
+      !SHA256.test(pointerSha256 ?? '') ||
+      (pointer.priorSnapshotFingerprintOrNull !== null &&
+        !SHA256.test(pointer.priorSnapshotFingerprintOrNull ?? '')) ||
+      semanticHash(pointerCore) !== pointerSha256) {
+    throw new TypeError('Purpose Workspace planning pointer is stale, substituted, or corrupt');
   }
   return freezeDeep({
     state: 'CURRENT',
@@ -327,6 +340,11 @@ export function preparePurposeWorkspaceBoardMove({
     targetState = exactChoice.state;
   } else {
     if (!laneAffordance) return moveResult(projection, 'INVALID_REJECTED', 'LANE_MOVE_NOT_ALLOWED');
+    if (located.lane.laneRef === targetLaneRef) {
+      return moveResult(projection, 'AMBIGUOUS_REJECTED', 'SAME_LANE_TARGET_REQUIRES_EXACT_STATE', {
+        candidateStates: clone(laneAffordance.candidateStates),
+      });
+    }
     if (laneAffordance.disposition !== 'AVAILABLE') {
       return moveResult(projection, 'AMBIGUOUS_REJECTED', 'AMBIGUOUS_LANE_TARGET', {
         candidateStates: clone(laneAffordance.candidateStates),

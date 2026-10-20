@@ -113,6 +113,40 @@ function workgraphEntry(state = 'RUNNING') {
   };
 }
 
+function planningRuntime() {
+  const snapshotCore = {
+    schemaVersion: 'vexlife.project-planning-snapshot/v1',
+    currentness: 'CURRENT',
+    projectRef: PROJECT,
+    eventCount: 1,
+    eventRefs: ['event.purpose-workspace.fixture.planning'],
+    lastEventRefOrNull: 'event.purpose-workspace.fixture.planning',
+    lastEventFingerprintOrNull: '6'.repeat(64),
+    iterations: [],
+    iterationMemberships: [],
+    sharedOrders: [],
+    wipPolicies: [],
+    selectedViewRefOrNull: null,
+  };
+  const snapshot = { ...snapshotCore, semanticFingerprint: semanticHash(snapshotCore) };
+  const pointerCore = {
+    schemaVersion: 'vexlife.project-planning-runtime-snapshot/v1',
+    ownerRef: 'owner.vexlife.project-planning',
+    sourceRef: 'source.vexlife.project-planning.runtime-snapshot.001',
+    currentness: 'CURRENT',
+    projectRef: PROJECT,
+    snapshotFingerprint: snapshot.semanticFingerprint,
+    payloadSha256: semanticHash(snapshot),
+    eventCount: snapshot.eventCount,
+    lastEventRefOrNull: snapshot.lastEventRefOrNull,
+    priorSnapshotFingerprintOrNull: null,
+  };
+  return {
+    pointer: { ...pointerCore, pointerSha256: semanticHash(pointerCore) },
+    snapshot,
+  };
+}
+
 test('B05 projects canonical Project Board + Graph without becoming a state owner', () => {
   const result = projection();
   assert.equal(result.schemaVersion, PURPOSE_WORKSPACE_PROJECT_PROJECTION_SCHEMA);
@@ -128,23 +162,33 @@ test('B05 projects canonical Project Board + Graph without becoming a state owne
   assert.equal(active.cards[0].interaction.transitionAuthority, 'NO_EXECUTION_AUTHORITY');
 });
 
-test('pointer drop rejects an ambiguous lane rather than inventing hidden lifecycle state', () => {
-  const current = projection();
-  const capture = current.board.lanes
+test('pointer drop rejects a cross-lane ambiguous target rather than inventing hidden lifecycle state', () => {
+  const snapshot = projectSnapshot();
+  snapshot.cards.find((item) => item.workNodeRef === 'work.purpose.capture').state = 'NEEDS_CLARIFICATION';
+  const { semanticFingerprint: _priorFingerprint, ...snapshotCore } = snapshot;
+  const currentSnapshot = { ...snapshotCore, semanticFingerprint: semanticHash(snapshotCore) };
+  const current = projectPurposeWorkspaceProject({
+    projectRegistry,
+    intentRegistry,
+    projectSnapshot: currentSnapshot,
+    boardView: boardView(),
+  });
+  const card = current.board.lanes
     .flatMap((lane) => lane.cards)
     .find((item) => item.workNodeRef === 'work.purpose.capture');
-  const intake = capture.interaction.laneMoveAffordances.find((item) => item.laneRef === 'lane.project.intake');
-  assert.equal(intake.disposition, 'AMBIGUOUS');
-  assert.deepEqual(intake.candidateStates, ['DECOMPOSED', 'NEEDS_CLARIFICATION']);
+  const needsHuman = card.interaction.laneMoveAffordances
+    .find((item) => item.laneRef === 'lane.project.needs-human');
+  assert.equal(needsHuman.disposition, 'AMBIGUOUS');
+  assert.deepEqual(needsHuman.candidateStates, ['HELD_UNKNOWN', 'WAITING_HUMAN']);
   const result = preparePurposeWorkspaceBoardMove({
     projection: current,
-    projectSnapshot: projectSnapshot(),
+    projectSnapshot: currentSnapshot,
     workgraphEntry: workgraphEntry(),
     intentRegistry,
-    workNodeRef: capture.workNodeRef,
-    targetLaneRef: 'lane.project.intake',
+    workNodeRef: card.workNodeRef,
+    targetLaneRef: 'lane.project.needs-human',
     expectedProjectSnapshotFingerprint: current.projectSnapshotFingerprint,
-    expectedState: capture.state,
+    expectedState: card.state,
   });
   assert.equal(result.state, 'AMBIGUOUS_REJECTED');
   assert.equal(result.reason, 'AMBIGUOUS_LANE_TARGET');
@@ -229,6 +273,69 @@ test('stale browser move rejects and returns the fresh authoritative projection 
   assert.equal(result.reason, 'AUTHORITATIVE_PROJECT_CHANGED');
   assert.equal(result.authoritativeProjection.semanticFingerprint, current.semanticFingerprint);
   assert.equal(result.effects, false);
+});
+
+test('B05 accepts only the exact canonical Project Planning pointer envelope', () => {
+  const runtime = planningRuntime();
+  const current = projectPurposeWorkspaceProject({
+    projectRegistry,
+    intentRegistry,
+    projectSnapshot: projectSnapshot(),
+    boardView: boardView(),
+    planningRuntime: runtime,
+  });
+  assert.equal(current.planning.state, 'CURRENT');
+  assert.equal(current.planning.currentness, 'CURRENT');
+  assert.equal(current.planning.pointerSha256OrNull, runtime.pointer.pointerSha256);
+
+  const substituted = structuredClone(runtime);
+  substituted.pointer.ownerRef = 'owner.vexlife.substituted-planning';
+  assert.throws(
+    () => projectPurposeWorkspaceProject({
+      projectRegistry,
+      intentRegistry,
+      projectSnapshot: projectSnapshot(),
+      boardView: boardView(),
+      planningRuntime: substituted,
+    }),
+    /planning pointer is stale, substituted, or corrupt/,
+  );
+});
+
+test('lane-only drop into the current lane never selects an intra-lane lifecycle transition', () => {
+  const current = projection();
+  const running = current.board.lanes
+    .flatMap((lane) => lane.cards)
+    .find((item) => item.workNodeRef === 'work.purpose.running');
+
+  const laneOnly = preparePurposeWorkspaceBoardMove({
+    projection: current,
+    projectSnapshot: projectSnapshot(),
+    workgraphEntry: workgraphEntry(),
+    intentRegistry,
+    workNodeRef: running.workNodeRef,
+    targetLaneRef: 'lane.project.active',
+    expectedProjectSnapshotFingerprint: current.projectSnapshotFingerprint,
+    expectedState: running.state,
+  });
+  assert.equal(laneOnly.state, 'AMBIGUOUS_REJECTED');
+  assert.equal(laneOnly.reason, 'SAME_LANE_TARGET_REQUIRES_EXACT_STATE');
+  assert.deepEqual(laneOnly.candidateStates, ['WAITING_TOOL']);
+
+  const exactState = preparePurposeWorkspaceBoardMove({
+    projection: current,
+    projectSnapshot: projectSnapshot(),
+    workgraphEntry: workgraphEntry(),
+    intentRegistry,
+    workNodeRef: running.workNodeRef,
+    targetLaneRef: 'lane.project.active',
+    targetStateOrNull: 'WAITING_TOOL',
+    expectedProjectSnapshotFingerprint: current.projectSnapshotFingerprint,
+    expectedState: running.state,
+  });
+  assert.equal(exactState.state, 'EXECUTION_HELD');
+  assert.equal(exactState.reason, 'TRUSTED_ACTOR_BINDING_UNAVAILABLE');
+  assert.equal(exactState.selectedTransition.nextState, 'WAITING_TOOL');
 });
 
 // [VXG RealForever]

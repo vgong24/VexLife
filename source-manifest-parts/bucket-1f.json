@@ -17,8 +17,8 @@
     {
       "path": "src/core/purpose-workspace-project.mjs",
       "mode": "100644",
-      "bytes": 15097,
-      "sha256": "1262d57170bb820ba4f895432e759939175544d5dc012d83b185c301c5b90fd0"
+      "bytes": 16112,
+      "sha256": "d9662c60107495a9ee8964b3bb3319206186e462a905b744adefee9d032b074b"
     },
     {
       "path": "test/foundation-health.test.mjs",

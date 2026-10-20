@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.purpose-workspace-registry/v1",
   "registryRef": "registry.vexlife.purpose-workspaces.001",
-  "registryVersion": 7,
+  "registryVersion": 8,
   "purpose": "Preserve the accepted reusable Purpose Workspace source foundation while registering its smallest current Feature/Blueprint/Experience/Module/Process/localization membrane without inferring browser runtime adoption or external professional effects.",
   "composition": "CANONICAL_FRAGMENT_COMPOSITION",
   "workspaceDefinitions": [
@@ -467,6 +467,7 @@
     "DRAFT_RESET_PRESERVES_SESSION_PROVENANCE_AND_RECEIPT_HISTORY",
     "BOARD_DRAG_NEVER_DIRECTLY_MUTATES_WORK_STATE",
     "AMBIGUOUS_BOARD_LANE_NEVER_SELECTS_HIDDEN_LIFECYCLE_STATE",
+    "SAME_LANE_BOARD_DROP_NEVER_SELECTS_INTRA_LANE_LIFECYCLE_STATE",
     "STALE_BOARD_MOVE_RENDERS_FRESH_AUTHORITATIVE_PROJECT",
     "AUTHENTICATED_PRINCIPAL_NEVER_IMPLIES_INTENT_ACTOR_BINDING"
   ],
@@ -566,6 +567,8 @@
       "BROWSER_PROJECT_SOURCE != PROJECT_TRUTH_OWNER",
       "STALE_MOVE -> REJECT + FRESH_AUTHORITATIVE_PROJECTION",
       "AMBIGUOUS_LANE_TARGET != HIDDEN_STATE_CHOICE",
+      "SAME_LANE_DROP_REQUIRES_EXACT_STATE_CONTROL",
+      "PLANNING_CURRENT_REQUIRES_CANONICAL_RUNTIME_POINTER_AND_SNAPSHOT",
       "KEYBOARD_MOVE == SAME_TYPED_TRANSACTION_PATH_AS_POINTER_MOVE",
       "RECONCILIATION_ANNOTATION != WORK_STATE",
       "AUTHENTICATED_PRINCIPAL != INTENT_ACTOR_BY_IMPLICATION"
