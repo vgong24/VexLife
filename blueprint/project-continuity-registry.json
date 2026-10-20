@@ -125,12 +125,7 @@
     "createdAt",
     "lastTransitionAt"
   ],
-  "heldSuccessors": [
-    "iteration membership and sprint planning mutations are P0B-B03",
-    "shared ordering and WIP policy mutations are P0B-B03",
-    "source/proof/GitHub provider reconciliation is P0B-B04",
-    "Purpose Workspace drag/drop Board and Graph adoption is P0B-B05"
-  ],
+  "heldSuccessors": [],
   "nonCollapseLaws": [
     "PROJECT != FEATURE",
     "FEATURE != EPIC",
