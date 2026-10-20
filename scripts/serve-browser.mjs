@@ -18,12 +18,15 @@ import {
 } from '../src/core/ux-evolution.mjs';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import { projectIntentStatus } from '../src/core/intent-projection.mjs';
+import { compileProjectContinuity } from '../src/core/project-continuity.mjs';
+import { readIntentWorkgraphRuntimeSnapshotEntries } from '../src/core/intent-workgraph-runtime-snapshot.mjs';
 import { createCompanionVoicePlaybackAdapter } from '../src/core/companion-voice-playback.mjs';
 import {
   PURPOSE_WORKSPACE_BOARD_MOVE_SCHEMA,
   PURPOSE_WORKSPACE_PROJECT_PROJECTION_SCHEMA,
   heldPurposeWorkspaceProjectProjection,
   preparePurposeWorkspaceBoardMove,
+  projectPurposeWorkspaceProject,
 } from '../src/core/purpose-workspace-project.mjs';
 export * from './serve-browser-core.mjs';
 
@@ -41,6 +44,9 @@ const port = Number(process.env.VEXLIFE_PORT ?? 18110);
 const home = path.resolve(process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.vexlife'));
 const intentSourceBundle = loadBlueprint();
 const intentTrustSnapshot = JSON.parse(fs.readFileSync(new URL('../blueprint/intent-trust-snapshot.json', import.meta.url), 'utf8'));
+const projectContinuityRegistry = JSON.parse(fs.readFileSync(new URL('../blueprint/project-continuity-registry.json', import.meta.url), 'utf8'));
+const toCompletionProjectDefinition = JSON.parse(fs.readFileSync(new URL('../blueprint/projects/vexlife-tocompletion.project.json', import.meta.url), 'utf8'));
+const toCompletionBoardView = JSON.parse(fs.readFileSync(new URL('../blueprint/projects/vexlife-tocompletion.board.view.json', import.meta.url), 'utf8'));
 export const BROWSER_RELATIONSHIPS_INVITATION_REQUEST_MAX_BYTES = BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES * 2;
 export const BROWSER_INTENT_PROJECT_STATUS_PATH = '/api/v1/intent/project-status';
 export const BROWSER_INTENT_PROJECT_STATUS_SCHEMA = 'vexlife.browser-intent-project-status/v1';
@@ -184,12 +190,49 @@ function sourceManagedIntentProjectStatusResolver(runtimeHome) {
   };
 }
 
-function sourceManagedPurposeWorkspaceProjectResolver() {
+export function createSourceManagedPurposeWorkspaceProjectResolver(runtimeHome = home) {
+  const homeRoot = path.resolve(runtimeHome);
   return async function resolvePurposeWorkspaceProject(projectRef) {
-    return heldPurposeWorkspaceProjectProjection(
-      projectRef,
-      'PROJECT_SOURCE_NOT_IMPORTED__B06_REQUIRED'
-    );
+    if (projectRef !== toCompletionProjectDefinition.projectRef) {
+      return heldPurposeWorkspaceProjectProjection(projectRef, 'PROJECT_SOURCE_NOT_REGISTERED');
+    }
+
+    let workgraphEntries;
+    try {
+      workgraphEntries = readIntentWorkgraphRuntimeSnapshotEntries({ home: homeRoot });
+    } catch (error) {
+      if (error?.code === 'INTENT_WORKGRAPH_RUNTIME_UNAVAILABLE') {
+        return heldPurposeWorkspaceProjectProjection(projectRef, 'CURRENT_WORKGRAPH_UNAVAILABLE');
+      }
+      if (String(error?.code ?? '').startsWith('INTENT_WORKGRAPH_RUNTIME_')) {
+        return heldPurposeWorkspaceProjectProjection(projectRef, 'CURRENT_WORKGRAPH_INVALID');
+      }
+      throw error;
+    }
+
+    if (!workgraphEntries.some((entry) => entry?.graph?.intent?.projectRef === projectRef)) {
+      return heldPurposeWorkspaceProjectProjection(projectRef, 'CURRENT_WORKGRAPH_UNAVAILABLE');
+    }
+
+    const projectSnapshot = compileProjectContinuity({
+      registry: projectContinuityRegistry,
+      intentRegistry: intentSourceBundle.intentRegistry,
+      project: toCompletionProjectDefinition,
+      workgraphEntries,
+      intentValidationContext: {
+        registeredProcessRefs: intentSourceBundle.factory.processes.map((item) => item.processRef),
+        registeredRoleRefs: intentSourceBundle.blueprint.roles.map((item) => item.roleRef),
+        trustSnapshot: intentTrustSnapshot,
+      },
+      registeredFeatureRefs: intentSourceBundle.featureRegistry.features.map((item) => item.featureRef),
+    });
+
+    return projectPurposeWorkspaceProject({
+      projectRegistry: projectContinuityRegistry,
+      intentRegistry: intentSourceBundle.intentRegistry,
+      projectSnapshot,
+      boardView: toCompletionBoardView,
+    });
   };
 }
 
@@ -337,7 +380,9 @@ export function createVexLifeBrowserServer(options = {}) {
   const resolveIntentProjectStatus = sourceManagedIntentProjectStatusResolver(
     genericFollowThroughRuntimeHome
   );
-  const resolvePurposeWorkspaceProject = sourceManagedPurposeWorkspaceProjectResolver();
+  const resolvePurposeWorkspaceProject = createSourceManagedPurposeWorkspaceProjectResolver(
+    genericFollowThroughRuntimeHome
+  );
   const resolvePurposeWorkspaceMove = sourceManagedPurposeWorkspaceMoveResolver(
     resolvePurposeWorkspaceProject
   );
