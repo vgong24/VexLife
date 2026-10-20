@@ -88,7 +88,6 @@ export const VEXLIFE_TOCOMPLETION_WORK = Object.freeze([
       VEXLIFE_TOCOMPLETION_WORK_REFS.p5,
       VEXLIFE_TOCOMPLETION_WORK_REFS.p6,
       VEXLIFE_TOCOMPLETION_WORK_REFS.p7,
-      VEXLIFE_TOCOMPLETION_WORK_REFS.proofHardening,
     ],
     processRef: 'process.vexlife.intent.converge-parent',
   }),
@@ -153,6 +152,7 @@ export const VEXLIFE_TOCOMPLETION_WORK = Object.freeze([
     purpose: 'Later proof-hardening: reuse the accepted EndToEnd, Feature-Walk and QuantumTest architectures to make lived whole-product evidence easier to rerun and inspect.',
     targetState: 'WAITING_DEPENDENCIES',
     priorityClass: 'LOW',
+    parentWorkNodeRef: null,
     dependencyRefs: [VEXLIFE_TOCOMPLETION_WORK_REFS.p3],
   }),
 ]);
