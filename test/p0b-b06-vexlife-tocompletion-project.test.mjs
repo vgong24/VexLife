@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -38,6 +39,23 @@ function validationContext() {
     registeredRoleRefs: sourceBundle.blueprint.roles.map((item) => item.roleRef),
     trustSnapshot,
   };
+}
+
+function materializeValidHomeIdentity(home, suffix) {
+  const deviceRef = `device.test.tocompletion.${suffix}`;
+  const companionLineageRef = `companion-lineage.test.tocompletion.${suffix}`;
+  fs.mkdirSync(path.join(home, 'config'), { recursive: true });
+  fs.mkdirSync(path.join(home, 'devices'), { recursive: true });
+  fs.writeFileSync(path.join(home, 'config', 'home.json'), `${JSON.stringify({
+    schemaVersion: 'vexlife.home/v0',
+    homeRef: `home.test.tocompletion.${suffix}`,
+    currentDeviceRef: deviceRef,
+    currentCompanionLineageRef: companionLineageRef,
+  }, null, 2)}\n`);
+  fs.writeFileSync(path.join(home, 'devices', `${deviceRef}.json`), `${JSON.stringify({
+    deviceRef,
+    companionLineageRef,
+  }, null, 2)}\n`);
 }
 
 function validatedGraph() {
@@ -165,6 +183,38 @@ test('EndToEnd and QuantumTest hardening is dependency-linked but does not gate 
     graph.nodes.some((item) => item.dependencyRefs.includes(VEXLIFE_TOCOMPLETION_WORK_REFS.proofHardening)),
     false,
   );
+});
+
+test('B06 import CLI rejects an arbitrary directory and admits one canonical Vex Home identity', () => {
+  const invalidHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-tocompletion-invalid-home-b06-'));
+  const validHome = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-tocompletion-valid-home-b06-'));
+  try {
+    const invalid = spawnSync(process.execPath, [
+      path.join(root, 'scripts/vexlife-tocompletion-project.mjs'),
+      '--home',
+      invalidHome,
+    ], { encoding: 'utf8' });
+    assert.notEqual(invalid.status, 0);
+    assert.match(`${invalid.stderr}\n${invalid.stdout}`, /Vex Home identity|COMPANION_HOME_IDENTITY_INVALID|ENOENT/u);
+    assert.equal(fs.existsSync(path.join(invalidHome, 'runtime', 'intent-workgraph')), false);
+
+    materializeValidHomeIdentity(validHome, 'cli');
+    const admitted = spawnSync(process.execPath, [
+      path.join(root, 'scripts/vexlife-tocompletion-project.mjs'),
+      '--home',
+      validHome,
+    ], { encoding: 'utf8' });
+    assert.equal(admitted.status, 0, `${admitted.stderr}\n${admitted.stdout}`);
+    const result = JSON.parse(admitted.stdout);
+    assert.equal(result.state, 'CURRENT');
+    assert.equal(result.projectRef, VEXLIFE_TOCOMPLETION_PROJECT_REF);
+    assert.equal(result.effects.homeMutationPerformed, true);
+    assert.equal(result.effects.providerMutationPerformed, false);
+    assert.equal(result.effects.sourceMutationPerformed, false);
+  } finally {
+    fs.rmSync(invalidHome, { recursive: true, force: true });
+    fs.rmSync(validHome, { recursive: true, force: true });
+  }
 });
 
 test('B06 import is idempotent for the same exact source-managed Workgraph', () => {
