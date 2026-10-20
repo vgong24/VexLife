@@ -158,6 +158,9 @@ test('EndToEnd and QuantumTest hardening is dependency-linked but does not gate 
   const graph = validatedGraph();
   const hardening = graph.nodes.find((item) => item.workNodeRef === VEXLIFE_TOCOMPLETION_WORK_REFS.proofHardening);
   assert.deepEqual(hardening.dependencyRefs, [VEXLIFE_TOCOMPLETION_WORK_REFS.p3]);
+  assert.equal(hardening.parentWorkNodeRef, null);
+  const foreground = graph.nodes.find((item) => item.workNodeRef === VEXLIFE_TOCOMPLETION_WORK_REFS.foreground);
+  assert.equal(foreground.childRefs.includes(VEXLIFE_TOCOMPLETION_WORK_REFS.proofHardening), false);
   assert.equal(
     graph.nodes.some((item) => item.dependencyRefs.includes(VEXLIFE_TOCOMPLETION_WORK_REFS.proofHardening)),
     false,
