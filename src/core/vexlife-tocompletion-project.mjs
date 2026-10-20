@@ -1,4 +1,5 @@
 import {
+  appendReceipt,
   createIntentEnvelope,
   createIntentWorkgraph,
   createWorkNode,
@@ -278,6 +279,31 @@ export function formVexLifeToCompletionWorkgraph({ intentRegistry } = {}) {
       transitionOrdinal += 1;
     }
   }
+
+  const b06Node = graph.nodes.find((item) => item.workNodeRef === VEXLIFE_TOCOMPLETION_WORK_REFS.b06);
+  if (!b06Node) throw new Error('source-managed ToCompletion Workgraph is missing B06');
+  const b06Acceptance = appendReceipt(graph, {
+    receiptRef: 'receipt.vexlife.tocompletion.p0b.b06.terminal-accepted-current.20261020a',
+    workNodeRef: VEXLIFE_TOCOMPLETION_WORK_REFS.b06,
+    expectedTransitionRef: b06Node.expectedTransitionRef,
+    nodeSemanticFingerprint: b06Node.semanticFingerprint,
+    disposition: 'CONVERGED',
+    sourceState: 'CONVERGED',
+    state: 'PROVEN',
+    currentness: 'CURRENT',
+    sourceRefs: [
+      'github.issue.vexlife.866.comment.6287354252',
+      'github.pull.vexlife.912.comment.6287346947',
+      'github.pull.vexlife.912.review.5582684943',
+    ],
+    sourceHashes: [
+      '1ecb06ace234e762e32d65bd0ec4d0f49db63ffdd1132251b2d09e42de365cc6',
+      '661a1df09e8a4a23fb0017df1829c928c759dd6c578923480ac66f18c59e9e5a',
+    ],
+    formedAt: '2026-10-20T08:59:39.000Z',
+    formationRef: 'formation.vexlife.tocompletion.p0b.b06.terminal-accepted-current.20261020a',
+  }, intentRegistry);
+  graph = b06Acceptance.graph;
 
   return graph;
 }

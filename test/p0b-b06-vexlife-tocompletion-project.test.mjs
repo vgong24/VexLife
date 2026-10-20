@@ -94,6 +94,14 @@ test('accepted B06 is settled and P1 is the real source-managed foreground edge'
   assert.equal(b06.sourceRefs.includes('git.vexlife.merge.28a1c6438fd59c4e129c3aa0050b61b05c0aea62'), true);
   assert.equal(p1.sourceRefs.includes('github.issue.vexlife.857.comment.6289035585'), true);
   assert.equal(p1.sourceRefs.includes('github.issue.vexlife.857.comment.6289157446'), true);
+  const b06Receipt = graph.receipts.find((item) => item.workNodeRef === VEXLIFE_TOCOMPLETION_WORK_REFS.b06 && item.currentness === 'CURRENT');
+  assert.equal(b06Receipt?.state, 'PROVEN');
+  assert.equal(b06Receipt?.disposition, 'CONVERGED');
+  assert.equal(b06Receipt?.sourceState, 'CONVERGED');
+  assert.equal(b06Receipt?.expectedTransitionRef, b06.expectedTransitionRef);
+  assert.equal(b06Receipt?.nodeSemanticFingerprint, b06.semanticFingerprint);
+  assert.equal(b06Receipt?.sourceRefs.includes('github.pull.vexlife.912.comment.6287346947'), true);
+  assert.equal(b06Receipt?.sourceHashes.includes('661a1df09e8a4a23fb0017df1829c928c759dd6c578923480ac66f18c59e9e5a'), true);
   assert.deepEqual(project.sourceRefs, ['github.issue.vexlife.866','github.pull.vexlife.912','git.vexlife.merge.28a1c6438fd59c4e129c3aa0050b61b05c0aea62']);
 });
 
