@@ -295,6 +295,36 @@ test('runtime snapshot owner exposes the exact CURRENT pointer that project cont
   }
 });
 
+test('compiler scopes the shared CURRENT Workgraph surface to the exact project before projection', () => {
+  const graph = graphFixture();
+  const foreign = structuredClone(graph);
+  foreign.intent.projectRef = 'project.other';
+  foreign.intent.semanticFingerprint = buildIntentFingerprint(foreign.intent);
+  foreign.semanticFingerprint = buildGraphSnapshotFingerprint(foreign);
+  const snapshot = compileProjectContinuity({
+    registry, intentRegistry, project: projectFixture(),
+    workgraphEntries: [currentEntryFor(foreign), currentEntryFor(graph)],
+    intentValidationContext: validationContext(graph),
+    registeredFeatureRefs: [FEATURE_REF],
+  });
+  assert.equal(snapshot.cards.length, 2);
+  assert.equal(snapshot.graphBindings.length, 1);
+  assert.equal(snapshot.graphBindings[0].graphRef, graph.graphRef);
+});
+
+test('compiler fails closed when the shared CURRENT surface has no Workgraph for the project', () => {
+  const foreign = graphFixture();
+  foreign.intent.projectRef = 'project.other';
+  foreign.intent.semanticFingerprint = buildIntentFingerprint(foreign.intent);
+  foreign.semanticFingerprint = buildGraphSnapshotFingerprint(foreign);
+  assert.throws(() => compileProjectContinuity({
+    registry, intentRegistry, project: projectFixture(),
+    workgraphEntries: [currentEntryFor(foreign)],
+    intentValidationContext: validationContext(foreign),
+    registeredFeatureRefs: [FEATURE_REF],
+  }), /no runtime CURRENT Workgraphs exist for exact project/);
+});
+
 test('compiler rejects Workgraphs that are not bound to the supplied runtime CURRENT pointer', () => {
   const graph = graphFixture();
   const entry = currentEntryFor(graph);

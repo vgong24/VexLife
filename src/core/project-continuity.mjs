@@ -277,7 +277,11 @@ export function compileProjectContinuity({
   if (!Array.isArray(workgraphEntries) || workgraphEntries.length === 0) {
     throw new TypeError('one or more runtime CURRENT Workgraph pointer entries are required');
   }
-  const validatedGraphs = workgraphEntries.map((entry) => assertCurrentWorkgraphEntry(
+  const projectEntries = workgraphEntries.filter((entry) => entry?.graph?.intent?.projectRef === project.projectRef);
+  if (projectEntries.length === 0) {
+    throw new TypeError(`no runtime CURRENT Workgraphs exist for exact project ${project.projectRef}`);
+  }
+  const validatedGraphs = projectEntries.map((entry) => assertCurrentWorkgraphEntry(
     entry, project.projectRef, intentRegistry, intentValidationContext
   ));
   const graphs = validatedGraphs.map((item) => item.graph);

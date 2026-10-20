@@ -196,7 +196,7 @@ one valid project definition
 
 It does not invent a lighter project-local Workgraph validator or a second currentness store. Each graph must first satisfy the existing canonical Workgraph validator and must match the exact content-addressed CURRENT pointer owned by `owner.vexlife.intent-workgraph`; the project snapshot binds both the validation state/hash and the pointer identity.
 
-The normal CLI reads that CURRENT-pointer surface directly from Vex Home. An arbitrary historical Workgraph JSON is not sufficient to earn `currentness=CURRENT`.
+The normal CLI reads that shared CURRENT-pointer surface directly from Vex Home, scopes it to the Project definition's exact `projectRef`, then validates only those current graphs. Other projects in the same Home do not block this project. An arbitrary historical Workgraph JSON is not sufficient to earn `currentness=CURRENT`.
 
 It returns one content-addressed snapshot containing cards and relationship edges:
 
