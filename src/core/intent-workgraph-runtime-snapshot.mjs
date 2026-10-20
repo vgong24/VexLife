@@ -1,14 +1,17 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
 import {
-  buildGraphSnapshotFingerprint
+  buildGraphSnapshotFingerprint,
+  recordIntentTransition
 } from './intent-workgraph.mjs';
 import { canonicalize, semanticHash } from './utils.mjs';
 
 export const INTENT_WORKGRAPH_RUNTIME_SNAPSHOT_SCHEMA = 'vexlife.intent-workgraph-runtime-snapshot/v1';
 export const INTENT_WORKGRAPH_RUNTIME_SNAPSHOT_OWNER_REF = 'owner.vexlife.intent-workgraph';
 export const INTENT_WORKGRAPH_RUNTIME_SNAPSHOT_SOURCE_REF = 'source.vexlife.intent-workgraph.runtime-snapshot.001';
+export const INTENT_WORKGRAPH_RUNTIME_WRITER_SCHEMA = 'vexlife.intent-workgraph-runtime-writer/v1';
 
 function fail(code, message, details = {}) {
   const error = new Error(message);
@@ -66,7 +69,8 @@ function roots(home) {
     home: rootHome,
     root,
     snapshots: under(rootHome, path.join(root, 'snapshots')),
-    current: under(rootHome, path.join(root, 'current'))
+    current: under(rootHome, path.join(root, 'current')),
+    locks: under(rootHome, path.join(root, 'locks'))
   });
 }
 
@@ -246,9 +250,135 @@ function readPointedGraph(paths, pointer) {
   return graph;
 }
 
-export function persistIntentWorkgraphRuntimeSnapshot({ home, graph } = {}) {
+function canonicalTimestamp(value, label) {
+  if (typeof value !== 'string') fail('INTENT_WORKGRAPH_RUNTIME_WRITER_INVALID', `${label} must be one canonical UTC timestamp`);
+  const ms = Date.parse(value);
+  if (!Number.isFinite(ms) || new Date(ms).toISOString() !== value) {
+    fail('INTENT_WORKGRAPH_RUNTIME_WRITER_INVALID', `${label} must be one canonical UTC timestamp`);
+  }
+  return value;
+}
+
+function stableRef(value, label) {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/u.test(value)) {
+    fail('INTENT_WORKGRAPH_RUNTIME_WRITER_INVALID', `${label} must be one stable ref`);
+  }
+  return value;
+}
+
+function writeExclusive(home, file, value) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  under(home, path.dirname(file));
+  let fd = null;
+  try {
+    fd = fs.openSync(file, 'wx', 0o600);
+    fs.writeFileSync(fd, canonicalBytes(value), 'utf8');
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    fd = null;
+    return true;
+  } catch (error) {
+    if (fd !== null) { try { fs.closeSync(fd); } catch {} }
+    if (error?.code === 'EEXIST') return false;
+    throw error;
+  }
+}
+
+function processState(pid) {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return 'UNVERIFIABLE';
+  if (pid === process.pid) return 'ACTIVE';
+  try {
+    process.kill(pid, 0);
+    return 'ACTIVE';
+  } catch (error) {
+    return error?.code === 'ESRCH' ? 'ABSENT' : error?.code === 'EPERM' ? 'ACTIVE' : 'UNVERIFIABLE';
+  }
+}
+
+function writerPath(paths, graphRef) {
+  return under(paths.home, path.join(paths.locks, `${identityAddress(graphRef)}.lock`));
+}
+
+function acquireWriter(paths, graphRef, instanceRef, observedAt) {
+  fs.mkdirSync(paths.locks, { recursive: true });
+  const lock = writerPath(paths, graphRef);
+  const core = {
+    schemaVersion: INTENT_WORKGRAPH_RUNTIME_WRITER_SCHEMA,
+    graphRef: stableRef(graphRef, 'graphRef'),
+    instanceRef: stableRef(instanceRef, 'instanceRef'),
+    pid: process.pid,
+    lockToken: crypto.randomUUID(),
+    formedAt: canonicalTimestamp(observedAt, 'observedAt')
+  };
+  const lease = Object.freeze({ ...core, leaseSha256: semanticHash(core) });
+  if (!writeExclusive(paths.home, lock, lease)) {
+    let existing;
+    try {
+      existing = readCanonicalJson(paths.home, lock, 'INTENT_WORKGRAPH_RUNTIME_WRITER_CONFLICT');
+    } catch {
+      fail('INTENT_WORKGRAPH_RUNTIME_WRITER_CONFLICT', 'Workgraph writer lease is unverifiable');
+    }
+    const state = processState(existing.pid);
+    fail(
+      state === 'ABSENT' ? 'INTENT_WORKGRAPH_RUNTIME_WRITER_RECOVERY_REQUIRED' : 'INTENT_WORKGRAPH_RUNTIME_WRITER_CONFLICT',
+      state === 'ABSENT'
+        ? 'abandoned Workgraph writer requires explicit recovery'
+        : 'Workgraph writer is active or unverifiable'
+    );
+  }
+  return Object.freeze({ path: lock, token: lease.lockToken });
+}
+
+function releaseWriter(lease) {
+  if (!lease || !fs.existsSync(lease.path)) return true;
+  try {
+    const current = JSON.parse(fs.readFileSync(lease.path, 'utf8'));
+    if (current.lockToken !== lease.token) return false;
+    fs.unlinkSync(lease.path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function withWriter(paths, graphRef, instanceRef, observedAt, fn) {
+  const lease = acquireWriter(paths, graphRef, instanceRef, observedAt);
+  let result;
+  let caught = null;
+  try {
+    result = fn();
+  } catch (error) {
+    caught = error;
+  }
+  const released = releaseWriter(lease);
+  if (!released && !caught) {
+    fail('INTENT_WORKGRAPH_RUNTIME_WRITER_CONFLICT', 'Workgraph writer release could not be proven');
+  }
+  if (caught) throw caught;
+  return result;
+}
+
+function assertExpectedPointer(priorPointer, expectedPointerSha256) {
+  if (expectedPointerSha256 === undefined) return;
+  if (expectedPointerSha256 === null) {
+    if (priorPointer !== null) {
+      fail('INTENT_WORKGRAPH_RUNTIME_STALE', 'Workgraph current pointer exists but transaction expected an absent pointer');
+    }
+    return;
+  }
+  if (typeof expectedPointerSha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(expectedPointerSha256)) {
+    fail('INTENT_WORKGRAPH_RUNTIME_STALE', 'expectedPointerSha256 must be null or lowercase SHA-256');
+  }
+  if (priorPointer?.pointerSha256 !== expectedPointerSha256) {
+    fail('INTENT_WORKGRAPH_RUNTIME_STALE', 'Workgraph current pointer changed before transaction admission', {
+      expectedPointerSha256,
+      observedPointerSha256: priorPointer?.pointerSha256 ?? null
+    });
+  }
+}
+
+function persistUnderWriter(paths, graph, expectedPointerSha256 = undefined) {
   validateGraph(graph);
-  const paths = roots(home);
   const address = identityAddress(graph.graphRef);
   const currentPath = under(paths.home, path.join(paths.current, `${address}.json`));
   let priorPointer = null;
@@ -259,18 +389,142 @@ export function persistIntentWorkgraphRuntimeSnapshot({ home, graph } = {}) {
       fail('INTENT_WORKGRAPH_RUNTIME_POINTER_CORRUPT', 'Workgraph current pointer is stored under the wrong owner-local address');
     }
     priorGraph = readPointedGraph(paths, priorPointer);
-    if (priorGraph.semanticFingerprint === graph.semanticFingerprint) {
-      return Object.freeze({ state: 'CURRENT', pointer: priorPointer, graph: priorGraph });
-    }
-    assertNonRegressive(priorGraph, graph);
   }
+  assertExpectedPointer(priorPointer, expectedPointerSha256);
+  if (priorGraph?.semanticFingerprint === graph.semanticFingerprint) {
+    return Object.freeze({ state: 'CURRENT', changed: false, pointer: priorPointer, graph: priorGraph });
+  }
+  if (priorGraph) assertNonRegressive(priorGraph, graph);
 
   const payloadSha256 = semanticHash(graph);
   const snapshotPath = under(paths.home, path.join(paths.snapshots, `${graph.semanticFingerprint}.json`));
   writeImmutable(paths.home, snapshotPath, graph);
   const pointer = sealPointer(pointerCore(graph, payloadSha256, priorPointer?.semanticFingerprint ?? null));
   writeCurrent(paths.home, currentPath, pointer);
-  return Object.freeze({ state: 'CURRENT', pointer, graph: structuredClone(graph) });
+  return Object.freeze({ state: 'CURRENT', changed: true, pointer, graph: structuredClone(graph) });
+}
+
+export function recoverIntentWorkgraphRuntimeWriter({
+  home,
+  graphRef,
+  expectedLeaseSha256,
+} = {}) {
+  stableRef(graphRef, 'graphRef');
+  const paths = roots(home);
+  const lock = writerPath(paths, graphRef);
+  if (!fs.existsSync(lock)) {
+    return Object.freeze({
+      state: 'RECOVERY_NOT_REQUIRED',
+      graphRef,
+      recovered: false,
+      effects: false,
+    });
+  }
+  const existing = readCanonicalJson(paths.home, lock, 'INTENT_WORKGRAPH_RUNTIME_WRITER_CONFLICT');
+  const { leaseSha256, ...core } = existing;
+  if (
+    existing.schemaVersion !== INTENT_WORKGRAPH_RUNTIME_WRITER_SCHEMA
+    || existing.graphRef !== graphRef
+    || typeof existing.instanceRef !== 'string'
+    || !Number.isSafeInteger(existing.pid)
+    || typeof existing.lockToken !== 'string'
+    || typeof leaseSha256 !== 'string'
+    || !/^[a-f0-9]{64}$/u.test(leaseSha256)
+    || semanticHash(core) !== leaseSha256
+  ) {
+    fail('INTENT_WORKGRAPH_RUNTIME_WRITER_CONFLICT', 'Workgraph writer lease is corrupt or substituted');
+  }
+  if (typeof expectedLeaseSha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(expectedLeaseSha256) ||
+      expectedLeaseSha256 !== leaseSha256) {
+    fail('INTENT_WORKGRAPH_RUNTIME_RECOVERY_STALE', 'Workgraph recovery lease identity is stale');
+  }
+  const state = processState(existing.pid);
+  if (state !== 'ABSENT') {
+    fail('INTENT_WORKGRAPH_RUNTIME_WRITER_CONFLICT', 'Workgraph writer is active or unverifiable');
+  }
+  const currentPath = under(paths.home, path.join(paths.current, `${identityAddress(graphRef)}.json`));
+  if (fs.existsSync(currentPath)) {
+    const pointer = validatePointer(readCanonicalJson(paths.home, currentPath, 'INTENT_WORKGRAPH_RUNTIME_POINTER_CORRUPT'));
+    if (pointer.graphRef !== graphRef) {
+      fail('INTENT_WORKGRAPH_RUNTIME_POINTER_CORRUPT', 'Workgraph current pointer identity does not match recovery graphRef');
+    }
+    readPointedGraph(paths, pointer);
+  }
+  fs.unlinkSync(lock);
+  return Object.freeze({
+    state: 'RECOVERED',
+    graphRef,
+    recovered: true,
+    recoveredLeaseSha256: leaseSha256,
+    effects: false,
+  });
+}
+
+export function persistIntentWorkgraphRuntimeSnapshot({
+  home,
+  graph,
+  instanceRef = 'instance.vexlife.intent-workgraph-runtime.persist',
+  observedAt = new Date().toISOString()
+} = {}) {
+  validateGraph(graph);
+  const paths = roots(home);
+  return withWriter(paths, graph.graphRef, instanceRef, observedAt, () =>
+    persistUnderWriter(paths, graph)
+  );
+}
+
+export function recordIntentWorkgraphRuntimeTransition({
+  home,
+  graphRef,
+  expectedPointerSha256,
+  transition,
+  registry,
+  instanceRef,
+  observedAt
+} = {}) {
+  stableRef(graphRef, 'graphRef');
+  stableRef(instanceRef, 'instanceRef');
+  canonicalTimestamp(observedAt, 'observedAt');
+  if (!registry || typeof registry !== 'object') {
+    fail('INTENT_WORKGRAPH_RUNTIME_TRANSITION_INVALID', 'intent registry is required');
+  }
+  const paths = roots(home);
+  return withWriter(paths, graphRef, instanceRef, observedAt, () => {
+    const currentPath = under(paths.home, path.join(paths.current, `${identityAddress(graphRef)}.json`));
+    if (!fs.existsSync(currentPath)) {
+      fail('INTENT_WORKGRAPH_RUNTIME_UNAVAILABLE', 'Workgraph current pointer is unavailable for transition');
+    }
+    const priorPointer = validatePointer(readCanonicalJson(
+      paths.home,
+      currentPath,
+      'INTENT_WORKGRAPH_RUNTIME_POINTER_CORRUPT'
+    ));
+    if (priorPointer.graphRef !== graphRef) {
+      fail('INTENT_WORKGRAPH_RUNTIME_POINTER_CORRUPT', 'Workgraph current pointer identity does not match transition graphRef');
+    }
+    assertExpectedPointer(priorPointer, expectedPointerSha256);
+    const priorGraph = readPointedGraph(paths, priorPointer);
+    const applied = recordIntentTransition(priorGraph, transition, registry);
+    if (!applied.changed) {
+      return Object.freeze({
+        state: 'CURRENT',
+        changed: false,
+        reason: applied.reason,
+        transition: null,
+        pointer: priorPointer,
+        graph: priorGraph
+      });
+    }
+    const persisted = persistUnderWriter(paths, applied.graph, priorPointer.pointerSha256);
+    return Object.freeze({
+      state: persisted.state,
+      changed: persisted.changed,
+      reason: null,
+      transition: applied.transition,
+      pointer: persisted.pointer,
+      graph: persisted.graph
+    });
+  });
 }
 
 export function readIntentWorkgraphRuntimeSnapshotEntries({ home } = {}) {
