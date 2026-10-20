@@ -38,6 +38,7 @@
     "feature:construction": "node scripts/feature-construction.mjs",
     "project:status": "node scripts/project-continuity.mjs",
     "project:planning": "node scripts/project-planning.mjs",
+    "project:tocompletion:import": "node scripts/vexlife-tocompletion-project.mjs",
     "bridge:check": "node scripts/bridge-check.mjs",
     "intent:check": "node scripts/intent-check.mjs",
     "intent:plan": "node scripts/intent-plan.mjs",
