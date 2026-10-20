@@ -5,14 +5,20 @@
     {
       "path": "blueprint/module-registry/project-continuity.json",
       "mode": "100644",
-      "bytes": 1882,
-      "sha256": "ba3a068a9689e399315e714b998031bd5081ce457093583ec6c5622a80a0ffa7"
+      "bytes": 3937,
+      "sha256": "5b9ed1d9598f5c1362b9100a822f9fd3019e6c4051cf412ec3599638b64813f8"
     },
     {
       "path": "blueprint/purpose-workspace/process-patterns.json",
       "mode": "100644",
       "bytes": 3507,
       "sha256": "2454de856407946804c870b209e6ae41da79a163195b8b3f5bf6a59be0330f69"
+    },
+    {
+      "path": "docs/VEXLIFE-TOCOMPLETION-PROJECT-DOGFOOD.md",
+      "mode": "100644",
+      "bytes": 4459,
+      "sha256": "1ed9b5dd6fe7c752237cca55a68f4fd86b3ee2d3beb52f0a7761c4422bb039b4"
     },
     {
       "path": "package-lock.json",
