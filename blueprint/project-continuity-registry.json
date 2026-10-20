@@ -8,7 +8,8 @@
     "featureMeaning": "registry.vexlife.features.001",
     "humanWorkspace": "registry.vexlife.purpose-workspaces.001",
     "proofCurrentness": "registry.vexlife.build-health.001",
-    "repositoryCurrentness": "orientation.vexlife.dedicated-repository.001"
+    "repositoryCurrentness": "orientation.vexlife.dedicated-repository.001",
+    "workgraphRuntimeCurrentness": "owner.vexlife.intent-workgraph"
   },
   "schemas": {
     "projectDefinition": "vexlife.project-definition/v1",
@@ -16,7 +17,8 @@
     "snapshot": "vexlife.project-continuity-snapshot/v1",
     "boardProjection": "vexlife.project-board-projection/v1",
     "graphProjection": "vexlife.project-graph-projection/v1",
-    "laneFocusCard": "vexlife.project-lane-focus-card/v1"
+    "laneFocusCard": "vexlife.project-lane-focus-card/v1",
+    "workgraphRuntimeCurrentPointer": "vexlife.intent-workgraph-runtime-snapshot/v1"
   },
   "viewClasses": [
     "BOARD",
@@ -28,55 +30,91 @@
     {
       "laneRef": "lane.project.intake",
       "label": "Intake",
-      "lifecycleStates": ["CAPTURED", "NEEDS_CLARIFICATION", "DECOMPOSED"]
+      "lifecycleStates": [
+        "CAPTURED",
+        "NEEDS_CLARIFICATION",
+        "DECOMPOSED"
+      ]
     },
     {
       "laneRef": "lane.project.planned",
       "label": "Planned",
-      "lifecycleStates": ["PLAN_VALIDATED", "WAITING_DEPENDENCIES"]
+      "lifecycleStates": [
+        "PLAN_VALIDATED",
+        "WAITING_DEPENDENCIES"
+      ]
     },
     {
       "laneRef": "lane.project.ready",
       "label": "Ready",
-      "lifecycleStates": ["READY"]
+      "lifecycleStates": [
+        "READY"
+      ]
     },
     {
       "laneRef": "lane.project.active",
       "label": "Active",
-      "lifecycleStates": ["CONTEXT_ADMITTED", "RUNNING", "WAITING_TOOL"]
+      "lifecycleStates": [
+        "CONTEXT_ADMITTED",
+        "RUNNING",
+        "WAITING_TOOL"
+      ]
     },
     {
       "laneRef": "lane.project.waiting",
       "label": "Waiting",
-      "lifecycleStates": ["WAITING_RESOURCE", "PAUSED_AT_CHECKPOINT"]
+      "lifecycleStates": [
+        "WAITING_RESOURCE",
+        "PAUSED_AT_CHECKPOINT"
+      ]
     },
     {
       "laneRef": "lane.project.needs-human",
       "label": "Needs Human",
-      "lifecycleStates": ["WAITING_HUMAN", "HELD_UNKNOWN"]
+      "lifecycleStates": [
+        "WAITING_HUMAN",
+        "HELD_UNKNOWN"
+      ]
     },
     {
       "laneRef": "lane.project.verify",
       "label": "Verify",
-      "lifecycleStates": ["VERIFYING"]
+      "lifecycleStates": [
+        "VERIFYING"
+      ]
     },
     {
       "laneRef": "lane.project.attention",
       "label": "Attention",
-      "lifecycleStates": ["BLOCKED", "FAILED_RECOVERABLE"]
+      "lifecycleStates": [
+        "BLOCKED",
+        "FAILED_RECOVERABLE"
+      ]
     },
     {
       "laneRef": "lane.project.done",
       "label": "Done",
-      "lifecycleStates": ["COMPLETED", "CONVERGED", "CLOSED"]
+      "lifecycleStates": [
+        "COMPLETED",
+        "CONVERGED",
+        "CLOSED"
+      ]
     },
     {
       "laneRef": "lane.project.archive",
       "label": "Archive",
-      "lifecycleStates": ["SUPERSEDED", "CANCELLED"]
+      "lifecycleStates": [
+        "SUPERSEDED",
+        "CANCELLED"
+      ]
     }
   ],
-  "priorityOrder": ["IMMEDIATE", "HIGH", "NORMAL", "LOW"],
+  "priorityOrder": [
+    "IMMEDIATE",
+    "HIGH",
+    "NORMAL",
+    "LOW"
+  ],
   "relationshipKinds": [
     "CONTAINS",
     "DEPENDS_ON",
@@ -103,6 +141,8 @@
     "PROJECT_VIEW != EFFECT_AUTHORITY",
     "SPRINT_MEMBERSHIP != WORK_STATE",
     "PR_MERGED != WORK_CLOSED",
-    "NEWER_TIMESTAMP != STRONGER_TRUTH"
+    "NEWER_TIMESTAMP != STRONGER_TRUTH",
+    "VALID_WORKGRAPH != RUNTIME_CURRENT_WORKGRAPH",
+    "CURRENT_POINTER_OBSERVED != CURRENT_FOREVER"
   ]
 }

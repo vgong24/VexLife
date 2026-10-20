@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +23,14 @@ import {
   buildTransitionFingerprint,
   buildWorkNodeFingerprint,
 } from '../src/core/intent-workgraph.mjs';
+import {
+  INTENT_WORKGRAPH_RUNTIME_SNAPSHOT_OWNER_REF,
+  INTENT_WORKGRAPH_RUNTIME_SNAPSHOT_SCHEMA,
+  INTENT_WORKGRAPH_RUNTIME_SNAPSHOT_SOURCE_REF,
+  persistIntentWorkgraphRuntimeSnapshot,
+  readIntentWorkgraphRuntimeSnapshotEntries,
+} from '../src/core/intent-workgraph-runtime-snapshot.mjs';
+import { semanticHash } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const readJson = (relative) => JSON.parse(fs.readFileSync(path.join(ROOT, relative), 'utf8'));
@@ -178,9 +187,27 @@ function boardViewFixture() {
   };
 }
 
+function currentEntryFor(graph = graphFixture(), priorSemanticFingerprint = null) {
+  const core = {
+    schemaVersion: INTENT_WORKGRAPH_RUNTIME_SNAPSHOT_SCHEMA,
+    ownerRef: INTENT_WORKGRAPH_RUNTIME_SNAPSHOT_OWNER_REF,
+    sourceRef: INTENT_WORKGRAPH_RUNTIME_SNAPSHOT_SOURCE_REF,
+    currentness: 'CURRENT',
+    graphRef: graph.graphRef,
+    rootIntentRef: graph.rootIntentRef,
+    semanticFingerprint: graph.semanticFingerprint,
+    payloadSha256: semanticHash(graph),
+    priorSemanticFingerprint,
+  };
+  return {
+    pointer: { ...core, pointerSha256: semanticHash(core) },
+    graph,
+  };
+}
+
 function compile(graph = graphFixture(), project = projectFixture()) {
   return compileProjectContinuity({
-    registry, intentRegistry, project, workgraphs: [graph],
+    registry, intentRegistry, project, workgraphEntries: [currentEntryFor(graph)],
     intentValidationContext: validationContext(graph),
     registeredFeatureRefs: [FEATURE_REF],
   });
@@ -209,6 +236,8 @@ test('read-only compiler joins exact validated Workgraph, assignment, feature an
   assert.equal(snapshot.cards.length, 2);
   assert.equal(snapshot.graphBindings[0].validationState, 'PLAN_VALIDATED');
   assert.match(snapshot.graphBindings[0].validationSemanticHash, /^[a-f0-9]{64}$/u);
+  assert.equal(snapshot.graphBindings[0].currentnessOwnerRef, INTENT_WORKGRAPH_RUNTIME_SNAPSHOT_OWNER_REF);
+  assert.match(snapshot.graphBindings[0].currentPointerSha256, /^[a-f0-9]{64}$/u);
   const parent = snapshot.cards.find((card) => card.workNodeRef === 'work.fixture.parent');
   assert.equal(parent.assignment.assigneeRef, 'vex.fixture');
   assert.deepEqual(parent.featureRefs, [FEATURE_REF]);
@@ -244,28 +273,66 @@ test('Lane Focus Card exposes bounded causal neighborhood and possible transitio
   assert.equal(focus.effects, false);
 });
 
+test('runtime snapshot owner exposes the exact CURRENT pointer that project continuity consumes', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-project-continuity-current-'));
+  try {
+    const graph = graphFixture();
+    persistIntentWorkgraphRuntimeSnapshot({ home, graph });
+    const entries = readIntentWorkgraphRuntimeSnapshotEntries({ home });
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].pointer.currentness, 'CURRENT');
+    assert.equal(entries[0].pointer.semanticFingerprint, graph.semanticFingerprint);
+    assert.equal(entries[0].pointer.payloadSha256, semanticHash(graph));
+    const snapshot = compileProjectContinuity({
+      registry, intentRegistry, project: projectFixture(), workgraphEntries: entries,
+      intentValidationContext: validationContext(graph),
+      registeredFeatureRefs: [FEATURE_REF],
+    });
+    assert.equal(snapshot.currentness, 'CURRENT');
+    assert.equal(snapshot.graphBindings[0].currentPointerSha256, entries[0].pointer.pointerSha256);
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('compiler rejects Workgraphs that are not bound to the supplied runtime CURRENT pointer', () => {
+  const graph = graphFixture();
+  const entry = currentEntryFor(graph);
+  entry.pointer = {
+    ...entry.pointer,
+    semanticFingerprint: '0'.repeat(64),
+  };
+  const { pointerSha256: _ignored, ...pointerCore } = entry.pointer;
+  entry.pointer.pointerSha256 = semanticHash(pointerCore);
+  assert.throws(() => compileProjectContinuity({
+    registry, intentRegistry, project: projectFixture(), workgraphEntries: [entry],
+    intentValidationContext: validationContext(graph),
+    registeredFeatureRefs: [FEATURE_REF],
+  }), /does not match its runtime CURRENT pointer/);
+});
+
 test('compiler fails closed on foreign project, invalid Workgraph truth, unknown work/feature relations and duplicate graph identity', () => {
   const graph = graphFixture();
   const foreign = structuredClone(graph);
   foreign.intent.projectRef = 'project.other';
   foreign.intent.semanticFingerprint = buildIntentFingerprint(foreign.intent);
   foreign.semanticFingerprint = buildGraphSnapshotFingerprint(foreign);
-  assert.throws(() => compileProjectContinuity({ registry, intentRegistry, project: projectFixture(), workgraphs: [foreign], intentValidationContext: validationContext(foreign), registeredFeatureRefs: [FEATURE_REF] }), /exact project/);
+  assert.throws(() => compileProjectContinuity({ registry, intentRegistry, project: projectFixture(), workgraphEntries: [currentEntryFor(foreign)], intentValidationContext: validationContext(foreign), registeredFeatureRefs: [FEATURE_REF] }), /exact project/);
 
   const invalid = graphFixture();
   invalid.nodes[0].processRef = 'process.unregistered';
   invalid.nodes[0].semanticFingerprint = buildWorkNodeFingerprint(invalid.nodes[0]);
   invalid.semanticFingerprint = buildGraphSnapshotFingerprint(invalid);
-  assert.throws(() => compileProjectContinuity({ registry, intentRegistry, project: projectFixture(), workgraphs: [invalid], intentValidationContext: validationContext(invalid), registeredFeatureRefs: [FEATURE_REF] }), /not valid current Intent Workgraph truth/);
+  assert.throws(() => compileProjectContinuity({ registry, intentRegistry, project: projectFixture(), workgraphEntries: [currentEntryFor(invalid)], intentValidationContext: validationContext(invalid), registeredFeatureRefs: [FEATURE_REF] }), /not valid current Intent Workgraph truth/);
 
   const unknownBinding = projectFixture();
   unknownBinding.workFeatureBindings = [{ workNodeRef: 'work.unknown', featureRefs: [FEATURE_REF] }];
   assert.throws(() => compile(graphFixture(), unknownBinding), /unknown work node/);
 
-  assert.throws(() => compileProjectContinuity({ registry, intentRegistry, project: projectFixture(), workgraphs: [graphFixture()], intentValidationContext: validationContext(), registeredFeatureRefs: ['feature.unknown'] }), /unregistered feature/);
+  assert.throws(() => compileProjectContinuity({ registry, intentRegistry, project: projectFixture(), workgraphEntries: [currentEntryFor(graphFixture())], intentValidationContext: validationContext(), registeredFeatureRefs: ['feature.unknown'] }), /unregistered feature/);
 
   const duplicate = graphFixture();
-  assert.throws(() => compileProjectContinuity({ registry, intentRegistry, project: projectFixture(), workgraphs: [duplicate, structuredClone(duplicate)], intentValidationContext: validationContext(duplicate), registeredFeatureRefs: [FEATURE_REF] }), /duplicate or invalid graphRef/);
+  assert.throws(() => compileProjectContinuity({ registry, intentRegistry, project: projectFixture(), workgraphEntries: [currentEntryFor(duplicate), currentEntryFor(structuredClone(duplicate))], intentValidationContext: validationContext(duplicate), registeredFeatureRefs: [FEATURE_REF] }), /duplicate or invalid graphRef/);
 });
 
 // [VXG RealForever]

@@ -12,6 +12,9 @@ export const PROJECT_LANE_FOCUS_CARD_SCHEMA = 'vexlife.project-lane-focus-card/v
 const REF = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/u;
 const PROJECT_REF = /^project\.[A-Za-z0-9._-]+$/u;
 const HEX64 = /^[a-f0-9]{64}$/u;
+const WORKGRAPH_RUNTIME_POINTER_SCHEMA = 'vexlife.intent-workgraph-runtime-snapshot/v1';
+const WORKGRAPH_RUNTIME_OWNER_REF = 'owner.vexlife.intent-workgraph';
+const WORKGRAPH_RUNTIME_SOURCE_REF = 'source.vexlife.intent-workgraph.runtime-snapshot.001';
 const clone = (value) => structuredClone(value);
 const stableRef = (value) => typeof value === 'string' && REF.test(value);
 const canonicalRefs = (values = []) => [...new Set(values)].sort();
@@ -188,6 +191,39 @@ function assertCanonicalWorkgraph(graph, projectRef, intentRegistry, validationC
   return { graph, validation };
 }
 
+function assertCurrentWorkgraphEntry(entry, projectRef, intentRegistry, validationContext) {
+  if (!object(entry) || !object(entry.pointer) || !object(entry.graph)) {
+    throw new TypeError('project continuity requires current Workgraph pointer entries');
+  }
+  const pointer = entry.pointer;
+  const { pointerSha256, ...pointerCore } = pointer;
+  if (
+    pointer.schemaVersion !== WORKGRAPH_RUNTIME_POINTER_SCHEMA
+    || pointer.ownerRef !== WORKGRAPH_RUNTIME_OWNER_REF
+    || pointer.sourceRef !== WORKGRAPH_RUNTIME_SOURCE_REF
+    || pointer.currentness !== 'CURRENT'
+    || !stableRef(pointer.graphRef)
+    || !stableRef(pointer.rootIntentRef)
+    || !HEX64.test(pointer.semanticFingerprint ?? '')
+    || !HEX64.test(pointer.payloadSha256 ?? '')
+    || !HEX64.test(pointerSha256 ?? '')
+    || (pointer.priorSemanticFingerprint !== null && !HEX64.test(pointer.priorSemanticFingerprint ?? ''))
+    || semanticHash(pointerCore) !== pointerSha256
+  ) {
+    throw new TypeError('Workgraph runtime current pointer is stale, substituted, or corrupt');
+  }
+  const graph = entry.graph;
+  if (
+    graph.graphRef !== pointer.graphRef
+    || graph.rootIntentRef !== pointer.rootIntentRef
+    || graph.semanticFingerprint !== pointer.semanticFingerprint
+    || semanticHash(graph) !== pointer.payloadSha256
+  ) {
+    throw new TypeError(`workgraph ${graph.graphRef ?? ''} does not match its runtime CURRENT pointer`);
+  }
+  return { ...assertCanonicalWorkgraph(graph, projectRef, intentRegistry, validationContext), pointer };
+}
+
 function lastTransitionFor(graph, workNodeRef) {
   const matches = (graph.transitions ?? []).filter((item) => item.workNodeRef === workNodeRef && Number.isInteger(item.sequence));
   matches.sort((left, right) => left.sequence - right.sequence || left.transitionRef.localeCompare(right.transitionRef));
@@ -227,7 +263,7 @@ function relationEdges(cards) {
 }
 
 export function compileProjectContinuity({
-  registry, intentRegistry, project: rawProject, workgraphs = [],
+  registry, intentRegistry, project: rawProject, workgraphEntries = [],
   intentValidationContext = null, registeredFeatureRefs = null,
 } = {}) {
   const registryValidation = validateProjectContinuityRegistry(registry, intentRegistry);
@@ -238,12 +274,15 @@ export function compileProjectContinuity({
   for (const featureRef of project.featureRefs) {
     if (!knownFeatureRefs.has(featureRef)) throw new TypeError(`project references unregistered feature ${featureRef}`);
   }
-  if (!Array.isArray(workgraphs) || workgraphs.length === 0) throw new TypeError('one or more current Workgraphs are required');
-  const validatedGraphs = workgraphs.map((graph) => assertCanonicalWorkgraph(
-    graph, project.projectRef, intentRegistry, intentValidationContext
+  if (!Array.isArray(workgraphEntries) || workgraphEntries.length === 0) {
+    throw new TypeError('one or more runtime CURRENT Workgraph pointer entries are required');
+  }
+  const validatedGraphs = workgraphEntries.map((entry) => assertCurrentWorkgraphEntry(
+    entry, project.projectRef, intentRegistry, intentValidationContext
   ));
   const graphs = validatedGraphs.map((item) => item.graph);
   const validationByGraphRef = new Map(validatedGraphs.map((item) => [item.graph.graphRef, item.validation]));
+  const pointerByGraphRef = new Map(validatedGraphs.map((item) => [item.graph.graphRef, item.pointer]));
   const graphRefs = new Set();
   const rootIntentRefs = new Set();
   const workNodeRefs = new Set();
@@ -299,6 +338,11 @@ export function compileProjectContinuity({
       semanticFingerprint: graph.semanticFingerprint,
       validationState: validation.state,
       validationSemanticHash: validation.semanticHash,
+      currentnessOwnerRef: pointerByGraphRef.get(graph.graphRef).ownerRef,
+      currentnessSourceRef: pointerByGraphRef.get(graph.graphRef).sourceRef,
+      currentPointerSha256: pointerByGraphRef.get(graph.graphRef).pointerSha256,
+      payloadSha256: pointerByGraphRef.get(graph.graphRef).payloadSha256,
+      priorSemanticFingerprint: pointerByGraphRef.get(graph.graphRef).priorSemanticFingerprint,
       createdAt: canonicalTimestamp(graph.createdAt, `${graph.graphRef}.createdAt`),
     };
   }).sort((left, right) => left.graphRef.localeCompare(right.graphRef));

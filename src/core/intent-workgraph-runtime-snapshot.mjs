@@ -273,7 +273,7 @@ export function persistIntentWorkgraphRuntimeSnapshot({ home, graph } = {}) {
   return Object.freeze({ state: 'CURRENT', pointer, graph: structuredClone(graph) });
 }
 
-export function readIntentWorkgraphRuntimeSnapshots({ home } = {}) {
+export function readIntentWorkgraphRuntimeSnapshotEntries({ home } = {}) {
   const paths = roots(home);
   if (!fs.existsSync(paths.current)) {
     fail('INTENT_WORKGRAPH_RUNTIME_UNAVAILABLE', 'Intent Workgraph runtime snapshot surface is unavailable');
@@ -282,7 +282,7 @@ export function readIntentWorkgraphRuntimeSnapshots({ home } = {}) {
   if (stat.isSymbolicLink() || !stat.isDirectory()) {
     fail('INTENT_WORKGRAPH_RUNTIME_POINTER_CORRUPT', 'Intent Workgraph current pointer root is invalid');
   }
-  const graphs = [];
+  const entries = [];
   for (const entry of fs.readdirSync(paths.current, { withFileTypes: true })) {
     if (entry.isSymbolicLink() || !entry.isFile() || !entry.name.endsWith('.json')) {
       fail('INTENT_WORKGRAPH_RUNTIME_POINTER_CORRUPT', 'Intent Workgraph current pointer enumeration is invalid');
@@ -292,11 +292,19 @@ export function readIntentWorkgraphRuntimeSnapshots({ home } = {}) {
     if (entry.name !== `${identityAddress(pointer.graphRef)}.json`) {
       fail('INTENT_WORKGRAPH_RUNTIME_POINTER_CORRUPT', 'Intent Workgraph current pointer is stored under the wrong owner-local address');
     }
-    graphs.push(readPointedGraph(paths, pointer));
+    const graph = readPointedGraph(paths, pointer);
+    entries.push(Object.freeze({
+      pointer: Object.freeze(structuredClone(pointer)),
+      graph: Object.freeze(structuredClone(graph))
+    }));
   }
-  if (!graphs.length) fail('INTENT_WORKGRAPH_RUNTIME_UNAVAILABLE', 'No current Intent Workgraph runtime snapshots exist');
-  graphs.sort((left, right) => left.graphRef.localeCompare(right.graphRef));
-  return Object.freeze(graphs.map((graph) => Object.freeze(structuredClone(graph))));
+  if (!entries.length) fail('INTENT_WORKGRAPH_RUNTIME_UNAVAILABLE', 'No current Intent Workgraph runtime snapshots exist');
+  entries.sort((left, right) => left.graph.graphRef.localeCompare(right.graph.graphRef));
+  return Object.freeze(entries);
+}
+
+export function readIntentWorkgraphRuntimeSnapshots({ home } = {}) {
+  return Object.freeze(readIntentWorkgraphRuntimeSnapshotEntries({ home }).map((entry) => entry.graph));
 }
 
 // [VXG RealForever]

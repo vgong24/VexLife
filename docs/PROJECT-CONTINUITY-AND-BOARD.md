@@ -88,6 +88,9 @@ WHAT SHOULD A FRESH EXECUTOR READ?
 Intent Workgraph
   canonical work lifecycle owner
 
+Intent Workgraph runtime snapshot
+  immutable Workgraph snapshots + atomic CURRENT pointer owner
+
 Project Continuity
   read-only project relation/compiler/projection owner
 
@@ -170,6 +173,8 @@ The projection does not use wall-clock recency to decide truth.
 NEWER_TIMESTAMP != STRONGER_TRUTH
 LATEST_COMMENT != CURRENT_STATE
 UPDATED_AT != ACCEPTED_TRANSITION
+VALID_WORKGRAPH != RUNTIME_CURRENT_WORKGRAPH
+CURRENT_POINTER_OBSERVED != CURRENT_FOREVER
 ```
 
 Causal ordering remains Workgraph sequence + source fingerprints + current receipts.
@@ -180,7 +185,7 @@ Causal ordering remains Workgraph sequence + source fingerprints + current recei
 
 ```text
 one valid project definition
-+ one or more canonical current Intent Workgraph snapshots
++ one or more canonical Intent Workgraphs each bound to the existing runtime CURRENT pointer
 + current Intent trust snapshot + canonical process/role registries
 + full existing validateIntentWorkgraph(...) PASS
 + exact projectRef match
@@ -189,7 +194,9 @@ one valid project definition
 + Feature refs present in the current canonical Feature Registry
 ```
 
-It does not invent a lighter project-local Workgraph validator. Each graph must first satisfy the existing canonical Workgraph validator; the project snapshot binds that validation state/hash.
+It does not invent a lighter project-local Workgraph validator or a second currentness store. Each graph must first satisfy the existing canonical Workgraph validator and must match the exact content-addressed CURRENT pointer owned by `owner.vexlife.intent-workgraph`; the project snapshot binds both the validation state/hash and the pointer identity.
+
+The normal CLI reads that CURRENT-pointer surface directly from Vex Home. An arbitrary historical Workgraph JSON is not sufficient to earn `currentness=CURRENT`.
 
 It returns one content-addressed snapshot containing cards and relationship edges:
 
@@ -234,28 +241,28 @@ B03 must later own validated transition/planning transactions with optimistic cu
 
 ## CLI
 
-Read-only project projections can be compiled from source-managed JSON inputs:
+Read-only project projections use source-managed Project/View definitions and the existing Vex Home Workgraph CURRENT-pointer surface:
 
 ```bash
 npm run project:status -- \
   --project <project-definition.json> \
-  --graph <workgraph.json> \
+  --home <vex-home> \
   --format board \
   --view <board-view.json>
 
 npm run project:status -- \
   --project <project-definition.json> \
-  --graph <workgraph.json> \
+  --home <vex-home> \
   --format graph
 
 npm run project:status -- \
   --project <project-definition.json> \
-  --graph <workgraph.json> \
+  --home <vex-home> \
   --format focus \
   --work-node <work.node.ref>
 ```
 
-The command reads repository-relative regular files and prints JSON. It performs no mutation.
+The command reads Project/View source from repository-relative regular files, obtains Workgraphs only through the existing Vex Home runtime CURRENT-pointer owner, and prints JSON. It performs no mutation.
 
 ## Held successors
 

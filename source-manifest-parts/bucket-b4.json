@@ -17,8 +17,8 @@
     {
       "path": "scripts/project-continuity.mjs",
       "mode": "100644",
-      "bytes": 3438,
-      "sha256": "f9ee8cf4f334f704b1ab0be94671bb8abe664028933e1abad35599a692a5b12e"
+      "bytes": 3379,
+      "sha256": "3c29565dc95e0a9bc5c4ddf47ceb2f497d9fe35d038e895ab38e0b73bb8b2285"
     },
     {
       "path": "test/vex-birth-lab.test.mjs",

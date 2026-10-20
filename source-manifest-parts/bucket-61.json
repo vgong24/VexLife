@@ -35,8 +35,8 @@
     {
       "path": "test/project-continuity.test.mjs",
       "mode": "100644",
-      "bytes": 14580,
-      "sha256": "91a1f7e2a8a1882bb7de3b790a4df5b4c527d0d859eb5a05b5aedcc186a82c17"
+      "bytes": 17657,
+      "sha256": "9981be5eba13cc70fe466502d7c8f4a3e9b2656304899ea2ffc4f7d772c5f3b6"
     },
     {
       "path": "test/validation-evidence.test.mjs",

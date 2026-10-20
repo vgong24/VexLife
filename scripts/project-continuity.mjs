@@ -10,6 +10,7 @@ import {
   projectProjectGraph,
 } from '../src/core/project-continuity.mjs';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
+import { readIntentWorkgraphRuntimeSnapshotEntries } from '../src/core/intent-workgraph-runtime-snapshot.mjs';
 import { requireSafeRelativePath } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -18,11 +19,10 @@ const value = (name) => {
   const index = args.indexOf(name);
   return index >= 0 ? args[index + 1] : null;
 };
-const values = (name) => args.flatMap((item, index) => item === name && args[index + 1] ? [args[index + 1]] : []);
-const allowed = new Set(['--project', '--graph', '--view', '--format', '--work-node']);
+const allowed = new Set(['--project', '--home', '--view', '--format', '--work-node']);
 for (let index = 0; index < args.length; index += 2) {
   if (!allowed.has(args[index]) || !args[index + 1]) {
-    console.error('Usage: npm run project:status -- --project <json> --graph <json> [--graph <json> ...] --format board|graph|focus [--view <json>] [--work-node <ref>]');
+    console.error('Usage: npm run project:status -- --project <json> --home <vex-home> --format board|graph|focus [--view <json>] [--work-node <ref>]');
     process.exit(2);
   }
 }
@@ -38,10 +38,10 @@ function readSource(relativePath, label) {
 }
 
 const projectPath = value('--project');
-const graphPaths = values('--graph');
+const home = value('--home');
 const format = value('--format');
-if (!projectPath || graphPaths.length === 0 || !['board', 'graph', 'focus'].includes(format)) {
-  console.error('project:status requires --project, at least one --graph, and --format board|graph|focus');
+if (!projectPath || !home || !['board', 'graph', 'focus'].includes(format)) {
+  console.error('project:status requires --project, --home, and --format board|graph|focus');
   process.exit(2);
 }
 
@@ -50,12 +50,12 @@ const sourceBundle = loadBlueprint(ROOT);
 const intentRegistry = sourceBundle.intentRegistry;
 const intentTrustSnapshot = readSource('blueprint/intent-trust-snapshot.json', 'Intent trust snapshot');
 const project = readSource(projectPath, 'project definition');
-const workgraphs = graphPaths.map((source) => readSource(source, 'Workgraph'));
+const workgraphEntries = readIntentWorkgraphRuntimeSnapshotEntries({ home });
 const snapshot = compileProjectContinuity({
   registry,
   intentRegistry,
   project,
-  workgraphs,
+  workgraphEntries,
   intentValidationContext: {
     registeredProcessRefs: sourceBundle.factory.processes.map((item) => item.processRef),
     registeredRoleRefs: sourceBundle.blueprint.roles.map((item) => item.roleRef),
