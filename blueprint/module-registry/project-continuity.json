@@ -45,5 +45,52 @@
     "changeMap": [
       "package.json"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.vexlife-tocompletion-project",
+    "path": "src/core/vexlife-tocompletion-project.mjs",
+    "role": "Form the one source-managed current VexLife ToCompletion Intent Workgraph through the canonical Intent constructors and lifecycle transitions, beginning at B06 and preserving later milestones plus non-gating proof hardening without owning persistence or lifecycle effects.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.intent-orchestration.001",
+      "module.vexlife.core.intent-workgraph"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.vexlife-tocompletion-project"
+    ],
+    "tests": [
+      "test/p0b-b06-vexlife-tocompletion-project.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/projects/vexlife-tocompletion.project.json",
+      "blueprint/projects/vexlife-tocompletion.board.view.json",
+      "docs/VEXLIFE-TOCOMPLETION-PROJECT-DOGFOOD.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.vexlife-tocompletion-project",
+    "path": "scripts/vexlife-tocompletion-project.mjs",
+    "role": "Validate one canonical existing Vex Home identity, validate the source-managed ToCompletion Workgraph against current Intent source/trust, and persist it only through the existing Intent Workgraph runtime snapshot owner.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.vexlife-tocompletion-project",
+      "src/core/browser-companion-bridge.mjs",
+      "module.vexlife.core.intent-validation",
+      "module.vexlife.core.intent-workgraph-runtime-snapshot",
+      "registry.vexlife.intent-orchestration.001",
+      "blueprint/intent-trust-snapshot.json"
+    ],
+    "writes": [
+      "selected Vex Home runtime/intent-workgraph state for the exact source-managed ToCompletion graph"
+    ],
+    "loadedBy": [],
+    "tests": [
+      "test/p0b-b06-vexlife-tocompletion-project.test.mjs"
+    ],
+    "changeMap": [
+      "package.json",
+      "docs/VEXLIFE-TOCOMPLETION-PROJECT-DOGFOOD.md"
+    ]
   }
 ]

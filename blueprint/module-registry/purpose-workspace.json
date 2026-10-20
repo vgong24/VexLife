@@ -19,5 +19,33 @@
       "blueprint/fragments/screens/purpose-workspace.json",
       "docs/PURPOSE-WORKSPACE-AND-EXPERIENCE-TOPOLOGY.md"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.purpose-workspace-project",
+    "path": "src/core/purpose-workspace-project.mjs",
+    "role": "Project-aware Purpose Workspace consumer that projects canonical Project Board/Graph truth, planning and reconciliation context and forms exact B03 transition requests without owning Workgraph lifecycle effects.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.purpose-workspaces.001",
+      "registry.vexlife.project-continuity.001",
+      "registry.vexlife.project-planning.001",
+      "registry.vexlife.project-reconciliation.001",
+      "registry.vexlife.intent-orchestration.001",
+      "module.vexlife.core.project-continuity",
+      "module.vexlife.core.project-planning",
+      "module.vexlife.core.project-reconciliation",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/p0b-b05-purpose-workspace-project.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/purpose-workspace-registry.json",
+      "docs/PURPOSE-WORKSPACE-PROJECT-BOARD.md",
+      "scripts/serve-browser.mjs",
+      "reference/browser/evolution/purpose-workspace-projection.js"
+    ]
   }
 ]
