@@ -5,8 +5,8 @@
     {
       "path": "docs/HOME-BRIDGE-REMOTE-AUTHENTICATED-SESSION.md",
       "mode": "100644",
-      "bytes": 3073,
-      "sha256": "b107bed51dba51c7f384fe8ee7049c6075db9de6715956938eb67712c24d0eaa"
+      "bytes": 3193,
+      "sha256": "8049f8f59762f5176f763c9af2fabc259ba762103fcb22fee97dc2563facc5f2"
     },
     {
       "path": "scripts/pr-ready.mjs",

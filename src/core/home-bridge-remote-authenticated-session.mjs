@@ -19,7 +19,7 @@ const POSSESSION_KEYS = new Set([
   'deviceRef', 'membershipRef', 'membershipHash', 'revocationGeneration',
   'devicePublicKeyFingerprintRef', 'signatureAlgorithmRef', 'signingPayloadSha256',
   'devicePossessionState', 'authenticationEvidenceEligible', 'homeAuthorization',
-  'capabilityLease', 'networkAuthority', 'verificationEvidenceRef', 'observedAtMs',
+  'capabilityLease', 'networkAuthority', 'cameraAuthority', 'verificationEvidenceRef', 'observedAtMs',
   'expiresAtMs', 'sourceRefs', 'currentnessRefs'
 ]);
 const MEMBERSHIP_KEYS = new Set([
@@ -155,6 +155,7 @@ function validatePossessionReceipt(value, membership, binding, currentTime, curr
     || value.homeAuthorization !== false
     || value.capabilityLease !== false
     || value.networkAuthority !== false
+    || value.cameraAuthority !== false
     || value.signatureAlgorithmRef !== SIGNATURE_ALGORITHM_REF
   ) {
     fail('HOME_BRIDGE_REMOTE_SESSION_POSSESSION_REQUIRED', 'remote possession receipt is not current authentication evidence');

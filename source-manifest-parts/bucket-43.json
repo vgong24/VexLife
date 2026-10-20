@@ -23,8 +23,8 @@
     {
       "path": "test/home-bridge-remote-authenticated-session.test.mjs",
       "mode": "100644",
-      "bytes": 8649,
-      "sha256": "342b3359871459781cc023dbfee006acc7d88207b64265d26d11f37d7f5776e7"
+      "bytes": 8903,
+      "sha256": "e6049730c3530ed349a4b16e3aee63dce3f2c5deac423b07104624e9d0063efd"
     },
     {
       "path": "test/living-journal-memory-archive.test.mjs",

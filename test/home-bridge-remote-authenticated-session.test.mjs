@@ -52,10 +52,11 @@ function possession(currentMembership = membership(), overrides = {}) {
     homeAuthorization: false,
     capabilityLease: false,
     networkAuthority: false,
+    cameraAuthority: false,
     verificationEvidenceRef: 'verification.device-possession.p256.001',
     observedAtMs: T0 - 1_000,
     expiresAtMs: T0 + 120_000,
-    sourceRefs: ['github.pull.vextreme-sdk.1873'],
+    sourceRefs: ['github.pull.vextreme-sdk.1884'],
     currentnessRefs: ['currentness.device-possession.001'],
     ...overrides
   };
@@ -133,6 +134,12 @@ test('stale, authority-bearing, and replayed possession receipts fail closed', (
 
   expectCode(() => h.owner.establish({
     possessionReceipt: possession(member, { homeAuthorization: true }),
+    membership: member,
+    currentRevocationGeneration: 3
+  }), 'HOME_BRIDGE_REMOTE_SESSION_POSSESSION_REQUIRED');
+
+  expectCode(() => h.owner.establish({
+    possessionReceipt: possession(member, { cameraAuthority: true }),
     membership: member,
     currentRevocationGeneration: 3
   }), 'HOME_BRIDGE_REMOTE_SESSION_POSSESSION_REQUIRED');

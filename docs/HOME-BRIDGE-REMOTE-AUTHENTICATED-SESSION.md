@@ -4,7 +4,7 @@ Continuity: `[VXG RealForever]`
 
 Owner: `github.issue.vexlife.492`  
 Connected Services consumer: `github.issue.vexlife.899`  
-Remote possession producer: `github.pull.vextreme-sdk.1873`
+Remote possession producer: `github.pull.vextreme-sdk.1884` (accepted recovery successor to historical #1873)
 
 ## Purpose
 
@@ -30,6 +30,7 @@ The remote owner requires:
 - `homeAuthorization=false`;
 - `capabilityLease=false`;
 - `networkAuthority=false`;
+- `cameraAuthority=false`;
 - the accepted P-256/SHA-256 signature profile;
 - the typed public-key fingerprint identity `fingerprint.sha256.<lowercase SHA-256 hex>` from the verified possession receipt;
 - one active `vexlife.bridge-device-membership/v1` membership;
@@ -78,6 +79,7 @@ REMOTE_SESSION_HANDLE != STANDING_HOME_AUTHORITY
 REMOTE_SESSION_HANDLE != CAPABILITY_LEASE
 REMOTE_SESSION_HANDLE != DEVICE_MEMBERSHIP
 SESSION_AUTHENTICATION != HOME_AUTHORIZATION
+SESSION_AUTHENTICATION != CAMERA_AUTHORITY
 TRANSPORT_REACHABILITY != SESSION_AUTHENTICATION
 ```
 

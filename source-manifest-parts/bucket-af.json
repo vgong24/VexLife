@@ -5,8 +5,8 @@
     {
       "path": "src/core/home-bridge-remote-authenticated-session.mjs",
       "mode": "100644",
-      "bytes": 16868,
-      "sha256": "b8a6effd89c13fd29d21d6143d1fbc961ad24747bc7bab208ecd74c18da51552"
+      "bytes": 16926,
+      "sha256": "e8781220f52350b80148c9e9ac5fc75e74e57cafed616e727679c35569403b10"
     },
     {
       "path": "start-vexlife.cmd",
