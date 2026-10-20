@@ -15,6 +15,12 @@
       "sha256": "78eb78d103779688bea24245e885b1305577a4dc493dbc25bf82f264f082d329"
     },
     {
+      "path": "src/core/server-family-conversation-capability.mjs",
+      "mode": "100644",
+      "bytes": 9438,
+      "sha256": "0d81cd96e853b10b545cc875ba133d2124d49f3e66ac2cc0f694b69e3166bf80"
+    },
+    {
       "path": "test/browser-living-journal-memory-http-route.test.mjs",
       "mode": "100644",
       "bytes": 16671,

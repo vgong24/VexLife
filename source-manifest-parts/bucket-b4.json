@@ -15,6 +15,12 @@
       "sha256": "186188c5e2a988f6d2763314de01b3b5f42ab5d906a0f557ead7ff46261189f2"
     },
     {
+      "path": "scripts/project-continuity.mjs",
+      "mode": "100644",
+      "bytes": 3379,
+      "sha256": "3c29565dc95e0a9bc5c4ddf47ceb2f497d9fe35d038e895ab38e0b73bb8b2285"
+    },
+    {
       "path": "test/vex-birth-lab.test.mjs",
       "mode": "100644",
       "bytes": 16255,

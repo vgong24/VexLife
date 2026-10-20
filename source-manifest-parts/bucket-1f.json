@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 15832,
       "sha256": "fb27eae19d9077b22316dfbc79a2ceda3ff397718a74aa2127f728de689c2b61"
+    },
+    {
+      "path": "test/project-planning.test.mjs",
+      "mode": "100644",
+      "bytes": 19549,
+      "sha256": "1e4c586d77e10277d9dc77584a78bfc2000e940cf9d20f75a26f2f4e67ad7a8a"
     }
   ]
 }

@@ -36,6 +36,8 @@
     "feature:check": "node scripts/feature-check.mjs",
     "feature:scaffold": "node scripts/feature-scaffold.mjs",
     "feature:construction": "node scripts/feature-construction.mjs",
+    "project:status": "node scripts/project-continuity.mjs",
+    "project:planning": "node scripts/project-planning.mjs",
     "bridge:check": "node scripts/bridge-check.mjs",
     "intent:check": "node scripts/intent-check.mjs",
     "intent:plan": "node scripts/intent-plan.mjs",
@@ -62,7 +64,8 @@
     "evaluated-rhythm-learning:proof": "node scripts/evaluated-rhythm-learning.mjs proof",
     "scheduled-daily-autonomy:proof": "node scripts/scheduled-daily-autonomy.mjs proof",
     "g05-runtime-authority-substrate:proof": "node scripts/g05-runtime-authority-substrate.mjs proof",
-    "presentation:health": "node scripts/presentation-health.mjs"
+    "presentation:health": "node scripts/presentation-health.mjs",
+    "project:reconcile": "node scripts/project-reconciliation.mjs"
   },
   "devDependencies": {
     "playwright": "1.61.1"
