@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.project-continuity-registry/v1",
   "registryRef": "registry.vexlife.project-continuity.001",
-  "registryVersion": 1,
+  "registryVersion": 2,
   "purpose": "Project immutable human outcome and canonical Intent Workgraph truth into bounded read-only Board, Graph, Table and Roadmap views without creating a second work-state owner.",
   "sourceOwners": {
     "workLifecycle": "registry.vexlife.intent-orchestration.001",
@@ -125,13 +125,7 @@
     "createdAt",
     "lastTransitionAt"
   ],
-  "heldSuccessors": [
-    "iteration membership and sprint planning mutations are P0B-B03",
-    "shared ordering and WIP policy mutations are P0B-B03",
-    "source/proof/GitHub provider reconciliation is P0B-B04",
-    "Purpose Workspace drag/drop Board and Graph adoption is P0B-B05",
-    "live ToCompletion project import and dogfood is P0B-B06"
-  ],
+  "heldSuccessors": [],
   "nonCollapseLaws": [
     "PROJECT != FEATURE",
     "FEATURE != EPIC",
@@ -143,6 +137,7 @@
     "PR_MERGED != WORK_CLOSED",
     "NEWER_TIMESTAMP != STRONGER_TRUTH",
     "VALID_WORKGRAPH != RUNTIME_CURRENT_WORKGRAPH",
-    "CURRENT_POINTER_OBSERVED != CURRENT_FOREVER"
+    "CURRENT_POINTER_OBSERVED != CURRENT_FOREVER",
+    "SOURCE_MANAGED_PROJECT != RUNTIME_CURRENT_WORKGRAPH"
   ]
 }

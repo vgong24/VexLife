@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.purpose-workspace-registry/v1",
   "registryRef": "registry.vexlife.purpose-workspaces.001",
-  "registryVersion": 8,
+  "registryVersion": 9,
   "purpose": "Preserve the accepted reusable Purpose Workspace source foundation while registering its smallest current Feature/Blueprint/Experience/Module/Process/localization membrane without inferring browser runtime adoption or external professional effects.",
   "composition": "CANONICAL_FRAGMENT_COMPOSITION",
   "workspaceDefinitions": [
@@ -565,6 +565,7 @@
       "BOARD_COLUMN != WORKGRAPH_LIFECYCLE",
       "PROJECT_VIEW != EFFECT_AUTHORITY",
       "BROWSER_PROJECT_SOURCE != PROJECT_TRUTH_OWNER",
+      "SOURCE_MANAGED_PROJECT != RUNTIME_CURRENT_WORKGRAPH",
       "STALE_MOVE -> REJECT + FRESH_AUTHORITATIVE_PROJECTION",
       "AMBIGUOUS_LANE_TARGET != HIDDEN_STATE_CHOICE",
       "SAME_LANE_DROP_REQUIRES_EXACT_STATE_CONTROL",
@@ -573,7 +574,7 @@
       "RECONCILIATION_ANNOTATION != WORK_STATE",
       "AUTHENTICATED_PRINCIPAL != INTENT_ACTOR_BY_IMPLICATION"
     ],
-    "productionProjectSourceState": "HELD_UNTIL_B06_SOURCE_MANAGED_PROJECT_IMPORT",
+    "productionProjectSourceState": "CURRENT_SOURCE_MANAGED_TOCOMPLETION_PROJECT__RUNTIME_POINTER_REQUIRED",
     "trustedActorBindingState": "HELD_UNTIL_RIGHTFUL_INTENT_ACTOR_BINDING_OWNER",
     "actualWorkgraphEffectOwner": "owner.vexlife.intent-workgraph",
     "effects": false,

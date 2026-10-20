@@ -108,15 +108,20 @@ belongs to `owner.vexlife.intent-workgraph`.
 B05 does not invent a ProjectDefinition from whatever Workgraphs happen to be
 present in Vex Home.
 
-Production browser transport therefore remains `HELD_UNAVAILABLE` until a
-source-managed ProjectDefinition/View binding exists. B06 owns the actual
-VexLife ToCompletion import and dogfood step.
+B06 now supplies the source-managed VexLife ToCompletion ProjectDefinition/View
+binding. Production browser transport resolves that exact project only when the
+selected Vex Home also exposes the canonical CURRENT Workgraph pointer; source
+presence alone never implies runtime currentness.
 
-B05 can still be proven completely with bounded synthetic Project/Workgraph
-fixtures because its contract is the reusable projection + interaction adapter,
-not the ToCompletion dataset itself.
+Before exact Workgraph import the project remains truthfully
+`HELD_UNAVAILABLE / CURRENT_WORKGRAPH_UNAVAILABLE`. After import, B05 consumes
+the same Project Continuity snapshot used by Board/Graph/Focus dogfood.
 
-The future EndToEnd + QuantumTest proof-hardening item remains a nonblocking B06
-Project backlog seed. It is not a B05 completion gate.
+The trusted actor boundary is unchanged: current Project visibility does not
+grant Workgraph transition authority.
+
+The EndToEnd + QuantumTest proof-hardening item is now represented as a
+dependency-linked, non-gating node in the real ToCompletion Workgraph. No core
+or developmental milestone depends on it.
 
 <!-- [VXG RealForever][VEXLIFE][TOCOMPLETION][P0B][B05][PURPOSE-WORKSPACE-PROJECT] -->
