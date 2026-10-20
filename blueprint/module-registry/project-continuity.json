@@ -71,10 +71,11 @@
   {
     "moduleRef": "module.vexlife.script.vexlife-tocompletion-project",
     "path": "scripts/vexlife-tocompletion-project.mjs",
-    "role": "Validate the source-managed ToCompletion Workgraph against current Intent source/trust and persist it only through the existing Intent Workgraph runtime snapshot owner for one explicitly selected existing Vex Home.",
+    "role": "Validate one canonical existing Vex Home identity, validate the source-managed ToCompletion Workgraph against current Intent source/trust, and persist it only through the existing Intent Workgraph runtime snapshot owner.",
     "platformScope": "NODE_DESKTOP_HOST",
     "reads": [
       "module.vexlife.core.vexlife-tocompletion-project",
+      "src/core/browser-companion-bridge.mjs",
       "module.vexlife.core.intent-validation",
       "module.vexlife.core.intent-workgraph-runtime-snapshot",
       "registry.vexlife.intent-orchestration.001",
