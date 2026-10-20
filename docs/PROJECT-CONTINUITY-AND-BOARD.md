@@ -295,14 +295,16 @@ keyboard/screen-reader semantic equivalents
 stale drag rejection / snap-back
 ```
 
-P0B-B06 remains required before P1:
+P0B-B06 actualizes that boundary with the source-managed VexLife ToCompletion ProjectDefinition/View plus the canonical Intent Workgraph runtime owner:
 
 ```text
-import actual VexLife ToCompletion project
-persist current Workgraph
-exercise Board/Graph/Focus projections
-prove one real project-state walkthrough
+source-managed actual ToCompletion Project
+-> exact current Workgraph persistence
+-> Board / Graph / Lane Focus
+-> Purpose Workspace consumption of the same Project/current pointer
 ```
+
+The Project source does not itself make a Workgraph current; runtime currentness still belongs to `owner.vexlife.intent-workgraph`.
 
 B01+B02 do not begin Heretic model, runtime, Home, Memory, training, publication or GitHub Project mutations.
 
