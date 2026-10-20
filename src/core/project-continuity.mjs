@@ -320,7 +320,7 @@ export function compileProjectContinuity({
 }
 
 function laneMap(registry) {
-  return new Map((registry.boardLanes ?? []).flatMap((lane) => lane.lifecycleStates.map((state) => [state, lane.laneRef]));
+  return new Map((registry.boardLanes ?? []).flatMap((lane) => lane.lifecycleStates.map((state) => [state, lane.laneRef])));
 }
 
 function priorityRank(priority, registry) {
