@@ -206,8 +206,8 @@ export function createProjectProviderObservation(input, registry) {
     if (!input.pullRequestNumberOrNull || !input.baseShaOrNull || !input.headShaOrNull ||
         !input.headTreeShaOrNull || !input.candidateSourceTreeSha256OrNull ||
         !input.mergeCommitShaOrNull || !input.mergeTreeShaOrNull ||
-        !input.currentMainShaOrNull || input.mergeCommitReachableFromMain !== true) {
-      throw new TypeError('MERGED provider observation requires exact candidate, merge and reachable-main bindings');
+        !input.currentMainShaOrNull) {
+      throw new TypeError('MERGED provider observation requires exact candidate, merge and current-main bindings');
     }
   }
   if (input.providerState === 'CLOSED_UNMERGED') {
@@ -375,10 +375,12 @@ export function reconcileProjectEvidence({
     } else if (provider.providerState === 'OPEN') {
       disposition = 'CURRENT_IN_REVIEW';
     } else if (provider.providerState === 'MERGED') {
-      if (provider.mergeTreeShaOrNull !== provider.headTreeShaOrNull ||
-          provider.mergeCommitReachableFromMain !== true) {
+      if (provider.mergeTreeShaOrNull !== provider.headTreeShaOrNull) {
         disposition = 'REVERIFY_REQUIRED';
         attentionRefs.push('attention.project.post-merge-tree-not-exact');
+      } else if (provider.mergeCommitReachableFromMain !== true) {
+        disposition = 'REVERIFY_REQUIRED';
+        attentionRefs.push('attention.project.merge-not-reachable-from-main');
       } else {
         disposition = 'COMPLETION_EVIDENCE_READY';
         completionEvidenceState = 'EARNED';

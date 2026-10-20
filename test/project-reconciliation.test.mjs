@@ -468,6 +468,24 @@ test('merged provider state with a different merge tree requires reverification'
   assert.equal(result.completionEvidenceState, 'NOT_EARNED');
 });
 
+test('merged provider observation not reachable from current main requires reverification', () => {
+  const policy = policyFixture();
+  const result = reconcileProjectEvidence({
+    registry,
+    projectSnapshot: projectSnapshot('VERIFYING'),
+    relation: relation(policy),
+    orientationReceipt: orientationMerged(),
+    validationEvidenceBundle: validationBundle(policy),
+    validationEvidencePolicy: policy,
+    providerObservation: providerMerged({ reachable: false }),
+    intentRegistry,
+  });
+  assert.equal(result.state, 'REVERIFY_REQUIRED');
+  assert.ok(result.attentionRefs.includes('attention.project.merge-not-reachable-from-main'));
+  assert.equal(result.completionEvidenceState, 'NOT_EARNED');
+  assert.equal(result.proposedLifecycleTransitionOrNull, null);
+});
+
 test('unknown provider state remains HELD_UNKNOWN and never manufactures work truth', () => {
   const policy = policyFixture();
   const provider = {

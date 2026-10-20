@@ -108,8 +108,10 @@ For a merged PR it additionally binds:
 mergeCommitSha
 mergeTreeSha
 currentMainSha
-mergeCommitReachableFromMain=true
+mergeCommitReachableFromMain
 ```
+
+For a merged PR, `mergeCommitReachableFromMain` records the observed reachability result rather than assuming success. A false value is valid evidence and prevents completion evidence from being earned.
 
 The source-tree SHA-256 is an independently grounded Source Manifest identity
 used to validate Build Health evidence. Git object tree identity and Source
@@ -281,6 +283,7 @@ Orientation/source-tree mismatch -> REVERIFY_REQUIRED
 green provider checks without canonical proof -> REVERIFY_REQUIRED
 exact merged candidate tree + reachable main + current proof -> COMPLETION_EVIDENCE_READY
 merge-tree substitution -> REVERIFY_REQUIRED
+merged commit not reachable from current main -> REVERIFY_REQUIRED
 UNKNOWN provider state -> HELD_UNKNOWN
 no output grants transition or execution authority
 ```
