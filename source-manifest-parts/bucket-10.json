@@ -9,6 +9,12 @@
       "sha256": "705db56f1dc1091c24ae9104bb8630c46c9fef45a11a42b8b2a02f30842f6b3a"
     },
     {
+      "path": "blueprint/module-registry/project-reconciliation.json",
+      "mode": "100644",
+      "bytes": 2232,
+      "sha256": "9c1d8a3fe49908c4ec8248322945b682ff94009700d992f806340e7e02e2a3ad"
+    },
+    {
       "path": "scripts/feature-scaffold.mjs",
       "mode": "100644",
       "bytes": 1474,
