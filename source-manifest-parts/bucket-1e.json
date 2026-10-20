@@ -21,6 +21,12 @@
       "sha256": "c6ac13ab39f729bfa6515fd77087e3c4ed848537dc6a03ba35137ef2c4ea5979"
     },
     {
+      "path": "scripts/project-reconciliation.mjs",
+      "mode": "100644",
+      "bytes": 4057,
+      "sha256": "5b651f3d8f05ba0b43c10910d5c42b10b9683fab603481141c87a45629da4b6a"
+    },
+    {
       "path": "test/ux-evolution-conversation.test.mjs",
       "mode": "100644",
       "bytes": 14911,

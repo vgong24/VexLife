@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 5881,
       "sha256": "bb358ff3025dd3e8ad5ab347fd7e2fb60c6b9f67aa5764bd3968de97d770e84e"
+    },
+    {
+      "path": "test/project-reconciliation.test.mjs",
+      "mode": "100644",
+      "bytes": 15868,
+      "sha256": "eed2f1f8da0d300cef0c4b17bcd80da58cc509615ee3ddd9ad9b8908a2d7384c"
     }
   ]
 }
