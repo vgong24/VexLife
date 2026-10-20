@@ -4,8 +4,6 @@ import {
   createWorkNode,
   recordIntentTransition,
 } from './intent-workgraph.mjs';
-import { semanticHash } from './utils.mjs';
-
 export const VEXLIFE_TOCOMPLETION_PROJECT_REF = 'project.vexlife.tocompletion';
 export const VEXLIFE_TOCOMPLETION_ROOT_INTENT_REF = 'intent.vexlife.tocompletion.current';
 export const VEXLIFE_TOCOMPLETION_GRAPH_REF = 'intent-workgraph.vexlife.tocompletion.current';
@@ -14,6 +12,7 @@ export const VEXLIFE_TOCOMPLETION_BOARD_VIEW_SOURCE_PATH = 'blueprint/projects/v
 
 const SOURCE_FORMED_AT = '2026-10-20T07:00:17.000Z';
 const ORIGIN_TEXT = 'Fresh user -> Heretic 27B -> lived conversation -> restart -> orientation/work -> lived learning, with later whole-product expansion.';
+const ORIGIN_CONTENT_SHA256 = '2ac029f5b73f75003ad992eccd7f137ec2a65736e2655f50eacce7e4db6f9628';
 
 const TRUSTED_BINDINGS = Object.freeze({
   capabilityEnvelopeRef: 'capability-envelope.intent.contract-validation',
@@ -199,7 +198,7 @@ export function formVexLifeToCompletionWorkgraph({ intentRegistry } = {}) {
     projectRef: VEXLIFE_TOCOMPLETION_PROJECT_REF,
     threadRef: 'thread.vexlife.tocompletion',
     channelRef: 'channel.vexlife.tocompletion',
-    originalContentHash: semanticHash({ originalIntent: ORIGIN_TEXT }),
+    originalContentHash: ORIGIN_CONTENT_SHA256,
     desiredOutcome: {
       intentKey: 'VEXLIFE_TOCOMPLETION',
       summary: ORIGIN_TEXT,
