@@ -317,7 +317,11 @@ export function recoverProjectPlanningRuntimeWriter({
       state: 'RECOVERY_NOT_REQUIRED',
       projectRef,
       recovered: false,
-      effects: false,
+      effects: Object.freeze({
+        homeMutationPerformed: false,
+        writerLeaseDeletionPerformed: false,
+        providerMutationPerformed: false,
+      }),
     });
   }
   const existing = readCanonicalJson(paths.home, paths.lock, 'PROJECT_PLANNING_RUNTIME_WRITER_CONFLICT');
@@ -349,7 +353,11 @@ export function recoverProjectPlanningRuntimeWriter({
     projectRef,
     recovered: true,
     recoveredLeaseSha256: leaseSha256,
-    effects: false,
+    effects: Object.freeze({
+      homeMutationPerformed: true,
+      writerLeaseDeletionPerformed: true,
+      providerMutationPerformed: false,
+    }),
   });
 }
 

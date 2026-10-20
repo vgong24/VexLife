@@ -417,7 +417,11 @@ export function recoverIntentWorkgraphRuntimeWriter({
       state: 'RECOVERY_NOT_REQUIRED',
       graphRef,
       recovered: false,
-      effects: false,
+      effects: Object.freeze({
+        homeMutationPerformed: false,
+        writerLeaseDeletionPerformed: false,
+        providerMutationPerformed: false,
+      }),
     });
   }
   const existing = readCanonicalJson(paths.home, lock, 'INTENT_WORKGRAPH_RUNTIME_WRITER_CONFLICT');
@@ -456,7 +460,11 @@ export function recoverIntentWorkgraphRuntimeWriter({
     graphRef,
     recovered: true,
     recoveredLeaseSha256: leaseSha256,
-    effects: false,
+    effects: Object.freeze({
+      homeMutationPerformed: true,
+      writerLeaseDeletionPerformed: true,
+      providerMutationPerformed: false,
+    }),
   });
 }
 

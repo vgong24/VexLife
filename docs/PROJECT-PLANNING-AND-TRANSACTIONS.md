@@ -210,7 +210,7 @@ CHECK_THEN_WRITE_WITHOUT_LOCK != OPTIMISTIC_TRANSACTION
 
 A process crash may leave a writer lease. Recovery is not "delete the lock and hope."
 
-The recovery call requires the exact observed lease SHA-256 and succeeds only when the recorded PID is proven absent. Active or unverifiable writers remain protected.
+The recovery call requires the exact observed lease SHA-256 and succeeds only when the recorded PID is proven absent. Active or unverifiable writers remain protected. Recovery is a real Vex Home mutation because it deletes the exact abandoned writer lease; its returned effect receipt therefore records `homeMutationPerformed=true` and `writerLeaseDeletionPerformed=true`. `RECOVERY_NOT_REQUIRED` records both as false.
 
 ```text
 ABANDONED_WRITER -> EXACT_LEASE_RECOVERY

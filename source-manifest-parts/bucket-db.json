@@ -11,8 +11,8 @@
     {
       "path": "src/core/project-planning-runtime-snapshot.mjs",
       "mode": "100644",
-      "bytes": 16199,
-      "sha256": "6fb62b84997595fd0219f7327745311a6acbe830f5712e44b2b80ef5c1419728"
+      "bytes": 16477,
+      "sha256": "6900428ec56b558acad79adb6f9b93b21d41e39edc540902098d7048d4b665bd"
     },
     {
       "path": "src/core/release-bootstrap-packaging.mjs",

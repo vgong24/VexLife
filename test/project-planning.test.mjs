@@ -415,7 +415,22 @@ test('planning and Workgraph abandoned writer recovery is exact-lease bound and 
       expectedLeaseSha256: planningLease.leaseSha256,
     });
     assert.equal(recoveredPlanning.state, 'RECOVERED');
+    assert.deepEqual(recoveredPlanning.effects, {
+      homeMutationPerformed: true,
+      writerLeaseDeletionPerformed: true,
+      providerMutationPerformed: false,
+    });
     assert.equal(fs.existsSync(planningLock), false);
+    const planningNoRecovery = recoverProjectPlanningRuntimeWriter({
+      home,
+      projectRef: PROJECT,
+      expectedLeaseSha256: planningLease.leaseSha256,
+    });
+    assert.deepEqual(planningNoRecovery.effects, {
+      homeMutationPerformed: false,
+      writerLeaseDeletionPerformed: false,
+      providerMutationPerformed: false,
+    });
 
     const graph = intentGraph();
     const graphAddress = semanticHash({
@@ -442,7 +457,22 @@ test('planning and Workgraph abandoned writer recovery is exact-lease bound and 
       expectedLeaseSha256: graphLease.leaseSha256,
     });
     assert.equal(recoveredGraph.state, 'RECOVERED');
+    assert.deepEqual(recoveredGraph.effects, {
+      homeMutationPerformed: true,
+      writerLeaseDeletionPerformed: true,
+      providerMutationPerformed: false,
+    });
     assert.equal(fs.existsSync(graphLock), false);
+    const graphNoRecovery = recoverIntentWorkgraphRuntimeWriter({
+      home,
+      graphRef: graph.graphRef,
+      expectedLeaseSha256: graphLease.leaseSha256,
+    });
+    assert.deepEqual(graphNoRecovery.effects, {
+      homeMutationPerformed: false,
+      writerLeaseDeletionPerformed: false,
+      providerMutationPerformed: false,
+    });
 
     const activePlanningCore = {
       ...planningCore,

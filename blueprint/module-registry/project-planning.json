@@ -74,7 +74,7 @@
   {
     "moduleRef": "module.vexlife.script.project-planning",
     "path": "scripts/project-planning.mjs",
-    "role": "Recompile exact CURRENT Project Continuity from Vex Home and route one typed planning transaction to the Project Planning runtime owner or one typed work-transition request to the Intent Workgraph runtime owner; performs no provider/source mutation.",
+    "role": "Recompile exact CURRENT Project Continuity from Vex Home and route one typed planning transaction to the Project Planning runtime owner or one typed work-transition request to the Intent Workgraph runtime owner; may mutate only those selected Vex Home runtime owners and performs no provider/source mutation.",
     "platformScope": "NODE_DESKTOP_HOST",
     "reads": [
       "module.vexlife.core.project-continuity",
@@ -86,7 +86,10 @@
       "registry.vexlife.intent-orchestration.001",
       "blueprint/intent-trust-snapshot.json"
     ],
-    "writes": [],
+    "writes": [
+      "selected Vex Home runtime/project-planning planning state for admitted PLANNING transactions",
+      "selected Vex Home runtime/intent-workgraph state for admitted WORK_TRANSITION requests"
+    ],
     "loadedBy": [],
     "tests": [
       "test/project-planning.test.mjs"

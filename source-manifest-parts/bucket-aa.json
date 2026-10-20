@@ -11,8 +11,8 @@
     {
       "path": "src/core/intent-workgraph-runtime-snapshot.mjs",
       "mode": "100644",
-      "bytes": 21744,
-      "sha256": "d900b879872632c256ea682291b4da11c0ff6b91f5c511b0bc1a170a909ea69c"
+      "bytes": 22022,
+      "sha256": "3cb3e2f89877d231e54ac0767a601423f49ef0bcd9c8bdc2ed80b54dfc5867ba"
     }
   ]
 }

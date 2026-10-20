@@ -11,8 +11,8 @@
     {
       "path": "docs/PROJECT-PLANNING-AND-TRANSACTIONS.md",
       "mode": "100644",
-      "bytes": 9686,
-      "sha256": "dfec62a8f56a6f85e210fef08f90813e8dc49471ae344dfcf7a0289c503ae5ad"
+      "bytes": 9939,
+      "sha256": "436021f27c46c49742c4ef52ad16175976a7c1e531863323a0a0570479e9c609"
     },
     {
       "path": "src/core/device-family.mjs",
