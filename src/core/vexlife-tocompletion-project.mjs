@@ -94,16 +94,25 @@ export const VEXLIFE_TOCOMPLETION_WORK = Object.freeze([
   workSpec({
     workNodeRef: VEXLIFE_TOCOMPLETION_WORK_REFS.b06,
     purpose: 'Import and dogfood the actual ToCompletion Project through canonical Workgraph persistence plus Board, Graph, Lane Focus and Purpose Workspace consumption.',
-    targetState: 'RUNNING',
+    targetState: 'CONVERGED',
     priorityClass: 'IMMEDIATE',
-    sourceRefs: ['github.issue.vexlife.866', 'github.pull.vexlife.911'],
+    sourceRefs: [
+      'github.issue.vexlife.866',
+      'github.pull.vexlife.912',
+      'git.vexlife.merge.28a1c6438fd59c4e129c3aa0050b61b05c0aea62',
+    ],
   }),
   workSpec({
     workNodeRef: VEXLIFE_TOCOMPLETION_WORK_REFS.p1,
     purpose: 'Establish the accepted Qwen3.8-27B Heretic for an ordinary fresh supported Mac user with exact artifact, runtime and VexLife binding.',
-    targetState: 'WAITING_DEPENDENCIES',
+    targetState: 'RUNNING',
     priorityClass: 'HIGH',
     dependencyRefs: [VEXLIFE_TOCOMPLETION_WORK_REFS.b06],
+    sourceRefs: [
+      'github.issue.vexlife.866',
+      'github.issue.vexlife.857.comment.6289035585',
+      'github.issue.vexlife.857.comment.6289157446',
+    ],
   }),
   workSpec({
     workNodeRef: VEXLIFE_TOCOMPLETION_WORK_REFS.p2,

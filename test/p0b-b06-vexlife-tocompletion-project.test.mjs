@@ -79,23 +79,22 @@ function compile(home) {
   });
 }
 
-test('B06 source-managed ToCompletion Workgraph begins at the real unfinished edge', () => {
+test('accepted B06 is settled and P1 is the real source-managed foreground edge', () => {
   const graph = validatedGraph();
   assert.equal(graph.intent.projectRef, VEXLIFE_TOCOMPLETION_PROJECT_REF);
   assert.equal(graph.nodes.length, 10);
   const state = (workNodeRef) => graph.nodes.find((item) => item.workNodeRef === workNodeRef)?.state;
   assert.equal(state(VEXLIFE_TOCOMPLETION_WORK_REFS.foreground), 'RUNNING');
-  assert.equal(state(VEXLIFE_TOCOMPLETION_WORK_REFS.b06), 'RUNNING');
-  for (const ref of [
-    VEXLIFE_TOCOMPLETION_WORK_REFS.p1,
-    VEXLIFE_TOCOMPLETION_WORK_REFS.p2,
-    VEXLIFE_TOCOMPLETION_WORK_REFS.p3,
-    VEXLIFE_TOCOMPLETION_WORK_REFS.p4,
-    VEXLIFE_TOCOMPLETION_WORK_REFS.p5,
-    VEXLIFE_TOCOMPLETION_WORK_REFS.p6,
-    VEXLIFE_TOCOMPLETION_WORK_REFS.p7,
-    VEXLIFE_TOCOMPLETION_WORK_REFS.proofHardening,
-  ]) assert.equal(state(ref), 'WAITING_DEPENDENCIES');
+  assert.equal(state(VEXLIFE_TOCOMPLETION_WORK_REFS.b06), 'CONVERGED');
+  assert.equal(state(VEXLIFE_TOCOMPLETION_WORK_REFS.p1), 'RUNNING');
+  for (const ref of [VEXLIFE_TOCOMPLETION_WORK_REFS.p2,VEXLIFE_TOCOMPLETION_WORK_REFS.p3,VEXLIFE_TOCOMPLETION_WORK_REFS.p4,VEXLIFE_TOCOMPLETION_WORK_REFS.p5,VEXLIFE_TOCOMPLETION_WORK_REFS.p6,VEXLIFE_TOCOMPLETION_WORK_REFS.p7,VEXLIFE_TOCOMPLETION_WORK_REFS.proofHardening]) assert.equal(state(ref), 'WAITING_DEPENDENCIES');
+  const b06 = graph.nodes.find((item) => item.workNodeRef === VEXLIFE_TOCOMPLETION_WORK_REFS.b06);
+  const p1 = graph.nodes.find((item) => item.workNodeRef === VEXLIFE_TOCOMPLETION_WORK_REFS.p1);
+  assert.equal(b06.sourceRefs.includes('github.pull.vexlife.912'), true);
+  assert.equal(b06.sourceRefs.includes('git.vexlife.merge.28a1c6438fd59c4e129c3aa0050b61b05c0aea62'), true);
+  assert.equal(p1.sourceRefs.includes('github.issue.vexlife.857.comment.6289035585'), true);
+  assert.equal(p1.sourceRefs.includes('github.issue.vexlife.857.comment.6289157446'), true);
+  assert.deepEqual(project.sourceRefs, ['github.issue.vexlife.866','github.pull.vexlife.912','git.vexlife.merge.28a1c6438fd59c4e129c3aa0050b61b05c0aea62']);
 });
 
 test('B06 persists current Workgraph and dogfoods Board, Graph and Lane Focus projections', () => {
@@ -116,19 +115,18 @@ test('B06 persists current Workgraph and dogfoods Board, Graph and Lane Focus pr
     const graphProjection = projectProjectGraph(snapshot);
     const focus = formLaneFocusCard({
       snapshot,
-      workNodeRef: VEXLIFE_TOCOMPLETION_WORK_REFS.b06,
+      workNodeRef: VEXLIFE_TOCOMPLETION_WORK_REFS.p1,
       intentRegistry,
     });
 
     const active = board.lanes.find((lane) => lane.laneRef === 'lane.project.active');
     const planned = board.lanes.find((lane) => lane.laneRef === 'lane.project.planned');
-    assert.deepEqual(
-      active.cards.map((item) => item.workNodeRef).sort(),
-      [VEXLIFE_TOCOMPLETION_WORK_REFS.foreground, VEXLIFE_TOCOMPLETION_WORK_REFS.b06].sort(),
-    );
-    assert.equal(planned.cards.length, 8);
+    const done = board.lanes.find((lane) => lane.laneRef === 'lane.project.done');
+    assert.deepEqual(active.cards.map((item) => item.workNodeRef).sort(), [VEXLIFE_TOCOMPLETION_WORK_REFS.foreground, VEXLIFE_TOCOMPLETION_WORK_REFS.p1].sort());
+    assert.equal(planned.cards.length, 7);
+    assert.deepEqual(done.cards.map((item) => item.workNodeRef), [VEXLIFE_TOCOMPLETION_WORK_REFS.b06]);
     assert.equal(graphProjection.nodes.length, 10);
-    assert.equal(focus.workNode.workNodeRef, VEXLIFE_TOCOMPLETION_WORK_REFS.b06);
+    assert.equal(focus.workNode.workNodeRef, VEXLIFE_TOCOMPLETION_WORK_REFS.p1);
     assert.equal(focus.relationships.parentWorkNodeRef, VEXLIFE_TOCOMPLETION_WORK_REFS.foreground);
     assert.equal(focus.possibleLifecycleTransitions.includes('VERIFYING'), true);
     assert.equal(focus.transitionAuthority, 'NO_EXECUTION_AUTHORITY');

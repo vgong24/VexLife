@@ -5,8 +5,8 @@
     {
       "path": "blueprint/artifact-delivery-registry.json",
       "mode": "100644",
-      "bytes": 6868,
-      "sha256": "a676cab2cdd38619710f7c6dafe9b575d3370d27e6277d0eb6cef4877ba1d752"
+      "bytes": 11559,
+      "sha256": "3075e7192d429f10a0d963e9ff0b5997f88fde8ac912f79d1894e50e6e20a896"
     },
     {
       "path": "blueprint/fragments/behavior-contracts/vexstream-playback-play-pause.json",
