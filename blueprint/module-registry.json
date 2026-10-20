@@ -7,6 +7,7 @@
       "blueprint/module-registry/core.json",
       "blueprint/module-registry/purpose-workspace.json",
       "blueprint/module-registry/project-continuity.json",
+      "blueprint/module-registry/project-planning.json",
       "blueprint/module-registry/scripts.json",
       "blueprint/module-registry/browser.json",
       "blueprint/module-registry/browser-prompt-context-runtime.json",
