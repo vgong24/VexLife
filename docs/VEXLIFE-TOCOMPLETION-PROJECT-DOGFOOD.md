@@ -74,11 +74,14 @@ npm run project:tocompletion:import -- --home <existing-vex-home>
 
 The importer:
 
-1. forms the Workgraph only through the canonical Intent constructors;
-2. validates it against the current Intent registry, process/role registries and source-managed trust snapshot;
-3. persists it only through `owner.vexlife.intent-workgraph`;
-4. is idempotent for the same exact Workgraph;
-5. performs no provider, source, Memory, model or training effect.
+1. admits only one canonical existing Vex Home identity using the same Home/device/Companion lineage checks consumed by the Browser Companion bridge;
+2. forms the Workgraph only through the canonical Intent constructors;
+3. validates it against the current Intent registry, process/role registries and source-managed trust snapshot;
+4. persists it only through `owner.vexlife.intent-workgraph`;
+5. is idempotent for the same exact Workgraph;
+6. performs no provider, source, Memory, model or training effect.
+
+An arbitrary ordinary directory is not a Vex Home and is rejected before Workgraph runtime persistence.
 
 ## Read-only dogfood
 
