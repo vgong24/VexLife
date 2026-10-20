@@ -264,47 +264,31 @@ npm run project:status -- \
 
 The command reads Project/View source from repository-relative regular files, obtains Workgraphs only through the existing Vex Home runtime CURRENT-pointer owner, and prints JSON. It performs no mutation.
 
-## Held successors
+## Successor currentness
 
-P0B-B03 is still required for:
-
-```text
-IterationDefinition / membership ledger
-shared ordering
-WIP policy
-validated lifecycle transition requests
-optimistic-currentness mutations
-```
-
-P0B-B04 remains required for:
+The Project stack is now composed rather than held as future architecture:
 
 ```text
-Git / PR / check / Build Health observation
-provider relation records
-deterministic reconciliation
-stale proof -> work attention/reverification
-post-merge proof -> earned completion
+P0B-B03
+  ACCEPTED_CURRENT
+  Project Planning + typed Work Transition Request
+
+P0B-B04
+  ACCEPTED_CURRENT
+  source/proof/provider reconciliation
+
+P0B-B05
+  ACCEPTED_CURRENT
+  Purpose Workspace Board / Graph interaction consumer
+
+P0B-B06
+  current source candidate
+  actual VexLife ToCompletion Project import + dogfood
 ```
 
-P0B-B05 remains required for:
-
-```text
-Purpose Workspace Board / Graph rendering
-drag/drop request projection
-keyboard/screen-reader semantic equivalents
-stale drag rejection / snap-back
-```
-
-P0B-B06 actualizes that boundary with the source-managed VexLife ToCompletion ProjectDefinition/View plus the canonical Intent Workgraph runtime owner:
-
-```text
-source-managed actual ToCompletion Project
--> exact current Workgraph persistence
--> Board / Graph / Lane Focus
--> Purpose Workspace consumption of the same Project/current pointer
-```
-
-The Project source does not itself make a Workgraph current; runtime currentness still belongs to `owner.vexlife.intent-workgraph`.
+B06 source-manages the actual ProjectDefinition/View and deterministic ToCompletion
+Workgraph formation, but runtime currentness still belongs exclusively to
+`owner.vexlife.intent-workgraph`.
 
 B01+B02 do not begin Heretic model, runtime, Home, Memory, training, publication or GitHub Project mutations.
 
