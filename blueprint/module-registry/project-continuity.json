@@ -54,8 +54,7 @@
     "reads": [
       "registry.vexlife.intent-orchestration.001",
       "module.vexlife.core.intent-workgraph",
-      "module.vexlife.core.utils",
-      "github.issue.vexlife.866"
+      "module.vexlife.core.utils"
     ],
     "writes": [],
     "loadedBy": [
