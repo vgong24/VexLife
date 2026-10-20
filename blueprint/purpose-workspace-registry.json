@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.purpose-workspace-registry/v1",
   "registryRef": "registry.vexlife.purpose-workspaces.001",
-  "registryVersion": 6,
+  "registryVersion": 8,
   "purpose": "Preserve the accepted reusable Purpose Workspace source foundation while registering its smallest current Feature/Blueprint/Experience/Module/Process/localization membrane without inferring browser runtime adoption or external professional effects.",
   "composition": "CANONICAL_FRAGMENT_COMPOSITION",
   "workspaceDefinitions": [
@@ -376,7 +376,9 @@
     "lens.vexlife.usability-and-journey",
     "lens.vexlife.visibility-terrain-health",
     "module.vexlife.core.purpose-workspace",
+    "module.vexlife.core.purpose-workspace-project",
     "module.vexlife.core.utils",
+    "owner.vexlife.intent-workgraph",
     "page.vexlife.public-onboarding.001",
     "permission.none",
     "plan.vexlife.feature.scoped-purpose-workspace.introduction.001",
@@ -389,7 +391,11 @@
     "process.vexlife.purpose-workspace.coordinate",
     "registry.vexlife.experience.001",
     "registry.vexlife.features.001",
+    "registry.vexlife.intent-orchestration.001",
     "registry.vexlife.modules.001",
+    "registry.vexlife.project-continuity.001",
+    "registry.vexlife.project-planning.001",
+    "registry.vexlife.project-reconciliation.001",
     "route.terrain",
     "screen.vexlife.terrain",
     "source.vexlife.experience-review-kit",
@@ -458,7 +464,12 @@
     "DRAFT_SURFACE_LOCAL_SEED_NEVER_MUTATES_CANONICAL_FEATURE_REGISTRY",
     "DRAFT_SURFACE_SAVE_DEPLOY_PUBLISH_HELD_FOR_SUCCESSOR_STAGE",
     "DESIGN_PROVENANCE_RELATION_IS_REFERENCE_ONLY",
-    "DRAFT_RESET_PRESERVES_SESSION_PROVENANCE_AND_RECEIPT_HISTORY"
+    "DRAFT_RESET_PRESERVES_SESSION_PROVENANCE_AND_RECEIPT_HISTORY",
+    "BOARD_DRAG_NEVER_DIRECTLY_MUTATES_WORK_STATE",
+    "AMBIGUOUS_BOARD_LANE_NEVER_SELECTS_HIDDEN_LIFECYCLE_STATE",
+    "SAME_LANE_BOARD_DROP_NEVER_SELECTS_INTRA_LANE_LIFECYCLE_STATE",
+    "STALE_BOARD_MOVE_RENDERS_FRESH_AUTHORITATIVE_PROJECT",
+    "AUTHENTICATED_PRINCIPAL_NEVER_IMPLIES_INTENT_ACTOR_BINDING"
   ],
   "includes": {
     "processPatterns": "blueprint/purpose-workspace/process-patterns.json",
@@ -531,5 +542,41 @@
     "browserRuntimeMutation": false,
     "generatedManifestRootMutation": false,
     "nextSuccessor": "SPW-02_BLUEPRINT_AND_FEATURE_REGISTRATION"
+  },
+  "projectConsumerContract": {
+    "schemaVersion": "vexlife.purpose-workspace-project-consumer-contract/v1",
+    "stageRef": "P0B-B05",
+    "moduleRef": "module.vexlife.core.purpose-workspace-project",
+    "projectionSchemaVersion": "vexlife.purpose-workspace-project-projection/v1",
+    "moveSchemaVersion": "vexlife.purpose-workspace-board-move/v1",
+    "canonicalOwners": {
+      "projectTruth": "registry.vexlife.project-continuity.001",
+      "planningTruth": "registry.vexlife.project-planning.001",
+      "lifecycleTruth": "registry.vexlife.intent-orchestration.001",
+      "lifecycleRuntime": "owner.vexlife.intent-workgraph",
+      "reconciliationTruth": "registry.vexlife.project-reconciliation.001"
+    },
+    "browserPaths": {
+      "project": "/api/v1/purpose-workspace/project",
+      "move": "/api/v1/purpose-workspace/project/move"
+    },
+    "rules": [
+      "BOARD_DRAG != DIRECT_MUTATION",
+      "BOARD_COLUMN != WORKGRAPH_LIFECYCLE",
+      "PROJECT_VIEW != EFFECT_AUTHORITY",
+      "BROWSER_PROJECT_SOURCE != PROJECT_TRUTH_OWNER",
+      "STALE_MOVE -> REJECT + FRESH_AUTHORITATIVE_PROJECTION",
+      "AMBIGUOUS_LANE_TARGET != HIDDEN_STATE_CHOICE",
+      "SAME_LANE_DROP_REQUIRES_EXACT_STATE_CONTROL",
+      "PLANNING_CURRENT_REQUIRES_CANONICAL_RUNTIME_POINTER_AND_SNAPSHOT",
+      "KEYBOARD_MOVE == SAME_TYPED_TRANSACTION_PATH_AS_POINTER_MOVE",
+      "RECONCILIATION_ANNOTATION != WORK_STATE",
+      "AUTHENTICATED_PRINCIPAL != INTENT_ACTOR_BY_IMPLICATION"
+    ],
+    "productionProjectSourceState": "HELD_UNTIL_B06_SOURCE_MANAGED_PROJECT_IMPORT",
+    "trustedActorBindingState": "HELD_UNTIL_RIGHTFUL_INTENT_ACTOR_BINDING_OWNER",
+    "actualWorkgraphEffectOwner": "owner.vexlife.intent-workgraph",
+    "effects": false,
+    "executionAuthority": "NONE"
   }
 }
