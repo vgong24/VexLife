@@ -53,8 +53,7 @@
     "platformScope": "UNIVERSAL",
     "reads": [
       "registry.vexlife.intent-orchestration.001",
-      "module.vexlife.core.intent-workgraph",
-      "module.vexlife.core.utils"
+      "module.vexlife.core.intent-workgraph"
     ],
     "writes": [],
     "loadedBy": [
