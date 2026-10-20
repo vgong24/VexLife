@@ -5,8 +5,8 @@
     {
       "path": "blueprint/module-registry/project-continuity.json",
       "mode": "100644",
-      "bytes": 3903,
-      "sha256": "7cce60868b95375935d02e000cc0cd12a774a31ebcbe41a95916411fa892a34c"
+      "bytes": 3868,
+      "sha256": "55e46f9447f9754a1887dc6ccdbbd22e6baf3d205bd93ece5b1b53ed0d89fa5b"
     },
     {
       "path": "blueprint/purpose-workspace/process-patterns.json",
