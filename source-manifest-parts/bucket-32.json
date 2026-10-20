@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 17372,
       "sha256": "9978d9c1354ae3ede8c44056ddc62aa283fa7a804fa4e0c960ba8030e3b0385a"
+    },
+    {
+      "path": "src/core/project-continuity.mjs",
+      "mode": "100644",
+      "bytes": 21516,
+      "sha256": "a0f46167c6bb844dee96d601b6f61108a6155b986c50bb1f5de6f8d867eb90be"
     }
   ]
 }

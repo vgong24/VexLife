@@ -3,6 +3,12 @@
   "bucketId": "b5",
   "files": [
     {
+      "path": "docs/PROJECT-CONTINUITY-AND-BOARD.md",
+      "mode": "100644",
+      "bytes": 6983,
+      "sha256": "ac2185b0f67b74850509d9b35428fe3269ccfe47551a29497f3aeaa89849e2b2"
+    },
+    {
       "path": "reference/browser/evolution/living-journal-projection.js",
       "mode": "100644",
       "bytes": 10856,

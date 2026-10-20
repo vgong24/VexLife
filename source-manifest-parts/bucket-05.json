@@ -3,6 +3,12 @@
   "bucketId": "05",
   "files": [
     {
+      "path": "blueprint/module-registry/project-continuity.json",
+      "mode": "100644",
+      "bytes": 1679,
+      "sha256": "56a46fdfd2ea5ef020dcaa1e13277de97028f06ad02bab934a376a3e26a31b5f"
+    },
+    {
       "path": "blueprint/purpose-workspace/process-patterns.json",
       "mode": "100644",
       "bytes": 3507,
