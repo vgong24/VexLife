@@ -44,7 +44,7 @@ function possession(currentMembership = membership(), overrides = {}) {
     membershipRef: currentMembership.membershipRef,
     membershipHash: currentMembership.membershipHash,
     revocationGeneration: currentMembership.revocationGeneration,
-    devicePublicKeyFingerprintRef: '2'.repeat(64),
+    devicePublicKeyFingerprintRef: `fingerprint.sha256.${'2'.repeat(64)}`,
     signatureAlgorithmRef: 'signature.vextreme.ecdsa-p256-sha256',
     signingPayloadSha256: '3'.repeat(64),
     devicePossessionState: 'VERIFIED_CURRENT',
@@ -140,6 +140,16 @@ test('stale, authority-bearing, and replayed possession receipts fail closed', (
   const receipt = possession(member);
   h.owner.establish({ possessionReceipt: receipt, membership: member, currentRevocationGeneration: 3 });
   expectCode(() => h.owner.establish({ possessionReceipt: receipt, membership: member, currentRevocationGeneration: 3 }), 'HOME_BRIDGE_REMOTE_SESSION_POSSESSION_REPLAYED');
+});
+
+test('bare SHA-256 fingerprint values are rejected before remote session establishment', () => {
+  const h = harness();
+  const member = membership();
+  expectCode(() => h.owner.establish({
+    possessionReceipt: possession(member, { devicePublicKeyFingerprintRef: '2'.repeat(64) }),
+    membership: member,
+    currentRevocationGeneration: 3
+  }), 'HOME_BRIDGE_REMOTE_SESSION_INPUT_INVALID');
 });
 
 test('session ttl cannot outlive possession evidence and expiry removes current assertion', () => {

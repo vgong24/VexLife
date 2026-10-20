@@ -12,6 +12,7 @@ const DEFAULT_SESSION_TTL_MS = 5 * 60 * 1000;
 const MAX_SESSION_TTL_MS = 15 * 60 * 1000;
 const REF = /^[A-Za-z0-9][A-Za-z0-9._:/#@+-]{0,511}$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
+const FINGERPRINT_REF = /^fingerprint\.sha256\.[a-f0-9]{64}$/u;
 
 const POSSESSION_KEYS = new Set([
   'schemaVersion', 'receiptRef', 'requestRef', 'challengeRef', 'homeRef', 'principalRef',
@@ -62,6 +63,12 @@ function refs(values, label) {
 }
 function digest(value, label) {
   if (typeof value !== 'string' || !SHA256.test(value)) fail('HOME_BRIDGE_REMOTE_SESSION_INPUT_INVALID', `${label} must be one lowercase SHA-256 digest`);
+  return value;
+}
+function fingerprintRef(value, label) {
+  if (typeof value !== 'string' || !FINGERPRINT_REF.test(value)) {
+    fail('HOME_BRIDGE_REMOTE_SESSION_INPUT_INVALID', `${label} must be fingerprint.sha256.<lowercase SHA-256 hex>`);
+  }
   return value;
 }
 function safeUint(value, label) {
@@ -155,7 +162,8 @@ function validatePossessionReceipt(value, membership, binding, currentTime, curr
   for (const key of ['receiptRef','requestRef','challengeRef','homeRef','principalRef','deviceRef','membershipRef','verificationEvidenceRef']) {
     ref(value[key], `possessionReceipt.${key}`);
   }
-  for (const key of ['membershipHash','devicePublicKeyFingerprintRef','signingPayloadSha256']) digest(value[key], `possessionReceipt.${key}`);
+  for (const key of ['membershipHash','signingPayloadSha256']) digest(value[key], `possessionReceipt.${key}`);
+  fingerprintRef(value.devicePublicKeyFingerprintRef, 'possessionReceipt.devicePublicKeyFingerprintRef');
   safeUint(value.revocationGeneration, 'possessionReceipt.revocationGeneration');
   safeUint(value.observedAtMs, 'possessionReceipt.observedAtMs');
   safeUint(value.expiresAtMs, 'possessionReceipt.expiresAtMs');

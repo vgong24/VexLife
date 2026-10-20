@@ -31,6 +31,7 @@ The remote owner requires:
 - `capabilityLease=false`;
 - `networkAuthority=false`;
 - the accepted P-256/SHA-256 signature profile;
+- the typed public-key fingerprint identity `fingerprint.sha256.<lowercase SHA-256 hex>` from the verified possession receipt;
 - one active `vexlife.bridge-device-membership/v1` membership;
 - exact Home, device, principal, membership, membership-hash and revocation-generation agreement.
 
