@@ -246,16 +246,31 @@ function orientationState(orientationReceipt, relation, provider) {
   }
 
   if (provider.providerState === 'OPEN') {
+    const expectedPrRef = provider.pullRequestNumberOrNull === null
+      ? null
+      : `github-pr.${relation.repositoryRef}.${provider.pullRequestNumberOrNull}`;
+    const prMatches = orientationReceipt.currentWork?.prRef === expectedPrRef;
+    const sourceTreeMatches = (
+      orientationReceipt.blueprint?.sourceTreeSha256 === provider.candidateSourceTreeSha256OrNull
+    );
     const current = (
       orientationReceipt.currentWork?.state === 'ACTIVE_PR' &&
       orientationReceipt.currentWork?.workRef === relation.workRef &&
+      prMatches &&
       orientationReceipt.git?.candidateHeadSha === provider.headShaOrNull &&
       orientationReceipt.git?.candidateTreeSha === provider.headTreeShaOrNull &&
-      orientationReceipt.git?.baseSha === provider.baseShaOrNull
+      orientationReceipt.git?.baseSha === provider.baseShaOrNull &&
+      sourceTreeMatches
     );
     return {
       current,
-      reasonRef: current ? null : 'attention.project.provider-head-moved',
+      reasonRef: current
+        ? null
+        : !prMatches
+          ? 'attention.project.provider-pr-mismatch'
+          : !sourceTreeMatches
+            ? 'attention.project.source-tree-mismatch'
+            : 'attention.project.provider-head-moved',
     };
   }
 

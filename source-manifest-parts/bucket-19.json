@@ -35,8 +35,8 @@
     {
       "path": "src/core/project-reconciliation.mjs",
       "mode": "100644",
-      "bytes": 18669,
-      "sha256": "9109915514bbe3642c1183e61095f7ae06b6e34b2b8682b88470e219fde97571"
+      "bytes": 19275,
+      "sha256": "b27b121bc20bcc4dc785e83f70302b2eff130c92778338479a5e7f1a5c8e87ce"
     },
     {
       "path": "test/experience-gallery.test.mjs",

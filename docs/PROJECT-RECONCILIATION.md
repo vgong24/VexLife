@@ -164,7 +164,8 @@ Earned only when:
 
 ```text
 Project relation matches exact CURRENT Project snapshot
-+ Orientation says the same active work / base / head / tree
++ Orientation says the same active work / exact PR / base / head / tree
++ Orientation Source Manifest identity matches the exact candidate source tree
 + canonical Build Health evidence validates for that exact target
 + provider state is OPEN
 ```
@@ -274,7 +275,9 @@ Focused proof must establish at least:
 ```text
 registry vocabulary and content-addressed relation/provider records
 exact OPEN candidate + current canonical proof -> CURRENT_IN_REVIEW
+wrong provider PR identity -> REVERIFY_REQUIRED
 moved provider head -> REVERIFY_REQUIRED
+Orientation/source-tree mismatch -> REVERIFY_REQUIRED
 green provider checks without canonical proof -> REVERIFY_REQUIRED
 exact merged candidate tree + reachable main + current proof -> COMPLETION_EVIDENCE_READY
 merge-tree substitution -> REVERIFY_REQUIRED

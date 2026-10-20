@@ -11,8 +11,8 @@
     {
       "path": "docs/PROJECT-RECONCILIATION.md",
       "mode": "100644",
-      "bytes": 7261,
-      "sha256": "52b56cb9ad34156f7cbdf1010beb66c4b3c054d2f24798d2a020d600f83cf824"
+      "bytes": 7453,
+      "sha256": "bd48a771d7e1ceff2c36e149091c136618993ced674599fa2bbe4c3fd0d13bd6"
     },
     {
       "path": "test/vex-reboot-cross-platform-proof.test.mjs",

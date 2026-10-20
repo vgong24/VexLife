@@ -206,7 +206,13 @@ function relation(policy = policyFixture()) {
   };
 }
 
-function orientationOpen({ head = HEAD, tree = TREE, base = BASE, workRef = WORK_REF } = {}) {
+function orientationOpen({
+  head = HEAD,
+  tree = TREE,
+  base = BASE,
+  workRef = WORK_REF,
+  sourceTreeSha256 = SOURCE_TREE,
+} = {}) {
   return {
     schemaVersion: 'vexlife.orientation-receipt/v1',
     orientationRef: 'orientation.vexlife.dedicated-repository.001',
@@ -223,7 +229,7 @@ function orientationOpen({ head = HEAD, tree = TREE, base = BASE, workRef = WORK
       workRef,
       prRef: 'github-pr.vgong24/VexLife.910',
     },
-    blueprint: { sourceTreeSha256: SOURCE_TREE },
+    blueprint: { sourceTreeSha256 },
     sourceRefs: ['source.vexlife.orientation-contract'],
   };
 }
@@ -254,13 +260,14 @@ function providerOpen({
   head = HEAD,
   tree = TREE,
   checksState = 'SUCCESS',
+  pullRequestNumber = 910,
 } = {}) {
   return {
     schemaVersion: PROJECT_PROVIDER_OBSERVATION_SCHEMA,
     observationRef: 'observation.provider.pr910.open',
     repositoryRef: REPOSITORY,
     workRef: WORK_REF,
-    pullRequestNumberOrNull: 910,
+    pullRequestNumberOrNull: pullRequestNumber,
     providerState: 'OPEN',
     baseShaOrNull: BASE,
     headShaOrNull: head,
@@ -346,6 +353,40 @@ test('exact open provider + exact current Build Health proof reconciles to CURRE
   assert.equal(result.effects, false);
   assert.equal(result.executionAuthority, 'NONE');
   assert.equal(result.transitionAuthority, 'NONE');
+});
+
+test('wrong provider PR identity forces REVERIFY_REQUIRED even when head/tree/proof match', () => {
+  const policy = policyFixture();
+  const result = reconcileProjectEvidence({
+    registry,
+    projectSnapshot: projectSnapshot('VERIFYING'),
+    relation: relation(policy),
+    orientationReceipt: orientationOpen(),
+    validationEvidenceBundle: validationBundle(policy),
+    validationEvidencePolicy: policy,
+    providerObservation: providerOpen({ pullRequestNumber: 911 }),
+    intentRegistry,
+  });
+  assert.equal(result.state, 'REVERIFY_REQUIRED');
+  assert.ok(result.attentionRefs.includes('attention.project.provider-pr-mismatch'));
+  assert.equal(result.completionEvidenceState, 'NOT_EARNED');
+});
+
+test('orientation source-manifest identity mismatch forces REVERIFY_REQUIRED', () => {
+  const policy = policyFixture();
+  const result = reconcileProjectEvidence({
+    registry,
+    projectSnapshot: projectSnapshot('VERIFYING'),
+    relation: relation(policy),
+    orientationReceipt: orientationOpen({ sourceTreeSha256: '6'.repeat(64) }),
+    validationEvidenceBundle: validationBundle(policy),
+    validationEvidencePolicy: policy,
+    providerObservation: providerOpen(),
+    intentRegistry,
+  });
+  assert.equal(result.state, 'REVERIFY_REQUIRED');
+  assert.ok(result.attentionRefs.includes('attention.project.source-tree-mismatch'));
+  assert.equal(result.completionEvidenceState, 'NOT_EARNED');
 });
 
 test('a moved provider head forces REVERIFY_REQUIRED even when a prior proof bundle is internally green', () => {
