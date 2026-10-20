@@ -247,7 +247,7 @@ export function compileProjectContinuity({
   const graphRefs = new Set();
   const rootIntentRefs = new Set();
   const workNodeRefs = new Set();
-  const featurByWork = new Map(project.workFeatureBindings.map((binding) => [binding.workNodeRef, binding.featureRefs]);
+  const featureByWork = new Map(project.workFeatureBindings.map((binding) => [binding.workNodeRef, binding.featureRefs]));
   const cards = [];
   for (const graph of graphs) {
     if (!stableRef(graph.graphRef) || graphRefs.has(graph.graphRef)) throw new TypeError(`duplicate or invalid graphRef ${graph.graphRef ?? ''}`);
