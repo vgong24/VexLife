@@ -218,6 +218,10 @@ Used when the provider/source state itself is insufficient to reconcile. UNKNOWN
 holds only the dependent conclusion; it is not converted into false failure or
 completion.
 
+A known `CLOSED_UNMERGED` provider state is not unknown. It projects
+`REVERIFY_REQUIRED` with explicit closed-unmerged attention and earns no
+completion evidence.
+
 ## CLI
 
 The read-only source-managed command is:
@@ -284,6 +288,7 @@ green provider checks without canonical proof -> REVERIFY_REQUIRED
 exact merged candidate tree + reachable main + current proof -> COMPLETION_EVIDENCE_READY
 merge-tree substitution -> REVERIFY_REQUIRED
 merged commit not reachable from current main -> REVERIFY_REQUIRED
+CLOSED_UNMERGED provider state -> REVERIFY_REQUIRED
 UNKNOWN provider state -> HELD_UNKNOWN
 no output grants transition or execution authority
 ```

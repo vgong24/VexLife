@@ -364,6 +364,7 @@ export function reconcileProjectEvidence({
   if (provider.providerState === 'UNKNOWN') {
     attentionRefs.push('attention.project.provider-state-unknown');
   } else if (provider.providerState === 'CLOSED_UNMERGED') {
+    disposition = 'REVERIFY_REQUIRED';
     attentionRefs.push('attention.project.pull-request-closed-unmerged');
   } else if (!orientation.current) {
     disposition = 'REVERIFY_REQUIRED';

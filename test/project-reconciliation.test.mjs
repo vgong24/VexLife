@@ -486,6 +486,30 @@ test('merged provider observation not reachable from current main requires rever
   assert.equal(result.proposedLifecycleTransitionOrNull, null);
 });
 
+test('closed-unmerged provider state is known stale evidence, not HELD_UNKNOWN', () => {
+  const policy = policyFixture();
+  const provider = {
+    ...providerOpen(),
+    observationRef: 'observation.provider.pr910.closed-unmerged',
+    providerState: 'CLOSED_UNMERGED',
+  };
+  const result = reconcileProjectEvidence({
+    registry,
+    projectSnapshot: projectSnapshot('VERIFYING'),
+    relation: relation(policy),
+    orientationReceipt: orientationOpen(),
+    validationEvidenceBundle: validationBundle(policy),
+    validationEvidencePolicy: policy,
+    providerObservation: provider,
+    intentRegistry,
+  });
+  assert.equal(result.state, 'REVERIFY_REQUIRED');
+  assert.equal(result.currentness, 'CURRENT');
+  assert.ok(result.attentionRefs.includes('attention.project.pull-request-closed-unmerged'));
+  assert.equal(result.completionEvidenceState, 'NOT_EARNED');
+  assert.equal(result.proposedLifecycleTransitionOrNull, null);
+});
+
 test('unknown provider state remains HELD_UNKNOWN and never manufactures work truth', () => {
   const policy = policyFixture();
   const provider = {
