@@ -19,6 +19,12 @@ import {
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import { projectIntentStatus } from '../src/core/intent-projection.mjs';
 import { createCompanionVoicePlaybackAdapter } from '../src/core/companion-voice-playback.mjs';
+import {
+  PURPOSE_WORKSPACE_BOARD_MOVE_SCHEMA,
+  PURPOSE_WORKSPACE_PROJECT_PROJECTION_SCHEMA,
+  heldPurposeWorkspaceProjectProjection,
+  preparePurposeWorkspaceBoardMove,
+} from '../src/core/purpose-workspace-project.mjs';
 export * from './serve-browser-core.mjs';
 
 import {
@@ -38,6 +44,11 @@ const intentTrustSnapshot = JSON.parse(fs.readFileSync(new URL('../blueprint/int
 export const BROWSER_RELATIONSHIPS_INVITATION_REQUEST_MAX_BYTES = BROWSER_RELATIONSHIPS_INVITATION_MAX_BYTES * 2;
 export const BROWSER_INTENT_PROJECT_STATUS_PATH = '/api/v1/intent/project-status';
 export const BROWSER_INTENT_PROJECT_STATUS_SCHEMA = 'vexlife.browser-intent-project-status/v1';
+export const BROWSER_PURPOSE_WORKSPACE_PROJECT_PATH = '/api/v1/purpose-workspace/project';
+export const BROWSER_PURPOSE_WORKSPACE_PROJECT_MOVE_PATH = '/api/v1/purpose-workspace/project/move';
+export const BROWSER_PURPOSE_WORKSPACE_PROJECT_SCHEMA = PURPOSE_WORKSPACE_PROJECT_PROJECTION_SCHEMA;
+export const BROWSER_PURPOSE_WORKSPACE_PROJECT_MOVE_SCHEMA = PURPOSE_WORKSPACE_BOARD_MOVE_SCHEMA;
+export const BROWSER_PURPOSE_WORKSPACE_MOVE_REQUEST_MAX_BYTES = 16 * 1024;
 
 function sendJson(response, statusCode, value) {
   const body = `${JSON.stringify(value)}\n`;
@@ -173,6 +184,90 @@ function sourceManagedIntentProjectStatusResolver(runtimeHome) {
   };
 }
 
+function sourceManagedPurposeWorkspaceProjectResolver() {
+  return async function resolvePurposeWorkspaceProject(projectRef) {
+    return heldPurposeWorkspaceProjectProjection(
+      projectRef,
+      'PROJECT_SOURCE_NOT_IMPORTED__B06_REQUIRED'
+    );
+  };
+}
+
+function sourceManagedPurposeWorkspaceMoveResolver(resolvePurposeWorkspaceProject) {
+  return async function resolvePurposeWorkspaceMove(input) {
+    const projection = await resolvePurposeWorkspaceProject(input.projectRef);
+    if (projection.currentness !== 'CURRENT') {
+      return Object.freeze({
+        schemaVersion: PURPOSE_WORKSPACE_BOARD_MOVE_SCHEMA,
+        state: 'EXECUTION_HELD',
+        reason: projection.reason ?? 'PROJECT_SOURCE_UNAVAILABLE',
+        projectRef: input.projectRef,
+        authoritativeProjection: projection,
+        effects: false,
+        executionAuthority: 'NONE',
+      });
+    }
+    return preparePurposeWorkspaceBoardMove({
+      projection,
+      projectSnapshot: null,
+      workgraphEntry: null,
+      intentRegistry: intentSourceBundle.intentRegistry,
+      workNodeRef: input.workNodeRef,
+      targetLaneRef: input.targetLaneRef,
+      targetStateOrNull: input.targetStateOrNull,
+      expectedProjectSnapshotFingerprint: input.expectedProjectSnapshotFingerprint,
+      expectedState: input.expectedState,
+      actorBinding: null,
+    });
+  };
+}
+
+async function readPurposeWorkspaceMoveRequest(request) {
+  const contentType = String(request.headers['content-type'] || '').split(';', 1)[0].trim().toLowerCase();
+  if (contentType !== 'application/json') {
+    throw Object.assign(new Error('Purpose Workspace move request must use application/json'), { httpStatus: 415 });
+  }
+  const chunks = [];
+  let bytes = 0;
+  for await (const chunk of request) {
+    bytes += chunk.length;
+    if (bytes > BROWSER_PURPOSE_WORKSPACE_MOVE_REQUEST_MAX_BYTES) {
+      throw Object.assign(new Error('Purpose Workspace move request exceeds the bounded body size'), { httpStatus: 413 });
+    }
+    chunks.push(chunk);
+  }
+  let value;
+  try {
+    value = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch {
+    throw Object.assign(new Error('Purpose Workspace move request body is not valid JSON'), { httpStatus: 400 });
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw Object.assign(new Error('Purpose Workspace move request must be one object'), { httpStatus: 400 });
+  }
+  const expected = [
+    'expectedProjectSnapshotFingerprint',
+    'expectedState',
+    'projectRef',
+    'targetLaneRef',
+    'targetStateOrNull',
+    'workNodeRef',
+  ].sort();
+  if (JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(expected)) {
+    throw Object.assign(new Error('Purpose Workspace move request fields are not exact'), { httpStatus: 400 });
+  }
+  if (typeof value.projectRef !== 'string' || !/^project\.[A-Za-z0-9._-]+$/u.test(value.projectRef) ||
+      typeof value.workNodeRef !== 'string' || !/^work\.[A-Za-z0-9._-]+$/u.test(value.workNodeRef) ||
+      typeof value.targetLaneRef !== 'string' || !/^lane\.[A-Za-z0-9._-]+$/u.test(value.targetLaneRef) ||
+      (value.targetStateOrNull !== null && typeof value.targetStateOrNull !== 'string') ||
+      typeof value.expectedProjectSnapshotFingerprint !== 'string' ||
+      !/^[a-f0-9]{64}$/u.test(value.expectedProjectSnapshotFingerprint) ||
+      typeof value.expectedState !== 'string') {
+    throw Object.assign(new Error('Purpose Workspace move request fields are invalid'), { httpStatus: 400 });
+  }
+  return Object.freeze({ ...value });
+}
+
 export function resolveHereticPersistentRuntimeLink({
   runtimeReceiptPath = process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH ?? null,
   runtimeHome = home,
@@ -242,6 +337,10 @@ export function createVexLifeBrowserServer(options = {}) {
   const resolveIntentProjectStatus = sourceManagedIntentProjectStatusResolver(
     genericFollowThroughRuntimeHome
   );
+  const resolvePurposeWorkspaceProject = sourceManagedPurposeWorkspaceProjectResolver();
+  const resolvePurposeWorkspaceMove = sourceManagedPurposeWorkspaceMoveResolver(
+    resolvePurposeWorkspaceProject
+  );
   const coreServer = createCoreVexLifeBrowserServer({
     ...coreOptions,
     companionVoicePlayback,
@@ -297,6 +396,44 @@ export function createVexLifeBrowserServer(options = {}) {
       }
       const result = await resolveIntentProjectStatus(projectRef);
       sendJson(response, 200, result);
+      return;
+    }
+
+    if (url.pathname === BROWSER_PURPOSE_WORKSPACE_PROJECT_PATH) {
+      if (request.method !== 'GET') {
+        response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
+        response.end();
+        return;
+      }
+      const projectRef = url.searchParams.get('projectRef');
+      if (url.searchParams.size !== 1 || typeof projectRef !== 'string' || !/^project\.[A-Za-z0-9._-]+$/u.test(projectRef) || projectRef.length > 256) {
+        sendJson(response, 400, heldPurposeWorkspaceProjectProjection(null, 'PROJECT_SCOPE_INVALID'));
+        return;
+      }
+      sendJson(response, 200, await resolvePurposeWorkspaceProject(projectRef));
+      return;
+    }
+
+    if (url.pathname === BROWSER_PURPOSE_WORKSPACE_PROJECT_MOVE_PATH) {
+      if (request.method !== 'POST') {
+        response.writeHead(405, { Allow: 'POST', 'Cache-Control': 'no-store' });
+        response.end();
+        return;
+      }
+      try {
+        const input = await readPurposeWorkspaceMoveRequest(request);
+        sendJson(response, 200, await resolvePurposeWorkspaceMove(input));
+      } catch (error) {
+        sendJson(response, Number.isInteger(error?.httpStatus) ? error.httpStatus : 400, {
+          schemaVersion: PURPOSE_WORKSPACE_BOARD_MOVE_SCHEMA,
+          state: 'INVALID_REJECTED',
+          reason: 'MOVE_REQUEST_INVALID',
+          projectRef: null,
+          authoritativeProjection: null,
+          effects: false,
+          executionAuthority: 'NONE',
+        });
+      }
       return;
     }
 

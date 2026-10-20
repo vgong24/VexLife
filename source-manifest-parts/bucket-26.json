@@ -15,6 +15,12 @@
       "sha256": "c1923db71d440bfd87852df1890a37e371d2d1f1cf50ccdd1456d6fd4c86a13e"
     },
     {
+      "path": "docs/PURPOSE-WORKSPACE-PROJECT-BOARD.md",
+      "mode": "100644",
+      "bytes": 3975,
+      "sha256": "770a2171d442a359626934f3c38d5f1d56d47ad98f019d78d403867150c80862"
+    },
+    {
       "path": "reference/browser/evolution/conversation-projection.js",
       "mode": "100644",
       "bytes": 27265,
