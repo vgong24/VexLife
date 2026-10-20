@@ -54,6 +54,14 @@ function uniqueStableRefs(values, label) {
   return canonicalRefs(values);
 }
 
+function orderedUniqueStableRefs(values, label) {
+  if (!Array.isArray(values) || values.some((value) => typeof value !== 'string' || !REF.test(value))) {
+    throw new TypeError(`${label} must contain only stable refs`);
+  }
+  if (new Set(values).size !== values.length) throw new TypeError(`${label} must not contain duplicates`);
+  return [...values];
+}
+
 function exactKeys(value, keys, label) {
   if (!object(value)) throw new TypeError(`${label} must be one object`);
   const expected = [...keys].sort();
@@ -226,7 +234,7 @@ function validateEventPayload(transaction, currentState, context) {
   }
   if (transaction.eventClass === 'SHARED_ORDER_SET') {
     stableRef(payload.scopeRef, 'scopeRef');
-    const orderedWorkNodeRefs = uniqueStableRefs(payload.orderedWorkNodeRefs, 'orderedWorkNodeRefs');
+    const orderedWorkNodeRefs = orderedUniqueStableRefs(payload.orderedWorkNodeRefs, 'orderedWorkNodeRefs');
     if (orderedWorkNodeRefs.some((ref) => !workRefs.has(ref))) throw new TypeError('shared order contains work outside the project');
     return { scopeRef: payload.scopeRef, orderedWorkNodeRefs };
   }
