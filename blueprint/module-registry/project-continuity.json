@@ -1,0 +1,49 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.project-continuity",
+    "path": "src/core/project-continuity.mjs",
+    "role": "Compile exact Project definitions plus runtime-CURRENT-bound canonical Intent Workgraph snapshots into bounded read-only Board, Graph and Lane Focus Card projections without becoming a second work-state, currentness, planning, proof, GitHub or effect owner.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.project-continuity.001",
+      "registry.vexlife.intent-orchestration.001",
+      "registry.vexlife.features.001",
+      "source.vexlife.intent-workgraph.runtime-snapshot.001",
+      "src/core/intent-validation.mjs",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.project-continuity"
+    ],
+    "tests": [
+      "test/project-continuity.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/project-continuity-registry.json",
+      "docs/PROJECT-CONTINUITY-AND-BOARD.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.project-continuity",
+    "path": "scripts/project-continuity.mjs",
+    "role": "Read a source-managed Project/View plus the existing Vex Home Intent Workgraph CURRENT-pointer surface and emit one read-only Board, Graph or Lane Focus Card projection; never mutate Workgraph, project planning, GitHub, source, Home, Memory or effects.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.project-continuity",
+      "registry.vexlife.project-continuity.001",
+      "registry.vexlife.intent-orchestration.001",
+      "registry.vexlife.features.001",
+      "blueprint/intent-trust-snapshot.json",
+      "src/core/intent-workgraph-runtime-snapshot.mjs"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/project-continuity.test.mjs"
+    ],
+    "changeMap": [
+      "package.json"
+    ]
+  }
+]
