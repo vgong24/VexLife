@@ -3,6 +3,12 @@
   "bucketId": "a9",
   "files": [
     {
+      "path": "blueprint/module-registry/project-planning.json",
+      "mode": "100644",
+      "bytes": 3883,
+      "sha256": "420f35ff9cc281cb0eb07de70103aa5494a82b1698fadfdc97bc1ebc8382ce12"
+    },
+    {
       "path": "docs/VEX-FAMILY-SPACE-MEMBERSHIP.md",
       "mode": "100644",
       "bytes": 8125,

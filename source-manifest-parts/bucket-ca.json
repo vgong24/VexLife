@@ -9,6 +9,12 @@
       "sha256": "aed0f6654429a80f9a9fc618f05ffa6e037aaa2ae8b76ddae46e8c828e5ace86"
     },
     {
+      "path": "blueprint/project-planning-registry.json",
+      "mode": "100644",
+      "bytes": 2571,
+      "sha256": "74b9258af27a236ffdc9835799051debc9bd047c38014b3ee0c009867ba26445"
+    },
+    {
       "path": "docs/EVALUATED-RHYTHM-LEARNING.md",
       "mode": "100644",
       "bytes": 6414,
