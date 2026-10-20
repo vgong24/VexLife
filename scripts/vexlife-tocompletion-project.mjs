@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { loadBlueprint } from '../src/core/blueprint.mjs';
+import { loadBrowserCompanionHomeIdentity } from '../src/core/browser-companion-bridge.mjs';
 import { validateIntentWorkgraph } from '../src/core/intent-validation.mjs';
 import { persistIntentWorkgraphRuntimeSnapshot } from '../src/core/intent-workgraph-runtime-snapshot.mjs';
 import {
@@ -16,16 +17,8 @@ if (args.length !== 2 || args[0] !== '--home' || !args[1]) {
   process.exit(2);
 }
 
-const home = path.resolve(args[1]);
-let stat;
-try {
-  stat = fs.lstatSync(home);
-} catch {
-  throw new Error('ToCompletion Project import requires one existing Vex Home directory');
-}
-if (!stat.isDirectory() || stat.isSymbolicLink()) {
-  throw new Error('ToCompletion Project import requires one existing non-link Vex Home directory');
-}
+const homeIdentity = loadBrowserCompanionHomeIdentity(path.resolve(args[1]));
+const home = homeIdentity.home;
 
 const sourceBundle = loadBlueprint();
 const intentTrustSnapshot = JSON.parse(fs.readFileSync(
