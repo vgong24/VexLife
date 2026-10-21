@@ -155,24 +155,34 @@ export function validateHereticPersistentRuntimeReceipt(value) {
   return freezeDeep(structuredClone(value));
 }
 
-export function formHereticPersistentRuntimeLink({ receipt, homeIdentity }) {
-  const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
+export function formHereticPersistentRuntimeBindingRef(homeIdentity) {
   if (!object(homeIdentity)
       || typeof homeIdentity.homeRef !== 'string'
       || typeof homeIdentity.companionLineageRef !== 'string') {
-    throw new TypeError('Heretic runtime link requires current Vex Home identity');
+    throw new TypeError('Heretic runtime binding requires current Vex Home identity');
   }
   portableRef(homeIdentity.homeRef, 'homeIdentity.homeRef');
   portableRef(homeIdentity.companionLineageRef, 'homeIdentity.companionLineageRef');
-
   const identitySeed = [
-    runtimeReceipt.receiptRef,
-    runtimeReceipt.sourceIdentity.revision,
     homeIdentity.homeRef,
     homeIdentity.companionLineageRef,
+    HERETIC_RUNTIME_IDENTITY.modelRef,
+    HERETIC_RUNTIME_IDENTITY.modelProfileRef,
+    HERETIC_RUNTIME_ADAPTER_REF,
   ].join('|');
-  const bindingRef = digestRef('binding.vexlife.heretic-persistent-runtime', identitySeed);
-  const observationRef = digestRef('observation.vexlife.heretic-persistent-runtime', `${identitySeed}|${runtimeReceipt.runtime.pid}`);
+  return digestRef('binding.vexlife.heretic-persistent-runtime', identitySeed);
+}
+
+export function formHereticPersistentRuntimeLink({ receipt, homeIdentity }) {
+  const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
+  const bindingRef = formHereticPersistentRuntimeBindingRef(homeIdentity);
+  const observationSeed = [
+    bindingRef,
+    runtimeReceipt.receiptRef,
+    runtimeReceipt.sourceIdentity.revision,
+    String(runtimeReceipt.runtime.pid),
+  ].join('|');
+  const observationRef = digestRef('observation.vexlife.heretic-persistent-runtime', observationSeed);
   const sourceRefs = [
     runtimeReceipt.receiptRef,
     `git.vextreme-sdk.${runtimeReceipt.sourceIdentity.revision}`,
