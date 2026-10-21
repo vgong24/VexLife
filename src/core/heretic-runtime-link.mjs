@@ -155,24 +155,85 @@ export function validateHereticPersistentRuntimeReceipt(value) {
   return freezeDeep(structuredClone(value));
 }
 
-export function formHereticPersistentRuntimeLink({ receipt, homeIdentity }) {
-  const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
+export function formHereticPersistentRuntimeBindingRef(homeIdentity) {
   if (!object(homeIdentity)
       || typeof homeIdentity.homeRef !== 'string'
       || typeof homeIdentity.companionLineageRef !== 'string') {
-    throw new TypeError('Heretic runtime link requires current Vex Home identity');
+    throw new TypeError('Heretic runtime binding requires current Vex Home identity');
   }
   portableRef(homeIdentity.homeRef, 'homeIdentity.homeRef');
   portableRef(homeIdentity.companionLineageRef, 'homeIdentity.companionLineageRef');
-
   const identitySeed = [
-    runtimeReceipt.receiptRef,
-    runtimeReceipt.sourceIdentity.revision,
     homeIdentity.homeRef,
     homeIdentity.companionLineageRef,
+    HERETIC_RUNTIME_IDENTITY.modelRef,
+    HERETIC_RUNTIME_IDENTITY.modelProfileRef,
+    HERETIC_RUNTIME_ADAPTER_REF,
   ].join('|');
-  const bindingRef = digestRef('binding.vexlife.heretic-persistent-runtime', identitySeed);
-  const observationRef = digestRef('observation.vexlife.heretic-persistent-runtime', `${identitySeed}|${runtimeReceipt.runtime.pid}`);
+  return digestRef('binding.vexlife.heretic-persistent-runtime', identitySeed);
+}
+
+export function formHereticPersistentRuntimeStoppedObservation({ receipt, homeIdentity, stopResult }) {
+  const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
+  const bindingRef = formHereticPersistentRuntimeBindingRef(homeIdentity);
+  if (!object(stopResult)
+      || stopResult.disposition !== 'STOPPED_EXACT_OWNED_MLX_RUNTIME'
+      || stopResult.pid !== runtimeReceipt.runtime.pid
+      || stopResult.processTerminationPerformed !== true
+      || !object(stopResult.stop)
+      || stopResult.stop.exactOwnershipVerified !== true
+      || stopResult.stop.verifiedNotLive !== true
+      || stopResult.stop.processGroupId !== runtimeReceipt.runtime.processGroupId
+      || stopResult.stop.state !== 'RETIRED_VERIFIED') {
+    fail('HERETIC_RUNTIME_STOP_EVIDENCE_INVALID', 'Heretic stopped-runtime observation requires one exact #636 owned-stop result');
+  }
+  const stopEvidenceCore = {
+    runtimeReceiptRef: runtimeReceipt.receiptRef,
+    runtimePid: runtimeReceipt.runtime.pid,
+    processGroupId: runtimeReceipt.runtime.processGroupId,
+    stopDisposition: stopResult.disposition,
+    stopState: stopResult.stop.state,
+    signalSent: stopResult.stop.signalSent ?? null,
+    exactOwnershipVerified: true,
+    verifiedNotLive: true,
+  };
+  const stopEvidenceRef = digestRef(
+    'evidence.vexlife.heretic-persistent-runtime-stop',
+    JSON.stringify(stopEvidenceCore),
+  );
+  const observationRef = digestRef(
+    'observation.vexlife.heretic-persistent-runtime',
+    `${bindingRef}|${stopEvidenceRef}|STOPPED`,
+  );
+  return freezeDeep({
+    schemaVersion: 'vexlife.companion-runtime-adapter-observation/v1',
+    truthClass: 'FOREIGN_PLATFORM_RUNTIME_OBSERVATION',
+    observationRef,
+    adapterRef: runtimeReceipt.runtimeAdapterRef,
+    bindingRef,
+    homeRef: homeIdentity.homeRef,
+    runtimeOwnershipState: 'NO_OWNED_RUNTIME',
+    runtimeState: 'STOPPED',
+    qualificationState: 'STALE',
+    safeReentryState: 'AVAILABLE',
+    currentness: 'CURRENT',
+    evidenceRefs: [
+      runtimeReceipt.receiptRef,
+      stopEvidenceRef,
+    ],
+  });
+}
+
+export function formHereticPersistentRuntimeLink({ receipt, homeIdentity }) {
+  const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
+  const bindingRef = formHereticPersistentRuntimeBindingRef(homeIdentity);
+  const observationSeed = [
+    bindingRef,
+    runtimeReceipt.receiptRef,
+    runtimeReceipt.sourceIdentity.revision,
+    String(runtimeReceipt.runtime.pid),
+  ].join('|');
+  const observationRef = digestRef('observation.vexlife.heretic-persistent-runtime', observationSeed);
   const sourceRefs = [
     runtimeReceipt.receiptRef,
     `git.vextreme-sdk.${runtimeReceipt.sourceIdentity.revision}`,
