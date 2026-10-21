@@ -5,8 +5,8 @@
     {
       "path": "blueprint/artifact-registry.json",
       "mode": "100644",
-      "bytes": 6798,
-      "sha256": "8dbda84e7669a26af9e0456a9a52acecbcf1a49d7012533fd1df12be8e3c0bc0"
+      "bytes": 12357,
+      "sha256": "a36a0af4d3a8747330d9ad46c8a20665e7c93efb85118aeae041dda27848cbfa"
     },
     {
       "path": "docs/PROJECT-RECONCILIATION.md",

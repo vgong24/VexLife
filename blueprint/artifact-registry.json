@@ -142,6 +142,116 @@
       "maxBytes": 6722759,
       "sourceRef": "hf.mlx-community.qwen3.5-4b-mlx-4bit.32f3e8ecf65426fc3306969496342d504bfa13f3",
       "licenseRef": "license.apache-2.0.qwen3.5"
+    },
+    {
+      "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.gitattributes",
+      "filename": ".gitattributes",
+      "mediaType": "text/plain",
+      "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930",
+      "expectedBytes": 1570,
+      "maxBytes": 1570,
+      "sourceRef": "hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57",
+      "licenseRef": "license.apache-2.0.qwen3.8-heretic"
+    },
+    {
+      "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.readme",
+      "filename": "README.md",
+      "mediaType": "text/markdown",
+      "sha256": "43d4f27187bedb6668bee8e29578e3279fdef77b76ad176580c2e60cb1953b1a",
+      "expectedBytes": 3686,
+      "maxBytes": 3686,
+      "sourceRef": "hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57",
+      "licenseRef": "license.apache-2.0.qwen3.8-heretic"
+    },
+    {
+      "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.chat-template",
+      "filename": "chat_template.jinja",
+      "mediaType": "text/plain",
+      "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+      "expectedBytes": 8952,
+      "maxBytes": 8952,
+      "sourceRef": "hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57",
+      "licenseRef": "license.apache-2.0.qwen3.8-heretic"
+    },
+    {
+      "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.config",
+      "filename": "config.json",
+      "mediaType": "application/json",
+      "sha256": "21ec916f33652b2433e289cc999a0a75ea42958b2770c0973d31d6006941bb94",
+      "expectedBytes": 4192,
+      "maxBytes": 4192,
+      "sourceRef": "hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57",
+      "licenseRef": "license.apache-2.0.qwen3.8-heretic"
+    },
+    {
+      "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.generation-config",
+      "filename": "generation_config.json",
+      "mediaType": "application/json",
+      "sha256": "d0d0ed2e37cdfafef4a5067d5ea2407b05f4fb50526e47c008a5b235d50240fb",
+      "expectedBytes": 214,
+      "maxBytes": 214,
+      "sourceRef": "hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57",
+      "licenseRef": "license.apache-2.0.qwen3.8-heretic"
+    },
+    {
+      "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.model-00001-of-00003-safetensors",
+      "filename": "model-00001-of-00003.safetensors",
+      "mediaType": "application/octet-stream",
+      "sha256": "075eac5fbba3951bc4870c1ac65d684c32e0abb24284201bd27f49df56735963",
+      "expectedBytes": 5328325648,
+      "maxBytes": 5328325648,
+      "sourceRef": "hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57",
+      "licenseRef": "license.apache-2.0.qwen3.8-heretic"
+    },
+    {
+      "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.model-00002-of-00003-safetensors",
+      "filename": "model-00002-of-00003.safetensors",
+      "mediaType": "application/octet-stream",
+      "sha256": "d936fce99536decc4e0584590305acf2af461d867d8c9a79e2dfbdd328b14e5c",
+      "expectedBytes": 5354185130,
+      "maxBytes": 5354185130,
+      "sourceRef": "hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57",
+      "licenseRef": "license.apache-2.0.qwen3.8-heretic"
+    },
+    {
+      "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.model-00003-of-00003-safetensors",
+      "filename": "model-00003-of-00003.safetensors",
+      "mediaType": "application/octet-stream",
+      "sha256": "139547bce74259fa4181a9c1b6664c1d14ffa3763e998ea52f0be7fdf12955bb",
+      "expectedBytes": 4450532735,
+      "maxBytes": 4450532735,
+      "sourceRef": "hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57",
+      "licenseRef": "license.apache-2.0.qwen3.8-heretic"
+    },
+    {
+      "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.model-safetensors-index",
+      "filename": "model.safetensors.index.json",
+      "mediaType": "application/json",
+      "sha256": "a2161f6a6c9f7c434145f97a4a4262a74eb3e16a95088e713754eb108b198511",
+      "expectedBytes": 189789,
+      "maxBytes": 189789,
+      "sourceRef": "hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57",
+      "licenseRef": "license.apache-2.0.qwen3.8-heretic"
+    },
+    {
+      "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.tokenizer",
+      "filename": "tokenizer.json",
+      "mediaType": "application/json",
+      "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523",
+      "expectedBytes": 19989325,
+      "maxBytes": 19989325,
+      "sourceRef": "hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57",
+      "licenseRef": "license.apache-2.0.qwen3.8-heretic"
+    },
+    {
+      "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.tokenizer-config",
+      "filename": "tokenizer_config.json",
+      "mediaType": "application/json",
+      "sha256": "5d9c0d3314a253b714ddbbfeef7a55e9295c45c3da9f5fd9907dae6ebe6cc731",
+      "expectedBytes": 1265,
+      "maxBytes": 1265,
+      "sourceRef": "hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57",
+      "licenseRef": "license.apache-2.0.qwen3.8-heretic"
     }
   ]
 }
