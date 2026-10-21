@@ -17,8 +17,8 @@
     {
       "path": "src/core/vex-core-family-session-authority.mjs",
       "mode": "100644",
-      "bytes": 8426,
-      "sha256": "32288e237c12e520363bf7d8a455fd2f68cbab04c95ffdaf16feaf7d6ddf8ba1"
+      "bytes": 8449,
+      "sha256": "ce960afb42b19a2813f6ca3900be65ae29192b088b46e275643da195035fe5b3"
     },
     {
       "path": "src/core/vex-self-capability-frame.mjs",
