@@ -1,0 +1,54 @@
+[
+  {
+    "moduleRef": "module.vexlife.core.project-reconciliation",
+    "path": "src/core/project-reconciliation.mjs",
+    "role": "Join exact Project Continuity, repository/orientation, canonical Build Health validation evidence and normalized provider observations into read-only CURRENT_IN_REVIEW, REVERIFY_REQUIRED, COMPLETION_EVIDENCE_READY or HELD_UNKNOWN dispositions without becoming a Workgraph, proof, provider or lifecycle owner.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "registry.vexlife.project-reconciliation.001",
+      "registry.vexlife.project-continuity.001",
+      "orientation.vexlife.dedicated-repository.001",
+      "registry.vexlife.build-health.001",
+      "registry.vexlife.intent-orchestration.001",
+      "module.vexlife.core.build-health",
+      "module.vexlife.core.project-continuity",
+      "module.vexlife.core.intent-validation",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.project-reconciliation"
+    ],
+    "tests": [
+      "test/project-reconciliation.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/project-reconciliation-registry.json",
+      "docs/PROJECT-RECONCILIATION.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.script.project-reconciliation",
+    "path": "scripts/project-reconciliation.mjs",
+    "role": "Recompile exact CURRENT Project Continuity from Vex Home and reconcile explicit source-managed relation, Orientation, Build Health validation-evidence and normalized provider-observation inputs; performs no Home, provider, source, Workgraph or lifecycle mutation.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.project-continuity",
+      "module.vexlife.core.project-reconciliation",
+      "module.vexlife.core.intent-workgraph-runtime-snapshot",
+      "registry.vexlife.project-reconciliation.001",
+      "registry.vexlife.project-continuity.001",
+      "registry.vexlife.build-health.001",
+      "registry.vexlife.intent-orchestration.001",
+      "blueprint/intent-trust-snapshot.json"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/project-reconciliation.test.mjs"
+    ],
+    "changeMap": [
+      "package.json"
+    ]
+  }
+]

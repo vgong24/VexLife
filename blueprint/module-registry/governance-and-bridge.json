@@ -88,6 +88,30 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.server-family-conversation-capability",
+    "path": "src/core/server-family-conversation-capability.mjs",
+    "role": "Source-owned serving boundary that exposes current Family Conversation bootstrap/list/read/history/append semantics over already-resolved authority without owning transport, session identity, Home authority, or canonical stores.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.browser-family-conversation-bridge",
+      "module.vexlife.core.conversation-store"
+    ],
+    "writes": [
+      "Vex Home conversations/** only through existing Family Conversation and Conversation Store owners"
+    ],
+    "loadedBy": [
+      "scripts/serve-browser-core.mjs"
+    ],
+    "tests": [
+      "test/server-family-conversation-capability.test.mjs",
+      "test/browser-family-conversation-server-composition.test.mjs"
+    ],
+    "changeMap": [
+      "docs/SERVER-FAMILY-CONVERSATION-CAPABILITY.md",
+      "scripts/serve-browser-core.mjs"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.build-health",
     "path": "src/core/build-health.mjs",
     "role": "Validates source-managed repository checks and derives compact semantic current/health projections.",

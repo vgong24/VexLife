@@ -60,3 +60,22 @@
 @media(max-width:760px){.purpose-workspace-evolution__related-journal-fields{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.purpose-workspace-evolution,.purpose-workspace-evolution *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 @media(forced-colors:active){.purpose-workspace-evolution :focus-visible{outline-color:Highlight}}
+
+/* P0B-B05 canonical Project consumer. Board positions are projection only; move requests
+   always re-render authoritative Project truth rather than mutating cards locally. */
+.purpose-workspace-evolution__project{display:grid;gap:12px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--base)}
+.purpose-workspace-evolution__project h3{margin:0;font:650 19px/1.35 var(--sans)}
+.purpose-workspace-evolution__project-controls{display:flex;gap:8px;flex-wrap:wrap}
+.purpose-workspace-evolution__project-board{display:grid;grid-template-columns:repeat(5,minmax(180px,1fr));gap:10px;overflow-x:auto;padding-bottom:4px}
+.purpose-workspace-evolution__project-lane{display:grid;align-content:start;gap:8px;min-width:180px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--raised)}
+.purpose-workspace-evolution__project-lane h4{margin:0;font:650 14px/1.4 var(--sans)}
+.purpose-workspace-evolution__project-cards,.purpose-workspace-evolution__project-graph-nodes{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.purpose-workspace-evolution__project-card,.purpose-workspace-evolution__project-graph-node{display:grid;gap:5px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--base)}
+.purpose-workspace-evolution__project-card[draggable="true"]{cursor:grab}
+.purpose-workspace-evolution__project-card-state,.purpose-workspace-evolution__project-evidence,.purpose-workspace-evolution__project-meta,.purpose-workspace-evolution__project-empty,.purpose-workspace-evolution__project-lane-empty,.purpose-workspace-evolution__project-feedback{margin:0;color:var(--muted);font:400 13px/1.45 var(--sans)}
+.purpose-workspace-evolution__project-card-actions{display:flex;gap:6px;flex-wrap:wrap;padding-top:4px}
+.purpose-workspace-evolution__project-move{min-height:44px;padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:var(--overlay);color:var(--text);font:600 12px/1.35 var(--sans)}
+.purpose-workspace-evolution__project-feedback{padding:8px 10px;border-inline-start:3px solid var(--info);background:var(--overlay)}
+.purpose-workspace-evolution__project-graph{display:grid;gap:10px}
+.purpose-workspace-evolution__project-graph-node{grid-template-columns:minmax(0,1fr) auto;align-items:center}
+@media(max-width:760px){.purpose-workspace-evolution__project-board{grid-template-columns:repeat(10,minmax(210px,1fr))}}

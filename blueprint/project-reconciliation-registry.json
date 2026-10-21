@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "vexlife.project-reconciliation-registry/v1",
+  "registryRef": "registry.vexlife.project-reconciliation.001",
+  "registryVersion": 1,
+  "purpose": "Relate exact Project work to repository/provider/proof evidence and deterministically classify current review, required reverification, or earned completion evidence without owning Workgraph lifecycle mutation.",
+  "sourceOwners": {
+    "projectContinuity": "registry.vexlife.project-continuity.001",
+    "repositoryOrientation": "orientation.vexlife.dedicated-repository.001",
+    "semanticProof": "registry.vexlife.build-health.001",
+    "workLifecycle": "registry.vexlife.intent-orchestration.001"
+  },
+  "schemas": {
+    "evidenceRelation": "vexlife.project-evidence-relation/v1",
+    "providerObservation": "vexlife.project-provider-observation/v1",
+    "reconciliation": "vexlife.project-reconciliation/v1"
+  },
+  "dispositions": [
+    "CURRENT_IN_REVIEW",
+    "REVERIFY_REQUIRED",
+    "COMPLETION_EVIDENCE_READY",
+    "HELD_UNKNOWN"
+  ],
+  "providerStates": [
+    "OPEN",
+    "MERGED",
+    "CLOSED_UNMERGED",
+    "UNKNOWN"
+  ],
+  "providerCheckStates": [
+    "SUCCESS",
+    "PENDING",
+    "FAILED",
+    "UNKNOWN"
+  ],
+  "nonCollapseLaws": [
+    "GITHUB_ISSUE != WORK_NODE",
+    "PR_STATE != WORK_STATE",
+    "CHECK_SUCCESS != SEMANTIC_PROOF_BY_ITSELF",
+    "PROVIDER_TIMESTAMP != CURRENTNESS",
+    "PROVIDER_OBSERVATION != SOURCE_AUTHORITY",
+    "RECONCILIATION_DISPOSITION != TRANSITION_AUTHORITY",
+    "PR_MERGED != WORK_CLOSED",
+    "COMPLETION_EVIDENCE_READY != COMPLETED",
+    "STALE_PROOF -> REVERIFY_REQUIRED",
+    "EXACT_POST_MERGE_TREE + CURRENT_PROOF -> COMPLETION_EVIDENCE_READY"
+  ]
+}
