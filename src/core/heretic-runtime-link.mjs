@@ -173,6 +173,57 @@ export function formHereticPersistentRuntimeBindingRef(homeIdentity) {
   return digestRef('binding.vexlife.heretic-persistent-runtime', identitySeed);
 }
 
+export function formHereticPersistentRuntimeStoppedObservation({ receipt, homeIdentity, stopResult }) {
+  const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
+  const bindingRef = formHereticPersistentRuntimeBindingRef(homeIdentity);
+  if (!object(stopResult)
+      || stopResult.disposition !== 'STOPPED_EXACT_OWNED_MLX_RUNTIME'
+      || stopResult.pid !== runtimeReceipt.runtime.pid
+      || stopResult.processTerminationPerformed !== true
+      || !object(stopResult.stop)
+      || stopResult.stop.exactOwnershipVerified !== true
+      || stopResult.stop.verifiedNotLive !== true
+      || stopResult.stop.processGroupId !== runtimeReceipt.runtime.processGroupId
+      || stopResult.stop.state !== 'RETIRED_VERIFIED') {
+    fail('HERETIC_RUNTIME_STOP_EVIDENCE_INVALID', 'Heretic stopped-runtime observation requires one exact #636 owned-stop result');
+  }
+  const stopEvidenceCore = {
+    runtimeReceiptRef: runtimeReceipt.receiptRef,
+    runtimePid: runtimeReceipt.runtime.pid,
+    processGroupId: runtimeReceipt.runtime.processGroupId,
+    stopDisposition: stopResult.disposition,
+    stopState: stopResult.stop.state,
+    signalSent: stopResult.stop.signalSent ?? null,
+    exactOwnershipVerified: true,
+    verifiedNotLive: true,
+  };
+  const stopEvidenceRef = digestRef(
+    'evidence.vexlife.heretic-persistent-runtime-stop',
+    JSON.stringify(stopEvidenceCore),
+  );
+  const observationRef = digestRef(
+    'observation.vexlife.heretic-persistent-runtime',
+    `${bindingRef}|${stopEvidenceRef}|STOPPED`,
+  );
+  return freezeDeep({
+    schemaVersion: 'vexlife.companion-runtime-adapter-observation/v1',
+    truthClass: 'FOREIGN_PLATFORM_RUNTIME_OBSERVATION',
+    observationRef,
+    adapterRef: runtimeReceipt.runtimeAdapterRef,
+    bindingRef,
+    homeRef: homeIdentity.homeRef,
+    runtimeOwnershipState: 'NO_OWNED_RUNTIME',
+    runtimeState: 'STOPPED',
+    qualificationState: 'STALE',
+    safeReentryState: 'AVAILABLE',
+    currentness: 'CURRENT',
+    evidenceRefs: [
+      runtimeReceipt.receiptRef,
+      stopEvidenceRef,
+    ],
+  });
+}
+
 export function formHereticPersistentRuntimeLink({ receipt, homeIdentity }) {
   const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
   const bindingRef = formHereticPersistentRuntimeBindingRef(homeIdentity);
