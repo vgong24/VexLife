@@ -23,8 +23,8 @@
     {
       "path": "test/browser-model-connection-server-composition.test.mjs",
       "mode": "100644",
-      "bytes": 7199,
-      "sha256": "2d60360fb77be8a6085293c3419ba1dac473bbadd253398901036f2785935fbd"
+      "bytes": 8924,
+      "sha256": "773c4c69744f0ca8ab191e7eaa8330e4206099b86ba2ae6e75d7d5e55871cb2a"
     },
     {
       "path": "test/vex-family-group-context-runtime.test.mjs",

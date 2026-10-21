@@ -8,7 +8,7 @@ import { formVexSelfCapabilityFrame } from './vex-self-capability-frame.mjs';
 export const MODEL_CONNECTION_TURN_COMPOSER_SCHEMA = 'vexlife.model-connection-turn-composer/v1';
 
 const CAPABILITY_RUNTIME_SCHEMA = 'vexlife.capability-assimilation-runtime/v1';
-const ADOPTED_MODE = 'ADOPTED_READ_ONLY';
+const ADOPTED_MODES = new Set(['ADOPTED_READ_ONLY', 'ADOPTED_AUTHORIZED_EFFECT']);
 const DISPATCH_SCHEMA = 'vexlife.capability-assimilation-scheduler-dispatch/v1';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const HEX64 = /^[0-9a-f]{64}$/u;
@@ -61,7 +61,7 @@ function adoptedCapabilityInput(runtime) {
   if (!object(runtime) || runtime.schemaVersion !== CAPABILITY_RUNTIME_SCHEMA) {
     return { state: 'UNKNOWN_RUNTIME_PROJECTION', value: null };
   }
-  if (runtime.mode !== ADOPTED_MODE) {
+  if (!ADOPTED_MODES.has(runtime.mode)) {
     return { state: 'UNKNOWN_CAPABILITY_INPUT_NOT_PROJECTED', value: null };
   }
   const input = runtime.capabilityFrameInput;

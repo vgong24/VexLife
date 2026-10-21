@@ -27,6 +27,7 @@ import {
 import {
   createVexAssemblyCapabilityDomainSupport
 } from '../src/core/vex-assembly-capability-domains.mjs';
+import { createTypedCommandEffectSupport } from '../src/core/typed-command-runtime.mjs';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import { compileRegistryPack } from '../src/core/registry.mjs';
 import {
@@ -611,6 +612,8 @@ export function createServerOwnedBrowserCompanionBridge({
   model = process.env.VEXLIFE_COMPANION_MODEL ?? null,
   runtimeMode = process.env.VEXLIFE_CAPABILITY_RUNTIME_MODE ??
     CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY,
+  typedCommandAuthorityPath = process.env.VEXLIFE_TYPED_COMMAND_AUTHORITY_PATH ?? null,
+  typedCommandSupportFactory = createTypedCommandEffectSupport,
   recoveryOwnerFactory = createCompanionRecoveryOwner,
   bridgeFactory = createBrowserCompanionBridge
 } = {}) {
@@ -620,6 +623,9 @@ export function createServerOwnedBrowserCompanionBridge({
   if (typeof bridgeFactory !== 'function') {
     throw new TypeError('Browser Companion bridge factory must be one function');
   }
+  if (typeof typedCommandSupportFactory !== 'function') {
+    throw new TypeError('Typed-command support factory must be one function');
+  }
   if (typeof recoveryOwnerFactory !== 'function') {
     throw new TypeError('Browser Companion recovery-owner factory must be one function');
   }
@@ -628,6 +634,15 @@ export function createServerOwnedBrowserCompanionBridge({
     : loadBlueprint(sourceRoot);
   const capabilityDomainSupport = runtimeMode === CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY
     ? createVexAssemblyCapabilityDomainSupport({ sourceRoot, home: companionHome })
+    : runtimeMode === CAPABILITY_ASSIMILATION_MODES.ADOPTED_AUTHORIZED_EFFECT
+      ? createVexAssemblyCapabilityDomainSupport({ sourceRoot, home: companionHome })
+      : null;
+  const typedCommandSupport = runtimeMode === CAPABILITY_ASSIMILATION_MODES.ADOPTED_AUTHORIZED_EFFECT
+    ? typedCommandSupportFactory({
+        sourceRoot,
+        runtimeRoot: path.join(companionHome, 'runtime'),
+        authorityPath: typedCommandAuthorityPath
+      })
     : null;
   const baseCapabilityRuntime = capabilityRuntimeBundle
     ? createCapabilityAssimilationRuntime({
@@ -635,7 +650,8 @@ export function createServerOwnedBrowserCompanionBridge({
         processFactoryDefinition: capabilityRuntimeBundle.factory,
         schedulerRegistry: capabilityRuntimeBundle.schedulerRegistry,
         mode: runtimeMode,
-        executors: capabilityDomainSupport?.executors ?? {}
+        executors: capabilityDomainSupport?.executors ?? {},
+        authorizedEffectSupport: typedCommandSupport
       })
     : null;
   const capabilityRuntime = baseCapabilityRuntime && capabilityDomainSupport

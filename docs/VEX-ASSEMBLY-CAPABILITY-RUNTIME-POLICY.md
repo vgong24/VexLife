@@ -32,6 +32,14 @@ scripts/serve-browser.mjs
 
 `serve-browser.mjs` imports the bootstrap module before `serve-browser-core.mjs`. The bootstrap validates the exact policy, resolves the mode, and sets `VEXLIFE_CAPABILITY_RUNTIME_MODE` before the core module creates its server-owned Companion runtime.
 
+## Authorized-effect mode
+
+`ADOPTED_AUTHORIZED_EFFECT` is an explicit server-owned override. It is not an operational-profile default and is not selectable by prompt, model output, or browser request. The server may bind `VEXLIFE_TYPED_COMMAND_AUTHORITY_PATH` only to a current authority record inside the selected Home runtime domain.
+
+The startup policy still performs zero effects. Runtime execution remains separately gated by the typed-command registry, one-time authority, Process Factory plan, current capability/resource stages, Native Worker exact executable binding, and verified completion.
+
+The first admitted command is current repository orientation only; arbitrary shell/process access and source mutation remain held.
+
 ## Boundaries
 
 ```text
