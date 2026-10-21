@@ -10,6 +10,7 @@ import {
   HERETIC_TRANSPORT_CLASS,
   formHereticPersistentRuntimeBindingRef,
   formHereticPersistentRuntimeLink,
+  formHereticPersistentRuntimeStoppedObservation,
   validateHereticPersistentRuntimeReceipt,
 } from '../src/core/heretic-runtime-link.mjs';
 
@@ -199,6 +200,66 @@ test('binding identity survives runtime receipt/PID/source refresh while runtime
     formHereticPersistentRuntimeBindingRef(differentLineage),
     first.companionBinding.bindingRef,
   );
+});
+
+
+test('exact #636 owned stop projects RECOVERABLE-ready stopped runtime evidence on the same binding', () => {
+  const currentReceipt = receipt();
+  const healthy = formHereticPersistentRuntimeLink({ receipt: currentReceipt, homeIdentity });
+  const stopped = formHereticPersistentRuntimeStoppedObservation({
+    receipt: currentReceipt,
+    homeIdentity,
+    stopResult: {
+      disposition: 'STOPPED_EXACT_OWNED_MLX_RUNTIME',
+      pid: currentReceipt.runtime.pid,
+      processTerminationPerformed: true,
+      stop: {
+        state: 'RETIRED_VERIFIED',
+        exactOwnershipVerified: true,
+        verifiedNotLive: true,
+        signalSent: 'SIGTERM',
+        processGroupId: currentReceipt.runtime.processGroupId,
+      },
+    },
+  });
+
+  assert.equal(stopped.bindingRef, healthy.companionBinding.bindingRef);
+  assert.equal(stopped.homeRef, homeIdentity.homeRef);
+  assert.equal(stopped.adapterRef, HERETIC_RUNTIME_ADAPTER_REF);
+  assert.equal(stopped.runtimeOwnershipState, 'NO_OWNED_RUNTIME');
+  assert.equal(stopped.runtimeState, 'STOPPED');
+  assert.equal(stopped.qualificationState, 'STALE');
+  assert.equal(stopped.safeReentryState, 'AVAILABLE');
+  assert.equal(stopped.currentness, 'CURRENT');
+  assert.notEqual(stopped.observationRef, healthy.runtimeObservation.observationRef);
+  assert.ok(stopped.evidenceRefs.includes(currentReceipt.receiptRef));
+});
+
+test('stopped-runtime projection rejects forged or wrong-process stop evidence', () => {
+  const currentReceipt = receipt();
+  const baseStop = {
+    disposition: 'STOPPED_EXACT_OWNED_MLX_RUNTIME',
+    pid: currentReceipt.runtime.pid,
+    processTerminationPerformed: true,
+    stop: {
+      state: 'RETIRED_VERIFIED',
+      exactOwnershipVerified: true,
+      verifiedNotLive: true,
+      signalSent: 'SIGTERM',
+      processGroupId: currentReceipt.runtime.processGroupId,
+    },
+  };
+  for (const stopResult of [
+    { ...baseStop, pid: currentReceipt.runtime.pid + 1 },
+    { ...baseStop, stop: { ...baseStop.stop, exactOwnershipVerified: false } },
+    { ...baseStop, stop: { ...baseStop.stop, verifiedNotLive: false } },
+    { ...baseStop, stop: { ...baseStop.stop, processGroupId: currentReceipt.runtime.processGroupId + 1 } },
+  ]) {
+    assert.throws(
+      () => formHereticPersistentRuntimeStoppedObservation({ receipt: currentReceipt, homeIdentity, stopResult }),
+      (error) => error?.code === 'HERETIC_RUNTIME_STOP_EVIDENCE_INVALID',
+    );
+  }
 });
 
 // [VXG RealForever]
