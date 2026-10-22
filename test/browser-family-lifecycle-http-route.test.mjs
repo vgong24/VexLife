@@ -10,6 +10,7 @@ import { readFamilySpace } from '../src/core/family-space-store.mjs';
 import {
   BROWSER_FAMILY_CONVERSATION_API_PATH,
   BROWSER_FAMILY_LIFECYCLE_API_PATH,
+  BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH,
   createVexLifeBrowserServer
 } from '../scripts/serve-browser.mjs';
 
@@ -126,6 +127,75 @@ test('LFB-10 HTTP HOST uses dedicated server lifecycle authority and rejects bro
   });
   assert.equal(forged.status,400);
   assert.equal(forged.body.failureCode,'BROWSER_FAMILY_LIFECYCLE_UNTRUSTED_FIELD');
+});
+
+test('LFB-10 fresh HOST owner-only GROUP is immediately bootstrap-visible and readable',async t=>{
+  const home=tempHome(t);
+  const current=authority();
+  const server=createVexLifeBrowserServer({
+    companionBridge:fakeCompanion(),
+    familyConversationHome:home,
+    familyLifecycleHome:home,
+    familyConversationNow:()=>T0,
+    familyLifecycleNow:()=>T0,
+    familyLifecycleInstanceRef:'instance.vf07c0.http-owner-only',
+    resolveFamilyConversationAuthority:async()=>current,
+    resolveFamilyLifecycleAuthority:async()=>current
+  });
+  const base=await listen(server,t);
+
+  const hosted=await post(base,{
+    operation:'HOST',
+    intent:{idempotencyKey:'intent.vf07c0.http-owner-only-host'}
+  });
+  assert.equal(hosted.status,200);
+
+  const bootstrapResponse=await fetch(base+BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH);
+  assert.equal(bootstrapResponse.status,200);
+  const bootstrap=await bootstrapResponse.json();
+  assert.equal(bootstrap.state,'CURRENT');
+  assert.equal(bootstrap.rooms.length,1);
+  assert.equal(bootstrap.rooms[0].spaceRef,hosted.body.result.spaceRef);
+  assert.equal(bootstrap.rooms[0].channelRef,hosted.body.result.channelRef);
+  assert.deepEqual(bootstrap.rooms[0].audience,[{
+    principalRef:'principal.victor',
+    role:'OWNER'
+  }]);
+
+  const historyResponse=await fetch(base+BROWSER_FAMILY_CONVERSATION_API_PATH,{
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({
+      operation:'READ_THREAD_HISTORY',
+      intent:{
+        spaceRef:hosted.body.result.spaceRef,
+        channelRef:hosted.body.result.channelRef,
+        expectedMembershipGeneration:hosted.body.result.membershipGeneration
+      }
+    })
+  });
+  assert.equal(historyResponse.status,200);
+  const history=await historyResponse.json();
+  assert.equal(history.state,'CURRENT');
+  assert.deepEqual(history.messages,[]);
+
+  const appendResponse=await fetch(base+BROWSER_FAMILY_CONVERSATION_API_PATH,{
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({
+      operation:'APPEND',
+      intent:{
+        spaceRef:hosted.body.result.spaceRef,
+        channelRef:hosted.body.result.channelRef,
+        content:'Owner-only send must remain held.',
+        expectedMembershipGeneration:hosted.body.result.membershipGeneration,
+        idempotencyKey:'intent.vf07c0.http-owner-only-append'
+      }
+    })
+  });
+  assert.equal(appendResponse.status,403);
+  const appendHeld=await appendResponse.json();
+  assert.equal(appendHeld.failureCode,'BROWSER_FAMILY_BRIDGE_DENIED');
 });
 
 test('LFB-10 HTTP repeated LEAVE reaches accepted no-replay recovery path',async t=>{
