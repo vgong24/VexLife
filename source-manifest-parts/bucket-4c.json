@@ -23,8 +23,8 @@
     {
       "path": "scripts/serve-browser.mjs",
       "mode": "100644",
-      "bytes": 13658,
-      "sha256": "c187132c03b7e18116b659e3bbcdaacfb1f95e07a846b5de771b868e8a9f3f85"
+      "bytes": 22020,
+      "sha256": "fdfa22736adebc9a02f7ec449b87bc956334b99b7d58e42c2fddc103a0f49c00"
     }
   ]
 }

@@ -25,6 +25,12 @@
       "mode": "100644",
       "bytes": 20951,
       "sha256": "f592fa7becb98c8b01a6937e4341253bacd3b34883c70aa3a14e7c47d76ce29e"
+    },
+    {
+      "path": "scripts/vexlife-tocompletion-project.mjs",
+      "mode": "100644",
+      "bytes": 2279,
+      "sha256": "c27e665653a4c325c6cdce53d9529a15dd748610c270adaf10b4ed9f166c44d4"
     }
   ]
 }

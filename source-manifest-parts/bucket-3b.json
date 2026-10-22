@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/evolution/purpose-workspace-projection.js",
       "mode": "100644",
-      "bytes": 26041,
-      "sha256": "089cadf32b0001063dfbd7729c72e7bbd8fbee092699d0c5f51a79b2d7598796"
+      "bytes": 34939,
+      "sha256": "bb14e7a36ec22d10f7029642702c929377b792fae15bdb7204f53c0db95735d2"
     },
     {
       "path": "scripts/browser-structure-check.mjs",
@@ -17,8 +17,8 @@
     {
       "path": "scripts/serve-browser-core.mjs",
       "mode": "100644",
-      "bytes": 85762,
-      "sha256": "38bd10044289a711c9eb1ee736033e43f27a21ebfa4b6f0da20d0209a39a9197"
+      "bytes": 85242,
+      "sha256": "ed2dfa2e294245b75fdb28605faf80213780f8a4f06176d696cc9dd352e005d4"
     },
     {
       "path": "src/core/portable-behavior-contract.mjs",

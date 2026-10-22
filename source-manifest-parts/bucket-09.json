@@ -3,6 +3,12 @@
   "bucketId": "09",
   "files": [
     {
+      "path": "blueprint/projects/vexlife-tocompletion.project.json",
+      "mode": "100644",
+      "bytes": 711,
+      "sha256": "d72a85995c6391a3d0a00f987ff304717555d844b0cc81336405349bd5baa53c"
+    },
+    {
       "path": "docs/EXPERIENCE-GESTURES-AND-VESSELS.md",
       "mode": "100644",
       "bytes": 4158,

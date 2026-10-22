@@ -148,6 +148,25 @@ The final E4/E5 skill-use and held-out curriculum remains held until this runtim
 source and its exact executable evidence are accepted. Training examples must
 follow the implemented runtime contract, not invent it in advance.
 
+## Authorized typed local effect
+
+`ADOPTED_AUTHORIZED_EFFECT` extends the accepted read-only runtime only when the server can re-observe one current source-bound typed-command authority. The model receives a bounded command cue, never the authority record itself.
+
+```text
+model requests exact registered capability
+-> server revalidates one-time authority + command/parameter/work scope
+-> Process Factory compiles process.vexlife.cli.execute-typed with no effect
+-> Native Worker executes the exact Node/script/argv binding
+-> Native Worker result is explicitly consumed to DONE
+-> typed-command runtime verifies the machine completion/effect receipt
+-> existing ToolResultRelay reinjects a no-effect observation of that verified result
+-> one later Companion synthesis continues from the observation
+```
+
+The process effect and the semantic reinjection are deliberately separate owners. ToolResultRelay still reports `externalEffectsExecuted=false`; the enclosing capability runtime reports the independently verified effect receipt separately. A consumed/expired/mismatched authority makes the typed capability non-executable on the next turn.
+
+The generation-one command registry admits only `command.vexlife.orientation.current`: current Node, current `scripts/orient.mjs`, fixed private-staging arguments, repository-current working scope, and bounded JSON output. Arbitrary executable, shell, argv, working scope, source mutation and publication remain unadmitted.
+
 ## Held effects
 
 ```text

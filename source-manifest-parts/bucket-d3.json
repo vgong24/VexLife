@@ -47,8 +47,8 @@
     {
       "path": "scripts/capability-runtime-policy-bootstrap.mjs",
       "mode": "100644",
-      "bytes": 8454,
-      "sha256": "1af65c14c699fea0635371bee78c907edf44c8ba0af9def63e723ec5cc78f3e9"
+      "bytes": 8485,
+      "sha256": "e67aa0a3e3e71cc1e6b82ef535cdd61f838a60cd21deed139ec3114e6376faa3"
     },
     {
       "path": "scripts/intent-status.mjs",

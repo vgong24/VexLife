@@ -9,6 +9,12 @@
       "sha256": "92b99a29e5eaed1253cf10540e85654c09a55114a88e2b6e8f417c6b979afc10"
     },
     {
+      "path": "docs/PROJECT-PLANNING-AND-TRANSACTIONS.md",
+      "mode": "100644",
+      "bytes": 9939,
+      "sha256": "436021f27c46c49742c4ef52ad16175976a7c1e531863323a0a0570479e9c609"
+    },
+    {
       "path": "src/core/device-family.mjs",
       "mode": "100644",
       "bytes": 2254,

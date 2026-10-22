@@ -3,6 +3,12 @@
   "bucketId": "5a",
   "files": [
     {
+      "path": "blueprint/cli-typed-command-registry.json",
+      "mode": "100644",
+      "bytes": 1514,
+      "sha256": "6eff70b08a3b71f2b68f41918b1b9c430fb11d66c761d9cc2d390aacd143601f"
+    },
+    {
       "path": "scripts/evolution-status.mjs",
       "mode": "100644",
       "bytes": 2036,

@@ -27,6 +27,7 @@ import {
 import {
   createVexAssemblyCapabilityDomainSupport
 } from '../src/core/vex-assembly-capability-domains.mjs';
+import { createTypedCommandEffectSupport } from '../src/core/typed-command-runtime.mjs';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import { compileRegistryPack } from '../src/core/registry.mjs';
 import {
@@ -66,6 +67,10 @@ import {
   readBrowserFamilyConversation,
   readBrowserFamilyThreadHistory
 } from '../src/core/browser-family-conversation-bridge.mjs';
+import {
+  ServerFamilyConversationCapabilityError,
+  createServerFamilyConversationCapability
+} from '../src/core/server-family-conversation-capability.mjs';
 import {
   BrowserFamilyLifecycleBridgeError,
   executeBrowserFamilyLifecycle
@@ -607,6 +612,8 @@ export function createServerOwnedBrowserCompanionBridge({
   model = process.env.VEXLIFE_COMPANION_MODEL ?? null,
   runtimeMode = process.env.VEXLIFE_CAPABILITY_RUNTIME_MODE ??
     CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY,
+  typedCommandAuthorityPath = process.env.VEXLIFE_TYPED_COMMAND_AUTHORITY_PATH ?? null,
+  typedCommandSupportFactory = createTypedCommandEffectSupport,
   recoveryOwnerFactory = createCompanionRecoveryOwner,
   bridgeFactory = createBrowserCompanionBridge
 } = {}) {
@@ -616,6 +623,9 @@ export function createServerOwnedBrowserCompanionBridge({
   if (typeof bridgeFactory !== 'function') {
     throw new TypeError('Browser Companion bridge factory must be one function');
   }
+  if (typeof typedCommandSupportFactory !== 'function') {
+    throw new TypeError('Typed-command support factory must be one function');
+  }
   if (typeof recoveryOwnerFactory !== 'function') {
     throw new TypeError('Browser Companion recovery-owner factory must be one function');
   }
@@ -624,6 +634,15 @@ export function createServerOwnedBrowserCompanionBridge({
     : loadBlueprint(sourceRoot);
   const capabilityDomainSupport = runtimeMode === CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY
     ? createVexAssemblyCapabilityDomainSupport({ sourceRoot, home: companionHome })
+    : runtimeMode === CAPABILITY_ASSIMILATION_MODES.ADOPTED_AUTHORIZED_EFFECT
+      ? createVexAssemblyCapabilityDomainSupport({ sourceRoot, home: companionHome })
+      : null;
+  const typedCommandSupport = runtimeMode === CAPABILITY_ASSIMILATION_MODES.ADOPTED_AUTHORIZED_EFFECT
+    ? typedCommandSupportFactory({
+        sourceRoot,
+        runtimeRoot: path.join(companionHome, 'runtime'),
+        authorityPath: typedCommandAuthorityPath
+      })
     : null;
   const baseCapabilityRuntime = capabilityRuntimeBundle
     ? createCapabilityAssimilationRuntime({
@@ -631,7 +650,8 @@ export function createServerOwnedBrowserCompanionBridge({
         processFactoryDefinition: capabilityRuntimeBundle.factory,
         schedulerRegistry: capabilityRuntimeBundle.schedulerRegistry,
         mode: runtimeMode,
-        executors: capabilityDomainSupport?.executors ?? {}
+        executors: capabilityDomainSupport?.executors ?? {},
+        authorizedEffectSupport: typedCommandSupport
       })
     : null;
   const capabilityRuntime = baseCapabilityRuntime && capabilityDomainSupport
@@ -979,7 +999,11 @@ function familyConversationHttpStatus(error) {
 }
 
 function familyConversationFailurePayload(error) {
-  if (error instanceof BrowserFamilyConversationServerError || error instanceof BrowserFamilyConversationBridgeError) {
+  if (
+    error instanceof BrowserFamilyConversationServerError
+    || error instanceof BrowserFamilyConversationBridgeError
+    || error instanceof ServerFamilyConversationCapabilityError
+  ) {
     return Object.freeze({
       schemaVersion: 'vexlife.browser-family-conversation-http-failure/v1',
       state: 'HELD_FAMILY_CONVERSATION_FAILURE',
@@ -1461,6 +1485,7 @@ export async function resolveCurrentFamilyRoomBootstrap({
   familyHome,
   resolveAuthority,
   nowProvider,
+  familyCapability = null,
   resolveFamilyWorkProjection = null,
   resolveFamilySecurityProjection = null
 } = {}) {
@@ -1480,91 +1505,59 @@ export async function resolveCurrentFamilyRoomBootstrap({
     }
     throw error;
   }
-  const now = currentFamilyConversationTime(nowProvider);
-  const durable = listConversationChannelBindings({
+
+  const capability = familyCapability ?? createServerFamilyConversationCapability({
     home: familyHome,
-    limit: BROWSER_FAMILY_CONVERSATION_LIST_MAX
+    nowProvider,
+    instanceRef: 'instance.vexlife.browser-family-bootstrap',
+    appendFamilyMessage: appendBrowserFamilyMessage,
+    readFamilyConversation: readBrowserFamilyConversation,
+    readFamilyThreadHistory: readBrowserFamilyThreadHistory,
+    listFamilyChannels: listBrowserFamilyChannels,
+    readChannelBinding: readConversationChannelBinding,
+    listChannelBindings: listConversationChannelBindings
   });
-  const rooms = [];
-  const securityBindingByChannel = new Map();
-  for (const channel of durable.channels ?? []) {
-    const binding = channel?.familySpaceBinding;
-    if (!binding || binding.audienceKind !== 'GROUP') continue;
-    let visible;
-    try {
-      visible = listBrowserFamilyChannels({
-        home: familyHome,
-        intent: {
-          spaceRef: binding.spaceRef,
-          expectedMembershipGeneration: binding.membershipGeneration
-        },
-        channels: [channel],
-        membership: authority.membership,
-        lease: authority.lease,
-        currentRevocationGeneration: authority.currentRevocationGeneration,
-        now
-      });
-    } catch (error) {
-      if (
-        error instanceof BrowserFamilyConversationBridgeError
-        && ['BROWSER_FAMILY_BRIDGE_STALE', 'BROWSER_FAMILY_BRIDGE_DENIED'].includes(error.code)
-      ) continue;
-      throw error;
-    }
-    if (
-      visible?.state !== 'CURRENT'
-      || !Array.isArray(visible.channels)
-      || visible.channels.length !== 1
-      || visible.channels[0].channelRef !== channel.channelRef
-    ) continue;
-    rooms.push(Object.freeze({
-      spaceRef: binding.spaceRef,
-      channelRef: channel.channelRef,
-      threadRef: channel.threadRef,
-      kind: channel.kind,
-      membershipGeneration: binding.membershipGeneration,
-      audience: familyRoomAudienceProjection(binding),
-      familyCompanionLineageRef: binding.familyCompanionLineageRef,
-      familyCompanionIncluded: binding.familyCompanionIncluded === true
-    }));
-    securityBindingByChannel.set(channel.channelRef, binding);
-  }
-  rooms.sort((left, right) =>
-    left.spaceRef < right.spaceRef ? -1
-      : left.spaceRef > right.spaceRef ? 1
-        : left.channelRef < right.channelRef ? -1
-          : left.channelRef > right.channelRef ? 1 : 0
-  );
+  const coreBootstrap = capability.bootstrap({ authority });
+  const rooms = [...coreBootstrap.rooms];
+
   let workStatus = normalizedFamilyWorkStatus(null);
   if (typeof resolveFamilyWorkProjection === 'function' && rooms.length > 0) {
     try {
       const genericRuntimeSnapshot = await resolveFamilyWorkProjection(Object.freeze({
         request,
-        principalRef: authority.membership.principalRef,
+        principalRef: coreBootstrap.currentPrincipalRef,
         rooms: Object.freeze([...rooms])
       }));
       workStatus = projectFamilyFollowThroughStatus({
         genericRuntimeSnapshot,
-        principalRef: authority.membership.principalRef,
+        principalRef: coreBootstrap.currentPrincipalRef,
         rooms
       });
     } catch {
       workStatus = normalizedFamilyWorkStatus(null);
     }
   }
+
   const primaryRoom = rooms[0] ?? null;
+  const primaryChannel = primaryRoom
+    ? readConversationChannelBinding({ home: familyHome, channelRef: primaryRoom.channelRef })
+    : null;
+  const primaryBinding = primaryChannel?.state === 'CURRENT'
+    ? primaryChannel.channel?.familySpaceBinding ?? null
+    : null;
   const securityStatus = await resolveFamilySecurityStatus({
     resolveProjection: resolveFamilySecurityProjection,
     request,
     room: primaryRoom,
-    binding: primaryRoom ? securityBindingByChannel.get(primaryRoom.channelRef) : null,
-    principalRef: authority.membership.principalRef
+    binding: primaryBinding,
+    principalRef: coreBootstrap.currentPrincipalRef
   });
+
   return Object.freeze({
     schemaVersion: BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA,
-    state: rooms.length > 0 ? 'CURRENT' : 'EMPTY',
-    truthClass: 'CURRENT_LIVE_FAMILY',
-    currentPrincipalRef: authority.membership.principalRef,
+    state: coreBootstrap.state,
+    truthClass: coreBootstrap.truthClass,
+    currentPrincipalRef: coreBootstrap.currentPrincipalRef,
     rooms: Object.freeze(rooms),
     workStatus,
     securityStatus
@@ -1662,10 +1655,8 @@ function currentFamilyConversationChannel(familyHome, intent) {
 
 async function performFamilyConversationHttpRequest({
   request,
-  familyHome,
   resolveAuthority,
-  nowProvider,
-  instanceRef
+  familyCapability
 }) {
   const admitted = admitFamilyConversationRequest(await readBoundedJson(request, {
     maxBytes: BROWSER_FAMILY_CONVERSATION_MAX_BODY_BYTES,
@@ -1673,50 +1664,10 @@ async function performFamilyConversationHttpRequest({
     requestLabel: 'Family conversation request'
   }));
   const authority = await currentFamilyConversationAuthority(resolveAuthority, request, admitted);
-  const now = currentFamilyConversationTime(nowProvider);
-  const common = {
-    home: familyHome,
+  return familyCapability.perform({
+    operation: admitted.operation,
     intent: admitted.intent,
-    membership: authority.membership,
-    lease: authority.lease,
-    currentRevocationGeneration: authority.currentRevocationGeneration,
-    now
-  };
-
-  if (admitted.operation === 'APPEND') {
-    if (typeof instanceRef !== 'string' || instanceRef.length === 0) {
-      throw new BrowserFamilyConversationServerError(
-        'FAMILY_SERVER_INSTANCE_UNAVAILABLE',
-        'Family conversation server writer identity is unavailable',
-        503
-      );
-    }
-    return appendBrowserFamilyMessage({
-      ...common,
-      channel: currentFamilyConversationChannel(familyHome, admitted.intent),
-      instanceRef
-    });
-  }
-  if (admitted.operation === 'READ') {
-    return readBrowserFamilyConversation({
-      ...common,
-      channel: currentFamilyConversationChannel(familyHome, admitted.intent)
-    });
-  }
-  if (admitted.operation === 'READ_THREAD_HISTORY') {
-    return readBrowserFamilyThreadHistory({
-      ...common,
-      channel: currentFamilyConversationChannel(familyHome, admitted.intent)
-    });
-  }
-
-  const bindings = listConversationChannelBindings({
-    home: familyHome,
-    limit: BROWSER_FAMILY_CONVERSATION_LIST_MAX
-  });
-  return listBrowserFamilyChannels({
-    ...common,
-    channels: bindings.channels
+    authority
   });
 }
 
@@ -1741,6 +1692,7 @@ export function createVexLifeBrowserServer({
   resolveFamilyConversationAuthority = null,
   familyConversationNow = () => new Date().toISOString(),
   familyConversationInstanceRef = 'instance.vexlife.browser-family-server',
+  serverFamilyConversationCapabilityFactory = createServerFamilyConversationCapability,
   familyLifecycleHome = home,
   resolveFamilyLifecycleAuthority = null,
   familyLifecycleNow = () => new Date().toISOString(),
@@ -1760,6 +1712,20 @@ export function createVexLifeBrowserServer({
     resolveCompanionBinding,
     resolveCompanionRuntimeObservation,
     availabilityCompiler: companionAvailabilityCompiler
+  });
+  if (typeof serverFamilyConversationCapabilityFactory !== 'function') {
+    throw new TypeError('serverFamilyConversationCapabilityFactory must be a function');
+  }
+  const familyConversationCapability = serverFamilyConversationCapabilityFactory({
+    home: familyConversationHome,
+    nowProvider: familyConversationNow,
+    instanceRef: familyConversationInstanceRef,
+    appendFamilyMessage: appendBrowserFamilyMessage,
+    readFamilyConversation: readBrowserFamilyConversation,
+    readFamilyThreadHistory: readBrowserFamilyThreadHistory,
+    listFamilyChannels: listBrowserFamilyChannels,
+    readChannelBinding: readConversationChannelBinding,
+    listChannelBindings: listConversationChannelBindings
   });
   return http.createServer(async (request, response) => {
     try {
@@ -2036,6 +2002,7 @@ export function createVexLifeBrowserServer({
             familyHome: familyConversationHome,
             resolveAuthority: resolveFamilyConversationAuthority,
             nowProvider: familyConversationNow,
+            familyCapability: familyConversationCapability,
             resolveFamilyWorkProjection,
             resolveFamilySecurityProjection
           });
@@ -2055,10 +2022,8 @@ export function createVexLifeBrowserServer({
         try {
           const result = await performFamilyConversationHttpRequest({
             request,
-            familyHome: familyConversationHome,
             resolveAuthority: resolveFamilyConversationAuthority,
-            nowProvider: familyConversationNow,
-            instanceRef: familyConversationInstanceRef
+            familyCapability: familyConversationCapability
           });
           sendJson(response, 200, result);
         } catch (error) {

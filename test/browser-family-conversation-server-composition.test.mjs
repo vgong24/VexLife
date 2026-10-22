@@ -22,6 +22,7 @@ import {
 import { leaveFamilyAndContinueConversation } from '../src/core/family-membership-runtime.mjs';
 import {
   BROWSER_FAMILY_CONVERSATION_API_PATH,
+  BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH,
   createVexLifeBrowserServer
 } from '../scripts/serve-browser.mjs';
 
@@ -443,6 +444,61 @@ test('SC-06: production-default Family route has no synthetic session fallback a
   });
   assert.equal(result.status, 503);
   assert.equal(result.body.failureCode, 'FAMILY_SESSION_AUTHORITY_UNAVAILABLE');
+});
+
+
+test('SC-08: browser carrier delegates Family semantic work to ServerFamilyConversationCapability without passing raw transport', async (t) => {
+  const authority = trustedIdentity('victor');
+  const calls = [];
+  const server = createVexLifeBrowserServer({
+    companionBridge: fakeCompanion({ count: 0 }),
+    familyConversationHome: tempHome(t),
+    resolveFamilyConversationAuthority: () => authority,
+    serverFamilyConversationCapabilityFactory: (dependencies) => {
+      assert.equal(typeof dependencies.appendFamilyMessage, 'function');
+      assert.equal(typeof dependencies.readFamilyConversation, 'function');
+      assert.equal(typeof dependencies.readFamilyThreadHistory, 'function');
+      assert.equal(typeof dependencies.listFamilyChannels, 'function');
+      return Object.freeze({
+        bootstrap(input) {
+          calls.push(['BOOTSTRAP', input]);
+          return Object.freeze({
+            state: 'EMPTY',
+            truthClass: 'CURRENT_LIVE_FAMILY',
+            currentPrincipalRef: input.authority.membership.principalRef,
+            rooms: Object.freeze([])
+          });
+        },
+        perform(input) {
+          calls.push(['PERFORM', input]);
+          return Object.freeze({ state: 'CURRENT', channels: Object.freeze([]) });
+        }
+      });
+    }
+  });
+  const base = await listen(server, t);
+
+  const bootstrapResponse = await fetch(`${base}${BROWSER_FAMILY_ROOM_BOOTSTRAP_API_PATH}`);
+  assert.equal(bootstrapResponse.status, 200);
+  const bootstrap = await bootstrapResponse.json();
+  assert.equal(bootstrap.state, 'EMPTY');
+
+  const listed = await postFamily(base, {
+    operation: 'LIST',
+    intent: {
+      spaceRef: SPACE,
+      expectedMembershipGeneration: 0
+    }
+  });
+  assert.equal(listed.status, 200);
+  assert.equal(listed.body.state, 'CURRENT');
+
+  assert.deepEqual(calls.map(([kind]) => kind), ['BOOTSTRAP', 'PERFORM']);
+  assert.deepEqual(Object.keys(calls[0][1]), ['authority']);
+  assert.deepEqual(Object.keys(calls[1][1]).sort(), ['authority', 'intent', 'operation']);
+  assert.equal(Object.hasOwn(calls[1][1], 'request'), false);
+  assert.equal(Object.hasOwn(calls[1][1], 'headers'), false);
+  assert.equal(Object.hasOwn(calls[1][1], 'sessionRef'), false);
 });
 
 // [VXG RealForever]

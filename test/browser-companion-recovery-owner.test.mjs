@@ -11,11 +11,20 @@ import {
 } from '../src/core/vex-initialization.mjs';
 import {
   ACTIVATED_RUNTIME_RECOVERY_OWNER_REF,
+  HERETIC_RUNTIME_RECOVERY_OWNER_REF,
   RELEASE_RUNTIME_RECOVERY_ADAPTER_REF,
   createActivatedRuntimeCompanionRecoveryOwner,
   createCompanionRecoveryOwner,
+  createHereticRuntimeCompanionRecoveryOwner,
   createReleaseRuntimeCompanionRecoveryOwner
 } from '../src/core/browser-companion-recovery-owner.mjs';
+import {
+  HERETIC_REQUEST_MODEL,
+  HERETIC_RUNTIME_ADAPTER_REF,
+  HERETIC_RUNTIME_IDENTITY,
+  HERETIC_RUNTIME_RECEIPT_SCHEMA,
+  formHereticPersistentRuntimeBindingRef
+} from '../src/core/heretic-runtime-link.mjs';
 import { initializeLivedCompanionHome } from '../src/core/lived-companion.mjs';
 import { createServerOwnedBrowserCompanionBridge } from '../scripts/serve-browser-core.mjs';
 
@@ -72,6 +81,66 @@ function activatedRequest(identity, overrides = {}) {
     requestSha256: '3'.repeat(64),
     ...overrides
   });
+}
+
+function hereticRequest(identity, overrides = {}) {
+  return request(identity, {
+    bindingRef: formHereticPersistentRuntimeBindingRef(identity),
+    modelRefOrNull: HERETIC_RUNTIME_IDENTITY.modelRef,
+    generationRefOrNull: null,
+    runtimeAdapterRef: HERETIC_RUNTIME_ADAPTER_REF,
+    runtimeObservationRef: 'observation.runtime.heretic.stopped.test',
+    requestRef: 'request.vexlife.companion-recovery.heretic.test',
+    requestSha256: '4'.repeat(64),
+    ...overrides
+  });
+}
+
+function hereticRuntimeReceipt({ pid = 52001, receiptRef = 'receipt.vexlocalbridge.heretic-persistent-runtime.reentry-test' } = {}) {
+  return {
+    schemaVersion: HERETIC_RUNTIME_RECEIPT_SCHEMA,
+    receiptRef,
+    state: 'PERSISTENT_MLX_RUNTIME_QUALIFIED',
+    formedAt: '2026-10-20T23:59:00.000Z',
+    authorityRef: 'authority.heretic.runtime.reentry-test',
+    ...HERETIC_RUNTIME_IDENTITY,
+    modelPath: '/private/heretic/model',
+    pythonPath: '/private/heretic/env/bin/python',
+    pythonEnvironmentRoot: '/private/heretic/env',
+    endpoint: 'http://127.0.0.1:18121',
+    requestModel: HERETIC_REQUEST_MODEL,
+    sourceIdentity: {
+      repository: 'vgong24/Vextreme-SDK',
+      revision: '7'.repeat(40),
+      tree: '8'.repeat(40),
+      moduleSha256: '9'.repeat(64),
+    },
+    runtime: {
+      pid,
+      processGroupId: pid,
+      exactOwnedDetachedGroup: true,
+      args: ['-m','mlx_lm.server','--model','/private/heretic/model','--host','127.0.0.1','--port','18121'],
+    },
+    qualification: {
+      healthAndExactModelVerified: true,
+      actualChatCompletionPerformed: true,
+      loadResultRef: 'runtime-load.loopback.heretic-reentry-test',
+    },
+    effects: {
+      modelRuntime: true,
+      providerNetwork: false,
+      modelDownload: false,
+      artifactMutation: false,
+      training: false,
+      weightMutation: false,
+      memoryMutation: false,
+      activation: false,
+      succession: false,
+      publication: false,
+      repositoryMutation: false,
+      homeMutation: false,
+    },
+  };
 }
 
 function makeHome() {
@@ -174,18 +243,113 @@ test('activated recovery rejects identity drift before runtime effect', async ()
   } finally { fs.rmSync(root,{recursive:true,force:true}); }
 });
 
+test('Heretic recovery delegates to injected #636 effect, validates exact receipt, and is idempotent', async () => {
+  const {root,home,identity}=makeHome(); let calls=0;
+  try {
+    const owner=createHereticRuntimeCompanionRecoveryOwner({
+      home,
+      proofClass:'SYNTHETIC',
+      recoverPersistentRuntime:async({request:effectRequest,homeIdentity})=>{
+        calls+=1;
+        assert.equal(effectRequest.bindingRef,formHereticPersistentRuntimeBindingRef(homeIdentity));
+        const receipt=hereticRuntimeReceipt();
+        return {
+          disposition:'STARTED_NEW_EXACT_MLX_RUNTIME',
+          pid:receipt.runtime.pid,
+          endpoint:receipt.endpoint,
+          requestModel:receipt.requestModel,
+          receipt
+        };
+      }
+    });
+    const input=hereticRequest(identity);
+    const first=await owner.recover(input);
+    const second=await owner.recover(input);
+    assert.equal(calls,1);
+    assert.deepEqual(second,first);
+    assert.equal(first.effectOwnerRef,HERETIC_RUNTIME_RECOVERY_OWNER_REF);
+    assert.equal(first.bindingRef,input.bindingRef);
+    assert.equal(first.runtimeAdapterRef,HERETIC_RUNTIME_ADAPTER_REF);
+    assert.equal(first.disposition,'PERFORMED_SAME_BINDING_REENTRY');
+    assert.equal(first.postRecoveryObservationRequired,true);
+    assert.equal(first.proofClass,'SYNTHETIC');
+    assert.ok(first.sourceRefs.includes('github.issue.vextreme-sdk.636'));
+    assert.ok(first.sourceRefs.includes('receipt.vexlocalbridge.heretic-persistent-runtime.reentry-test'));
+  } finally { fs.rmSync(root,{recursive:true,force:true}); }
+});
+
+test('Heretic recovery rejects binding/model drift before delegated runtime effect', async () => {
+  const {root,home,identity}=makeHome(); let calls=0;
+  try {
+    const owner=createHereticRuntimeCompanionRecoveryOwner({
+      home,
+      proofClass:'SYNTHETIC',
+      recoverPersistentRuntime:async()=>{calls+=1;throw new Error('must not run');}
+    });
+    for (const input of [
+      hereticRequest(identity,{bindingRef:'binding.vexlife.heretic.foreign'}),
+      hereticRequest(identity,{homeRef:'vex-home.foreign'}),
+      hereticRequest(identity,{modelRefOrNull:'model.foreign'}),
+      hereticRequest(identity,{generationRefOrNull:'generation.foreign'}),
+      hereticRequest(identity,{runtimeAdapterRef:'adapter.runtime.foreign'}),
+    ]) {
+      await assert.rejects(()=>owner.recover(input));
+    }
+    assert.equal(calls,0);
+  } finally { fs.rmSync(root,{recursive:true,force:true}); }
+});
+
+test('Heretic recovery rejects drifted #636 result receipt after delegated effect', async () => {
+  const {root,home,identity}=makeHome();
+  try {
+    const owner=createHereticRuntimeCompanionRecoveryOwner({
+      home,
+      proofClass:'SYNTHETIC',
+      recoverPersistentRuntime:async()=>{
+        const receipt=hereticRuntimeReceipt();
+        receipt.modelRef='model.foreign';
+        return {
+          disposition:'STARTED_NEW_EXACT_MLX_RUNTIME',
+          pid:receipt.runtime.pid,
+          endpoint:receipt.endpoint,
+          requestModel:receipt.requestModel,
+          receipt
+        };
+      }
+    });
+    await assert.rejects(
+      ()=>owner.recover(hereticRequest(identity)),
+      /accepted Heretic runtime identity/u
+    );
+  } finally { fs.rmSync(root,{recursive:true,force:true}); }
+});
+
 test('composite recovery owner dispatches only exact owned runtime adapters', async () => {
   const calls=[];
   const owner=createCompanionRecoveryOwner({
     home:'/tmp/vexlife-unused-composite-home',
     proofClass:'SYNTHETIC',
     releaseOwnerFactory:()=>Object.freeze({recover:async(input)=>{calls.push('release');return input;}}),
-    activatedOwnerFactory:()=>Object.freeze({runtimeAdapterRef:ACTIVATED_ADAPTER_REF,recover:async(input)=>{calls.push('activated');return input;}})
+    activatedOwnerFactory:()=>Object.freeze({runtimeAdapterRef:ACTIVATED_ADAPTER_REF,recover:async(input)=>{calls.push('activated');return input;}}),
+    hereticOwnerFactory:()=>Object.freeze({runtimeAdapterRef:HERETIC_RUNTIME_ADAPTER_REF,recover:async(input)=>{calls.push('heretic');return input;}}),
+    recoverPersistentHereticRuntime:async()=>({unused:true})
   });
   await owner.recover({runtimeAdapterRef:RELEASE_RUNTIME_RECOVERY_ADAPTER_REF});
   await owner.recover({runtimeAdapterRef:ACTIVATED_ADAPTER_REF});
+  await owner.recover({runtimeAdapterRef:HERETIC_RUNTIME_ADAPTER_REF});
   await assert.rejects(()=>owner.recover({runtimeAdapterRef:'adapter.runtime.foreign'}),/RECOVERY_RUNTIME_ADAPTER_UNOWNED/u);
-  assert.deepEqual(calls,['release','activated']);
+  assert.deepEqual(calls,['release','activated','heretic']);
+
+  const noHeretic=createCompanionRecoveryOwner({
+    home:'/tmp/vexlife-unused-composite-home',
+    proofClass:'SYNTHETIC',
+    releaseOwnerFactory:()=>Object.freeze({recover:async(input)=>input}),
+    activatedOwnerFactory:()=>Object.freeze({runtimeAdapterRef:ACTIVATED_ADAPTER_REF,recover:async(input)=>input})
+  });
+  await assert.rejects(
+    ()=>noHeretic.recover({runtimeAdapterRef:HERETIC_RUNTIME_ADAPTER_REF}),
+    /RECOVERY_RUNTIME_ADAPTER_UNOWNED/u
+  );
 });
 
 test('server-owned Browser Companion composition binds one rightful recovery owner', () => {

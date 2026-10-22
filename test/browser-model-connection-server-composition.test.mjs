@@ -186,4 +186,42 @@ test('canonical module registries bind the composer to serve-browser exactly onc
   );
 });
 
+
+test('server-owned authorized-effect composition binds typed-command support without granting prompt authority', () => {
+  let captured = null;
+  let typedSupportInput = null;
+  const sentinel = Object.freeze({ ref: 'bridge.vmcf.server-tail.authorized-effect' });
+  const typedSupport = Object.freeze({
+    registryRef: 'registry.vexlife.cli-typed-commands.001',
+    currentAuthority() { return { state: 'HELD', reasonCode: 'TEST_AUTHORITY_ABSENT' }; },
+    async execute() { throw new Error('test effect executor should not run during server composition'); }
+  });
+  const companionHome = '/not-read-by-captured-authorized-effect-bridge';
+  const authorityPath = `${companionHome}/runtime/p4-authority.json`;
+  const result = createServerOwnedBrowserCompanionBridge({
+    sourceRoot: ROOT,
+    companionHome,
+    endpoint: 'http://127.0.0.1:18080',
+    model: 'Qwen3.5-4B-Q4_K_M',
+    runtimeMode: CAPABILITY_ASSIMILATION_MODES.ADOPTED_AUTHORIZED_EFFECT,
+    typedCommandAuthorityPath: authorityPath,
+    typedCommandSupportFactory(options) {
+      typedSupportInput = options;
+      return typedSupport;
+    },
+    bridgeFactory(options) {
+      captured = options;
+      return sentinel;
+    }
+  });
+
+  assert.equal(result, sentinel);
+  assert.equal(typedSupportInput.sourceRoot, ROOT);
+  assert.equal(typedSupportInput.runtimeRoot, `${companionHome}/runtime`);
+  assert.equal(typedSupportInput.authorityPath, authorityPath);
+  assert.equal(captured.capabilityRuntime.mode, CAPABILITY_ASSIMILATION_MODES.ADOPTED_AUTHORIZED_EFFECT);
+  assert.equal(typeof captured.capabilityRuntime.resolveTurn, 'function');
+  assert.equal(captured.modelConnectionComposer.schemaVersion, 'vexlife.model-connection-turn-composer/v1');
+});
+
 // [VXG RealForever]

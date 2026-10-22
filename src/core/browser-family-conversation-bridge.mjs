@@ -155,12 +155,22 @@ function assertChannelIdentity(channel, intent) {
   }
   const bindings = channel.familySpaceBinding?.audienceMemberBindings;
   const principalRefs = Array.isArray(bindings) ? bindings.map((binding) => binding?.principalRef) : [];
+  const minimumHumanAudience =
+    channel.kind === 'GROUP'
+      ? 1
+      : channel.kind === 'PRIVATE'
+        ? 2
+        : null;
   if (
-    principalRefs.length < 2
+    minimumHumanAudience === null
+    || principalRefs.length < minimumHumanAudience
     || principalRefs.some((principalRef) => typeof principalRef !== 'string')
     || new Set(principalRefs).size !== principalRefs.length
   ) {
-    fail('BROWSER_FAMILY_BRIDGE_DENIED', 'Trusted Family channel audience must contain distinct human principals');
+    fail(
+      'BROWSER_FAMILY_BRIDGE_DENIED',
+      'Trusted Family channel audience does not satisfy its human-principal minimum'
+    );
   }
 }
 

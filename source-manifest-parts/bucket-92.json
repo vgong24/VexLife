@@ -23,8 +23,8 @@
     {
       "path": "src/core/browser-family-conversation-bridge.mjs",
       "mode": "100644",
-      "bytes": 19035,
-      "sha256": "b26f38b8354a46bcd15685cbf7b2feeab29d212dbe0a1b68aad425d0c9b23d40"
+      "bytes": 19248,
+      "sha256": "0d481036fe31f4f32674b301868b4168070d28692a764eded1956638cc493e02"
     },
     {
       "path": "src/core/concern-watch-runtime-snapshot.mjs",
