@@ -178,6 +178,24 @@ test('LFB-10 fresh HOST owner-only GROUP is immediately bootstrap-visible and re
   const history=await historyResponse.json();
   assert.equal(history.state,'CURRENT');
   assert.deepEqual(history.messages,[]);
+
+  const appendResponse=await fetch(base+BROWSER_FAMILY_CONVERSATION_API_PATH,{
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({
+      operation:'APPEND',
+      intent:{
+        spaceRef:hosted.body.result.spaceRef,
+        channelRef:hosted.body.result.channelRef,
+        content:'Owner-only send must remain held.',
+        expectedMembershipGeneration:hosted.body.result.membershipGeneration,
+        idempotencyKey:'intent.vf07c0.http-owner-only-append'
+      }
+    })
+  });
+  assert.equal(appendResponse.status,403);
+  const appendHeld=await appendResponse.json();
+  assert.equal(appendHeld.failureCode,'BROWSER_FAMILY_BRIDGE_DENIED');
 });
 
 test('LFB-10 HTTP repeated LEAVE reaches accepted no-replay recovery path',async t=>{
