@@ -29,7 +29,17 @@ export const BROWSER_COMPANION_RECOVERY_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_COMPANION_PROFILE_REF = 'model-profile.vexlife.browser-companion.local';
 export const BROWSER_COMPANION_MAX_CONTENT_CHARS = 32 * 1024;
 
-const REQUEST_KEYS = new Set([
+const RUNTIME_REQUEST_KEYS = new Set([
+  'projectRef',
+  'threadRef',
+  'channelRef',
+  'content',
+  'selectedNodeRef',
+  'screenRef',
+  'semanticRelayInput',
+  'semanticRelayAction'
+]);
+const CONVERSATION_REQUEST_KEYS = new Set([
   'projectRef',
   'threadRef',
   'channelRef',
@@ -280,7 +290,57 @@ export function validateBrowserCompanionRequest(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'Companion request must be one JSON object', 400);
   }
-  const extras = Object.keys(value).filter((key) => !REQUEST_KEYS.has(key));
+  const extras = Object.keys(value).filter((key) => !RUNTIME_REQUEST_KEYS.has(key));
+  if (extras.length) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'Companion request contains unadmitted fields', 400);
+  }
+  if (!safePortableRef(value.threadRef)) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'threadRef must be one portable canonical ref', 400);
+  }
+  if (!nonempty(value.channelRef) || value.channelRef.length > 256) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'channelRef is invalid', 400);
+  }
+  if (!nonempty(value.content) || !value.content.trim() || value.content.length > BROWSER_COMPANION_MAX_CONTENT_CHARS) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'message content is empty or exceeds the bounded size', 400);
+  }
+  for (const key of ['projectRef', 'selectedNodeRef', 'screenRef']) {
+    if (value[key] !== undefined && value[key] !== null && (!nonempty(value[key]) || value[key].length > 256)) {
+      throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', `${key} is invalid`, 400);
+    }
+  }
+  const semanticRelayAction = value.semanticRelayAction ?? null;
+  if (semanticRelayAction !== null && !['CONFIRM', 'CORRECT'].includes(semanticRelayAction)) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'semanticRelayAction is not admitted', 400);
+  }
+  if (value.semanticRelayInput !== undefined && value.semanticRelayInput !== null) {
+    if (typeof value.semanticRelayInput !== 'object' || Array.isArray(value.semanticRelayInput)) {
+      throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'semanticRelayInput must be one reference-only object', 400);
+    }
+    for (const callerOwnedField of ['sourceMessageRef', 'confirmedByRef', 'confirmationReceiptRef']) {
+      if (Object.hasOwn(value.semanticRelayInput, callerOwnedField)) {
+        throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', `semanticRelayInput cannot supply ${callerOwnedField}`, 400);
+      }
+    }
+  } else if (semanticRelayAction !== null) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'semanticRelayAction requires semanticRelayInput', 400);
+  }
+  return Object.freeze({
+    projectRef: value.projectRef ?? null,
+    threadRef: value.threadRef,
+    channelRef: value.channelRef,
+    content: value.content,
+    selectedNodeRef: value.selectedNodeRef ?? null,
+    screenRef: value.screenRef ?? null,
+    semanticRelayInput: value.semanticRelayInput ? structuredClone(value.semanticRelayInput) : null,
+    semanticRelayAction
+  });
+}
+
+export function validateBrowserCompanionConversationRequest(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'Companion request must be one JSON object', 400);
+  }
+  const extras = Object.keys(value).filter((key) => !CONVERSATION_REQUEST_KEYS.has(key));
   if (extras.length) {
     throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'Companion request contains unadmitted fields', 400);
   }
@@ -839,6 +899,247 @@ export function createBrowserCompanionBridge({
       );
     }
     const request = validateBrowserCompanionRequest(input);
+    const turnRef = ref('turn.vexlife.browser-companion');
+    const requestMessageRef = ref('message.vexlife.browser-companion.request');
+    const responseMessageRef = ref('message.vexlife.browser-companion.response');
+    const relayProjection = composeBrowserRequestSemanticRelay({
+      relayInput: request.semanticRelayInput,
+      relayAction: request.semanticRelayAction,
+      requestMessageRef
+    });
+    if (relayProjection.attention) return relayProjection.attention;
+    const identity = loadBrowserCompanionHomeIdentity(home);
+    const contextSourceRefs = [
+      'source.vexlife.browser-companion',
+      ...(request.projectRef ? [request.projectRef] : []),
+      ...(request.screenRef ? [request.screenRef] : []),
+      ...(request.selectedNodeRef ? [request.selectedNodeRef] : [])
+    ];
+    activeTurnObservations.set(turnRef, {
+      turnRef,
+      cancellationTargetRef: null,
+      cancellationTargetExpiresAt: null,
+      sourceRefs: ['source.vexlife.browser-companion']
+    });
+    try {
+      const completed = await performLivedCompanionTurn({
+        ...identity,
+        instanceRef,
+        threadRef: request.threadRef,
+        channelRef: request.channelRef,
+        turnRef,
+        requestMessageRef,
+        responseMessageRef,
+        speakerRef: 'person.local-user',
+        recipientRefs: ['role.vex.companion'],
+        content: request.content,
+        requestSemanticRelay: relayProjection.relay,
+        endpointProfile: {
+          profileRef: binding.profileRef,
+          admitted: true,
+          endpoint: binding.endpoint,
+          model: binding.model
+        },
+        responseResolver: capabilityRuntime || promptContextResolver
+          ? async (resolverInput) => {
+              const livedInference = resolverInput?.inference;
+              const captureInferenceEvidence = resolverInput?.captureInferenceEvidence;
+              if (typeof livedInference !== 'function' || typeof captureInferenceEvidence !== 'function') {
+                throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'browser resolver requires one Lived-owned current-turn inference/evidence boundary');
+              }
+              const { inference: _inference, captureInferenceEvidence: _capture, ...resolverPublicInput } = resolverInput;
+              const runtimeContext = {
+                ...(resolverInput.context ?? {}),
+                projectRef: request.projectRef,
+                screenRef: request.screenRef,
+                selectedNodeRef: request.selectedNodeRef,
+                sourceRefs: contextSourceRefs
+              };
+              const evidenceTokens = [];
+              const evidenceTokenByResponse = new WeakMap();
+              const invokeLivedInference = async (input) => {
+                const value = await livedInference(input);
+                const token = captureInferenceEvidence(value);
+                if (!token) throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'browser resolver could not bind Lived-owned current-turn runtime evidence');
+                evidenceTokens.push(Object.freeze({ token, content: value.content, model: value.model }));
+                if (value && typeof value === 'object') evidenceTokenByResponse.set(value, token);
+                return value;
+              };
+              const bindVisibleResponseEvidence = (visibleResponse, { acceptedSynthesisLast = false } = {}) => {
+                if (evidenceTokens.length === 0) return null;
+                if (!visibleResponse || typeof visibleResponse.content !== 'string' || typeof visibleResponse.model !== 'string') {
+                  throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'browser resolver with runtime evidence must select a visible {content,model} response');
+                }
+                if (typeof visibleResponse === 'object') {
+                  const exactToken = evidenceTokenByResponse.get(visibleResponse) ?? null;
+                  if (exactToken) return exactToken;
+                }
+                if (acceptedSynthesisLast) {
+                  const selected = evidenceTokens.at(-1);
+                  if (!selected || selected.content !== visibleResponse.content || selected.model !== visibleResponse.model) {
+                    throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'accepted capability runtime synthesis evidence does not bind the selected visible response');
+                  }
+                  return selected.token;
+                }
+                const matches = evidenceTokens.filter((entry) =>
+                  entry.content === visibleResponse.content && entry.model === visibleResponse.model);
+                if (matches.length !== 1) {
+                  throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', `arbitrary browser resolver visible response matched ${matches.length} current-turn runtime evidence tokens`);
+                }
+                return matches[0].token;
+              };
+              let materializationConsumed = false;
+              let consumedMaterializationReceipt = null;
+              let contextualInference = invokeLivedInference;
+              if (promptContextResolver) {
+                const canonicalCapabilityController =
+                  capabilityRuntime?.schemaVersion === 'vexlife.capability-assimilation-runtime-controller/v1';
+                const formCurrentMaterialization = async () => {
+                  const selected = await promptContextResolver({
+                    ...resolverPublicInput,
+                    taskIntent: request.content,
+                    context: runtimeContext
+                  });
+                  if (selected === null || selected === undefined) return null;
+                  const materialization = materializeLivedCompanionPromptContext({
+                    ...identity,
+                    threadRef: request.threadRef,
+                    currentRequestEventRef: resolverInput.context?.currentRequestEventRef,
+                    currentRequestEventHash: resolverInput.context?.currentRequestEventHash,
+                    currentRequestSequence: resolverInput.context?.currentRequestSequence,
+                    priorConversationHeadSha256: resolverInput.context?.priorConversationHeadSha256 ?? null,
+                    currentRequestContent: resolverInput.requestContent,
+                    contextLease: selected.contextLease,
+                    continuityProjection: selected.continuityProjection,
+                    selectedConversationEventRefs: selected.selectedConversationEventRefs ?? [],
+                    memoryContext: selected.memoryContext ?? null,
+                    authorityVerifier: promptContextAuthorityVerifier
+                  });
+                  const currentObservation = activeTurnObservations.get(turnRef);
+                  if (currentObservation) {
+                    activeTurnObservations.set(turnRef, {
+                      ...currentObservation,
+                      cancellationTargetRef: selected.contextLease.cancellationTokenRef,
+                      cancellationTargetExpiresAt: selected.contextLease.expiresAt,
+                      sourceRefs: [...new Set([...currentObservation.sourceRefs, selected.contextLease.leaseRef])].sort()
+                    });
+                  }
+                  return materialization;
+                };
+                contextualInference = async (input) => {
+                  const contextualizeThisInference =
+                    canonicalCapabilityController ||
+                    input?.requestContent === resolverInput.requestContent;
+                  if (!contextualizeThisInference) return invokeLivedInference(input);
+                  const phaseMaterialization = await formCurrentMaterialization();
+                  if (phaseMaterialization === null) return invokeLivedInference(input);
+                  const contextualResponse = canonicalCapabilityController
+                    ? await invokeLivedInference({
+                        ...input,
+                        requestContent: resolverInput.requestContent,
+                        promptContextMaterialization: phaseMaterialization,
+                        supplementalRequestContent: input.requestContent
+                      })
+                    : await invokeLivedInference({
+                        ...input,
+                        promptContextMaterialization: phaseMaterialization
+                      });
+                  consumedMaterializationReceipt = contextualResponse.promptContextMaterializationReceipt ?? null;
+                  materializationConsumed = consumedMaterializationReceipt !== null;
+                  return contextualResponse;
+                };
+              }
+              if (capabilityRuntime) {
+                const resolved = await capabilityRuntime.resolveTurn({ ...resolverPublicInput, taskIntent: request.content, inference: contextualInference, context: runtimeContext });
+                const acceptedSynthesisLast = resolved?.runtimeProjection?.schemaVersion === 'vexlife.capability-assimilation-runtime/v1';
+                if (acceptedSynthesisLast) {
+                  const expectedInferenceCount = resolved.runtimeProjection.inferenceCount;
+                  if (!Number.isSafeInteger(expectedInferenceCount) || expectedInferenceCount !== evidenceTokens.length) {
+                    throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'capability runtime inference count does not match Lived-owned runtime evidence');
+                  }
+                }
+                const visibleResponse = resolved?.response ?? resolved;
+                const evidenceToken = bindVisibleResponseEvidence(visibleResponse, { acceptedSynthesisLast });
+                const receipt = materializationConsumed ? consumedMaterializationReceipt : null;
+                const forwarded = resolved && typeof resolved === 'object' && !Array.isArray(resolved) ? { ...resolved } : { response: resolved };
+                delete forwarded.actualHttpCall;
+                return {
+                  ...forwarded,
+                  contextSourceRefs: [...new Set([...(resolved?.contextSourceRefs ?? []), ...(receipt?.includedSourceRefs ?? [])])].sort(),
+                  promptContextMaterializationReceipt: receipt,
+                  modelRuntimeEvidenceToken: evidenceToken
+                };
+              }
+              const response = await contextualInference(resolverPublicInput);
+              const evidenceToken = bindVisibleResponseEvidence(response);
+              const receipt = materializationConsumed ? consumedMaterializationReceipt : null;
+              return {
+                response,
+                contextSourceRefs: receipt?.includedSourceRefs ?? [],
+                promptContextMaterializationReceipt: receipt,
+                modelRuntimeEvidenceToken: evidenceToken
+              };
+            }
+          : null,
+        contextSourceRefs,
+        timeoutMs: 120000
+      });
+      const modelConnectionComposition = modelConnectionComposer && completed.modelTurnWitness
+        ? modelConnectionComposer.composeTurn({
+            modelTurnWitness: completed.modelTurnWitness,
+            capabilityRuntime: completed.runtimeProjection,
+            currentContext: {
+              homeRef: identity.homeRef,
+              deviceRef: identity.deviceRef,
+              companionLineageRef: identity.companionLineageRef,
+              projectRef: request.projectRef ?? null,
+              threadRef: request.threadRef,
+              channelRef: request.channelRef,
+              screenRef: request.screenRef ?? null,
+              selectedNodeRef: request.selectedNodeRef ?? null
+            }
+          })
+        : null;
+      return Object.freeze({
+        schemaVersion: 'vexlife.browser-companion-turn/v1',
+        state: 'TURN_COMPLETED',
+        truthClass: 'CURRENT_LOCAL_MODEL',
+        content: completed.responseEvent.content,
+        modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
+        turnRef,
+        responseMessageRef,
+        requestEventRef: completed.requestEvent.eventRef,
+        requestEventSha256: completed.requestEvent.eventHash,
+        responseEventRef: completed.responseEvent.eventRef,
+        responseEventSha256: completed.responseEvent.eventHash,
+        requestSemanticRelay: completed.requestEvent.semanticRelay ?? null,
+        responseSemanticRelay: completed.responseEvent.semanticRelay ?? null,
+        conversationHeadSha256: completed.head.conversationHeadSha256,
+        writerLeaseReleased: completed.writerLeaseReleased === true,
+        actualHttpCall: completed.actualHttpCall === true,
+        loopbackOnly: completed.loopbackOnly === true,
+        capabilityRuntime: completed.runtimeProjection ?? null,
+        promptContextMaterialization: completed.promptContextMaterializationReceipt ?? null,
+        modelTurnWitness: completed.modelTurnWitness ?? null,
+        modelConnectionProjection: modelConnectionComposition?.modelConnectionProjection ?? null,
+        selfCapabilityFrame: modelConnectionComposition?.selfCapabilityFrame ?? null
+      });
+    } catch (error) {
+      throw publicFailureFor(error);
+    } finally {
+      activeTurnObservations.delete(turnRef);
+    }
+  }
+
+async function performConversationTurn(input) {
+    if (binding.state !== 'BOUND') {
+      throw new BrowserCompanionBridgeError(
+        binding.state === 'MISCONFIGURED' ? 'COMPANION_RUNTIME_BINDING_INVALID' : 'COMPANION_RUNTIME_UNBOUND',
+        'Local companion runtime binding is not available',
+        503
+      );
+    }
+    const request = validateBrowserCompanionConversationRequest(input);
     requireCurrentDirectCompanionBinding(request);
     const messageRefs = canonicalMessageRefs(request);
     const { requestMessageRef, responseMessageRef } = messageRefs;
@@ -1163,7 +1464,7 @@ export function createBrowserCompanionBridge({
     }
   }
 
-  return Object.freeze({ binding, instanceRef, status, performRecovery, performTurn, activeTurnCurrentness });
+  return Object.freeze({ binding, instanceRef, status, performRecovery, performTurn, performConversationTurn, activeTurnCurrentness });
 }
 
 export function browserCompanionRecoveryFailurePayload(error) {

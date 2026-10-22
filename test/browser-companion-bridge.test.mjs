@@ -10,6 +10,7 @@ import {
   BrowserCompanionBridgeError,
   createBrowserCompanionBridge,
   resolveBrowserCompanionRuntimeBinding,
+  validateBrowserCompanionConversationRequest,
   validateBrowserCompanionRequest
 } from '../src/core/browser-companion-bridge.mjs';
 import { initializeLivedCompanionHome } from '../src/core/lived-companion.mjs';
@@ -59,7 +60,7 @@ function makeHome() {
 let browserSendSequence = 0;
 function browserTurn(bridge, input) {
   browserSendSequence += 1;
-  return bridge['performTurn']({
+  return bridge.performConversationTurn({
     ...input,
     projectRef: input.projectRef ?? 'project.self-development',
     threadRef: input.threadRef ?? 'thread.self-development.open-conversation',
@@ -90,15 +91,60 @@ test('browser request cannot inject endpoint, Home, runtime or authorization aut
     screenRef: 'screen.vexlife.chat',
     selectedNodeRef: 'element.channel.companion'
   };
-  assert.equal(validateBrowserCompanionRequest(admitted).content, 'Hello Vex');
-  assert.equal(validateBrowserCompanionRequest({ ...admitted, semanticRelayInput: semanticRelayInput() }).semanticRelayInput.relayRef, 'relay.browser-companion-test');
+  assert.equal(validateBrowserCompanionConversationRequest(admitted).content, 'Hello Vex');
+  assert.equal(validateBrowserCompanionConversationRequest({ ...admitted, semanticRelayInput: semanticRelayInput() }).semanticRelayInput.relayRef, 'relay.browser-companion-test');
   for (const extra of ['endpoint', 'home', 'runtimeExecutable', 'authorization']) {
     assert.throws(
-      () => validateBrowserCompanionRequest({ ...admitted, [extra]: 'forbidden' }),
+      () => validateBrowserCompanionConversationRequest({ ...admitted, [extra]: 'forbidden' }),
       (error) => error instanceof BrowserCompanionBridgeError && error.code === 'COMPANION_REQUEST_NOT_ADMITTED'
     );
   }
 });
+
+test('generic runtime turn remains separate from durable Conversation Send while the product route stays strict', async () => {
+  const generic = {
+    threadRef: 'thread.vexlife.browser-runtime-compatibility',
+    channelRef: 'channel.local-vex.runtime-compatibility',
+    content: 'Exercise the reusable lower-level runtime seam.'
+  };
+  const admitted = validateBrowserCompanionRequest(generic);
+  assert.equal(admitted.projectRef, null);
+  assert.equal(admitted.threadRef, generic.threadRef);
+  assert.throws(
+    () => validateBrowserCompanionRequest({ ...generic, idempotencyKey: 'browser-send.must-not-enter-runtime' }),
+    (error) => error instanceof BrowserCompanionBridgeError && error.code === 'COMPANION_REQUEST_NOT_ADMITTED'
+  );
+
+  const { root, home } = makeHome();
+  const model = await startModelServer();
+  try {
+    const bridge = createBrowserCompanionBridge({
+      home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.browser-runtime-compatibility'
+    });
+    const result = await bridge.performTurn(generic);
+    assert.equal(result.state, 'TURN_COMPLETED');
+    assert.match(result.requestEventRef, /^event\.vexlife\.request\./u);
+    assert.match(result.responseMessageRef, /^message\.vexlife\.browser-companion\.response\./u);
+    assert.equal(Object.hasOwn(result, 'sendState'), false);
+    assert.equal(model.calls.length, 1);
+
+    await assert.rejects(
+      () => bridge.performConversationTurn(generic),
+      (error) => error instanceof BrowserCompanionBridgeError && error.code === 'COMPANION_REQUEST_NOT_ADMITTED'
+    );
+  } finally {
+    await model.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+
+  const serverCore = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser-core.mjs'), 'utf8');
+  assert.match(serverCore, /companionBridge\.performConversationTurn\(input\)/u);
+  assert.doesNotMatch(serverCore, /const result = await companionBridge\.performTurn\(input\)/u);
+});
+
 
 test('unbound browser companion fails closed without synthetic output', async () => {
   const { root, home } = makeHome();
@@ -738,7 +784,7 @@ test('Conversation-first browser send is durable before model failure and retrie
     });
     let firstError = null;
     await assert.rejects(
-      () => first.performTurn(send),
+      () => first.performConversationTurn(send),
       (error) => {
         firstError = error;
         return error instanceof BrowserCompanionBridgeError && error.durableSend?.state === 'DURABLE';
@@ -763,7 +809,7 @@ test('Conversation-first browser send is durable before model failure and retrie
         model: 'Qwen3.5-4B-Q4_K_M',
         instanceRef: 'instance.vexlife.browser-durable-retry'
       });
-      const completed = await retry.performTurn(send);
+      const completed = await retry.performConversationTurn(send);
       assert.equal(completed.state, 'TURN_COMPLETED');
       assert.equal(completed.requestMessageRef, firstError.durableSend.requestMessageRef);
       assert.equal(model.calls.length, 1);
@@ -798,8 +844,8 @@ test('exact browser retry reuses the completed Lived pair and Conversation respo
       model: 'Qwen3.5-4B-Q4_K_M',
       instanceRef: 'instance.vexlife.browser-completed-retry'
     });
-    const first = await bridge.performTurn(send);
-    const second = await bridge.performTurn(send);
+    const first = await bridge.performConversationTurn(send);
+    const second = await bridge.performConversationTurn(send);
     assert.equal(model.calls.length, 1);
     assert.equal(second.requestMessageRef, first.requestMessageRef);
     assert.equal(second.responseMessageRef, first.responseMessageRef);
