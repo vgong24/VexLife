@@ -1433,6 +1433,33 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.typed-command-runtime",
+    "path": "src/core/typed-command-runtime.mjs",
+    "role": "Bind one source-registered typed local process to a separate current one-time authority, exact Native Worker execution/completion, and one bounded no-effect result observation for later semantic reinjection without granting the model standing process authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.native-worker-supervisor",
+      "module.vexlife.core.utils",
+      "blueprint/cli-typed-command-registry.json"
+    ],
+    "writes": [
+      "selected Vex Home runtime Native Worker receipts/completion for the exact admitted typed-command effect only"
+    ],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
+    "tests": [
+      "test/p4-typed-local-effect.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/capability-registry.json",
+      "blueprint/capability-runtime-startup-policy.json",
+      "src/core/capability-assimilation-runtime.mjs",
+      "scripts/serve-browser-core.mjs",
+      "docs/CAPABILITY-ASSIMILATION-RUNTIME.md"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.capability-assimilation-runtime",
     "path": "src/core/capability-assimilation-runtime.mjs",
     "role": "Adopt the accepted capability-assimilation route in the real Companion: compact frontier, no-effect dependency DAG, concurrent independent reads, exact-once ToolResultRelay observations, and one later synthesis inference.",

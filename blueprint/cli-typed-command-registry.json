@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "vexlife.cli-typed-command-registry/v1",
+  "registryRef": "registry.vexlife.cli-typed-commands.001",
+  "registryVersion": 1,
+  "commands": [
+    {
+      "commandRef": "command.vexlife.orientation.current",
+      "capabilityRef": "capability.vexlife.cli.typed",
+      "effectRef": "effect.vexlife.typed-local-process",
+      "processRef": "process.vexlife.cli.execute-typed",
+      "purposeRef": "purpose.vexlife.orientation.current",
+      "humanLabel": "Read current VexLife repository orientation",
+      "executableClass": "CURRENT_NODE_RUNTIME",
+      "scriptPath": "scripts/orient.mjs",
+      "scriptSha256": "e7f502301ea4c5fe17e085ee01e6284f3fe93efd85fea959032e3a48d8d53eb9",
+      "fixedArguments": [
+        "--visibility",
+        "PRIVATE",
+        "--lifecycle",
+        "PRIVATE_STAGING"
+      ],
+      "parametersSchemaRef": "schema.vexlife.cli-typed.orientation-current.arguments.v1",
+      "allowedParameterKeys": [],
+      "workingScopeRef": "scope.vexlife.repository.current",
+      "workingDirectory": "scripts",
+      "resultContractRef": "contract.vexlife.cli-typed.orientation-current-result.v1",
+      "timeoutMs": 120000,
+      "maxStdoutBytes": 131072,
+      "effects": {
+        "process": true,
+        "network": false,
+        "sourceMutation": false,
+        "homeSemanticMutation": false,
+        "memoryMutation": false,
+        "modelMutation": false,
+        "training": false,
+        "weightMutation": false,
+        "publication": false
+      }
+    }
+  ]
+}

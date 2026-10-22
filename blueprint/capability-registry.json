@@ -154,13 +154,22 @@
     {
       "capabilityRef": "capability.vexlife.cli.typed",
       "purpose": "Execute registered typed commands with schema, working scope and resource envelope.",
+      "sourceOfTruth": "blueprint/capability-registry.json",
+      "currentness": {
+        "state": "CURRENT",
+        "sourceRef": "source.blueprint.capability-registry",
+        "sourceVersionRef": "capability-registry.v5",
+        "compatibility": "COMPATIBLE"
+      },
+      "competenceState": "BOUNDED_COMPETENT",
       "actionRefs": [
         "action.cli.execute"
       ],
       "permissionRef": "permission.cli.execute",
       "effectClass": "TYPED_LOCAL_PROCESS",
-      "defaultStage": "REQUESTABLE",
+      "defaultStage": "EXECUTABLE",
       "roleRefs": [
+        "role.vex.companion",
         "role.vex.operations",
         "role.vex.developer",
         "role.vex.reviewer"
@@ -171,7 +180,29 @@
         "platform.android",
         "platform.browser"
       ],
-      "resourceClass": "COMMAND_DECLARED"
+      "resourceClass": "COMMAND_DECLARED",
+      "parallelClass": "SERIAL_EFFECT",
+      "toolContract": {
+        "contractRef": "contract.vexlife.cli-typed.effect/v1",
+        "toolRef": "tool.vexlife.cli-typed",
+        "effectRef": "effect.vexlife.typed-local-process",
+        "argumentSchemaRef": "schema.vexlife.cli-typed.arguments/v1",
+        "resultSchemaRef": "schema.vexlife.cli-typed.observation/v1",
+        "executorRef": "executor.vexlife.typed-command.native-worker",
+        "requiredArgumentFields": [
+          "commandRef",
+          "parameters"
+        ],
+        "requiredResultFields": [
+          "summaryRef",
+          "capabilityRef",
+          "sourceRefs",
+          "currentness",
+          "payload"
+        ],
+        "maxObservationBytes": 32768,
+        "externalEffectsExecuted": true
+      }
     },
     {
       "capabilityRef": "capability.vexlife.workshop",

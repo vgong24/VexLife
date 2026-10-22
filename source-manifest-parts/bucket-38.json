@@ -25,6 +25,12 @@
       "mode": "100644",
       "bytes": 6831,
       "sha256": "60f39e902fd852d7128e889d6636388caccfdb7f985e15d0b46a82ec203fa7fd"
+    },
+    {
+      "path": "src/core/typed-command-runtime.mjs",
+      "mode": "100644",
+      "bytes": 27144,
+      "sha256": "0313fa0c38c697874c8365e4320cb45bef0d1c4f58824bb3a4d7d13ec9d458cd"
     }
   ]
 }

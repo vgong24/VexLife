@@ -5,8 +5,8 @@
     {
       "path": "blueprint/capability-runtime-startup-policy.json",
       "mode": "100644",
-      "bytes": 1181,
-      "sha256": "a006c5886d6f8bc6383a7925d4dfbde7fec3c82a5ec10dae4613e7f0e24e794c"
+      "bytes": 1214,
+      "sha256": "97100d163ab815358f6036ab2e8d81a24e61c84ac93b807edd37fcebb7344b88"
     },
     {
       "path": "scripts/generate-android-r8.mjs",
