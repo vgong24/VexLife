@@ -245,17 +245,14 @@
   {
     "moduleRef": "module.vexlife.core.conversation-send-admission",
     "path": "src/core/conversation-send-admission.mjs",
-    "role": "Forms content-addressed no-effect admission receipts binding one exact addressed Conversation send attempt to current source, membership, COMPOSER_SEND, active-turn, writer, resource and context evidence without owning append, inference or generic authority.",
+    "role": "Forms content-addressed no-effect admission receipts for one exact current addressed Conversation human append. It preserves the canonical resource/context process precondition without requiring standalone scheduler/context scaffolding and owns no append, inference or generic authority.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "module.vexlife.core.utils",
       "module.vexlife.core.conversation",
       "blueprint/fragments/actions.json",
       "blueprint/fragments/permissions.json",
-      "blueprint/process-factory/processes-conversation-and-interface.json",
-      "module.vexlife.core.lived-companion",
-      "module.vexlife.core.resource-admission",
-      "module.vexlife.core.context-lease"
+      "blueprint/process-factory/processes-conversation-and-interface.json"
     ],
     "writes": [],
     "loadedBy": [],
@@ -263,7 +260,7 @@
       "test/conversation-send-admission.test.mjs"
     ],
     "changeMap": [
-      "blueprint/feature-registry.json",
+      "src/core/conversation-store.mjs",
       "src/core/browser-companion-bridge.mjs",
       "reference/browser/modules/chat-controller.js"
     ]
@@ -1077,7 +1074,7 @@
   {
     "moduleRef": "module.vexlife.core.lived-companion",
     "path": "src/core/lived-companion.mjs",
-    "role": "Provider-neutral device-private companion turn persistence, typed failures, atomic heads, clean shutdown, and exact fresh-process resume.",
+    "role": "Provider-neutral device-private Companion turn persistence, typed failures, atomic heads, clean shutdown, exact fresh-process resume, and bounded exact-current response delivery for canonical Conversation reconciliation without whole-history enumeration or model replay.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "module.vexlife.core.utils",
@@ -1100,7 +1097,8 @@
     ],
     "changeMap": [
       "scripts/lived-companion.mjs",
-      "docs/LIVED-COMPANION-BASELINE.md"
+      "docs/LIVED-COMPANION-BASELINE.md",
+      "src/core/browser-companion-bridge.mjs"
     ]
   },
   {
@@ -1409,11 +1407,13 @@
   {
     "moduleRef": "module.vexlife.core.browser-companion-bridge",
     "path": "src/core/browser-companion-bridge.mjs",
-    "role": "Server-side browser Companion bridge that binds canonical Vex Home identity, admitted loopback runtime identity, semantic relay input, durable Lived Companion turns, and read-only Interaction Control active-turn currentness when a validated current Context Lease supplies the rightful cancellation target; capability assimilation remains optional server-owned runtime policy and internal tool observations never become human messages.",
+    "role": "Server-side Browser Companion transaction composer that validates one current Reference direct-Companion binding, derives human identity from Vex Home device.personRef, durably appends the canonical human Conversation message before Companion attention, delegates the same message refs to Lived Companion, reconciles exact completed Lived responses without model replay, and appends the canonical Companion response. Interaction Control active-turn currentness remains a separate read-only cancellation projection.",
     "platformScope": "BROWSER",
     "reads": [
       "module.vexlife.core.lived-companion",
       "module.vexlife.core.conversation",
+      "module.vexlife.core.conversation-send-admission",
+      "module.vexlife.core.conversation-store",
       "module.vexlife.core.capability-assimilation-runtime",
       "module.vexlife.core.interaction-control"
     ],
@@ -1426,7 +1426,10 @@
       "test/capability-assimilation-runtime.test.mjs"
     ],
     "changeMap": [
+      "src/core/conversation-send-admission.mjs",
+      "src/core/conversation-store.mjs",
       "src/core/lived-companion.mjs",
+      "reference/browser/modules/chat-controller.js",
       "scripts/serve-browser.mjs",
       "docs/CAPABILITY-ASSIMILATION-RUNTIME.md",
       "src/core/interaction-control.mjs"

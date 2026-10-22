@@ -1,6 +1,6 @@
 import { semanticHash } from './utils.mjs';
 
-export const CONVERSATION_SEND_ADMISSION_SCHEMA = 'vexlife.conversation-send-admission/v2';
+export const CONVERSATION_SEND_ADMISSION_SCHEMA = 'vexlife.conversation-send-admission/v3';
 export const CONVERSATION_SEND_ADMISSION_TRUTH_CLASS = 'EXACT_SEND_ATTEMPT_NO_EFFECT_ADMISSION';
 export const ADDRESSED_CONVERSATION_CURRENTNESS_SCHEMA = 'vexlife.addressed-conversation-currentness/v1';
 
@@ -13,7 +13,9 @@ const STATIC = Object.freeze({
   processRef: 'process.vexlife.conversation.send-addressed',
   effectOwnerRule: 'conversation service owns append; model may draft but does not write directly',
   processRecoveryRule: 'append correction or retraction; never silently overwrite original',
-  pathScope: 'vex-home/messages'
+  pathScope: 'vex-home/messages',
+  resourceContextPrecondition: 'message input fits resource/context admission',
+  permissionPrecondition: 'conversation permission is active'
 });
 
 const HEX64 = /^[0-9a-f]{64}$/u;
@@ -30,9 +32,7 @@ const INPUT_KEYS = new Set([
   'staticSource',
   'conversation',
   'confirmationWitness',
-  'addressedConversationCurrentness',
-  'resourceAdmission',
-  'contextAdmission'
+  'addressedConversationCurrentness'
 ]);
 
 function object(value, label) {
@@ -112,7 +112,7 @@ function validateStaticSource(value) {
   for (const required of ['channelRef', 'speakerRef', 'recipientRefs', 'originalLanguage', 'originalContent']) {
     if (!process.requiredInputs?.includes(required)) throw new TypeError(`process required input missing: ${required}`);
   }
-  for (const required of ['message input fits resource/context admission', 'conversation permission is active']) {
+  for (const required of [STATIC.resourceContextPrecondition, STATIC.permissionPrecondition]) {
     if (!process.preconditions?.includes(required)) throw new TypeError(`process precondition drifted: ${required}`);
   }
 
@@ -204,27 +204,12 @@ function validateAddressedConversationCurrentness(value, conversation) {
   };
 }
 
-function validateAdmissionProjection(value, label) {
-  const allowed = new Set(['admissionRef', 'state', 'currentness', 'semanticFingerprint', 'sourceRefs']);
-  exactKeys(value, allowed, label);
-  exact(value.state, 'ADMITTED', `${label}.state`);
-  exact(value.currentness, 'CURRENT', `${label}.currentness`);
-  if (!HEX64.test(value.semanticFingerprint ?? '')) throw new TypeError(`${label}.semanticFingerprint must be one SHA-256`);
-  return {
-    admissionRef: string(value.admissionRef, `${label}.admissionRef`),
-    semanticFingerprint: value.semanticFingerprint,
-    sourceRefs: sorted(strings(value.sourceRefs, `${label}.sourceRefs`, { min: 1 }))
-  };
-}
-
 function receiptCore(input) {
   exactKeys(input, INPUT_KEYS, 'input');
   assertNoCallerAuthorityBooleans(input.staticSource, 'staticSource');
   assertNoCallerAuthorityBooleans(input.conversation, 'conversation');
   assertNoCallerAuthorityBooleans(input.confirmationWitness, 'confirmationWitness');
   assertNoCallerAuthorityBooleans(input.addressedConversationCurrentness, 'addressedConversationCurrentness');
-  assertNoCallerAuthorityBooleans(input.resourceAdmission, 'resourceAdmission');
-  assertNoCallerAuthorityBooleans(input.contextAdmission, 'contextAdmission');
 
   const sendAttemptRef = string(input.sendAttemptRef, 'sendAttemptRef');
   const staticSource = validateStaticSource(input.staticSource);
@@ -235,15 +220,11 @@ function receiptCore(input) {
     contentHash: conversation.contentHash
   });
   const addressedCurrentness = validateAddressedConversationCurrentness(input.addressedConversationCurrentness, conversation);
-  const resource = validateAdmissionProjection(input.resourceAdmission, 'resourceAdmission');
-  const context = validateAdmissionProjection(input.contextAdmission, 'contextAdmission');
 
   const sourceRefs = sorted([...new Set([
     ...staticSource.sourceRefs,
     confirmation.sourceRef,
-    ...addressedCurrentness.sourceRefs,
-    ...resource.sourceRefs,
-    ...context.sourceRefs
+    ...addressedCurrentness.sourceRefs
   ])]);
 
   return {
@@ -283,10 +264,6 @@ function receiptCore(input) {
     priorHeadSha256OrNull: addressedCurrentness.headSha256OrNull,
     nextMessageSequence: addressedCurrentness.nextMessageSequence,
     confirmationWitnessRef: confirmation.witnessRef,
-    resourceAdmissionRef: resource.admissionRef,
-    resourceAdmissionFingerprint: resource.semanticFingerprint,
-    contextAdmissionRef: context.admissionRef,
-    contextAdmissionFingerprint: context.semanticFingerprint,
     sourceVersionRef: staticSource.sourceVersionRef,
     sourceRefs,
     rawContentIncluded: false,
@@ -294,6 +271,9 @@ function receiptCore(input) {
     modelCallPerformed: false,
     activeTurnCurrentnessRequired: false,
     livedCompanionWriterCurrentnessRequired: false,
+    standaloneResourceAdmissionRequired: false,
+    standaloneContextAdmissionRequired: false,
+    processResourceContextPreconditionPreserved: true,
     authorityWideningPerformed: false,
     duplicateEffectSuppressionOwner: 'CONVERSATION_EFFECT_OWNER'
   };
@@ -329,8 +309,15 @@ export function verifyConversationSendAdmission(receipt) {
     && core.modelCallPerformed === false
     && core.activeTurnCurrentnessRequired === false
     && core.livedCompanionWriterCurrentnessRequired === false
+    && core.standaloneResourceAdmissionRequired === false
+    && core.standaloneContextAdmissionRequired === false
+    && core.processResourceContextPreconditionPreserved === true
     && core.authorityWideningPerformed === false
-    && core.duplicateEffectSuppressionOwner === 'CONVERSATION_EFFECT_OWNER';
+    && core.duplicateEffectSuppressionOwner === 'CONVERSATION_EFFECT_OWNER'
+    && !Object.hasOwn(core, 'resourceAdmissionRef')
+    && !Object.hasOwn(core, 'resourceAdmissionFingerprint')
+    && !Object.hasOwn(core, 'contextAdmissionRef')
+    && !Object.hasOwn(core, 'contextAdmissionFingerprint');
 }
 
 export function assertConversationSendAdmissionMatches(receipt, input) {

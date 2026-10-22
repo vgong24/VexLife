@@ -134,8 +134,10 @@
   {
     "moduleRef": "module.vexlife.browser.chat-controller",
     "path": "reference/browser/modules/chat-controller.js",
-    "role": "Owns addressed direct/group chat, project/thread/channel selection and incremental bottom append.",
-    "reads": [],
+    "role": "Owns addressed direct/group chat, project/thread/channel selection, incremental bottom append, browser Send idempotency identity, and the human-visible distinction between an unsent local draft and a server-confirmed durable human message whose Companion attention may still fail.",
+    "reads": [
+      "module.vexlife.core.browser-companion-bridge"
+    ],
     "writes": [],
     "consumers": [
       "reference/browser/app.js"

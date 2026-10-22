@@ -46,7 +46,7 @@ function baseInput() {
     conversation: {
       projectRef: 'project.self-development',
       threadRef: 'thread.self-development.open-conversation',
-      channelRef: 'channel.local-vex.companion',
+      channelRef: 'channel.self-development.companion',
       channelState: 'ACTIVE',
       memberRefs: ['person.victor', 'role.vex.companion'],
       speakerRef: 'person.victor',
@@ -61,7 +61,7 @@ function baseInput() {
       confirmation: 'COMPOSER_SEND',
       currentness: 'CURRENT',
       sendAttemptRef: 'send-attempt.conversation.stage-a.001',
-      channelRef: 'channel.local-vex.companion',
+      channelRef: 'channel.self-development.companion',
       contentHash,
       sourceRef: 'source.browser.composer-submit.stage-a.001'
     },
@@ -70,7 +70,7 @@ function baseInput() {
       projectionRef: 'projection.conversation.addressed-currentness.stage-a.001',
       currentness: 'CURRENT',
       threadRef: 'thread.self-development.open-conversation',
-      channelRef: 'channel.local-vex.companion',
+      channelRef: 'channel.self-development.companion',
       channelState: 'ACTIVE',
       memberRefs: ['person.victor', 'role.vex.companion'],
       channelSha256: 'c'.repeat(64),
@@ -83,20 +83,6 @@ function baseInput() {
         'src/core/conversation-store.mjs#readConversationChannelBinding',
         'src/core/conversation-store.mjs#readConversationChannel'
       ]
-    },
-    resourceAdmission: {
-      admissionRef: 'admission.resource.stage-a.001',
-      state: 'ADMITTED',
-      currentness: 'CURRENT',
-      semanticFingerprint: 'a'.repeat(64),
-      sourceRefs: ['source.resource-admission.stage-a.001']
-    },
-    contextAdmission: {
-      admissionRef: 'admission.context.stage-a.001',
-      state: 'ADMITTED',
-      currentness: 'CURRENT',
-      semanticFingerprint: 'b'.repeat(64),
-      sourceRefs: ['source.context-admission.stage-a.001']
     }
   };
 }
@@ -124,6 +110,11 @@ test('forms deterministic Conversation-first no-effect admission from current so
   assert.equal(first.modelCallPerformed, false);
   assert.equal(first.activeTurnCurrentnessRequired, false);
   assert.equal(first.livedCompanionWriterCurrentnessRequired, false);
+  assert.equal(first.standaloneResourceAdmissionRequired, false);
+  assert.equal(first.standaloneContextAdmissionRequired, false);
+  assert.equal(first.processResourceContextPreconditionPreserved, true);
+  assert.equal(Object.hasOwn(first, 'resourceAdmissionRef'), false);
+  assert.equal(Object.hasOwn(first, 'contextAdmissionRef'), false);
   assert.equal(first.rawContentIncluded, false);
   assert.equal(JSON.stringify(first).includes(input.conversation.content), false);
   assert.deepEqual(first.memberRefs, ['person.victor', 'role.vex.companion']);
@@ -172,7 +163,7 @@ test('fails closed on confirmation and channel-membership/currentness errors', (
 
 test('fails closed on stale, mismatched or incoherent addressed Conversation currentness', () => {
   mustFail((x) => { x.addressedConversationCurrentness.currentness = 'STALE'; }, /CURRENT/);
-  mustFail((x) => { x.addressedConversationCurrentness.channelRef = 'channel.foreign'; }, /channel\.local-vex\.companion/);
+  mustFail((x) => { x.addressedConversationCurrentness.channelRef = 'channel.foreign'; }, /channel\.self-development\.companion/);
   mustFail((x) => { x.addressedConversationCurrentness.memberRefs = ['person.victor', 'role.vex.guide']; }, /does not match current source/);
   mustFail((x) => { x.addressedConversationCurrentness.headSha256OrNull = null; }, /entirely present or entirely absent/);
   mustFail((x) => { x.addressedConversationCurrentness.nextMessageSequence = 7; }, /advance the exact current head/);
@@ -184,7 +175,7 @@ test('fails closed on stale, mismatched or incoherent addressed Conversation cur
   }, /must be 0 without a head/);
 });
 
-test('pre-existing model-turn and Lived-writer currentness are rejected rather than gating human append', () => {
+test('pre-existing model-turn, Lived-writer and synthetic resource/context inputs are rejected rather than gating human append', () => {
   mustFail((x) => {
     x.activeTurnCurrentness = {
       phase: 'ACTIVE',
@@ -197,13 +188,31 @@ test('pre-existing model-turn and Lived-writer currentness are rejected rather t
       ownerState: 'NONE'
     };
   }, /input\.writerCurrentness is not admitted/);
+  mustFail((x) => {
+    x.resourceAdmission = {
+      admissionRef: 'admission.resource.stage-a.001',
+      state: 'ADMITTED',
+      currentness: 'CURRENT'
+    };
+  }, /input\.resourceAdmission is not admitted/);
+  mustFail((x) => {
+    x.contextAdmission = {
+      admissionRef: 'admission.context.stage-a.001',
+      state: 'ADMITTED',
+      currentness: 'CURRENT'
+    };
+  }, /input\.contextAdmission is not admitted/);
 });
 
-test('fails closed when resource or context admission is not current and admitted', () => {
-  mustFail((x) => { x.resourceAdmission.state = 'HELD'; }, /ADMITTED/);
-  mustFail((x) => { x.resourceAdmission.currentness = 'STALE'; }, /CURRENT/);
-  mustFail((x) => { x.contextAdmission.state = 'HELD'; }, /ADMITTED/);
-  mustFail((x) => { x.contextAdmission.currentness = 'UNKNOWN'; }, /CURRENT/);
+test('static source retains the canonical resource/context process precondition without requiring runtime scaffolding', () => {
+  mustFail((x) => {
+    x.staticSource.process.preconditions = x.staticSource.process.preconditions
+      .filter((item) => item !== 'message input fits resource/context admission');
+  }, /process precondition drifted/);
+  mustFail((x) => {
+    x.staticSource.process.preconditions = x.staticSource.process.preconditions
+      .filter((item) => item !== 'conversation permission is active');
+  }, /process precondition drifted/);
 });
 
 test('fails closed on static action/permission/process drift', () => {
@@ -217,7 +226,7 @@ test('fails closed on static action/permission/process drift', () => {
 test('caller-supplied authority booleans cannot widen admission', () => {
   mustFail((x) => { x.permissionGranted = true; }, /cannot supply authority|not admitted/);
   mustFail((x) => { x.addressedConversationCurrentness.authorized = true; }, /cannot supply authority/);
-  mustFail((x) => { x.resourceAdmission.effectAuthorityGranted = true; }, /cannot supply authority/);
+  mustFail((x) => { x.conversation.effectAuthorityGranted = true; }, /cannot supply authority|not admitted/);
 });
 
 test('receipt tampering breaks content-addressed verification', () => {
