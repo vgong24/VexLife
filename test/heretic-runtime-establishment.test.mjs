@@ -12,12 +12,14 @@ import {
   HERETIC_MODEL_BUNDLE_REF,
   HERETIC_MODEL_PROFILE_REF,
   HERETIC_PYTHON_VERSION,
+  HERETIC_PROVIDER_REVISION,
   HERETIC_RUNTIME_ADAPTER_REF,
   computeArtifactContentSetSha256,
   ensureHereticPythonEnvironment,
   formHereticMaterializationPlan,
   formHereticSdkOwnerBinding,
-  materializeHereticBundle
+  materializeHereticBundle,
+  withHereticHuggingFaceCache
 } from '../src/core/heretic-runtime-establishment.mjs';
 
 const rows = [
@@ -146,6 +148,60 @@ test('fresh environment uses exact Python, binary-only pinned mlx-lm, retains re
     assert.ok(commands.some(([, args]) => args.includes(`mlx-lm==${HERETIC_MLX_LM_VERSION}`)));
     assert.ok(fs.existsSync(result.pipReportPath));
   } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+
+test('provider revision remains pinned to the exact registered Heretic source revision', () => {
+  assert.equal(HERETIC_PROVIDER_REVISION, '808b82a2bd04b2bac362b5d0b7a1197aeea59e57');
+});
+
+test('fresh-host Hugging Face cache is real, bound during owner work, and restored afterward', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-heretic-hf-cache-'));
+  const cacheRoot = path.join(root, 'cache');
+  const prior = process.env.HF_HUB_CACHE;
+  process.env.HF_HUB_CACHE = path.join(root, 'prior-cache');
+  try {
+    const observed = await withHereticHuggingFaceCache({
+      cacheRoot,
+      action: async (resolvedRoot) => ({
+        resolvedRoot,
+        environment: process.env.HF_HUB_CACHE,
+        realDirectory: fs.lstatSync(resolvedRoot).isDirectory()
+      })
+    });
+    assert.equal(observed.resolvedRoot, path.resolve(cacheRoot));
+    assert.equal(observed.environment, path.resolve(cacheRoot));
+    assert.equal(observed.realDirectory, true);
+    assert.equal(process.env.HF_HUB_CACHE, path.join(root, 'prior-cache'));
+  } finally {
+    if (prior === undefined) delete process.env.HF_HUB_CACHE;
+    else process.env.HF_HUB_CACHE = prior;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('fresh-host Hugging Face cache binding is restored even when owner work fails', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-heretic-hf-cache-failure-'));
+  const cacheRoot = path.join(root, 'cache');
+  const prior = process.env.HF_HUB_CACHE;
+  delete process.env.HF_HUB_CACHE;
+  try {
+    await assert.rejects(
+      withHereticHuggingFaceCache({
+        cacheRoot,
+        action: async () => {
+          assert.equal(process.env.HF_HUB_CACHE, path.resolve(cacheRoot));
+          throw new Error('synthetic owner failure');
+        }
+      }),
+      /synthetic owner failure/
+    );
+    assert.equal(process.env.HF_HUB_CACHE, undefined);
+  } finally {
+    if (prior === undefined) delete process.env.HF_HUB_CACHE;
+    else process.env.HF_HUB_CACHE = prior;
     fs.rmSync(root, { recursive: true, force: true });
   }
 });

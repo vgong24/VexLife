@@ -10,6 +10,7 @@ import { resolveAndDownloadArtifact } from '../src/core/artifact-delivery.mjs';
 import { resolveModelBundleByRef } from '../src/core/vex-initialization.mjs';
 import {
   HERETIC_MODEL_BUNDLE_REF,
+  HERETIC_PROVIDER_REVISION,
   establishHereticRuntime
 } from '../src/core/heretic-runtime-establishment.mjs';
 
@@ -137,7 +138,7 @@ async function main() {
     'models',
     'heretic',
     'qwen3.8-27b-mlx4',
-    '808b82a23922f7921b802faaaa1f776844a81794'
+    HERETIC_PROVIDER_REVISION
   );
   const pythonEnvironmentRoot = path.join(
     vexHome,
@@ -150,6 +151,13 @@ async function main() {
     'runtime',
     'heretic',
     'persistent-runtime-owner-receipt.json'
+  );
+
+  const huggingFaceCacheRoot = path.join(
+    vexHome,
+    'runtime',
+    'heretic',
+    'huggingface-cache'
   );
 
   const result = await establishHereticRuntime({
@@ -165,7 +173,8 @@ async function main() {
       'authority.vexlife.heretic-runtime-establishment.explicit-user-invocation.v1',
     port: positivePort(process.env.VEX_HERETIC_RUNTIME_PORT || '8765'),
     receiptPath,
-    sourceIdentity: sdk.sourceIdentity
+    sourceIdentity: sdk.sourceIdentity,
+    huggingFaceCacheRoot
   });
 
   process.stdout.write(`${JSON.stringify({

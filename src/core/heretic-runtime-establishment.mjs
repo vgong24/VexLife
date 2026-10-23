@@ -15,6 +15,8 @@ export const HERETIC_ARTIFACT_SET_REF =
   'artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2';
 export const HERETIC_ARTIFACT_CONTENT_SET_SHA256 =
   '329658ee8f270056bc29d8a6cfd6e9f1b7d9d14c659452c9e4dd46fc7c78d780';
+export const HERETIC_PROVIDER_REVISION =
+  '808b82a2bd04b2bac362b5d0b7a1197aeea59e57';
 export const HERETIC_RUNTIME_ADAPTER_REF =
   'adapter.runtime.mlx.macos-victor.001';
 export const HERETIC_RUNTIME_CLASS = 'MLX_LM_DIRECT_RUNTIME';
@@ -385,6 +387,22 @@ export function hereticEnvironmentPythonPath(environmentRoot) {
   return path.join(absolute(environmentRoot, 'environmentRoot'), 'bin', 'python');
 }
 
+export async function withHereticHuggingFaceCache({ cacheRoot, action }) {
+  const resolvedRoot = absolute(cacheRoot, 'cacheRoot');
+  if (typeof action !== 'function') {
+    fail('HERETIC_HUGGINGFACE_CACHE_ACTION_REQUIRED', 'action must be a function');
+  }
+  assertRealDirectory(resolvedRoot, 'huggingFaceCacheRoot', { create: true });
+  const previous = process.env.HF_HUB_CACHE;
+  process.env.HF_HUB_CACHE = resolvedRoot;
+  try {
+    return await action(resolvedRoot);
+  } finally {
+    if (previous === undefined) delete process.env.HF_HUB_CACHE;
+    else process.env.HF_HUB_CACHE = previous;
+  }
+}
+
 export async function ensureHereticPythonEnvironment({
   bootstrapPython,
   environmentRoot,
@@ -531,6 +549,7 @@ export async function establishHereticRuntime({
   port,
   receiptPath,
   sourceIdentity,
+  huggingFaceCacheRoot,
   runCommand = runCommandDefault
 }) {
   if (!owner || typeof owner.startOrReusePersistentMlxRuntime !== 'function') {
@@ -555,7 +574,10 @@ export async function establishHereticRuntime({
     receiptPath,
     sourceIdentity
   });
-  const runtime = await owner.startOrReusePersistentMlxRuntime({ binding });
+  const runtime = await withHereticHuggingFaceCache({
+    cacheRoot: huggingFaceCacheRoot,
+    action: () => owner.startOrReusePersistentMlxRuntime({ binding })
+  });
   return Object.freeze({
     schemaVersion: HERETIC_RUNTIME_ESTABLISHMENT_SCHEMA,
     state: 'HERETIC_RUNTIME_ESTABLISHED',
