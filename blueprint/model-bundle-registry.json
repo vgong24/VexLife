@@ -94,7 +94,7 @@
       "modelBundleRef": "model-bundle.vexlife.heretic.qwen3.8-27b.mlx4.329658ee8f27.001",
       "generationRef": "generation.devex.heretic27b4.preexisting-certified-foundation.normalized.20261001A",
       "modelProfileRef": "model-profile.devex.qwen38-27b-heretic-mlx4.certified.20260928A",
-      "state": "CANDIDATE_QUALIFICATION",
+      "state": "RELEASE_QUALIFIED",
       "artifactBindings": [
         {
           "roleRef": "artifact-role.devex.heretic.qwen3.8-27b.mlx4.member.gitattributes",
@@ -150,7 +150,10 @@
         "github.issue.vexlife.857.comment.6289035585",
         "github.issue.vexlife.857.comment.6289157446",
         "github.issue.vextreme-sdk.1399.comment.5947727630",
-        "github.issue.vextreme-sdk.636"
+        "github.issue.vextreme-sdk.636",
+        "github.pull.vexlife.919",
+        "github.issue.vexlife.866.comment.6361696437",
+        "github.issue.vexlife.857.comment.6362544331"
       ]
     }
   ]

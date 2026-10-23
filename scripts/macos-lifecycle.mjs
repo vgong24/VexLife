@@ -9,6 +9,13 @@ import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { runtimeProcessEvidenceMatches } from '../src/core/vex-initialization.mjs';
+import {
+  isBoundHereticModelConfiguration,
+  isHereticModelConfiguration,
+  validateHereticModelConfiguration,
+  validateHereticPersistentRuntimeReceipt
+} from '../src/core/heretic-runtime-link.mjs';
+import { stopHereticPersistentRuntimeFromReceipt } from '../src/core/heretic-persistent-runtime-owner.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const SOURCE_ROOT = path.resolve(HERE, '..');
@@ -29,6 +36,41 @@ const TRANSIENT_EXACT = new Set([
 function jsonRead(filePath) {
   if (!fs.existsSync(filePath)) return null;
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+function hereticHomeIdentity(homeManifest) {
+  if (!homeManifest?.homeRef || !homeManifest?.currentCompanionLineageRef) return null;
+  return {
+    homeRef: homeManifest.homeRef,
+    companionLineageRef: homeManifest.currentCompanionLineageRef
+  };
+}
+function acceptedHereticConfiguration(home, homeManifest, model) {
+  if (!isHereticModelConfiguration(model)) return null;
+  const homeIdentity = hereticHomeIdentity(homeManifest);
+  if (!homeIdentity) return null;
+  try {
+    return validateHereticModelConfiguration(model, { homeIdentity });
+  } catch {
+    return null;
+  }
+}
+function hereticRuntimeReceiptPath(home, configuration) {
+  return path.resolve(home, ...configuration.runtimeReceiptPath.split('/'));
+}
+function qualifiedHereticReceipt(home, homeManifest, model) {
+  if (!isBoundHereticModelConfiguration(model)) return null;
+  const configuration = acceptedHereticConfiguration(home, homeManifest, model);
+  if (!configuration) return null;
+  const receiptPath = hereticRuntimeReceiptPath(home, configuration);
+  const receipt = jsonRead(receiptPath);
+  if (!receipt) return null;
+  try {
+    const accepted = validateHereticPersistentRuntimeReceipt(receipt);
+    if (accepted.endpoint !== configuration.endpoint || accepted.requestModel !== configuration.requestModel) return null;
+    return { configuration, receipt: accepted, receiptPath };
+  } catch {
+    return null;
+  }
 }
 function writeJsonAtomic(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -428,6 +470,14 @@ export async function stopOwnedRuntime(home, {
 
   const model = jsonRead(path.join(home, 'config', 'model.json'));
   if (!model) return { disposition: 'NO_MODEL_CONFIGURATION', pid: null };
+  const homeManifest = jsonRead(path.join(home, 'config', 'home.json'));
+  if (isHereticModelConfiguration(model)) {
+    const heretic = acceptedHereticConfiguration(home, homeManifest, model);
+    if (!heretic) throw new Error('Heretic model configuration is present but invalid; refusing runtime fallback or process signalling');
+    return stopHereticPersistentRuntimeFromReceipt({
+      receiptPath: hereticRuntimeReceiptPath(home, heretic)
+    });
+  }
   const pid = Number(model.runtimePid);
   if (!pidAliveImpl(pid)) return { disposition: 'ALREADY_STOPPED', pid: Number.isInteger(pid) ? pid : null };
 
@@ -475,6 +525,7 @@ export function protectedHomeSnapshot(home) {
   const root = path.resolve(home);
   const records = [];
   if (!fs.existsSync(root)) return { fileCount: 0, fingerprintSha256: sha256(Buffer.from('[]')) };
+
   const visit = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
@@ -483,7 +534,18 @@ export function protectedHomeSnapshot(home) {
       const stat = fs.lstatSync(full);
       if (stat.isSymbolicLink()) throw new Error(`protected Home contains a symlink: ${relative}`);
       if (entry.isDirectory()) { visit(full); continue; }
-      if (!entry.isFile() || excludedFromProtectedSnapshot(relative)) continue;
+      const forward = relative.split(path.sep).join('/');
+      if (!entry.isFile()) continue;
+      let protectHereticModelConfiguration = false;
+      if (forward === 'config/model.json') {
+        try {
+          protectHereticModelConfiguration = isHereticModelConfiguration(JSON.parse(fs.readFileSync(full, 'utf8')));
+        } catch {
+          protectHereticModelConfiguration = false;
+        }
+      }
+      const transient = excludedFromProtectedSnapshot(relative);
+      if (transient && !protectHereticModelConfiguration) continue;
       const fingerprint = hashProtectedRegularFile(full);
       records.push({ path: relative.split(path.sep).join('/'), bytes: fingerprint.bytes, sha256: fingerprint.sha256 });
     }
@@ -515,6 +577,9 @@ function removeRuntimeTreeConfined(home) {
   return true;
 }
 export function cleanupRepairState(home) {
+  const homeManifest = jsonRead(path.join(home, 'config', 'home.json'));
+  const model = jsonRead(path.join(home, 'config', 'model.json'));
+  const preserveHereticConfiguration = isHereticModelConfiguration(model);
   const removed = [];
   for (const relative of [
     'runtime/initialization',
@@ -522,7 +587,7 @@ export function cleanupRepairState(home) {
     'runtime/llama-server.err.log',
     'runtime/serve-browser.log',
     'runtime/serve-browser.err.log',
-    'config/model.json',
+    ...(preserveHereticConfiguration ? [] : ['config/model.json']),
     'recovery/vex-initialization-receipt.json',
     'recovery/browser-process.json',
     'recovery/macos-lifecycle-receipt.json'
@@ -530,10 +595,13 @@ export function cleanupRepairState(home) {
   return removed;
 }
 export function cleanupRebuildPreserveState(home) {
+  const homeManifest = jsonRead(path.join(home, 'config', 'home.json'));
+  const model = jsonRead(path.join(home, 'config', 'model.json'));
+  const preserveHereticConfiguration = isHereticModelConfiguration(model);
   const removed = [];
   if (removeRuntimeTreeConfined(home)) removed.push('runtime');
   for (const relative of [
-    'config/model.json',
+    ...(preserveHereticConfiguration ? [] : ['config/model.json']),
     'recovery/vex-initialization-receipt.json',
     'recovery/browser-process.json',
     'recovery/macos-lifecycle-receipt.json'
@@ -615,6 +683,9 @@ export function classifyMacLifecycleState(home) {
   const initialization = jsonRead(path.join(root, 'recovery', 'vex-initialization-receipt.json'));
   if (model?.state === 'BOUND_QUALIFIED' && initialization?.state === 'RUNTIME_QUALIFIED') return 'EXISTING_HEALTHY';
   if (activatedRuntimeReceiptBinding(homeManifest, model, initialization)) return 'EXISTING_HEALTHY';
+  if (acceptedHereticConfiguration(root, homeManifest, model)) {
+    return qualifiedHereticReceipt(root, homeManifest, model) ? 'EXISTING_HEALTHY' : 'EXISTING_DEGRADED_REPAIRABLE';
+  }
   return 'EXISTING_DEGRADED_REPAIRABLE';
 }
 export function choicesForLifecycleState(state) {
@@ -811,6 +882,31 @@ async function initialize(home, repo, options) {
   const result = await runNode(argv, { cwd: repo, forwardStderr: true });
   return parseLastJson(result.stdout);
 }
+async function establishHeretic(home, repo, options) {
+  const argv = [path.join(repo, 'scripts', 'establish-heretic-runtime.mjs'), '--home', home];
+  if (options.noninteractiveAuthorized === true) argv.push('--allow-acquisition');
+  const result = await runNode(argv, { cwd: repo, forwardStderr: true });
+  const established = parseLastJson(result.stdout);
+  if (established.state !== 'HERETIC_RUNTIME_ESTABLISHED') {
+    throw new Error(`Heretic establishment did not qualify runtime: ${established.state}`);
+  }
+  return {
+    schemaVersion: 'vexlife.initialization-result/v1',
+    state: 'RUNTIME_QUALIFIED',
+    profileRef: null,
+    profileState: 'HERETIC_PRODUCT_RUNTIME_QUALIFIED',
+    runtimePid: established.runtimePid,
+    endpoint: established.endpoint,
+    requestModel: established.requestModel,
+    runtimeReceiptPath: established.runtimeReceiptPath,
+    browserBinding: {
+      endpointEnvironment: 'VEXLIFE_COMPANION_ENDPOINT',
+      modelEnvironment: 'VEXLIFE_COMPANION_MODEL',
+      receiptEnvironment: 'VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH'
+    },
+    reuseDisposition: established.runtimeDisposition
+  };
+}
 async function startBrowser(home, repo, initialization) {
   const browserPort = 18110;
   const receiptPath = browserReceiptPath(home);
@@ -847,7 +943,10 @@ async function startBrowser(home, repo, initialization) {
       VEXLIFE_HOME: home,
       VEXLIFE_COMPANION_ENDPOINT: initialization.endpoint,
       VEXLIFE_COMPANION_MODEL: initialization.requestModel,
-      VEXLIFE_OPERATIONAL_PROFILE_REF: initialization.profileRef
+      ...(initialization.profileRef ? { VEXLIFE_OPERATIONAL_PROFILE_REF: initialization.profileRef } : {}),
+      ...(initialization.runtimeReceiptPath
+        ? { VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH: initialization.runtimeReceiptPath }
+        : {})
     }
   });
   child.unref();
@@ -874,7 +973,17 @@ async function startBrowser(home, repo, initialization) {
 
 async function runStart(home, repo, options) {
   await bootstrap(home, repo);
-  const initialized = await initialize(home, repo, options);
+  const homeManifest = jsonRead(path.join(home, 'config', 'home.json'));
+  const model = jsonRead(path.join(home, 'config', 'model.json'));
+  let initialized;
+  if (isHereticModelConfiguration(model)) {
+    if (!acceptedHereticConfiguration(home, homeManifest, model)) {
+      throw new Error('Heretic model configuration is present but invalid; refusing silent fallback to a different model route');
+    }
+    initialized = await establishHeretic(home, repo, options);
+  } else {
+    initialized = await initialize(home, repo, options);
+  }
   if (initialized.state !== 'RUNTIME_QUALIFIED') throw new Error(`initializer did not qualify runtime: ${initialized.state}`);
   const browser = await startBrowser(home, repo, initialized);
   return { initialized, browser };

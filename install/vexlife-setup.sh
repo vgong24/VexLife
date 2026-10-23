@@ -399,7 +399,7 @@ controller_host_eligibility_state() {
   [ -n "$probe_home" ] || { printf 'HOST_PREFLIGHT_UNAVAILABLE'; return 1; }
 
   set +e
-  output="$(node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$probe_home" --plan-only 2>/dev/null)"
+  output="$(node "$REPO_ROOT/scripts/establish-heretic-runtime.mjs" --home "$probe_home" --plan-only 2>/dev/null)"
   set -e
 
   if [ -e "$probe_home" ]; then
@@ -408,7 +408,7 @@ controller_host_eligibility_state() {
   fi
   state="$(printf '%s' "$output" | tail -n 1 | parse_json_state)"
   case "$state" in
-    HOME_NOT_ESTABLISHED|PLAN_READY_NO_EFFECT)
+    HERETIC_PLAN_READY_NO_EFFECT)
       printf 'HOST_ELIGIBLE'
       return 0
       ;;
@@ -528,16 +528,14 @@ controller_run() {
       if ! run_owned node "$REPO_ROOT/scripts/bootstrap.mjs" --device-name "$(scutil --get ComputerName 2>/dev/null || hostname)" --home "$VEX_HOME" >/dev/null; then
         fail "Vex Home bootstrap stopped before completion."
       fi
-      if ! plan_output="$(node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --plan-only)"; then
-        fail "this Mac is not currently eligible for automatic VexLife setup; no model/runtime download was started."
+      if ! plan_output="$(node "$REPO_ROOT/scripts/establish-heretic-runtime.mjs" --home "$VEX_HOME" --plan-only)"; then
+        fail "this Mac is not currently eligible for automatic Heretic setup; no model/runtime download was started."
       fi
       plan_state="$(printf '%s' "$plan_output" | tail -n 1 | parse_json_state)"
-      [ "$plan_state" = "PLAN_READY_NO_EFFECT" ] || fail "this Mac is not currently eligible for automatic VexLife setup; no model/runtime download was started."
-      if ! run_owned node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --yes; then
-        fail "setup stopped safely before Vex was ready."
+      [ "$plan_state" = "HERETIC_PLAN_READY_NO_EFFECT" ] || fail "this Mac is not currently eligible for automatic Heretic setup; no model/runtime download was started."
+      if ! run_owned node "$REPO_ROOT/scripts/establish-heretic-runtime.mjs" --home "$VEX_HOME" --allow-acquisition; then
+        fail "setup stopped safely before the accepted Heretic runtime was ready."
       fi
-      receipt="$VEX_HOME/recovery/vex-initialization-receipt.json"
-      [ -f "$receipt" ] || fail "setup stopped before model/runtime activation."
       run_lifecycle start >/dev/null
       open_vex
       controller_result "FIRST_SETUP_COMPLETE"
@@ -635,30 +633,25 @@ case "$STATE" in
     begin_setup_action "first-setup"
     run_owned node "$REPO_ROOT/scripts/bootstrap.mjs" --device-name "$(scutil --get ComputerName 2>/dev/null || hostname)" --home "$VEX_HOME" >/dev/null
 
-    say "Checking whether this Mac matches a release-qualified VexLife profile..."
-    if ! PLAN_OUTPUT="$(node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --plan-only)"; then
-      say "This Mac is not currently eligible for automatic VexLife setup. No model/runtime download was started."
+    say "Checking whether this Mac can establish the accepted Heretic 27B runtime..."
+    if ! PLAN_OUTPUT="$(node "$REPO_ROOT/scripts/establish-heretic-runtime.mjs" --home "$VEX_HOME" --plan-only)"; then
+      say "This Mac is not currently eligible for automatic Heretic setup. No model/runtime download was started."
       exit 1
     fi
     PLAN_STATE="$(printf '%s' "$PLAN_OUTPUT" | tail -n 1 | parse_json_state)"
-    if [ "$PLAN_STATE" != "PLAN_READY_NO_EFFECT" ]; then
-      say "This Mac is not currently eligible for automatic VexLife setup. No model/runtime download was started."
+    if [ "$PLAN_STATE" != "HERETIC_PLAN_READY_NO_EFFECT" ]; then
+      say "This Mac is not currently eligible for automatic Heretic setup. No model/runtime download was started."
       exit 1
     fi
 
-    say "This Mac is supported."
-    if ! ask_yes_no "Prepare the local Vex runtime now? This may download several GB of verified files and start a local-only model." n; then
+    say "This Mac is supported for the accepted Heretic product route."
+    if ! ask_yes_no "Prepare Heretic 27B now? This may acquire about 15 GiB of verified model/runtime files and start a local-only model." n; then
       say "Stopped. The Vex Home remains, but no model/runtime acquisition was authorized."
       exit 0
     fi
-    if ! run_owned node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --yes; then
-      say "Setup stopped safely before Vex was ready."
+    if ! run_owned node "$REPO_ROOT/scripts/establish-heretic-runtime.mjs" --home "$VEX_HOME" --allow-acquisition; then
+      say "Setup stopped safely before the accepted Heretic runtime was ready."
       exit 1
-    fi
-    RECEIPT="$VEX_HOME/recovery/vex-initialization-receipt.json"
-    if [ ! -f "$RECEIPT" ]; then
-      say "Setup stopped before model/runtime activation. Nothing else was started."
-      exit 0
     fi
 
     run_lifecycle start >/dev/null

@@ -85,13 +85,13 @@ test('current M4 is registered as an exact 12-member candidate while G0 remains 
   assert.equal(aggregate, candidate.contentSetSha256);
 });
 
-test('accepted Heretic 27B is registered as an exact 11-member v2 candidate while G0 remains active', () => {
+test('accepted Heretic 27B is registered as an exact 11-member release-qualified v2 bundle while G0 remains active', () => {
   const candidateRef = 'model-bundle.vexlife.heretic.qwen3.8-27b.mlx4.329658ee8f27.001';
   const candidate = modelBundleRegistry.bundles.find((item) => item.modelBundleRef === candidateRef);
   assert.ok(candidate);
   assert.equal(modelBundleRegistry.activeModelBundleRef, 'model-bundle.vexlife.g0.qwen3.5-4b.q4-k-m.001');
   assert.equal(candidate.bundleSchemaVersion, 'vexlife.model-bundle/v2');
-  assert.equal(candidate.state, 'CANDIDATE_QUALIFICATION');
+  assert.equal(candidate.state, 'RELEASE_QUALIFIED');
   assert.equal(candidate.generationRef, 'generation.devex.heretic27b4.preexisting-certified-foundation.normalized.20261001A');
   assert.equal(candidate.modelProfileRef, 'model-profile.devex.qwen38-27b-heretic-mlx4.certified.20260928A');
   assert.equal(candidate.artifactBindings.length, 11);

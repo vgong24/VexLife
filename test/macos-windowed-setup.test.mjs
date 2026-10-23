@@ -36,6 +36,24 @@ function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
     '  exit 0',
     'fi',
     'case "${1:-}" in',
+    '  */scripts/establish-heretic-runtime.mjs)',
+    '    shift',
+    '    probe_home=""',
+    '    all_args=" $* "',
+    '    while [ "$#" -gt 0 ]; do',
+    '      if [ "$1" = "--home" ] && [ "$#" -ge 2 ]; then probe_home="$2"; break; fi',
+    '      shift',
+    '    done',
+    '    if [[ "$all_args" == *" --plan-only "* ]]; then',
+    '      if [ -n "${VEX_FAKE_EXPECT_PROBE_ROOT:-}" ] && [[ "$probe_home" != "$VEX_FAKE_EXPECT_PROBE_ROOT"/.vexlife-host-eligibility-* ]] && [[ "$probe_home" != "$VEX_FAKE_EXPECT_PROBE_ROOT" ]]; then',
+    '        printf \'%s\\n\' \'{"state":"PROBE_HOME_MISMATCH"}\'',
+    '        exit 7',
+    '      fi',
+    '      if [ "${VEX_FAKE_HOST_ELIGIBLE:-yes}" = "yes" ]; then printf \'%s\\n\' \'{"state":"HERETIC_PLAN_READY_NO_EFFECT"}\'; exit 0; else printf \'%s\\n\' \'{"state":"HERETIC_HOST_UNSUPPORTED_NO_EFFECT"}\'; exit 6; fi',
+    '    fi',
+    '    printf \'%s\\n\' \'{"state":"HERETIC_RUNTIME_ESTABLISHED","runtimeReceiptPath":"/tmp/fake-heretic-receipt.json","endpoint":"http://127.0.0.1:8765","requestModel":"default_model","runtimePid":5151}\'',
+    '    exit 0',
+    '    ;;',
     '  */scripts/initialize-vex.mjs)',
     '    shift',
     '    probe_home=""',
@@ -386,6 +404,7 @@ test('MAC-WIN-09 Node installation requires an exact consent value', () => {
 test('MAC-WIN-04/05/10/11/14 window remains a projection, not model/platform/lifecycle owner', () => {
   assert.doesNotMatch(windowSource, /https?:\/\//u);
   assert.doesNotMatch(windowSource, /sha-?256|qwen|llama\.cpp|artifactRef|profileRef/iu);
+  assert.match(windowSource, /Prepare Heretic 27B\?/u);
   assert.doesNotMatch(windowSource, /M4 Pro|arm64|x64/iu);
   assert.match(windowSource, /runBackend\(repoRoot, homePath, "repair"/u);
   assert.match(windowSource, /runBackend\(repoRoot, homePath, "rebuild-preserve"/u);

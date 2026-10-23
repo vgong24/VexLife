@@ -30,14 +30,14 @@ See [docs/VEXHOME-HOSTED-CAPABILITIES.md](docs/VEXHOME-HOSTED-CAPABILITIES.md).
 
 ## Before you start
 
-The current **release-qualified source-local companion profiles** are deliberately narrow:
+The current source-local product routes are deliberately narrow:
 
-- **Windows 10/11 x64 + compatible NVIDIA GPU/driver** (`nvidia-smi` available), with at least 12 GiB system memory and 6 GiB free disk space.
-- **macOS arm64 on Apple M4 Pro**, with at least 12 GiB system memory and 6 GiB free disk space.
+- **Windows 10/11 x64 + compatible NVIDIA GPU/driver** (`nvidia-smi` available), with at least 12 GiB system memory and 6 GiB free disk space, continues to use the legacy release-qualified Qwen3.5-4B / llama.cpp compatibility route.
+- **macOS arm64 on Apple M4 Pro**, with at least 12 GiB system memory, now uses the accepted Heretic 27B MLX product route for a fresh Home. Existing Homes keep their persisted model binding until a separate explicit replacement/upgrade route is admitted.
 
-Both normal setup routes require Node.js 20 or newer and an internet connection for first model/runtime acquisition. The pinned Qwen3.5-4B model/projector artifacts are several GiB and exact verified cached artifacts are reused on later runs.
+Both normal setup routes require Node.js 20 or newer and an internet connection for first model/runtime acquisition. The Mac Heretic route verifies the exact 11-member source-managed model set, establishes exact Python 3.14.7 plus `mlx-lm` 0.32.0, and reuses verified local artifacts/environment on later runs. The current Heretic source route requires an exact Python 3.14.7 bootstrap interpreter to be present before model/runtime acquisition; if it is absent, setup holds without starting the large download rather than substituting another Python.
 
-These are source-local operational profiles. They are **not a signed/public `OFFICIAL_VERIFIED_BUILD`**, packaged public release, all-Mac installer, all-GPU installer, or P11 fresh-human release proof. Linux bootstrap/development surfaces remain available but do not inherit either release-qualified profile.
+These are source-local product routes. They are **not a signed/public `OFFICIAL_VERIFIED_BUILD`**, packaged public release, all-Mac installer, all-GPU installer, or P11 fresh-human release proof. Linux bootstrap/development surfaces remain available but do not inherit either admitted route.
 
 ## Quick start — Mac M4 Pro
 
@@ -62,7 +62,7 @@ Setup checks the Mac and Node.js first, then asks only for choices that belong t
 
 Press Enter to use that Home or enter another folder. VexLife inspects the selected Home before offering an action; it does not ask you to guess whether the machine needs a first install, resume, repair, rebuild, or uninstall.
 
-On first setup, VexLife performs a no-effect host/profile check before model/runtime acquisition. If this Mac matches the current release-qualified Apple M4 Pro profile, the initializer separately asks before downloading several GiB of verified model/runtime files and starting the local-only model. After qualification, the browser opens at `http://127.0.0.1:18110`.
+On first setup, VexLife performs a no-effect Heretic host/prerequisite check before model/runtime acquisition. If this Mac matches the admitted Apple M4 Pro route, setup separately asks before acquiring about 15 GiB of exact verified Heretic model members, establishing the exact Python/MLX environment, and starting the local-only Heretic runtime. The runtime is qualified by exact loopback health/model identity plus one technical non-user chat probe before the product binding is committed. After qualification, the existing VexLife browser opens at `http://127.0.0.1:18110`.
 
 ### Running Mac setup again
 
@@ -102,19 +102,20 @@ powershell -ExecutionPolicy Bypass -File .\install\vexlife-setup.ps1
 
 ```text
 obtain/verify source route
-→ check Node + host eligibility
+→ check Node + product-route host prerequisites
 → select, establish or preserve Vex Home
-→ resolve the matching RELEASE_QUALIFIED operational profile
+→ preserve an existing Home's persisted model binding
+→ for a fresh supported Mac Home, select the RELEASE_QUALIFIED Heretic product bundle
 → ask before model/runtime acquisition
-→ download or reuse exact pinned artifacts
-→ verify byte sizes + SHA-256
-→ materialize and verify the platform runtime
-→ start 127.0.0.1:18080
-→ perform a non-user runtime qualification turn
-→ write BOUND_QUALIFIED model configuration
+→ download or reuse the exact 11-member Heretic artifact set
+→ verify byte sizes + SHA-256 + aggregate content-set identity
+→ establish/reuse exact Python 3.14.7 + mlx-lm 0.32.0
+→ start/reuse the exact-owned Heretic MLX runtime on numeric loopback
+→ perform health + exact model + non-user chat qualification
+→ write the Heretic product model configuration and exact runtime receipt
 → start the local browser at 127.0.0.1:18110
-→ expose the server-owned Companion binding
-→ write machine-readable recovery receipts
+→ expose the existing server-owned Companion binding from that receipt
+→ write machine-readable lifecycle/recovery receipts
 ```
 
 If Vex already has a Home, bootstrap preserves it rather than deleting, moving, or automatically migrating it. An unknown non-empty Home, a mismatched artifact, an unsupported host, or an unowned process on a required port fails closed instead of being overwritten or killed.
@@ -123,9 +124,10 @@ The human-facing front doors do not duplicate those effects. They collect the vi
 
 ## What is real today
 
-- The current Windows x64 NVIDIA and macOS arm64 Apple M4 Pro source-local operational profiles are `RELEASE_QUALIFIED`.
-- Both profiles pin llama.cpp `b10107` plus Qwen3.5-4B Q4_K_M model/projector artifacts by immutable source/revision, exact byte size, and SHA-256.
-- The model runtime is bound only to `127.0.0.1:18080`; the VexLife browser is served at `127.0.0.1:18110`.
+- The Windows x64 NVIDIA compatibility route remains `RELEASE_QUALIFIED` on llama.cpp `b10107` plus the exact Qwen3.5-4B Q4_K_M model/projector artifacts.
+- The ordinary fresh Apple M4 Pro route selects the `RELEASE_QUALIFIED` Heretic 27B product bundle: 11 immutable Artifact Delivery members, exact aggregate content seal, Python 3.14.7 and `mlx-lm` 0.32.0.
+- Existing Homes do not silently follow that fresh-install selection; their persisted model binding remains authoritative until a separate explicit replacement/upgrade route is admitted.
+- Heretic is served only through the exact-owned numeric-loopback MLX runtime (default product port `127.0.0.1:8765`); the VexLife browser remains served at `127.0.0.1:18110`.
 - The Browser → Companion path performs a real local HTTP model turn and advances durable request/response/context/head evidence. It does not substitute a synthetic reply when that path fails.
 - The Mac profile additionally has accepted repair, rebuild-preserve, uninstall-preserve, restart/resume, exact-owned shutdown, path-with-spaces ownership, and technical continuity evidence on Apple M4 Pro.
 - The **Vex Guide overlay is a different surface**: its screen guidance is deterministic application/semantic-frame behavior, not proof that the local model is perceiving every screen or that repository/project context has already been loaded into the model.
