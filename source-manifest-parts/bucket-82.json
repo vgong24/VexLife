@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 16283,
       "sha256": "e49d6b212774e08746ea09a53de87c6475ba291e0b7b1dccea6c6ab7c78609fc"
+    },
+    {
+      "path": "src/core/heretic-runtime-establishment.mjs",
+      "mode": "100644",
+      "bytes": 21043,
+      "sha256": "8b02425590a2732c867dfe79e3db338cc4e3661a9a05feaade3dc8544cfcdee0"
     }
   ]
 }
