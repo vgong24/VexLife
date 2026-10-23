@@ -16,6 +16,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const setupCommand = fs.readFileSync(path.join(ROOT, 'setup-vexlife.command'), 'utf8');
 const setup = fs.readFileSync(path.join(ROOT, 'install', 'vexlife-setup.sh'), 'utf8');
 const lifecycle = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
+const initializer = fs.readFileSync(path.join(ROOT, 'scripts', 'initialize-vex.mjs'), 'utf8');
 
 test('MACHUMAN01 root Mac front door resolves exact Git source before repository delegation', () => {
   assert.match(setupCommand, /^#!\/bin\/bash/m);
@@ -139,17 +140,18 @@ test('MACHUMAN03 fresh setup does not offer repair rebuild or uninstall before H
   assert.doesNotMatch(absent, /run_lifecycle uninstall-preserve/);
 });
 
-test('MACHUMAN04 fresh setup preserves the real initializer consent boundary', () => {
+test('MACHUMAN04 fresh Terminal setup collects consent before the owned noninteractive initializer child', () => {
   const absent = setup.slice(setup.indexOf('  ABSENT)'), setup.indexOf('  EXISTING_HEALTHY)'));
   assert.match(absent, /initialize-vex\.mjs" --home "\$VEX_HOME" --plan-only/);
-  assert.match(absent, /initialize-vex\.mjs" --home "\$VEX_HOME";/);
-  assert.doesNotMatch(absent, /initialize-vex\.mjs[^\n]*--yes/);
+  assert.match(absent, /ask_yes_no "Prepare the local Vex runtime now\?/);
+  assert.match(absent, /run_owned node "\$REPO_ROOT\/scripts\/initialize-vex\.mjs" --home "\$VEX_HOME" --yes/);
+  assert.ok(absent.indexOf('ask_yes_no "Prepare the local Vex runtime now?') < absent.indexOf('run_owned node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --yes'));
 });
 
 test('MACHUMAN05 state-derived actions are explicit and browser opens only after start-class completion', () => {
   assert.match(setup, /run_lifecycle start >\/dev\/null; open_vex/);
-  assert.match(setup, /run_lifecycle repair >\/dev\/null; open_vex/);
-  assert.match(setup, /run_lifecycle rebuild-preserve >\/dev\/null; open_vex/);
+  assert.match(setup, /run_lifecycle repair yes >\/dev\/null; open_vex/);
+  assert.match(setup, /run_lifecycle rebuild-preserve yes >\/dev\/null; open_vex/);
   assert.match(setup, /run_lifecycle uninstall-preserve >\/dev\/null/);
   const uninstallTail = setup.slice(setup.lastIndexOf('run_lifecycle uninstall-preserve >/dev/null'));
   assert.doesNotMatch(uninstallTail.split(';;')[0], /open_vex/);
@@ -276,7 +278,69 @@ test('MACHUMAN08 rerun reconciles a prior-source browser through current trusted
   const openVexStart = setup.indexOf('\nopen_vex()', runLifecycleStart);
   const runLifecycle = setup.slice(runLifecycleStart, openVexStart);
   assert.match(runLifecycle, /reconcile_prior_browser_source \|\| return 1/);
-  assert.ok(runLifecycle.indexOf('reconcile_prior_browser_source') < runLifecycle.indexOf('macos-lifecycle.mjs" --operation'));
+  assert.match(runLifecycle, /run_owned node "\$\{lifecycle_args\[@\]\}"/);
+  assert.ok(runLifecycle.indexOf('reconcile_prior_browser_source') < runLifecycle.indexOf('run_owned node'));
+});
+
+test('MACHUMAN09 one exact per-Home setup session serializes writers and cleanup stops only a proven owner', () => {
+  assert.match(setup, /setup_session_dir_for_home\(\)/);
+  assert.match(setup, /\/bin\/mkdir "\$dir"/);
+  assert.match(setup, /owner\.token/);
+  assert.match(setup, /--session-token/);
+  assert.match(setup, /setup_session_active_owner/);
+  assert.match(setup, /command_line=.*\/bin\/ps/);
+  assert.match(setup, /refusing to signal any process/);
+  assert.match(setup, /if \[ "\$action" = "uninstall-preserve" \]; then stop_active_setup_session; fi/);
+  assert.match(setup, /trap 'cancel_setup_session 130' HUP INT TERM/);
+  assert.match(setup, /acquire_setup_session "install-node"/);
+  assert.match(setup, /run_owned brew install node/);
+  assert.doesNotMatch(setup, /cancel_unreserved_child|UNRESERVED_CHILD_PID/);
+  assert.match(setup, /while \[ "\$attempt" -lt 80 \] && kill -0 "\$child_pid"/);
+  assert.match(setup, /trap - EXIT[\s\S]*SETUP_SESSION_OWNED="no"[\s\S]*exit "\$exit_code"/);
+  assert.match(setup, /if \[ -e "\$dir\/child\.pid" \]; then/);
+  assert.match(setup, /if kill -0 "\$child_pid" 2>\/dev\/null; then[\s\S]*return 1/);
+
+  const controllerStart = setup.indexOf('controller_run()');
+  const controllerEnd = setup.indexOf('\nif [ "$CONTROLLER_MODE" = true ]', controllerStart);
+  const controllerRun = setup.slice(controllerStart, controllerEnd);
+  const firstStatus = controllerRun.indexOf('status_json=');
+  const reserve = controllerRun.indexOf('begin_setup_action "$CONTROLLER_ACTION"');
+  const secondStatus = controllerRun.indexOf('status_json=', firstStatus + 1);
+  assert.ok(firstStatus >= 0 && firstStatus < reserve, 'lifecycle admission must be observed before cleanup can cancel an active setup');
+  assert.ok(reserve < secondStatus, 'lifecycle state must be re-observed after exact setup reservation');
+});
+
+test('MACHUMAN10 exact STARTING runtime resumes readiness instead of requiring pre-qualified health or respawning', () => {
+  assert.match(initializer, /\['RUNTIME_QUALIFIED', 'STARTING'\]\.includes\(prior\.state\)/);
+  assert.match(initializer, /prior\.state === 'RUNTIME_QUALIFIED' && !await endpointResponding/);
+  assert.match(initializer, /prior\.state === 'STARTING' && prior\.schemaVersion !== STARTING_RUNTIME_RECEIPT_SCHEMA/);
+  const resumeStart = initializer.indexOf("if (existing.priorState === 'STARTING')");
+  const resumeEnd = initializer.indexOf('} else {', resumeStart);
+  const resumeBlock = initializer.slice(resumeStart, resumeEnd);
+  assert.match(resumeBlock, /pendingRuntimeOwner =/);
+  assert.match(resumeBlock, /await waitForRuntime\(profile, runtimePid\)/);
+  assert.ok(resumeBlock.indexOf('pendingRuntimeOwner =') < resumeBlock.indexOf('await waitForRuntime'));
+});
+
+test('MACHUMAN11 lifecycle cancellation is forwarded to the exact bootstrap/initializer child', () => {
+  const runNodeStart = lifecycle.indexOf('async function runNode(');
+  const runNodeEnd = lifecycle.indexOf('\nfunction parseLastJson', runNodeStart);
+  assert.ok(runNodeStart >= 0 && runNodeEnd > runNodeStart);
+  const runNodeSource = lifecycle.slice(runNodeStart, runNodeEnd);
+  assert.match(runNodeSource, /spawn\(process\.execPath, argv/);
+  assert.match(runNodeSource, /process\.on\('SIGTERM', onTerm\)/);
+  assert.match(runNodeSource, /process\.on\('SIGINT', onInt\)/);
+  assert.match(runNodeSource, /child\.kill\(signal\)/);
+  assert.match(runNodeSource, /forwardStderr = false/);
+  assert.match(runNodeSource, /if \(forwardStderr\) process\.stderr\.write\(chunk\)/);
+  assert.match(runNodeSource, /process\.off\('SIGTERM', onTerm\)/);
+  assert.match(runNodeSource, /process\.off\('SIGINT', onInt\)/);
+  assert.doesNotMatch(runNodeSource, /spawnSync\(process\.execPath/);
+  assert.match(lifecycle, /async function bootstrap\(home, repo\)/);
+  assert.match(lifecycle, /async function initialize\(home, repo, options\)/);
+  assert.match(lifecycle, /runNode\(argv, \{ cwd: repo, forwardStderr: true \}\)/);
+  assert.match(lifecycle, /await bootstrap\(home, repo\)/);
+  assert.match(lifecycle, /const initialized = await initialize\(home, repo, options\)/);
 });
 
 // [VXG RealForever]
