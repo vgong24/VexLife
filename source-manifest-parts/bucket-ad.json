@@ -9,6 +9,12 @@
       "sha256": "488bc5f83a2f1a670551c719134be6e6abaa6e33388714e699f1cdf293c8e1fb"
     },
     {
+      "path": "docs/SERVER-FAMILY-CONVERSATION-CAPABILITY.md",
+      "mode": "100644",
+      "bytes": 2530,
+      "sha256": "852c90600183bad3069818fb0957cc880f103cc0403b964b73657a831a199971"
+    },
+    {
       "path": "docs/vexlife-assortment/practicum-candidates/vex-node-01/PROOF.e2e.mjs",
       "mode": "100644",
       "bytes": 22031,

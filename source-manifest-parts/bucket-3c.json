@@ -11,8 +11,8 @@
     {
       "path": "docs/VEX-FAMILY-CONVERSATION-BRIDGE.md",
       "mode": "100644",
-      "bytes": 7039,
-      "sha256": "d6bdba3a0f7132a4dade776236ce42003295f325d410f01b63a06e279dd9dd4c"
+      "bytes": 8687,
+      "sha256": "f52f9863d145609b81658c81e9e22fd6ebbe8c136c855858a54f2ca3394fea0b"
     },
     {
       "path": "platform/android/app/src/main/kotlin/vexlife/android/security/AndroidHomeDevicePossessionKey.kt",

@@ -23,8 +23,8 @@
     {
       "path": "test/browser-family-conversation-server-composition.test.mjs",
       "mode": "100644",
-      "bytes": 10484,
-      "sha256": "05e247bedbbeba505f3017da873b570bf53cc323a2b680da67f448ae86976bec"
+      "bytes": 18179,
+      "sha256": "289f55741dd6ade758a1879530bae41bf2faa3f73e050d1051679ea62ebb9104"
     }
   ]
 }

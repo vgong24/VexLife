@@ -21,6 +21,12 @@
       "sha256": "311d8363a87ddfc49afb21689963dfe460726a3b425374255ba4132345a9c5a4"
     },
     {
+      "path": "src/core/live-workspace-observation.mjs",
+      "mode": "100644",
+      "bytes": 5688,
+      "sha256": "de7aff911504cbdc646d9cf49c70ed38583cc1e0c15706fc2850a8d4ee791ce3"
+    },
+    {
       "path": "test/generator.test.mjs",
       "mode": "100644",
       "bytes": 1047,

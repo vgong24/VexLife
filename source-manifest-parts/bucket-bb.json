@@ -43,6 +43,12 @@
       "mode": "100644",
       "bytes": 10692,
       "sha256": "0c8f5ac638be491b38034a91c5a21a51a5676c5cee3cfc999ad06b617a1aa6ad"
+    },
+    {
+      "path": "test/interaction-control.test.mjs",
+      "mode": "100644",
+      "bytes": 4839,
+      "sha256": "c3865e8955db0491538deded1beba0e50f5139cc2eefa51fe089a1721a1ed286"
     }
   ]
 }

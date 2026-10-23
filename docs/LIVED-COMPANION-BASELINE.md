@@ -44,6 +44,45 @@ symbolic-link or junction traversal is rejected before reading or writing. Conve
 event directories must be real directories, and event entries must be regular,
 non-symlink files before they may affect duplicate detection or event-chain replay. One atomic cross-process writer lease is held for the complete read → HTTP → append → context → head transaction of each thread; a competing live or unverifiable writer fails before endpoint use or persistence. Lease records are content-addressed. If the recorded owner process is proven absent on the same host, ordinary turn execution returns `THREAD_WRITER_RECOVERY_REQUIRED`, preserves the exact lease, and routes to explicit recovery/attention rather than pretending ordinary retry can succeed. Malformed, hash-invalid, identity-invalid, symlink, or otherwise unverifiable lease evidence is preserved and returns `THREAD_WRITER_CONFLICT` with `ownerState=UNVERIFIABLE` and an attention route; it is never treated as ordinary retryable input. Automatic abandoned-lease removal remains held outside G01.
 
+## Thread-writer currentness projection
+
+The Lived Companion owner exposes one effect-free read projection over the same atomic
+thread-writer lease used by ordinary turn admission:
+
+```text
+projection.lived-companion.thread-writer-currentness
+
+IDLE
+  no writer lease exists for the exact current Home / Companion lineage / thread
+
+ACTIVE
+  one valid lease exists and its recorded process is currently active
+
+RECOVERY_REQUIRED
+  one valid lease exists but its owner is proven absent; explicit recovery remains required
+
+HELD_UNVERIFIABLE
+  lease evidence exists but is malformed, hash-invalid, identity-invalid, non-regular,
+  unreadable, or its process liveness cannot be established safely
+```
+
+The reader consumes the existing lease classifier and does not create a second liveness
+algorithm. It never acquires, releases, deletes, repairs, steals, or refreshes the lease.
+The projection exposes bounded evidence hashes and the existing next-safe route, but never
+exports the writer PID or lock token and does not claim an exact active `turnRef` because
+the writer lease does not contain one.
+
+Permanent distinctions:
+
+```text
+THREAD_WRITER_CURRENTNESS != EXACT_TURN_IDENTITY
+THREAD_WRITER_CURRENTNESS != COMPANION_AVAILABILITY
+THREAD_WRITER_CURRENTNESS != CONVERSATION_PERMISSION
+THREAD_WRITER_CURRENTNESS != GENERIC_EXECUTION
+OBSERVATION != LEASE_ACQUIRE
+OBSERVATION != RECOVERY_EFFECT
+```
+
 ## Fresh Home admission and preservation
 
 Initialization may create a Vex Home only when the requested root is missing or

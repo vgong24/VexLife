@@ -5,8 +5,8 @@
     {
       "path": "docs/HOME-BRIDGE-REMOTE-SURFACES.md",
       "mode": "100644",
-      "bytes": 6475,
-      "sha256": "a2a43c127e3c956463e82713d7bf6c480272a20c0da6335d6c71214c97b1a154"
+      "bytes": 7939,
+      "sha256": "2a59cce77be96ec8ce45b6efe18bbdcfefbae07e99e1aca6e5bfd3dafe2c3bdb"
     },
     {
       "path": "fixtures/navigation-continuity/cross-realm.json",
@@ -25,6 +25,12 @@
       "mode": "100644",
       "bytes": 16559,
       "sha256": "d2f527e2fe77b1c0dac5164e24694f10eb61723455f22861f4e8baed67a4d355"
+    },
+    {
+      "path": "test/conversation-send-admission.test.mjs",
+      "mode": "100644",
+      "bytes": 10488,
+      "sha256": "4e267bc002307ebc0cfe565ec317da790f9b425c0e05ddaa8d18af1b58467a88"
     }
   ]
 }

@@ -5,8 +5,14 @@
     {
       "path": "blueprint/artifact-delivery-registry.json",
       "mode": "100644",
-      "bytes": 6868,
-      "sha256": "a676cab2cdd38619710f7c6dafe9b575d3370d27e6277d0eb6cef4877ba1d752"
+      "bytes": 11559,
+      "sha256": "3075e7192d429f10a0d963e9ff0b5997f88fde8ac912f79d1894e50e6e20a896"
+    },
+    {
+      "path": "blueprint/fragments/behavior-contracts/vexstream-playback-play-pause.json",
+      "mode": "100644",
+      "bytes": 24856,
+      "sha256": "f1ec5c9bba02d7ff8eccd293a62b6fb948e47f30541d933998136835a89a99a0"
     },
     {
       "path": "blueprint/module-registry/cdr-s5-closed-alpha.json",
@@ -23,8 +29,8 @@
     {
       "path": "src/core/blueprint.mjs",
       "mode": "100644",
-      "bytes": 4120,
-      "sha256": "b6dab65780a488c28f902b77d058f60ae1660955ff0f9c6fed34661f5e416164"
+      "bytes": 5508,
+      "sha256": "1ce321d4195ff0e0cb9bab6a00a61183ee24fe0daf7849d89f69427da69e0f8c"
     },
     {
       "path": "src/core/continuity-evolution-router.mjs",

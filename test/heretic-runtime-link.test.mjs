@@ -8,7 +8,9 @@ import {
   HERETIC_RUNTIME_LINK_SCHEMA,
   HERETIC_RUNTIME_RECEIPT_SCHEMA,
   HERETIC_TRANSPORT_CLASS,
+  formHereticPersistentRuntimeBindingRef,
   formHereticPersistentRuntimeLink,
+  formHereticPersistentRuntimeStoppedObservation,
   validateHereticPersistentRuntimeReceipt,
 } from '../src/core/heretic-runtime-link.mjs';
 
@@ -159,6 +161,105 @@ test('link identity is deterministic for the same receipt and Home', () => {
   assert.equal(a.runtimeObservation.adapterRef, HERETIC_RUNTIME_ADAPTER_REF);
   assert.equal(HERETIC_RUNTIME_CLASS, 'MLX_LM_DIRECT_RUNTIME');
   assert.equal(HERETIC_TRANSPORT_CLASS, 'MLX_LM_OPENAI_NUMERIC_LOOPBACK');
+});
+
+test('binding identity survives runtime receipt/PID/source refresh while runtime observation rotates', () => {
+  const firstReceipt = receipt();
+  const refreshedReceipt = receipt({
+    receiptRef: 'receipt.vexlocalbridge.heretic-persistent-runtime.restart',
+    sourceIdentity: {
+      repository: 'vgong24/Vextreme-SDK',
+      revision: '4'.repeat(40),
+      tree: '5'.repeat(40),
+      moduleSha256: '6'.repeat(64),
+    },
+    runtime: {
+      ...firstReceipt.runtime,
+      pid: 51002,
+      processGroupId: 51002,
+    },
+    qualification: {
+      ...firstReceipt.qualification,
+      loadResultRef: 'result.vexlocalbridge.heretic.loopback.restart',
+    },
+  });
+  const first = formHereticPersistentRuntimeLink({ receipt: firstReceipt, homeIdentity });
+  const refreshed = formHereticPersistentRuntimeLink({ receipt: refreshedReceipt, homeIdentity });
+
+  assert.equal(first.companionBinding.bindingRef, formHereticPersistentRuntimeBindingRef(homeIdentity));
+  assert.equal(refreshed.companionBinding.bindingRef, first.companionBinding.bindingRef);
+  assert.notEqual(refreshed.runtimeObservation.observationRef, first.runtimeObservation.observationRef);
+  assert.notEqual(refreshed.runtimeReceiptRef, first.runtimeReceiptRef);
+  assert.notEqual(refreshed.runtimePid, first.runtimePid);
+
+  const differentLineage = {
+    ...homeIdentity,
+    companionLineageRef: 'companion-lineage.heretic-reentry.other',
+  };
+  assert.notEqual(
+    formHereticPersistentRuntimeBindingRef(differentLineage),
+    first.companionBinding.bindingRef,
+  );
+});
+
+
+test('exact #636 owned stop projects RECOVERABLE-ready stopped runtime evidence on the same binding', () => {
+  const currentReceipt = receipt();
+  const healthy = formHereticPersistentRuntimeLink({ receipt: currentReceipt, homeIdentity });
+  const stopped = formHereticPersistentRuntimeStoppedObservation({
+    receipt: currentReceipt,
+    homeIdentity,
+    stopResult: {
+      disposition: 'STOPPED_EXACT_OWNED_MLX_RUNTIME',
+      pid: currentReceipt.runtime.pid,
+      processTerminationPerformed: true,
+      stop: {
+        state: 'RETIRED_VERIFIED',
+        exactOwnershipVerified: true,
+        verifiedNotLive: true,
+        signalSent: 'SIGTERM',
+        processGroupId: currentReceipt.runtime.processGroupId,
+      },
+    },
+  });
+
+  assert.equal(stopped.bindingRef, healthy.companionBinding.bindingRef);
+  assert.equal(stopped.homeRef, homeIdentity.homeRef);
+  assert.equal(stopped.adapterRef, HERETIC_RUNTIME_ADAPTER_REF);
+  assert.equal(stopped.runtimeOwnershipState, 'NO_OWNED_RUNTIME');
+  assert.equal(stopped.runtimeState, 'STOPPED');
+  assert.equal(stopped.qualificationState, 'STALE');
+  assert.equal(stopped.safeReentryState, 'AVAILABLE');
+  assert.equal(stopped.currentness, 'CURRENT');
+  assert.notEqual(stopped.observationRef, healthy.runtimeObservation.observationRef);
+  assert.ok(stopped.evidenceRefs.includes(currentReceipt.receiptRef));
+});
+
+test('stopped-runtime projection rejects forged or wrong-process stop evidence', () => {
+  const currentReceipt = receipt();
+  const baseStop = {
+    disposition: 'STOPPED_EXACT_OWNED_MLX_RUNTIME',
+    pid: currentReceipt.runtime.pid,
+    processTerminationPerformed: true,
+    stop: {
+      state: 'RETIRED_VERIFIED',
+      exactOwnershipVerified: true,
+      verifiedNotLive: true,
+      signalSent: 'SIGTERM',
+      processGroupId: currentReceipt.runtime.processGroupId,
+    },
+  };
+  for (const stopResult of [
+    { ...baseStop, pid: currentReceipt.runtime.pid + 1 },
+    { ...baseStop, stop: { ...baseStop.stop, exactOwnershipVerified: false } },
+    { ...baseStop, stop: { ...baseStop.stop, verifiedNotLive: false } },
+    { ...baseStop, stop: { ...baseStop.stop, processGroupId: currentReceipt.runtime.processGroupId + 1 } },
+  ]) {
+    assert.throws(
+      () => formHereticPersistentRuntimeStoppedObservation({ receipt: currentReceipt, homeIdentity, stopResult }),
+      (error) => error?.code === 'HERETIC_RUNTIME_STOP_EVIDENCE_INVALID',
+    );
+  }
 });
 
 // [VXG RealForever]

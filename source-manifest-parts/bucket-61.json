@@ -29,8 +29,14 @@
     {
       "path": "src/core/repository-evidence.mjs",
       "mode": "100644",
-      "bytes": 19591,
-      "sha256": "fa699c936586fd499c1638f1f1c1ecd79e4ab86c106bc6230f22103140a470d9"
+      "bytes": 33675,
+      "sha256": "27ab8af5a51f39c63ba08227eaeb5abcd32e56fcfbcced5a85cfe59b771bdd46"
+    },
+    {
+      "path": "test/project-continuity.test.mjs",
+      "mode": "100644",
+      "bytes": 19141,
+      "sha256": "f160542ed518b471a92ec9b72eacae2892dd058e904bf67d2ae8564502ff3666"
     },
     {
       "path": "test/validation-evidence.test.mjs",

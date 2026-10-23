@@ -4,6 +4,7 @@
   "acceptedModes": [
     "DIRECT_SINGLE_TURN",
     "ADOPTED_READ_ONLY",
+    "ADOPTED_AUTHORIZED_EFFECT",
     "CANONICAL_E2_UNTAUGHT_G0"
   ],
   "defaultMode": "DIRECT_SINGLE_TURN",

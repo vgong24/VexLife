@@ -5,8 +5,8 @@
     {
       "path": "blueprint/module-registry.json",
       "mode": "100644",
-      "bytes": 1194,
-      "sha256": "fbe80aee22286b5c2c7e2a6670c9445cd65726efccd2aa171ede3e5991f4e1bc"
+      "bytes": 1373,
+      "sha256": "dc5e743d095b6c5da924f4badc83ef28636ce6615cac25c93a0199157970be66"
     },
     {
       "path": "src/core/review-composition.mjs",
@@ -17,8 +17,8 @@
     {
       "path": "test/browser.test.mjs",
       "mode": "100644",
-      "bytes": 8565,
-      "sha256": "24f148e9e35bfc13bff23cb9b87d483cef5be81fae9a0f910786b8bcaef30621"
+      "bytes": 11588,
+      "sha256": "9bf7a41299e29e4d476ba913ee5e5628abb3dce496fa346797b42870d89d3858"
     }
   ]
 }

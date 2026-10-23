@@ -5,14 +5,20 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "bytes": 4456,
-      "sha256": "838b78c47f06092baf875e6536f9621aba92c18c1848b608b7b72cbb6f2e9c3a"
+      "bytes": 4795,
+      "sha256": "25b2c0f436d0cafcf398d11014bec582e25c2fa1d1ef50c8617fc0f14aec2678"
     },
     {
       "path": "src/core/feature-construction.mjs",
       "mode": "100644",
       "bytes": 18311,
       "sha256": "48d4a0ac50aa595250905d83063e95a8db916ea76b387a82b9673e2427d26f80"
+    },
+    {
+      "path": "test/family-companion-prompt-context.test.mjs",
+      "mode": "100644",
+      "bytes": 7416,
+      "sha256": "21c57d2406fbc9eb71ff88bbd6babb2456af383271422aad7335c19213867fa3"
     },
     {
       "path": "test/registry.test.mjs",

@@ -11,8 +11,8 @@
     {
       "path": "docs/NEWCOMER-MAP.md",
       "mode": "100644",
-      "bytes": 5418,
-      "sha256": "fa851e7174736adf4714fb532cb79528405dac4e3b3091de28a8d6bb1d4a993a"
+      "bytes": 6331,
+      "sha256": "0d0840514e8a8ee5726e170916697a5af1059801c2e16411b31818d3b48a9539"
     },
     {
       "path": "scripts/scheduled-daily-autonomy.mjs",

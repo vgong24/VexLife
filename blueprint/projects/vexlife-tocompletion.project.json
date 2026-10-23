@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "vexlife.project-definition/v1",
+  "projectRef": "project.vexlife.tocompletion",
+  "label": "VexLife ToCompletion",
+  "purpose": "Carry the accepted ToCompletion trajectory from real Project dogfood through fresh Heretic establishment, lived conversation/restart, orientation/work, lived learning and later whole-product expansion without creating a second work-state owner.",
+  "rootIntentRefs": [
+    "intent.vexlife.tocompletion.current"
+  ],
+  "featureRefs": [],
+  "workFeatureBindings": [],
+  "sourceRefs": [
+    "github.issue.vexlife.866",
+    "github.pull.vexlife.912",
+    "git.vexlife.merge.28a1c6438fd59c4e129c3aa0050b61b05c0aea62"
+  ],
+  "formedAt": "2026-10-20T07:00:17.000Z"
+}

@@ -39,6 +39,12 @@
       "sha256": "81ae5649dba167a2e947e73582209a65958dc8965850b05a8207b7f426cb5071"
     },
     {
+      "path": "test/core-semantic-relay-module-boundary.test.mjs",
+      "mode": "100644",
+      "bytes": 2232,
+      "sha256": "4bab0df5d0eb3159c3f8f0372188db98121dc8c312201814c10c53f427c76aed"
+    },
+    {
       "path": "test/public-safety.test.mjs",
       "mode": "100644",
       "bytes": 3919,

@@ -14,6 +14,9 @@ const isolatedTestFiles = new Set([
   // perturb the CPU/resource predicate that they are explicitly proving.
   'capability-assimilation-runtime.test.mjs',
   'capability-assimilation-scheduler-authority.test.mjs',
+  // P4 exercises the same live scheduler resource observer. Keep the exact effect assertions intact,
+  // but do not let unrelated test-file load make source-owned resource admission nondeterministic.
+  'p4-typed-local-effect.test.mjs',
   // This suite uses bounded cooperative-control timing across a child process.
   // Keep its timing assertions intact, but remove unrelated test-file load.
   'native-worker-supervisor.test.mjs',

@@ -27,7 +27,9 @@ import {
 import {
   createVexAssemblyCapabilityDomainSupport
 } from '../src/core/vex-assembly-capability-domains.mjs';
+import { createTypedCommandEffectSupport } from '../src/core/typed-command-runtime.mjs';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
+import { compileRegistryPack } from '../src/core/registry.mjs';
 import {
   createModelConnectionTurnComposer,
   loadModelConnectionTurnSources
@@ -62,8 +64,13 @@ import {
   BrowserFamilyConversationBridgeError,
   appendBrowserFamilyMessage,
   listBrowserFamilyChannels,
-  readBrowserFamilyConversation
+  readBrowserFamilyConversation,
+  readBrowserFamilyThreadHistory
 } from '../src/core/browser-family-conversation-bridge.mjs';
+import {
+  ServerFamilyConversationCapabilityError,
+  createServerFamilyConversationCapability
+} from '../src/core/server-family-conversation-capability.mjs';
 import {
   BrowserFamilyLifecycleBridgeError,
   executeBrowserFamilyLifecycle
@@ -87,6 +94,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
 const home = path.resolve(process.env.VEXLIFE_HOME ?? path.join(os.homedir(), '.vexlife'));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
+export const BROWSER_ARCHITECTURE_NODE_API_PATH = '/api/v1/architecture/node';
+export const BROWSER_ARCHITECTURE_NODE_SCHEMA = 'vexlife.browser-architecture-node/v1';
+export const BROWSER_ARCHITECTURE_NODE_FAILURE_SCHEMA = 'vexlife.browser-architecture-node-failure/v1';
+export const BROWSER_ARCHITECTURE_NODE_RELATION_LIMIT = 24;
 export const BROWSER_COMPANION_AVAILABILITY_PATH = '/api/v1/companion/availability';
 export const BROWSER_COMPANION_RECOVERY_ACTION_PATH = '/api/v1/companion/recovery-action';
 export const BROWSER_COMPANION_RECOVERY_ACTION_MAX_BODY_BYTES = 4 * 1024;
@@ -129,9 +140,181 @@ export const BROWSER_FAMILY_LIFECYCLE_MAX_BODY_BYTES = 8 * 1024;
 export const BROWSER_FAMILY_CONVERSATION_LIST_MAX = 1000;
 const RELATIONSHIPS_PERSISTENCE_REQUEST_KEYS = new Set(['localOwnerBinding', 'input']);
 const FAMILY_CONVERSATION_REQUEST_KEYS = new Set(['operation', 'intent']);
-const FAMILY_CONVERSATION_OPERATIONS = new Set(['APPEND', 'READ', 'LIST']);
+const FAMILY_CONVERSATION_OPERATIONS = new Set(['APPEND', 'READ', 'READ_THREAD_HISTORY', 'LIST']);
 const FAMILY_LIFECYCLE_REQUEST_KEYS = new Set(['operation', 'intent']);
 const FAMILY_LIFECYCLE_OPERATIONS = new Set(['HOST', 'JOIN', 'LEAVE']);
+
+export class BrowserArchitectureNodeError extends Error {
+  constructor(code, message, httpStatus = 400) {
+    super(message);
+    this.name = 'BrowserArchitectureNodeError';
+    this.code = code;
+    this.httpStatus = httpStatus;
+  }
+}
+
+function architectureNodeRef(value) {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 512 || /[\u0000-\u001f\u007f]/u.test(value)) {
+    throw new BrowserArchitectureNodeError(
+      'ARCHITECTURE_NODE_REF_INVALID',
+      'Architecture node ref must be one bounded canonical ref',
+      400
+    );
+  }
+  return value;
+}
+
+function boundedArchitectureRelationships(entries, nodeRef, direction) {
+  const rows = [];
+  if (direction === 'OUTGOING') {
+    const node = entries.find((entry) => entry.ref === nodeRef);
+    for (const edge of node?.edges ?? []) rows.push({ type: edge.type, ref: edge.to });
+  } else {
+    for (const entry of entries) {
+      for (const edge of entry.edges ?? []) {
+        if (edge.to === nodeRef) rows.push({ type: edge.type, ref: entry.ref, kind: entry.kind });
+      }
+    }
+  }
+  rows.sort((left, right) => `${left.type}:${left.ref}`.localeCompare(`${right.type}:${right.ref}`));
+  return Object.freeze(rows.slice(0, BROWSER_ARCHITECTURE_NODE_RELATION_LIMIT).map((row) => Object.freeze(row)));
+}
+
+function architectureFeaturePurposeAnchors(registry, entries, entry) {
+  const found = new Map();
+  const addAncestry = (start, baseDistance) => {
+    let cursor = start;
+    for (let depth = 0; cursor && depth <= 6; depth += 1) {
+      const distance = baseDistance + depth;
+      const prior = found.get(cursor.ref);
+      if (prior === undefined || distance < prior) found.set(cursor.ref, distance);
+      cursor = cursor.parentRef ? registry.get(cursor.parentRef) : null;
+    }
+  };
+  addAncestry(entry, 0);
+
+  for (const candidate of entries) {
+    const linksToSelected = (candidate.edges ?? []).some((edge) =>
+      edge.to === entry.ref && ['TERRAIN', 'CANONICAL_NODE', 'PRESENTS'].includes(edge.type)
+    );
+    if (linksToSelected) addAncestry(candidate, 1);
+  }
+
+  return [...found.entries()]
+    .map(([ref, distance]) => Object.freeze({ ref, distance }))
+    .sort((left, right) => left.distance - right.distance || left.ref.localeCompare(right.ref));
+}
+
+function architectureFeaturePurposes(registry, entries, entry) {
+  const anchors = architectureFeaturePurposeAnchors(registry, entries, entry);
+  const found = new Map();
+  for (const feature of entries.filter((candidate) => candidate.kind === 'FEATURE')) {
+    for (const anchor of anchors) {
+      if (!(feature.canonicalNodeRefs ?? []).includes(anchor.ref)) continue;
+      const prior = found.get(feature.ref);
+      if (prior && prior.distance <= anchor.distance) continue;
+      found.set(feature.ref, Object.freeze({
+        featureRef: feature.ref,
+        sourcePurpose: feature.brief ?? null,
+        purposeStringRef: feature.purposeStringRef ?? null,
+        viaRef: anchor.ref,
+        distance: anchor.distance,
+        moduleRefs: Object.freeze([...(feature.moduleRefs ?? [])].slice(0, 12)),
+        processRefs: Object.freeze([...(feature.processRefs ?? [])].slice(0, 12))
+      }));
+    }
+  }
+  return Object.freeze(
+    [...found.values()].sort((left, right) => left.distance - right.distance || left.featureRef.localeCompare(right.featureRef)).slice(0, 12)
+  );
+}
+
+function architectureAncestry(registry, entry) {
+  const rows = [];
+  let cursor = entry;
+  for (let depth = 0; cursor?.parentRef && depth < 6; depth += 1) {
+    const parent = registry.get(cursor.parentRef);
+    if (!parent) break;
+    rows.push(Object.freeze({ ref: parent.ref, kind: parent.kind, brief: parent.brief ?? null }));
+    cursor = parent;
+  }
+  return Object.freeze(rows);
+}
+
+export function createServerOwnedArchitectureNodeResolver({ sourceRoot = root } = {}) {
+  const registry = compileRegistryPack(loadBlueprint(sourceRoot));
+  const entries = [...registry.entries.values()];
+  return Object.freeze({
+    describe(requestedRef) {
+      const ref = architectureNodeRef(requestedRef);
+      const entry = registry.get(ref);
+      if (!entry) {
+        throw new BrowserArchitectureNodeError(
+          'ARCHITECTURE_NODE_NOT_FOUND',
+          'The selected semantic node is not registered in current VexLife source',
+          404
+        );
+      }
+      const featurePurposes = architectureFeaturePurposes(registry, entries, entry);
+      return Object.freeze({
+        schemaVersion: BROWSER_ARCHITECTURE_NODE_SCHEMA,
+        state: 'CURRENT',
+        truthClass: 'SOURCE_BOUND_READ_ONLY_ARCHITECTURE_NODE',
+        ref: entry.ref,
+        kind: entry.kind,
+        brief: entry.brief ?? null,
+        parentRef: entry.parentRef ?? null,
+        screenRef: entry.screenRef ?? null,
+        actionRef: entry.actionRef ?? null,
+        permissionRef: entry.permissionRef ?? null,
+        conceptRef: entry.conceptRef ?? null,
+        interactionRef: entry.interactionRef ?? null,
+        navigationRef: entry.navigationRef ?? null,
+        sourceRef: entry.sourceRef ?? null,
+        sourcePath: entry.path ?? null,
+        ancestry: architectureAncestry(registry, entry),
+        featurePurposes,
+        relationships: Object.freeze({
+          outgoing: boundedArchitectureRelationships(entries, entry.ref, 'OUTGOING'),
+          incoming: boundedArchitectureRelationships(entries, entry.ref, 'INCOMING')
+        }),
+        effects: Object.freeze({
+          navigationMutation: false,
+          HomeMutation: false,
+          MemoryMutation: false,
+          modelRuntimeEffect: false,
+          networkEffect: false,
+          sourceMutation: false
+        })
+      });
+    }
+  });
+}
+
+function browserArchitectureNodeFailurePayload(error) {
+  const typed = error instanceof BrowserArchitectureNodeError
+    ? error
+    : new BrowserArchitectureNodeError(
+      'ARCHITECTURE_NODE_READ_FAILED',
+      'Architecture node source descent failed safely',
+      500
+    );
+  return Object.freeze({
+    schemaVersion: BROWSER_ARCHITECTURE_NODE_FAILURE_SCHEMA,
+    state: 'HELD',
+    truthClass: 'SOURCE_BOUND_READ_ONLY_ARCHITECTURE_NODE_FAILURE',
+    failureCode: typed.code,
+    message: typed.message,
+    effects: Object.freeze({
+      navigationMutation: false,
+      HomeMutation: false,
+      MemoryMutation: false,
+      modelRuntimeEffect: false,
+      networkEffect: false,
+      sourceMutation: false
+    })
+  });
+}
 
 function readRelationshipsRuntimeSourceJson(sourceRoot, relativePath, label) {
   const file = path.resolve(sourceRoot, relativePath);
@@ -429,6 +612,8 @@ export function createServerOwnedBrowserCompanionBridge({
   model = process.env.VEXLIFE_COMPANION_MODEL ?? null,
   runtimeMode = process.env.VEXLIFE_CAPABILITY_RUNTIME_MODE ??
     CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY,
+  typedCommandAuthorityPath = process.env.VEXLIFE_TYPED_COMMAND_AUTHORITY_PATH ?? null,
+  typedCommandSupportFactory = createTypedCommandEffectSupport,
   recoveryOwnerFactory = createCompanionRecoveryOwner,
   bridgeFactory = createBrowserCompanionBridge
 } = {}) {
@@ -438,6 +623,9 @@ export function createServerOwnedBrowserCompanionBridge({
   if (typeof bridgeFactory !== 'function') {
     throw new TypeError('Browser Companion bridge factory must be one function');
   }
+  if (typeof typedCommandSupportFactory !== 'function') {
+    throw new TypeError('Typed-command support factory must be one function');
+  }
   if (typeof recoveryOwnerFactory !== 'function') {
     throw new TypeError('Browser Companion recovery-owner factory must be one function');
   }
@@ -446,6 +634,15 @@ export function createServerOwnedBrowserCompanionBridge({
     : loadBlueprint(sourceRoot);
   const capabilityDomainSupport = runtimeMode === CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY
     ? createVexAssemblyCapabilityDomainSupport({ sourceRoot, home: companionHome })
+    : runtimeMode === CAPABILITY_ASSIMILATION_MODES.ADOPTED_AUTHORIZED_EFFECT
+      ? createVexAssemblyCapabilityDomainSupport({ sourceRoot, home: companionHome })
+      : null;
+  const typedCommandSupport = runtimeMode === CAPABILITY_ASSIMILATION_MODES.ADOPTED_AUTHORIZED_EFFECT
+    ? typedCommandSupportFactory({
+        sourceRoot,
+        runtimeRoot: path.join(companionHome, 'runtime'),
+        authorityPath: typedCommandAuthorityPath
+      })
     : null;
   const baseCapabilityRuntime = capabilityRuntimeBundle
     ? createCapabilityAssimilationRuntime({
@@ -453,7 +650,8 @@ export function createServerOwnedBrowserCompanionBridge({
         processFactoryDefinition: capabilityRuntimeBundle.factory,
         schedulerRegistry: capabilityRuntimeBundle.schedulerRegistry,
         mode: runtimeMode,
-        executors: capabilityDomainSupport?.executors ?? {}
+        executors: capabilityDomainSupport?.executors ?? {},
+        authorizedEffectSupport: typedCommandSupport
       })
     : null;
   const capabilityRuntime = baseCapabilityRuntime && capabilityDomainSupport
@@ -801,7 +999,11 @@ function familyConversationHttpStatus(error) {
 }
 
 function familyConversationFailurePayload(error) {
-  if (error instanceof BrowserFamilyConversationServerError || error instanceof BrowserFamilyConversationBridgeError) {
+  if (
+    error instanceof BrowserFamilyConversationServerError
+    || error instanceof BrowserFamilyConversationBridgeError
+    || error instanceof ServerFamilyConversationCapabilityError
+  ) {
     return Object.freeze({
       schemaVersion: 'vexlife.browser-family-conversation-http-failure/v1',
       state: 'HELD_FAMILY_CONVERSATION_FAILURE',
@@ -1283,6 +1485,7 @@ export async function resolveCurrentFamilyRoomBootstrap({
   familyHome,
   resolveAuthority,
   nowProvider,
+  familyCapability = null,
   resolveFamilyWorkProjection = null,
   resolveFamilySecurityProjection = null
 } = {}) {
@@ -1302,91 +1505,59 @@ export async function resolveCurrentFamilyRoomBootstrap({
     }
     throw error;
   }
-  const now = currentFamilyConversationTime(nowProvider);
-  const durable = listConversationChannelBindings({
+
+  const capability = familyCapability ?? createServerFamilyConversationCapability({
     home: familyHome,
-    limit: BROWSER_FAMILY_CONVERSATION_LIST_MAX
+    nowProvider,
+    instanceRef: 'instance.vexlife.browser-family-bootstrap',
+    appendFamilyMessage: appendBrowserFamilyMessage,
+    readFamilyConversation: readBrowserFamilyConversation,
+    readFamilyThreadHistory: readBrowserFamilyThreadHistory,
+    listFamilyChannels: listBrowserFamilyChannels,
+    readChannelBinding: readConversationChannelBinding,
+    listChannelBindings: listConversationChannelBindings
   });
-  const rooms = [];
-  const securityBindingByChannel = new Map();
-  for (const channel of durable.channels ?? []) {
-    const binding = channel?.familySpaceBinding;
-    if (!binding || binding.audienceKind !== 'GROUP') continue;
-    let visible;
-    try {
-      visible = listBrowserFamilyChannels({
-        home: familyHome,
-        intent: {
-          spaceRef: binding.spaceRef,
-          expectedMembershipGeneration: binding.membershipGeneration
-        },
-        channels: [channel],
-        membership: authority.membership,
-        lease: authority.lease,
-        currentRevocationGeneration: authority.currentRevocationGeneration,
-        now
-      });
-    } catch (error) {
-      if (
-        error instanceof BrowserFamilyConversationBridgeError
-        && ['BROWSER_FAMILY_BRIDGE_STALE', 'BROWSER_FAMILY_BRIDGE_DENIED'].includes(error.code)
-      ) continue;
-      throw error;
-    }
-    if (
-      visible?.state !== 'CURRENT'
-      || !Array.isArray(visible.channels)
-      || visible.channels.length !== 1
-      || visible.channels[0].channelRef !== channel.channelRef
-    ) continue;
-    rooms.push(Object.freeze({
-      spaceRef: binding.spaceRef,
-      channelRef: channel.channelRef,
-      threadRef: channel.threadRef,
-      kind: channel.kind,
-      membershipGeneration: binding.membershipGeneration,
-      audience: familyRoomAudienceProjection(binding),
-      familyCompanionLineageRef: binding.familyCompanionLineageRef,
-      familyCompanionIncluded: binding.familyCompanionIncluded === true
-    }));
-    securityBindingByChannel.set(channel.channelRef, binding);
-  }
-  rooms.sort((left, right) =>
-    left.spaceRef < right.spaceRef ? -1
-      : left.spaceRef > right.spaceRef ? 1
-        : left.channelRef < right.channelRef ? -1
-          : left.channelRef > right.channelRef ? 1 : 0
-  );
+  const coreBootstrap = capability.bootstrap({ authority });
+  const rooms = [...coreBootstrap.rooms];
+
   let workStatus = normalizedFamilyWorkStatus(null);
   if (typeof resolveFamilyWorkProjection === 'function' && rooms.length > 0) {
     try {
       const genericRuntimeSnapshot = await resolveFamilyWorkProjection(Object.freeze({
         request,
-        principalRef: authority.membership.principalRef,
+        principalRef: coreBootstrap.currentPrincipalRef,
         rooms: Object.freeze([...rooms])
       }));
       workStatus = projectFamilyFollowThroughStatus({
         genericRuntimeSnapshot,
-        principalRef: authority.membership.principalRef,
+        principalRef: coreBootstrap.currentPrincipalRef,
         rooms
       });
     } catch {
       workStatus = normalizedFamilyWorkStatus(null);
     }
   }
+
   const primaryRoom = rooms[0] ?? null;
+  const primaryChannel = primaryRoom
+    ? readConversationChannelBinding({ home: familyHome, channelRef: primaryRoom.channelRef })
+    : null;
+  const primaryBinding = primaryChannel?.state === 'CURRENT'
+    ? primaryChannel.channel?.familySpaceBinding ?? null
+    : null;
   const securityStatus = await resolveFamilySecurityStatus({
     resolveProjection: resolveFamilySecurityProjection,
     request,
     room: primaryRoom,
-    binding: primaryRoom ? securityBindingByChannel.get(primaryRoom.channelRef) : null,
-    principalRef: authority.membership.principalRef
+    binding: primaryBinding,
+    principalRef: coreBootstrap.currentPrincipalRef
   });
+
   return Object.freeze({
     schemaVersion: BROWSER_FAMILY_ROOM_BOOTSTRAP_SCHEMA,
-    state: rooms.length > 0 ? 'CURRENT' : 'EMPTY',
-    truthClass: 'CURRENT_LIVE_FAMILY',
-    currentPrincipalRef: authority.membership.principalRef,
+    state: coreBootstrap.state,
+    truthClass: coreBootstrap.truthClass,
+    currentPrincipalRef: coreBootstrap.currentPrincipalRef,
     rooms: Object.freeze(rooms),
     workStatus,
     securityStatus
@@ -1484,10 +1655,8 @@ function currentFamilyConversationChannel(familyHome, intent) {
 
 async function performFamilyConversationHttpRequest({
   request,
-  familyHome,
   resolveAuthority,
-  nowProvider,
-  instanceRef
+  familyCapability
 }) {
   const admitted = admitFamilyConversationRequest(await readBoundedJson(request, {
     maxBytes: BROWSER_FAMILY_CONVERSATION_MAX_BODY_BYTES,
@@ -1495,44 +1664,10 @@ async function performFamilyConversationHttpRequest({
     requestLabel: 'Family conversation request'
   }));
   const authority = await currentFamilyConversationAuthority(resolveAuthority, request, admitted);
-  const now = currentFamilyConversationTime(nowProvider);
-  const common = {
-    home: familyHome,
+  return familyCapability.perform({
+    operation: admitted.operation,
     intent: admitted.intent,
-    membership: authority.membership,
-    lease: authority.lease,
-    currentRevocationGeneration: authority.currentRevocationGeneration,
-    now
-  };
-
-  if (admitted.operation === 'APPEND') {
-    if (typeof instanceRef !== 'string' || instanceRef.length === 0) {
-      throw new BrowserFamilyConversationServerError(
-        'FAMILY_SERVER_INSTANCE_UNAVAILABLE',
-        'Family conversation server writer identity is unavailable',
-        503
-      );
-    }
-    return appendBrowserFamilyMessage({
-      ...common,
-      channel: currentFamilyConversationChannel(familyHome, admitted.intent),
-      instanceRef
-    });
-  }
-  if (admitted.operation === 'READ') {
-    return readBrowserFamilyConversation({
-      ...common,
-      channel: currentFamilyConversationChannel(familyHome, admitted.intent)
-    });
-  }
-
-  const bindings = listConversationChannelBindings({
-    home: familyHome,
-    limit: BROWSER_FAMILY_CONVERSATION_LIST_MAX
-  });
-  return listBrowserFamilyChannels({
-    ...common,
-    channels: bindings.channels
+    authority
   });
 }
 
@@ -1557,6 +1692,7 @@ export function createVexLifeBrowserServer({
   resolveFamilyConversationAuthority = null,
   familyConversationNow = () => new Date().toISOString(),
   familyConversationInstanceRef = 'instance.vexlife.browser-family-server',
+  serverFamilyConversationCapabilityFactory = createServerFamilyConversationCapability,
   familyLifecycleHome = home,
   resolveFamilyLifecycleAuthority = null,
   familyLifecycleNow = () => new Date().toISOString(),
@@ -1564,6 +1700,7 @@ export function createVexLifeBrowserServer({
   resolveFamilyWorkProjection = null,
   resolveFamilySecurityProjection = null
 } = {}) {
+  const architectureNodeResolver = createServerOwnedArchitectureNodeResolver({ sourceRoot: staticRoot });
   const resolveCompanionAvailability = createServerOwnedCompanionAvailabilityResolver({
     sourceRoot: companionAvailabilitySourceRoot,
     resolveCompanionBinding,
@@ -1576,9 +1713,52 @@ export function createVexLifeBrowserServer({
     resolveCompanionRuntimeObservation,
     availabilityCompiler: companionAvailabilityCompiler
   });
+  if (typeof serverFamilyConversationCapabilityFactory !== 'function') {
+    throw new TypeError('serverFamilyConversationCapabilityFactory must be a function');
+  }
+  const familyConversationCapability = serverFamilyConversationCapabilityFactory({
+    home: familyConversationHome,
+    nowProvider: familyConversationNow,
+    instanceRef: familyConversationInstanceRef,
+    appendFamilyMessage: appendBrowserFamilyMessage,
+    readFamilyConversation: readBrowserFamilyConversation,
+    readFamilyThreadHistory: readBrowserFamilyThreadHistory,
+    listFamilyChannels: listBrowserFamilyChannels,
+    readChannelBinding: readConversationChannelBinding,
+    listChannelBindings: listConversationChannelBindings
+  });
   return http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url, `http://${request.headers.host || `127.0.0.1:${port}`}`);
+
+      if (url.pathname === BROWSER_ARCHITECTURE_NODE_API_PATH) {
+        if (request.method !== 'GET') {
+          response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          const refs = url.searchParams.getAll('ref');
+          if (refs.length !== 1) {
+            throw new BrowserArchitectureNodeError(
+              'ARCHITECTURE_NODE_REF_REQUIRED',
+              'Architecture node lookup requires exactly one ref',
+              400
+            );
+          }
+          sendJson(response, 200, architectureNodeResolver.describe(refs[0]));
+        } catch (error) {
+          const typed = error instanceof BrowserArchitectureNodeError
+            ? error
+            : new BrowserArchitectureNodeError(
+              'ARCHITECTURE_NODE_READ_FAILED',
+              'Architecture node source descent failed safely',
+              500
+            );
+          sendJson(response, typed.httpStatus, browserArchitectureNodeFailurePayload(typed));
+        }
+        return;
+      }
 
       if (url.pathname === BROWSER_COMPANION_AVAILABILITY_PATH) {
         if (request.method !== 'GET') {
@@ -1822,6 +2002,7 @@ export function createVexLifeBrowserServer({
             familyHome: familyConversationHome,
             resolveAuthority: resolveFamilyConversationAuthority,
             nowProvider: familyConversationNow,
+            familyCapability: familyConversationCapability,
             resolveFamilyWorkProjection,
             resolveFamilySecurityProjection
           });
@@ -1841,10 +2022,8 @@ export function createVexLifeBrowserServer({
         try {
           const result = await performFamilyConversationHttpRequest({
             request,
-            familyHome: familyConversationHome,
             resolveAuthority: resolveFamilyConversationAuthority,
-            nowProvider: familyConversationNow,
-            instanceRef: familyConversationInstanceRef
+            familyCapability: familyConversationCapability
           });
           sendJson(response, 200, result);
         } catch (error) {

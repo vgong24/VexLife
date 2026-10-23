@@ -7,6 +7,7 @@ import {
   performLivedCompanionTurn
 } from './lived-companion.mjs';
 import { composeSemanticRelay } from './conversation.mjs';
+import { projectActiveTurnCurrentness } from './interaction-control.mjs';
 
 export const BROWSER_COMPANION_API_PATH = '/api/v1/companion/turn';
 export const BROWSER_COMPANION_STATUS_PATH = '/api/v1/companion/status';
@@ -523,6 +524,56 @@ export function createBrowserCompanionBridge({
     throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_INVALID', 'Companion recovery owner must expose recover(request)', 500);
   }
 
+  const activeTurnObservations = new Map();
+  const activeTurnSourceRefs = Object.freeze([
+    'module.vexlife.core.browser-companion-bridge',
+    'module.vexlife.core.interaction-control'
+  ]);
+
+  function activeTurnCurrentness({ expectedTurnRef = null } = {}) {
+    if (expectedTurnRef !== null && !safePortableRef(expectedTurnRef)) {
+      throw new BrowserCompanionBridgeError('COMPANION_ACTIVE_TURN_QUERY_INVALID', 'expectedTurnRef must be one portable canonical ref', 400);
+    }
+    const active = [...activeTurnObservations.values()];
+    const exact = expectedTurnRef === null ? null : activeTurnObservations.get(expectedTurnRef) ?? null;
+    if (exact) {
+      return projectActiveTurnCurrentness({
+        expectedTurnRef,
+        turnRef: exact.turnRef,
+        cancellationTargetRef: exact.cancellationTargetRef,
+        cancellationTargetExpiresAt: exact.cancellationTargetExpiresAt,
+        lifecyclePhase: 'ACTIVE',
+        sourceRefs: [...new Set([...activeTurnSourceRefs, ...exact.sourceRefs])].sort()
+      });
+    }
+    if (expectedTurnRef !== null) {
+      const one = active.length === 1 ? active[0] : null;
+      return projectActiveTurnCurrentness({
+        expectedTurnRef,
+        turnRef: one?.turnRef ?? null,
+        cancellationTargetRef: one?.cancellationTargetRef ?? null,
+        cancellationTargetExpiresAt: one?.cancellationTargetExpiresAt ?? null,
+        lifecyclePhase: one ? 'ACTIVE' : 'IDLE',
+        sourceRefs: [...new Set([...activeTurnSourceRefs, ...(one?.sourceRefs ?? [])])].sort(),
+        ambiguous: active.length > 1
+      });
+    }
+    if (active.length === 0) {
+      return projectActiveTurnCurrentness({ lifecyclePhase: 'IDLE', sourceRefs: activeTurnSourceRefs });
+    }
+    if (active.length > 1) {
+      return projectActiveTurnCurrentness({ lifecyclePhase: 'ACTIVE', sourceRefs: activeTurnSourceRefs, ambiguous: true });
+    }
+    const one = active[0];
+    return projectActiveTurnCurrentness({
+      turnRef: one.turnRef,
+      cancellationTargetRef: one.cancellationTargetRef,
+      cancellationTargetExpiresAt: one.cancellationTargetExpiresAt,
+      lifecyclePhase: 'ACTIVE',
+      sourceRefs: [...new Set([...activeTurnSourceRefs, ...one.sourceRefs])].sort()
+    });
+  }
+
   function status() {
     if (binding.state !== 'BOUND') {
       return Object.freeze({
@@ -591,6 +642,12 @@ export function createBrowserCompanionBridge({
       ...(request.screenRef ? [request.screenRef] : []),
       ...(request.selectedNodeRef ? [request.selectedNodeRef] : [])
     ];
+    activeTurnObservations.set(turnRef, {
+      turnRef,
+      cancellationTargetRef: null,
+      cancellationTargetExpiresAt: null,
+      sourceRefs: ['source.vexlife.browser-companion']
+    });
     try {
       const completed = await performLivedCompanionTurn({
         ...identity,
@@ -671,7 +728,7 @@ export function createBrowserCompanionBridge({
                     context: runtimeContext
                   });
                   if (selected === null || selected === undefined) return null;
-                  return materializeLivedCompanionPromptContext({
+                  const materialization = materializeLivedCompanionPromptContext({
                     ...identity,
                     threadRef: request.threadRef,
                     currentRequestEventRef: resolverInput.context?.currentRequestEventRef,
@@ -685,6 +742,16 @@ export function createBrowserCompanionBridge({
                     memoryContext: selected.memoryContext ?? null,
                     authorityVerifier: promptContextAuthorityVerifier
                   });
+                  const currentObservation = activeTurnObservations.get(turnRef);
+                  if (currentObservation) {
+                    activeTurnObservations.set(turnRef, {
+                      ...currentObservation,
+                      cancellationTargetRef: selected.contextLease.cancellationTokenRef,
+                      cancellationTargetExpiresAt: selected.contextLease.expiresAt,
+                      sourceRefs: [...new Set([...currentObservation.sourceRefs, selected.contextLease.leaseRef])].sort()
+                    });
+                  }
+                  return materialization;
                 };
                 contextualInference = async (input) => {
                   const contextualizeThisInference =
@@ -786,10 +853,12 @@ export function createBrowserCompanionBridge({
       });
     } catch (error) {
       throw publicFailureFor(error);
+    } finally {
+      activeTurnObservations.delete(turnRef);
     }
   }
 
-  return Object.freeze({ binding, instanceRef, status, performRecovery, performTurn });
+  return Object.freeze({ binding, instanceRef, status, performRecovery, performTurn, activeTurnCurrentness });
 }
 
 export function browserCompanionRecoveryFailurePayload(error) {

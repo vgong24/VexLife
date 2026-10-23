@@ -3,7 +3,7 @@ export const VEX_CORE_FAMILY_SESSION_AUTHORITY_SCHEMA = 'vexlife.vex-core-family
 
 const CONTEXT_KEYS = new Set(['request', 'operation', 'target']);
 const TARGET_KEYS = new Set(['spaceRef', 'channelRef']);
-const OPERATIONS = new Set(['APPEND', 'READ', 'LIST']);
+const OPERATIONS = new Set(['APPEND', 'READ', 'READ_THREAD_HISTORY', 'LIST']);
 const PROJECTION_KEYS = new Set([
   'schemaVersion',
   'state',

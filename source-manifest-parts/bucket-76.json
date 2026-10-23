@@ -3,6 +3,12 @@
   "bucketId": "76",
   "files": [
     {
+      "path": "blueprint/project-continuity-registry.json",
+      "mode": "100644",
+      "bytes": 3741,
+      "sha256": "24ca6f3b06505b62abe87256321b16ef16dc99224530b11abd20a426bee2c4d0"
+    },
+    {
       "path": "docs/EXPERIENCE-REVIEW-KIT.md",
       "mode": "100644",
       "bytes": 9443,

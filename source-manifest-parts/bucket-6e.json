@@ -5,8 +5,8 @@
     {
       "path": "blueprint/strings/ja.json",
       "mode": "100644",
-      "bytes": 33104,
-      "sha256": "96e8d51eb26a8d04193254c9bf5a4eed6c705fb3345e5e25bf4388cb0eb99d5c"
+      "bytes": 34088,
+      "sha256": "18dfd674777be5f37d9101fe5ff172e1bacbf2f88ab2d126aa4574ef7dbb301a"
     },
     {
       "path": "scripts/build-public-learning-projection.mjs",
@@ -17,8 +17,8 @@
     {
       "path": "scripts/test-structured.mjs",
       "mode": "100644",
-      "bytes": 3254,
-      "sha256": "e3bd714a6a4d5da4e2a9e791cafb01c0d8e62aa40f394e4d69e850d6fa57a4da"
+      "bytes": 3492,
+      "sha256": "08e483d862767b02fc05622490bf868654189cdcc13226fc3254bfe79db25b28"
     },
     {
       "path": "test/relationships-restart-isolated-profiles.test.mjs",

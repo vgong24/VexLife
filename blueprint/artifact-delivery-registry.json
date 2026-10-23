@@ -122,6 +122,83 @@
         "transportClass": "DIRECT_HTTPS_FILE_V1",
         "url": "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3/vocab.json?download=true"
       }
+    ],
+    "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.gitattributes": [
+      {
+        "channelRef": "channel.vexlife.heretic.qwen3.8-27b-mlx4.gitattributes.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/donedynamics/Qwen3.8-27B-heretic-MLX-4bit/resolve/808b82a2bd04b2bac362b5d0b7a1197aeea59e57/.gitattributes?download=true"
+      }
+    ],
+    "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.readme": [
+      {
+        "channelRef": "channel.vexlife.heretic.qwen3.8-27b-mlx4.readme.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/donedynamics/Qwen3.8-27B-heretic-MLX-4bit/resolve/808b82a2bd04b2bac362b5d0b7a1197aeea59e57/README.md?download=true"
+      }
+    ],
+    "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.chat-template": [
+      {
+        "channelRef": "channel.vexlife.heretic.qwen3.8-27b-mlx4.chat-template.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/donedynamics/Qwen3.8-27B-heretic-MLX-4bit/resolve/808b82a2bd04b2bac362b5d0b7a1197aeea59e57/chat_template.jinja?download=true"
+      }
+    ],
+    "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.config": [
+      {
+        "channelRef": "channel.vexlife.heretic.qwen3.8-27b-mlx4.config.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/donedynamics/Qwen3.8-27B-heretic-MLX-4bit/resolve/808b82a2bd04b2bac362b5d0b7a1197aeea59e57/config.json?download=true"
+      }
+    ],
+    "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.generation-config": [
+      {
+        "channelRef": "channel.vexlife.heretic.qwen3.8-27b-mlx4.generation-config.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/donedynamics/Qwen3.8-27B-heretic-MLX-4bit/resolve/808b82a2bd04b2bac362b5d0b7a1197aeea59e57/generation_config.json?download=true"
+      }
+    ],
+    "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.model-00001-of-00003-safetensors": [
+      {
+        "channelRef": "channel.vexlife.heretic.qwen3.8-27b-mlx4.model-00001-of-00003-safetensors.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/donedynamics/Qwen3.8-27B-heretic-MLX-4bit/resolve/808b82a2bd04b2bac362b5d0b7a1197aeea59e57/model-00001-of-00003.safetensors?download=true"
+      }
+    ],
+    "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.model-00002-of-00003-safetensors": [
+      {
+        "channelRef": "channel.vexlife.heretic.qwen3.8-27b-mlx4.model-00002-of-00003-safetensors.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/donedynamics/Qwen3.8-27B-heretic-MLX-4bit/resolve/808b82a2bd04b2bac362b5d0b7a1197aeea59e57/model-00002-of-00003.safetensors?download=true"
+      }
+    ],
+    "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.model-00003-of-00003-safetensors": [
+      {
+        "channelRef": "channel.vexlife.heretic.qwen3.8-27b-mlx4.model-00003-of-00003-safetensors.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/donedynamics/Qwen3.8-27B-heretic-MLX-4bit/resolve/808b82a2bd04b2bac362b5d0b7a1197aeea59e57/model-00003-of-00003.safetensors?download=true"
+      }
+    ],
+    "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.model-safetensors-index": [
+      {
+        "channelRef": "channel.vexlife.heretic.qwen3.8-27b-mlx4.model-safetensors-index.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/donedynamics/Qwen3.8-27B-heretic-MLX-4bit/resolve/808b82a2bd04b2bac362b5d0b7a1197aeea59e57/model.safetensors.index.json?download=true"
+      }
+    ],
+    "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.tokenizer": [
+      {
+        "channelRef": "channel.vexlife.heretic.qwen3.8-27b-mlx4.tokenizer.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/donedynamics/Qwen3.8-27B-heretic-MLX-4bit/resolve/808b82a2bd04b2bac362b5d0b7a1197aeea59e57/tokenizer.json?download=true"
+      }
+    ],
+    "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.tokenizer-config": [
+      {
+        "channelRef": "channel.vexlife.heretic.qwen3.8-27b-mlx4.tokenizer-config.hf-fixed.001",
+        "transportClass": "DIRECT_HTTPS_FILE_V1",
+        "url": "https://huggingface.co/donedynamics/Qwen3.8-27B-heretic-MLX-4bit/resolve/808b82a2bd04b2bac362b5d0b7a1197aeea59e57/tokenizer_config.json?download=true"
+      }
     ]
   }
 }

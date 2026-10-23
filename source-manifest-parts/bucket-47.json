@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 6135,
       "sha256": "4170ced78e1984c1dad72c5df2d1f1045a4e437860c4155b952ae65e12d57516"
+    },
+    {
+      "path": "test/p0b-b06-vexlife-tocompletion-project.test.mjs",
+      "mode": "100644",
+      "bytes": 12363,
+      "sha256": "1a117c94c7a49d126a44a36997a10132e5d70ef1b2f2cd4067473dce762bebdb"
     }
   ]
 }

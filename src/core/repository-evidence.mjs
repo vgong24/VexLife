@@ -4,6 +4,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { semanticHash } from './utils.mjs';
+import { buildSourceManifest, compareGitPaths } from './source-manifest.mjs';
+
+export const LOCAL_SOURCE_OBSERVATION_SCHEMA = 'vexlife.local-source-observation/v1';
+export const LOCAL_SOURCE_OBSERVATION_TRUTH_CLASS = 'SOURCE_BOUND_LOCAL_SOURCE_OBSERVATION';
+
+const DEFAULT_LOCAL_SOURCE_OBSERVATION_MAX_PATHS = 256;
+const DEFAULT_LOCAL_SOURCE_OBSERVATION_MAX_FILE_BYTES = 64 * 1024 * 1024;
+const DEFAULT_LOCAL_SOURCE_OBSERVATION_MAX_TOTAL_BYTES = 128 * 1024 * 1024;
+const SAFE_REPOSITORY_SLUG = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
+const SAFE_REPOSITORY_COMPONENT = /^[A-Za-z0-9_.-]+$/u;
 
 const SAFE_GIT_ENV_KEYS = new Set([
   'PATH', 'Path', 'PATHEXT', 'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'COMSPEC',
@@ -159,6 +169,354 @@ export function collectRepositoryEvidence(root, environment = process.env) {
       changedPaths: statusLines.length
     }
   };
+}
+
+
+function localSourceObservationFail(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  throw error;
+}
+
+function exactObservationRoot(root) {
+  const canonical = fs.realpathSync.native(path.resolve(root));
+  const stat = fs.lstatSync(canonical);
+  if (!stat.isDirectory()) {
+    localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_ROOT_INVALID', 'local source observation root must be one canonical directory');
+  }
+  return canonical;
+}
+
+function exactObservedPath(root, relativePath) {
+  if (typeof relativePath !== 'string' || relativePath.length === 0 || relativePath.startsWith('/')) {
+    localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_PATH_INVALID', 'local source observation path must be one Git-relative path');
+  }
+  const target = path.resolve(root, ...relativePath.split('/'));
+  const relative = path.relative(root, target);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+    localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_PATH_ESCAPE', 'local source observation path escapes root: ' + relativePath);
+  }
+  return target;
+}
+
+function splitGitNullPaths(value) {
+  return String(value ?? '').split('\0').filter(Boolean);
+}
+
+function collectGitChangedPaths(root, maxChangedPaths) {
+  const staged = splitGitNullPaths(runBoundedGit(
+    root,
+    ['diff', '--cached', '--name-only', '--no-ext-diff', '--no-renames', '-z', 'HEAD', '--'],
+    { label: 'Git staged changed paths' }
+  ).stdout);
+  const unstaged = splitGitNullPaths(runBoundedGit(
+    root,
+    ['diff', '--name-only', '--no-ext-diff', '--no-renames', '-z', '--'],
+    { label: 'Git unstaged changed paths' }
+  ).stdout);
+  const untracked = splitGitNullPaths(runBoundedGit(
+    root,
+    ['ls-files', '--others', '--exclude-standard', '-z'],
+    { label: 'Git untracked paths' }
+  ).stdout);
+  const observedPaths = [...new Set([...staged, ...unstaged, ...untracked])].sort(compareGitPaths);
+  if (observedPaths.length > maxChangedPaths) {
+    localSourceObservationFail(
+      'LOCAL_SOURCE_OBSERVATION_PATH_LIMIT',
+      'local source observation changed-path set exceeds bounded limit: ' + observedPaths.length
+    );
+  }
+  return freeze({
+    stagedPaths: Object.freeze([...new Set(staged)].sort(compareGitPaths)),
+    unstagedPaths: Object.freeze([...new Set(unstaged)].sort(compareGitPaths)),
+    untrackedPaths: Object.freeze([...new Set(untracked)].sort(compareGitPaths)),
+    observedPaths: Object.freeze(observedPaths)
+  });
+}
+
+function sameFileIdentity(left, right) {
+  return Boolean(
+    left &&
+    right &&
+    left.dev === right.dev &&
+    left.ino === right.ino &&
+    left.mode === right.mode &&
+    left.size === right.size &&
+    left.mtimeMs === right.mtimeMs &&
+    left.ctimeMs === right.ctimeMs
+  );
+}
+
+function boundedFileSha256(filePath, expectedStat, limits, budget) {
+  const expectedSize = expectedStat.size;
+  if (!Number.isSafeInteger(expectedSize) || expectedSize < 0 || expectedSize > limits.maxFileBytes) {
+    localSourceObservationFail(
+      'LOCAL_SOURCE_OBSERVATION_FILE_LIMIT',
+      'local source observation file exceeds byte limit: ' + expectedSize
+    );
+  }
+  if (budget.bytes + expectedSize > limits.maxTotalBytes) {
+    localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_TOTAL_LIMIT', 'local source observation exceeds total byte limit');
+  }
+
+  const noFollow = Number.isInteger(fs.constants.O_NOFOLLOW) ? fs.constants.O_NOFOLLOW : 0;
+  let descriptor;
+  try {
+    descriptor = fs.openSync(filePath, fs.constants.O_RDONLY | noFollow);
+  } catch (error) {
+    if (error?.code === 'ELOOP' || error?.code === 'EMLINK') {
+      localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_RACE', 'local source observation path changed before open');
+    }
+    throw error;
+  }
+
+  const hash = crypto.createHash('sha256');
+  const buffer = Buffer.allocUnsafe(64 * 1024);
+  let observed = 0;
+  try {
+    const openedStat = fs.fstatSync(descriptor);
+    if (!openedStat.isFile() || !sameFileIdentity(expectedStat, openedStat)) {
+      localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_RACE', 'local source observation descriptor identity changed before read');
+    }
+    while (observed < expectedSize) {
+      const bytes = fs.readSync(descriptor, buffer, 0, Math.min(buffer.length, expectedSize - observed), null);
+      if (bytes === 0) break;
+      hash.update(buffer.subarray(0, bytes));
+      observed += bytes;
+    }
+    const finalDescriptorStat = fs.fstatSync(descriptor);
+    if (!sameFileIdentity(openedStat, finalDescriptorStat)) {
+      localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_RACE', 'local source observation descriptor changed during read');
+    }
+  } finally {
+    fs.closeSync(descriptor);
+  }
+  if (observed !== expectedSize) {
+    localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_RACE', 'local source observation file changed while reading');
+  }
+  budget.bytes += observed;
+  return { bytes: observed, sha256: hash.digest('hex') };
+}
+
+function observedWorktreeRecord(root, relativePath, limits, budget) {
+  const target = exactObservedPath(root, relativePath);
+  let stat;
+  try {
+    stat = fs.lstatSync(target);
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return freeze({ path: relativePath, kind: 'ABSENT', mode: null, bytes: 0, sha256: null });
+    }
+    throw error;
+  }
+
+  if (stat.isSymbolicLink()) {
+    const bytes = fs.readlinkSync(target, { encoding: 'buffer' });
+    if (bytes.length > limits.maxFileBytes || budget.bytes + bytes.length > limits.maxTotalBytes) {
+      localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_LIMIT', 'local source observation symlink exceeds byte limit: ' + relativePath);
+    }
+    const after = fs.lstatSync(target);
+    if (!after.isSymbolicLink() || !sameFileIdentity(stat, after)) {
+      localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_RACE', 'local source observation symlink changed during read: ' + relativePath);
+    }
+    budget.bytes += bytes.length;
+    return freeze({
+      path: relativePath,
+      kind: 'SYMLINK',
+      mode: '120000',
+      bytes: bytes.length,
+      sha256: sha256(bytes)
+    });
+  }
+
+  if (!stat.isFile()) {
+    localSourceObservationFail(
+      'LOCAL_SOURCE_OBSERVATION_PATH_KIND_UNSUPPORTED',
+      'local source observation cannot fingerprint path kind: ' + relativePath
+    );
+  }
+
+  const result = boundedFileSha256(target, stat, limits, budget);
+  const after = fs.lstatSync(target);
+  if (!after.isFile() || !sameFileIdentity(stat, after)) {
+    localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_FILE_RACE', 'local source observation file changed during read: ' + relativePath);
+  }
+  return freeze({
+    path: relativePath,
+    kind: 'REGULAR_FILE',
+    mode: stat.mode & 0o111 ? '100755' : '100644',
+    bytes: result.bytes,
+    sha256: result.sha256
+  });
+}
+
+function githubRepositorySlugFromRemote(remoteUrl) {
+  if (typeof remoteUrl !== 'string' || remoteUrl.length === 0) return null;
+
+  const scp = /^git@github\.com:([^/]+)\/([^/]+)$/iu.exec(remoteUrl);
+  if (scp) {
+    const owner = scp[1];
+    const repo = scp[2].replace(/\.git$/iu, '');
+    return SAFE_REPOSITORY_COMPONENT.test(owner) && SAFE_REPOSITORY_COMPONENT.test(repo)
+      ? owner + '/' + repo
+      : null;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(remoteUrl);
+  } catch {
+    return null;
+  }
+  if (parsed.hostname.toLowerCase() !== 'github.com') return null;
+  if (!['https:', 'http:', 'ssh:', 'git:'].includes(parsed.protocol)) return null;
+
+  const parts = parsed.pathname.split('/').filter(Boolean);
+  if (parts.length !== 2) return null;
+  let owner;
+  let repo;
+  try {
+    owner = decodeURIComponent(parts[0]);
+    repo = decodeURIComponent(parts[1]).replace(/\.git$/iu, '');
+  } catch {
+    return null;
+  }
+  if (!SAFE_REPOSITORY_COMPONENT.test(owner) || !SAFE_REPOSITORY_COMPONENT.test(repo)) return null;
+  return owner + '/' + repo;
+}
+
+function localSourceBasis(root, environment, maxChangedPaths) {
+  const repository = collectRepositoryEvidence(root, environment);
+  const manifest = buildSourceManifest(root, { maxPathDiagnostics: maxChangedPaths });
+  const blockers = (manifest.candidate?.blockers ?? []).map((blocker) => ({
+    kind: blocker.kind,
+    total: blocker.total,
+    paths: [...(blocker.paths ?? [])],
+    truncated: blocker.truncated === true
+  }));
+  if (blockers.some((blocker) => blocker.truncated)) {
+    localSourceObservationFail(
+      'LOCAL_SOURCE_OBSERVATION_PATH_LIMIT',
+      'local Source Manifest blocker set exceeds bounded diagnostics'
+    );
+  }
+  const unsupported = blockers.find((blocker) => blocker.kind === 'UNSUPPORTED_INDEX_ENTRY');
+  if (unsupported) {
+    localSourceObservationFail(
+      'LOCAL_SOURCE_OBSERVATION_UNSUPPORTED_INDEX_ENTRY',
+      'local source observation cannot fingerprint unsupported index entries: ' + unsupported.paths.join(',')
+    );
+  }
+
+  const changes = collectGitChangedPaths(root, maxChangedPaths);
+  const indexInventory = runBoundedGit(
+    root,
+    ['ls-files', '--cached', '--stage', '-z'],
+    { label: 'Git exact index-stage inventory' }
+  ).stdout;
+
+  const rawRemoteUrl = repository.repository.remoteUrl ?? null;
+  const safeSlug = githubRepositorySlugFromRemote(rawRemoteUrl);
+  if (safeSlug !== null && !SAFE_REPOSITORY_SLUG.test(safeSlug)) {
+    localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_REPOSITORY_IDENTITY_INVALID', 'derived GitHub repository identity is invalid');
+  }
+  const repositoryIdentity = freeze({
+    slug: safeSlug,
+    remoteIdentitySha256: safeSlug === null && typeof rawRemoteUrl === 'string' && rawRemoteUrl
+      ? sha256(rawRemoteUrl)
+      : null
+  });
+
+  const core = {
+    repository: repositoryIdentity,
+    git: {
+      checkoutSha: repository.git.checkoutSha,
+      branch: repository.git.branch,
+      branchSource: repository.git.branchSource,
+      checkoutKind: repository.git.checkoutKind,
+      candidateHeadSha: repository.git.candidateHeadSha,
+      candidateTreeSha: repository.git.candidateTreeSha,
+      testedMergeSha: repository.git.testedMergeSha,
+      baseSha: repository.git.baseSha,
+      upstreamRef: repository.git.upstreamRef,
+      upstreamSha: repository.git.upstreamSha,
+      ahead: repository.git.ahead,
+      behind: repository.git.behind,
+      workingTree: repository.git.workingTree
+    },
+    source: {
+      schemaVersion: manifest.schemaVersion,
+      manifestRef: manifest.manifestRef,
+      contractSha256: manifest.contractSha256 ?? null,
+      indexTreeSha256: manifest.treeSha256,
+      candidateState: manifest.candidate?.state ?? 'UNKNOWN',
+      blockers,
+      indexStageSha256: sha256(indexInventory)
+    },
+    changes
+  };
+  return freeze({ ...core, basisFingerprint: semanticHash(core) });
+}
+
+function observeWorktreeRecords(root, observedPaths, limits) {
+  const budget = { bytes: 0 };
+  const records = observedPaths.map((relativePath) => observedWorktreeRecord(root, relativePath, limits, budget));
+  return freeze({
+    records: Object.freeze(records),
+    observedBytes: budget.bytes,
+    recordsSha256: semanticHash(records)
+  });
+}
+
+export function collectLocalSourceObservation(root, environment = process.env, {
+  maxChangedPaths = DEFAULT_LOCAL_SOURCE_OBSERVATION_MAX_PATHS,
+  maxFileBytes = DEFAULT_LOCAL_SOURCE_OBSERVATION_MAX_FILE_BYTES,
+  maxTotalBytes = DEFAULT_LOCAL_SOURCE_OBSERVATION_MAX_TOTAL_BYTES
+} = {}) {
+  if (!Number.isInteger(maxChangedPaths) || maxChangedPaths < 1 || maxChangedPaths > 4096) {
+    throw new TypeError('maxChangedPaths must be an integer from 1 to 4096');
+  }
+  for (const [label, value] of [['maxFileBytes', maxFileBytes], ['maxTotalBytes', maxTotalBytes]]) {
+    if (!Number.isSafeInteger(value) || value < 1) throw new TypeError(label + ' must be one positive safe integer');
+  }
+  if (maxTotalBytes < maxFileBytes) throw new TypeError('maxTotalBytes must be greater than or equal to maxFileBytes');
+
+  const canonicalRoot = exactObservationRoot(root);
+  const limits = { maxFileBytes, maxTotalBytes };
+  const basisBefore = localSourceBasis(canonicalRoot, environment, maxChangedPaths);
+  const firstWorktree = observeWorktreeRecords(canonicalRoot, basisBefore.changes.observedPaths, limits);
+  const basisAfter = localSourceBasis(canonicalRoot, environment, maxChangedPaths);
+  if (basisBefore.basisFingerprint !== basisAfter.basisFingerprint) {
+    localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_RACE', 'local source basis changed during observation');
+  }
+  const finalWorktree = observeWorktreeRecords(canonicalRoot, basisAfter.changes.observedPaths, limits);
+  if (firstWorktree.recordsSha256 !== finalWorktree.recordsSha256) {
+    localSourceObservationFail('LOCAL_SOURCE_OBSERVATION_RACE', 'local worktree bytes changed during observation');
+  }
+
+  const core = {
+    schemaVersion: LOCAL_SOURCE_OBSERVATION_SCHEMA,
+    truthClass: LOCAL_SOURCE_OBSERVATION_TRUTH_CLASS,
+    currentness: 'CURRENT',
+    repository: basisAfter.repository,
+    git: basisAfter.git,
+    source: basisAfter.source,
+    changes: basisAfter.changes,
+    worktree: {
+      observedPathCount: basisAfter.changes.observedPaths.length,
+      records: finalWorktree.records,
+      observedBytes: finalWorktree.observedBytes,
+      recordsSha256: finalWorktree.recordsSha256
+    },
+    effects: false,
+    executionAuthority: 'NONE'
+  };
+  const semanticFingerprint = semanticHash(core);
+  return freeze({
+    ...core,
+    observationRef: 'observation.vexlife.local-source.' + semanticFingerprint.slice(0, 24),
+    semanticFingerprint
+  });
 }
 
 function canonicalExistingDirectory(value, label) {

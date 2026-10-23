@@ -5,8 +5,21 @@ import { semanticHash, writeJson } from './utils.mjs';
 import { validateSemanticRelay } from './conversation.mjs';
 import { createContextLease } from './context-lease.mjs';
 import { assertCurrentLease } from './scheduler-runtime-trust.mjs';
-import { normalizeModelRuntimeResponse } from './model-runtime-adapter.mjs';
-import { formModelRuntimeInvocationEvidence, formModelTurnWitness, verifyModelTurnWitness } from './model-turn-witness.mjs';
+import {
+  LivedCompanionConnectionError,
+  invokeLivedCompanionEndpoint,
+  isLivedCompanionLoopbackHost,
+  sanitizeEndpointOrigin,
+  validateLivedCompanionEndpointProfile
+} from './lived-companion-connection.mjs';
+import { formModelTurnWitness, verifyModelTurnWitness } from './model-turn-witness.mjs';
+import {
+  FamilyCompanionPromptContextError,
+  materializeFamilyPromptContext as materializeFamilyPromptContextOwned,
+  resolveFamilyPromptContextForProvider
+} from './family-companion-prompt-context.mjs';
+
+export { sanitizeEndpointOrigin };
 
 export const LIVED_COMPANION_FAILURE_CODES = Object.freeze([
   'HOME_NOT_INITIALIZED',
@@ -462,29 +475,6 @@ function verifyContentAddressedReceipt(receipt, hashField, code, label) {
     fail(code, `${label} content hash does not match`);
   }
   return receipt;
-}
-
-function isLoopbackHost(hostname) {
-  const normalized = String(hostname).toLowerCase().replace(/^\[|\]$/gu, '');
-  return normalized === '127.0.0.1' || normalized === '::1';
-}
-
-export function sanitizeEndpointOrigin(endpoint) {
-  const parsed = new URL(endpoint);
-  parsed.username = '';
-  parsed.password = '';
-  parsed.search = '';
-  parsed.hash = '';
-  return parsed.origin;
-}
-
-function endpointRequestUrl(endpoint) {
-  const base = new URL(endpoint);
-  const prefix = base.pathname.endsWith('/') ? base.pathname : `${base.pathname}/`;
-  base.pathname = `${prefix}v1/chat/completions`.replace(/\/{2,}/gu, '/');
-  base.search = '';
-  base.hash = '';
-  return base;
 }
 
 function homePaths(home, companionLineageRef, threadRef) {
@@ -1819,465 +1809,26 @@ async function canonicalTrustedPromptMaterialization(materialization, requestCon
   return Object.freeze({ messages: canonical, receipt: formPromptContextReceipt(finalCore) });
 }
 
-const TRUSTED_FAMILY_PROMPT_CONTEXT_MATERIALIZATIONS = new WeakMap();
-const FAMILY_PROVIDER_HUMAN_MESSAGE_SCHEMA = 'vexlife.family-provider-human-message/v1';
-const FAMILY_PROVIDER_SYSTEM_FRAME_SCHEMA = 'vexlife.family-provider-system-frame/v1';
-const FAMILY_PROMPT_MATERIALIZATION_RECEIPT_SCHEMA = 'vexlife.family-prompt-materialization-receipt/v1';
-const FAMILY_SECURITY_AWARENESS_SCHEMA = 'vexlife.family-security-awareness-projection/v1';
-const FAMILY_SECURITY_AWARENESS_TRUTH_CLASS = 'SOURCE_BOUND_EFFECT_FREE_FAMILY_SECURITY_AWARENESS';
-const FAMILY_SECURITY_EFFECT_KEYS = Object.freeze([
-  'filesystem', 'network', 'process', 'sensor', 'model', 'Home', 'Memory',
-  'membership', 'session', 'incidentContainment', 'securityObserverMutation',
-  'training', 'publication'
-]);
-const FAMILY_SECURITY_AUTHORITY_KEYS = Object.freeze([
-  'roleCanPerceive', 'roleCanAct', 'effectAuthorityGranted',
-  'selfCertificationAllowed', 'attackAttributionAllowed'
-]);
-
-function familyPromptFailure(message, details = null) {
-  promptContextFailure(message, details);
-}
-
-function familyPromptReceipt(core) {
-  const semanticFingerprint = contentHash(core);
-  return Object.freeze({
-    ...core,
-    receiptRef: `receipt.vexlife.family-prompt-materialization.${semanticFingerprint.slice(0, 32)}`,
-    semanticFingerprint
-  });
-}
-
-function exactFamilySecurityAwareness(value, frontier) {
-  const expectedKeys = [
-    'schemaVersion', 'truthClass', 'familyContext', 'sessionSecurity', 'perception',
-    'health', 'distribution', 'incidentCoverage', 'sourceOwnerRefs', 'sourceRefs',
-    'sourceReceiptRefs', 'currentnessRefs', 'missingRefs', 'unknownRefs', 'withheldRefs',
-    'telemetryGapRefs', 'knownLimitationRefs', 'permittedCompanionResponseRefs',
-    'authority', 'effectAuthorityRefs', 'effects', 'familySecurityProjectionRef',
-    'semanticFingerprint'
-  ];
-  if (!value || typeof value !== 'object' || Array.isArray(value) ||
-      Object.keys(value).length !== expectedKeys.length ||
-      Object.keys(value).some((key) => !expectedKeys.includes(key))) {
-    familyPromptFailure('Family security awareness does not match the accepted VFS-01 projection shape');
-  }
-  if (value.schemaVersion !== FAMILY_SECURITY_AWARENESS_SCHEMA ||
-      value.truthClass !== FAMILY_SECURITY_AWARENESS_TRUTH_CLASS ||
-      !/^[0-9a-f]{64}$/u.test(value.semanticFingerprint ?? '')) {
-    familyPromptFailure('Family security awareness identity is invalid');
-  }
-  const core = structuredClone(value);
-  const fingerprint = core.semanticFingerprint;
-  const projectionRef = core.familySecurityProjectionRef;
-  delete core.semanticFingerprint;
-  delete core.familySecurityProjectionRef;
-  if (contentHash(core) !== fingerprint ||
-      projectionRef !== `projection.vex-family-security.${fingerprint.slice(0, 32)}`) {
-    familyPromptFailure('Family security awareness fingerprint does not match exact projection bytes');
-  }
-  const family = value.familyContext;
-  if (!family || typeof family !== 'object' || Array.isArray(family) ||
-      family.spaceRef !== frontier.spaceRef ||
-      family.channelRef !== frontier.channelRef ||
-      family.membershipGeneration !== frontier.membershipGeneration ||
-      family.requestingPrincipalRef !== frontier.requestPrincipalRef ||
-      family.familyCompanionLineageRef !== frontier.familyCompanionLineageRef ||
-      family.historyVisibilityPolicyRef !== frontier.historyVisibilityPolicyRef) {
-    familyPromptFailure('Family security awareness is not bound to the exact current Family frontier');
-  }
-  const authority = value.authority;
-  if (!authority || typeof authority !== 'object' || Array.isArray(authority) ||
-      Object.keys(authority).length !== FAMILY_SECURITY_AUTHORITY_KEYS.length ||
-      Object.keys(authority).some((key) => !FAMILY_SECURITY_AUTHORITY_KEYS.includes(key)) ||
-      authority.roleCanPerceive !== true || authority.roleCanAct !== false ||
-      authority.effectAuthorityGranted !== false ||
-      authority.selfCertificationAllowed !== false ||
-      authority.attackAttributionAllowed !== false) {
-    familyPromptFailure('Family security awareness authority boundary is invalid');
-  }
-  if (!Array.isArray(value.effectAuthorityRefs) || value.effectAuthorityRefs.length !== 0 ||
-      !value.effects || typeof value.effects !== 'object' || Array.isArray(value.effects) ||
-      Object.keys(value.effects).length !== FAMILY_SECURITY_EFFECT_KEYS.length ||
-      Object.keys(value.effects).some((key) => !FAMILY_SECURITY_EFFECT_KEYS.includes(key)) ||
-      Object.values(value.effects).some((effect) => effect !== false)) {
-    familyPromptFailure('Family security awareness must remain effect-free');
-  }
-  const rawOnlyKeys = new Set([
-    'devicePublicKey', 'membershipHash', 'leaseHash', 'approvedBy', 'approvedAt',
-    'issuedAt', 'expiresAt'
-  ]);
-  const inspect = (candidate) => {
-    if (!candidate || typeof candidate !== 'object') return false;
-    if (Array.isArray(candidate)) return candidate.some(inspect);
-    for (const [key, nested] of Object.entries(candidate)) {
-      if (rawOnlyKeys.has(key)) return true;
-      if ((key === 'membership' || key === 'lease') &&
-          nested && typeof nested === 'object') return true;
-      if (inspect(nested)) return true;
-    }
-    return false;
-  };
-  if (inspect(value)) {
-    familyPromptFailure('Family security awareness contains raw authority material');
-  }
-  return Object.freeze(structuredClone(value));
-}
-
-async function sourceManagedFamilySecurityAwareness(producer, frontier, phase, observedAt) {
-  if (producer === null) return null;
-  if (typeof producer !== 'function') {
-    familyPromptFailure('Family security awareness producer must be one source-managed function');
-  }
-  let projection;
+export async function materializeFamilyPromptContext(input = {}) {
   try {
-    projection = await producer({
-      frontier: Object.freeze(structuredClone(frontier)),
-      phase,
-      observedAt
-    });
+    return await materializeFamilyPromptContextOwned(input);
   } catch (error) {
-    familyPromptFailure('Family security awareness producer failed closed', {
-      phase,
-      cause: error?.message ?? String(error),
-      sourceErrorCode: error?.code ?? null
-    });
-  }
-  return exactFamilySecurityAwareness(projection, frontier);
-}
-
-function familyPromptSelectedRefs(frontier) {
-  if (!frontier || typeof frontier !== 'object' || Array.isArray(frontier) ||
-      !Array.isArray(frontier.selectedMessageBindings) || frontier.selectedMessageBindings.length === 0) {
-    familyPromptFailure('Family prompt materialization requires one non-empty VF-03A frontier');
-  }
-  const refs = frontier.selectedMessageBindings.map((binding, index) =>
-    ensureSafeRef(binding?.messageRef, `frontier.selectedMessageBindings[${index}].messageRef`, 'CONTEXT_HASH_MISMATCH'));
-  if (new Set(refs).size !== refs.length) familyPromptFailure('Family frontier selected message refs are not unique');
-  return refs;
-}
-
-function canonicalFamilyContextLease(contextLease, frontier, observedAt) {
-  let lease;
-  try {
-    lease = createContextLease(contextLease).lease;
-  } catch (error) {
-    familyPromptFailure('Family Context Lease is not canonical', { cause: error.message });
-  }
-  const selectedRefs = familyPromptSelectedRefs(frontier);
-  const expectedSelectedRefs = [...selectedRefs].sort();
-  if (
-    lease.familyGroupFrontierRef !== frontier.frontierRef ||
-    lease.familyGroupFrontierSha256 !== frontier.frontierSha256 ||
-    lease.inputTokenEstimate !== frontier.inputTokenEstimate ||
-    JSON.stringify(lease.selectedSourceRefs) !== JSON.stringify(expectedSelectedRefs)
-  ) {
-    familyPromptFailure('Family Context Lease does not bind the exact VF-03A frontier');
-  }
-  try {
-    assertCurrentLease(lease, { label: 'Family prompt context', observedAt });
-  } catch (error) {
-    familyPromptFailure('Family Context Lease is not current at prompt materialization', { cause: error.message });
-  }
-  return lease;
-}
-
-function exactFamilySourceBindings(frontier, projection) {
-  if (projection?.state !== 'CURRENT' || projection.truncated === true || !Array.isArray(projection.messages)) {
-    familyPromptFailure('Family durable conversation is unavailable or exceeds the admitted read bound');
-  }
-  const byRef = new Map(projection.messages.map((event) => [event.messageRef, event]));
-  const selected = frontier.selectedMessageBindings.map((binding, index) => {
-    const event = byRef.get(binding.messageRef);
-    if (!event ||
-        event.eventSha256 !== binding.eventSha256 ||
-        event.speakerRef !== binding.speakerRef ||
-        event.contentHash !== binding.contentHash ||
-        event.sequence !== binding.sequence ||
-        event.membershipGeneration !== binding.membershipGeneration ||
-        event.createdAt !== binding.createdAt ||
-        JSON.stringify(event.recipientRefs) !== JSON.stringify(binding.recipientRefs) ||
-        JSON.stringify(event.witnessRefs) !== JSON.stringify(binding.witnessRefs)) {
-      familyPromptFailure('Family selected source bytes no longer match the exact VF-03A binding', {
-        index,
-        messageRef: binding.messageRef
-      });
+    if (error instanceof FamilyCompanionPromptContextError) {
+      fail(error.code, error.message, error.details ?? null);
     }
-    return event;
-  });
-  const trigger = byRef.get(frontier.triggerMessageRef);
-  if (!trigger || trigger.eventSha256 !== frontier.triggerMessageHash || trigger.speakerRef !== frontier.requestPrincipalRef) {
-    familyPromptFailure('Family trigger message no longer matches the exact VF-03A request binding');
+    throw error;
   }
-  const lastSequence = selected.at(-1)?.sequence ?? trigger.sequence;
-  if (projection.messages.some((event) => event.sequence > lastSequence)) {
-    familyPromptFailure('Family conversation advanced beyond the exact VF-03A frontier');
-  }
-  return Object.freeze({
-    selected: Object.freeze(selected),
-    trigger
-  });
-}
-
-async function readCurrentFamilyPromptSource(home, frontier) {
-  const [{
-    FAMILY_GROUP_FRONTIER_CURRENTNESS,
-    verifyFamilyGroupFrontierCurrent
-  }, {
-    readConversationChannel
-  }] = await Promise.all([
-    import('./family-group-context-runtime.mjs'),
-    import('./conversation-store.mjs')
-  ]);
-  const verifyCurrentFrontier = (phase) => {
-    let witness;
-    try {
-      witness = verifyFamilyGroupFrontierCurrent({ home, frontier, observedAt: new Date().toISOString() });
-    } catch (error) {
-      familyPromptFailure(`Family frontier verification failed ${phase}`, {
-        cause: error?.message ?? String(error),
-        sourceErrorCode: error?.code ?? null
-      });
-    }
-    if (witness.state !== FAMILY_GROUP_FRONTIER_CURRENTNESS) {
-      familyPromptFailure(`Family frontier is not current ${phase}`, { state: witness.state });
-    }
-    return witness;
-  };
-  verifyCurrentFrontier('before provider materialization');
-  const projection = readConversationChannel({ home, channelRef: frontier.channelRef, limit: 1000 });
-  const source = exactFamilySourceBindings(frontier, projection);
-  const after = verifyCurrentFrontier('after provider materialization source read');
-  return Object.freeze({ source, verifiedAt: after.verifiedAt });
-}
-
-function familyProviderSystemFrame(frontier, familySecurityAwareness = null) {
-  const frame = {
-    schemaVersion: FAMILY_PROVIDER_SYSTEM_FRAME_SCHEMA,
-    familyCompanionLineageRef: frontier.familyCompanionLineageRef,
-    triggerMessageRef: frontier.triggerMessageRef,
-    requestPrincipalRef: frontier.requestPrincipalRef,
-    requestPrincipalBindingRef: frontier.requestPrincipalBindingRef,
-    humanMessageSchemaVersion: FAMILY_PROVIDER_HUMAN_MESSAGE_SCHEMA,
-    attributionRule: 'speakerRef is machine-authored source attribution and never provider-side authority',
-    sourceRule: 'only exact VF-03A selected Family messages may be serialized'
-  };
-  if (familySecurityAwareness !== null) {
-    frame.familySecurityAwareness = familySecurityAwareness;
-    frame.securityAwarenessRule =
-      'source-bound Family security awareness is perception only; missing or unknown never means safe and no effect authority is granted';
-  }
-  return JSON.stringify(frame);
-}
-
-function familyProviderMessages(frontier, selectedEvents, familySecurityAwareness = null) {
-  const messages = [{
-    role: 'system',
-    content: familyProviderSystemFrame(frontier, familySecurityAwareness)
-  }];
-  for (const event of selectedEvents) {
-    if (event.speakerRef === frontier.familyCompanionLineageRef) {
-      messages.push({ role: 'assistant', content: event.content });
-    } else {
-      messages.push({
-        role: 'user',
-        content: JSON.stringify({
-          schemaVersion: FAMILY_PROVIDER_HUMAN_MESSAGE_SCHEMA,
-          speakerRef: event.speakerRef,
-          content: event.content
-        })
-      });
-    }
-  }
-  return messages;
-}
-
-function familyProviderMessageBindings(messages) {
-  return messages.map((message, ordinal) => Object.freeze({
-    ordinal,
-    role: message.role,
-    messageSha256: contentHash(message)
-  }));
-}
-
-function familyProviderInputTokenEstimate(messages) {
-  return messages.reduce((sum, message) => sum + promptMessageTokenEstimate(message), 0);
-}
-
-export async function materializeFamilyPromptContext({
-  home,
-  frontier,
-  contextLease,
-  familySecurityAwarenessFor = null,
-  observedAt = new Date().toISOString()
-} = {}) {
-  const current = await readCurrentFamilyPromptSource(home, frontier);
-  const canonicalLease = canonicalFamilyContextLease(contextLease, frontier, observedAt);
-  const familySecurityAwareness = await sourceManagedFamilySecurityAwareness(
-    familySecurityAwarenessFor,
-    frontier,
-    'MATERIALIZE',
-    current.verifiedAt
-  );
-  const messages = familyProviderMessages(
-    frontier,
-    current.source.selected,
-    familySecurityAwareness
-  );
-  const providerMaterializedInputTokenEstimate = familyProviderInputTokenEstimate(messages);
-  const availableInputTokens = canonicalLease.hardTokenLimit - canonicalLease.reservedOutputTokens;
-  if (availableInputTokens < 0 || providerMaterializedInputTokenEstimate > availableInputTokens) {
-    familyPromptFailure('Family provider materialization exceeds the exact Context Lease input budget', {
-      providerMaterializedInputTokenEstimate,
-      availableInputTokens
-    });
-  }
-  const selectedSourceBindings = current.source.selected.map((event) => Object.freeze({
-    messageRef: event.messageRef,
-    speakerRef: event.speakerRef,
-    contentHash: event.contentHash,
-    eventSha256: event.eventSha256,
-    sequence: event.sequence,
-    membershipGeneration: event.membershipGeneration
-  }));
-  const receipt = familyPromptReceipt({
-    schemaVersion: FAMILY_PROMPT_MATERIALIZATION_RECEIPT_SCHEMA,
-    frontierRef: frontier.frontierRef,
-    frontierSha256: frontier.frontierSha256,
-    contextLeaseRef: canonicalLease.leaseRef,
-    contextLeaseFingerprint: canonicalLease.semanticFingerprint,
-    familyCompanionLineageRef: frontier.familyCompanionLineageRef,
-    triggerMessageRef: frontier.triggerMessageRef,
-    triggerMessageHash: frontier.triggerMessageHash,
-    triggerContentHash: current.source.trigger.contentHash,
-    requestPrincipalRef: frontier.requestPrincipalRef,
-    requestPrincipalBindingRef: frontier.requestPrincipalBindingRef,
-    ...(familySecurityAwareness === null ? {} : {
-      familySecurityAwarenessIncluded: true,
-      familySecurityProjectionRef: familySecurityAwareness.familySecurityProjectionRef,
-      familySecurityProjectionFingerprint: familySecurityAwareness.semanticFingerprint,
-      familySecurityProviderFrameSha256: contentHash(messages[0]),
-      familySecurityProviderBoundaryCurrentnessVerified: false
-    }),
-    selectedSourceBindings,
-    providerMessageBindings: familyProviderMessageBindings(messages),
-    exactMessagesSha256: contentHash(messages),
-    messageCount: messages.length,
-    rawSourceInputTokenEstimate: frontier.inputTokenEstimate,
-    providerMaterializedInputTokenEstimate,
-    reservedOutputTokens: canonicalLease.reservedOutputTokens,
-    hardTokenLimit: canonicalLease.hardTokenLimit,
-    materializedAt: current.verifiedAt,
-    providerVerifiedAt: null,
-    sourceCurrentnessVerified: true,
-    providerBoundaryCurrentnessVerified: false,
-    providerBoundarySourceBindingsVerified: false,
-    exactCanonicalSpeakerBindingsPreserved: true,
-    machineAttributionNotAuthority: true,
-    privateNonselectedIncluded: false,
-    memoryEffectPerformed: false,
-    trainingSelectionPerformed: false,
-    modelWeightEffectPerformed: false,
-    hiddenReasoningIncluded: false
-  });
-  const materialization = Object.freeze({
-    messages: Object.freeze(messages.map((message) => Object.freeze({ ...message }))),
-    receipt
-  });
-  TRUSTED_FAMILY_PROMPT_CONTEXT_MATERIALIZATIONS.set(materialization, Object.freeze({
-    home,
-    frontier: Object.freeze(structuredClone(frontier)),
-    canonicalLease,
-    familySecurityAwarenessFor,
-    familySecurityProjectionRef: receipt.familySecurityProjectionRef ?? null,
-    familySecurityProjectionFingerprint: receipt.familySecurityProjectionFingerprint ?? null,
-    exactMessagesSha256: receipt.exactMessagesSha256,
-    triggerContentHash: receipt.triggerContentHash
-  }));
-  return materialization;
 }
 
 async function canonicalTrustedFamilyPromptMaterialization(materialization, requestContent) {
-  const state = materialization && typeof materialization === 'object'
-    ? TRUSTED_FAMILY_PROMPT_CONTEXT_MATERIALIZATIONS.get(materialization)
-    : null;
-  if (!state) familyPromptFailure('Family inference requires the exact in-process materialization capability');
-  const messages = materialization.messages?.map((entry, index) => {
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry) ||
-        !['system', 'user', 'assistant'].includes(entry.role) || typeof entry.content !== 'string' || !entry.content ||
-        Object.keys(entry).some((key) => !['role', 'content'].includes(key))) {
-      familyPromptFailure('Family trusted provider message is invalid', { index });
+  try {
+    return await resolveFamilyPromptContextForProvider(materialization, requestContent);
+  } catch (error) {
+    if (error instanceof FamilyCompanionPromptContextError) {
+      fail(error.code, error.message, error.details ?? null);
     }
-    return { role: entry.role, content: entry.content };
-  });
-  const receipt = materialization.receipt;
-  const { receiptRef, semanticFingerprint, ...receiptCore } = receipt ?? {};
-  if (!Array.isArray(messages) || messages.length < 2 ||
-      !/^[0-9a-f]{64}$/u.test(semanticFingerprint ?? '') || contentHash(receiptCore) !== semanticFingerprint ||
-      receiptRef !== `receipt.vexlife.family-prompt-materialization.${semanticFingerprint.slice(0, 32)}` ||
-      receipt.schemaVersion !== FAMILY_PROMPT_MATERIALIZATION_RECEIPT_SCHEMA ||
-      receipt.exactMessagesSha256 !== contentHash(messages) ||
-      receipt.exactMessagesSha256 !== state.exactMessagesSha256 ||
-      (state.familySecurityAwarenessFor !== null && (
-        receipt.familySecurityAwarenessIncluded !== true ||
-        receipt.familySecurityProjectionRef !== state.familySecurityProjectionRef ||
-        receipt.familySecurityProjectionFingerprint !== state.familySecurityProjectionFingerprint ||
-        receipt.familySecurityProviderBoundaryCurrentnessVerified !== false
-      )) ||
-      (state.familySecurityAwarenessFor === null && (
-        receipt.familySecurityAwarenessIncluded !== undefined ||
-        receipt.familySecurityProjectionRef !== undefined ||
-        receipt.familySecurityProjectionFingerprint !== undefined ||
-        receipt.familySecurityProviderFrameSha256 !== undefined ||
-        receipt.familySecurityProviderBoundaryCurrentnessVerified !== undefined
-      )) ||
-      receipt.providerBoundaryCurrentnessVerified !== false ||
-      receipt.providerBoundarySourceBindingsVerified !== false ||
-      receipt.privateNonselectedIncluded !== false ||
-      receipt.memoryEffectPerformed !== false || receipt.trainingSelectionPerformed !== false ||
-      receipt.modelWeightEffectPerformed !== false) {
-    familyPromptFailure('Family trusted materialization receipt integrity is invalid');
+    throw error;
   }
-  const current = await readCurrentFamilyPromptSource(state.home, state.frontier);
-  canonicalFamilyContextLease(state.canonicalLease, state.frontier, current.verifiedAt);
-  if (current.source.trigger.content !== requestContent || current.source.trigger.contentHash !== state.triggerContentHash) {
-    familyPromptFailure('Family inference requestContent does not match the exact original trigger message');
-  }
-  const reboundFamilySecurityAwareness = await sourceManagedFamilySecurityAwareness(
-    state.familySecurityAwarenessFor,
-    state.frontier,
-    'PRE_PROVIDER',
-    current.verifiedAt
-  );
-  if ((reboundFamilySecurityAwareness?.familySecurityProjectionRef ?? null) !== state.familySecurityProjectionRef ||
-      (reboundFamilySecurityAwareness?.semanticFingerprint ?? null) !== state.familySecurityProjectionFingerprint) {
-    familyPromptFailure('Family security awareness changed before provider invocation');
-  }
-  const reboundMessages = familyProviderMessages(
-    state.frontier,
-    current.source.selected,
-    reboundFamilySecurityAwareness
-  );
-  if (contentHash(reboundMessages) !== receipt.exactMessagesSha256 ||
-      JSON.stringify(reboundMessages) !== JSON.stringify(messages)) {
-    familyPromptFailure('Family provider-boundary source bytes no longer match the exact materialization');
-  }
-  const providerMaterializedInputTokenEstimate = familyProviderInputTokenEstimate(reboundMessages);
-  const availableInputTokens = state.canonicalLease.hardTokenLimit - state.canonicalLease.reservedOutputTokens;
-  if (providerMaterializedInputTokenEstimate > availableInputTokens) {
-    familyPromptFailure('Family provider-boundary materialization exceeds the exact Context Lease input budget');
-  }
-  const finalCore = {
-    ...receiptCore,
-    providerMaterializedInputTokenEstimate,
-    providerVerifiedAt: current.verifiedAt,
-    ...(reboundFamilySecurityAwareness === null ? {} : {
-      familySecurityProviderBoundaryCurrentnessVerified: true
-    }),
-    providerBoundaryCurrentnessVerified: true,
-    providerBoundarySourceBindingsVerified: true
-  };
-  return Object.freeze({ messages, receipt: familyPromptReceipt(finalCore) });
 }
 
 export async function requestLivedCompanionInference({
@@ -2299,26 +1850,13 @@ export async function requestLivedCompanionInference({
   if (promptContextMaterialization !== null && familyPromptContextMaterialization !== null) {
     promptContextFailure('direct Companion and Family prompt materializations are mutually exclusive');
   }
-  if (
-    !endpointProfile?.admitted ||
-    !isNonEmptyString(endpointProfile.profileRef) ||
-    !isNonEmptyString(endpointProfile.endpoint) ||
-    (
-      endpointProfile.model !== undefined &&
-      endpointProfile.model !== null &&
-      !isNonEmptyString(endpointProfile.model)
-    )
-  ) {
-    fail('ENDPOINT_PROFILE_NOT_ADMITTED', 'an admitted endpoint profile with string identity and endpoint metadata is required');
-  }
-  let parsed;
   try {
-    parsed = new URL(endpointProfile.endpoint);
-  } catch {
-    fail('ENDPOINT_PROFILE_NOT_ADMITTED', 'endpoint profile URL is invalid');
-  }
-  if (!isLoopbackHost(parsed.hostname)) {
-    fail('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'G01 accepts loopback endpoints only; non-loopback use requires a separately admitted adapter');
+    validateLivedCompanionEndpointProfile(endpointProfile);
+  } catch (error) {
+    if (error instanceof LivedCompanionConnectionError) {
+      fail(error.code, error.message, error.details ?? null);
+    }
+    throw error;
   }
   const trusted = promptContextMaterialization !== null
     ? await canonicalTrustedPromptMaterialization(promptContextMaterialization, requestContent)
@@ -2339,78 +1877,31 @@ export async function requestLivedCompanionInference({
         ...(supplementalRequestContent === null ? [] : [{ role: 'user', content: supplementalRequestContent }])
       ]
     : [{ role: 'user', content: requestContent }];
-  const requestPayload = {
-    model: endpointProfile.model || 'bounded-loopback-proof',
-    messages: outboundMessages
-  };
-  const requestBody = JSON.stringify(requestPayload);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let connection;
   try {
-    const headers = { 'content-type': 'application/json' };
-    if (inMemoryAuthorization) headers.authorization = inMemoryAuthorization;
-    const response = await fetch(endpointRequestUrl(endpointProfile.endpoint), {
-      method: 'POST',
-      headers,
-      body: requestBody,
-      signal: controller.signal,
-      redirect: 'manual'
+    connection = await invokeLivedCompanionEndpoint({
+      endpointProfile,
+      messages: outboundMessages,
+      inMemoryAuthorization,
+      timeoutMs
     });
-    if (response.status >= 300 && response.status < 400) {
-      fail('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'G01 rejects endpoint redirects because the redirected destination is not part of the admitted loopback effect', { status: response.status });
-    }
-    if (!response.ok) fail('ENDPOINT_HTTP_ERROR', `endpoint returned HTTP ${response.status}`, { status: response.status });
-    let body;
-    try {
-      body = await response.json();
-    } catch {
-      fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response was not valid JSON');
-    }
-    if (body?.model !== undefined && body?.model !== null && !isNonEmptyString(body.model)) {
-      fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response model provenance must be one non-empty string');
-    }
-    let normalized;
-    try {
-      normalized = normalizeModelRuntimeResponse({
-        responseBody: body,
-        endpointProfile,
-        observedAt: new Date().toISOString()
-      });
-    } catch (error) {
-      fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response could not form a closed runtime observation', { cause: error.message });
-    }
-    let invocationEvidence;
-    try {
-      invocationEvidence = formModelRuntimeInvocationEvidence({
-        endpointProfileRef: endpointProfile.profileRef,
-        sanitizedEndpointOrigin: sanitizeEndpointOrigin(endpointProfile.endpoint),
-        requestBodySha256: crypto.createHash('sha256').update(Buffer.from(requestBody, 'utf8')).digest('hex'),
-        runtimeObservation: normalized.runtimeObservation,
-        httpStatus: response.status,
-        actualHttpCall: true,
-        formedAt: new Date().toISOString()
-      });
-    } catch (error) {
-      fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response could not form closed invocation evidence', { cause: error.message });
-    }
-    const responseValue = {
-      content: normalized.content,
-      model: normalized.model,
-      ...(trusted ? { promptContextMaterializationReceipt: trusted.receipt } : {})
-    };
-    assertInMemoryAuthorizationNotPersisted(responseValue, inMemoryAuthorization, 'endpoint response');
-    TRUSTED_MODEL_RUNTIME_RESPONSES.set(responseValue, Object.freeze({
-      runtimeObservation: normalized.runtimeObservation,
-      invocationEvidence
-    }));
-    return responseValue;
   } catch (error) {
-    if (error instanceof LivedCompanionError) throw error;
-    if (error?.name === 'AbortError') fail('ENDPOINT_TIMEOUT', 'endpoint request timed out');
-    fail('ENDPOINT_UNREACHABLE', 'endpoint could not be reached', { cause: error.message });
-  } finally {
-    clearTimeout(timeout);
+    if (error instanceof LivedCompanionConnectionError) {
+      fail(error.code, error.message, error.details ?? null);
+    }
+    throw error;
   }
+  const responseValue = {
+    content: connection.content,
+    model: connection.model,
+    ...(trusted ? { promptContextMaterializationReceipt: trusted.receipt } : {})
+  };
+  assertInMemoryAuthorizationNotPersisted(responseValue, inMemoryAuthorization, 'endpoint response');
+  TRUSTED_MODEL_RUNTIME_RESPONSES.set(responseValue, Object.freeze({
+    runtimeObservation: connection.runtimeObservation,
+    invocationEvidence: connection.invocationEvidence
+  }));
+  return responseValue;
 }
 
 
@@ -2723,7 +2214,7 @@ export async function performLivedCompanionTurn({
       state: 'TURN_COMPLETED',
       writerLeaseReleased,
       actualHttpCall,
-      loopbackOnly: isLoopbackHost(new URL(endpointProfile.endpoint).hostname),
+      loopbackOnly: isLivedCompanionLoopbackHost(new URL(endpointProfile.endpoint).hostname),
       runtimeProjection: runtimeProjection ? structuredClone(runtimeProjection) : null,
       promptContextMaterializationReceipt: promptContextMaterializationReceipt ? structuredClone(promptContextMaterializationReceipt) : null,
       modelTurnWitness: modelTurnWitness ? structuredClone(modelTurnWitness) : null,
@@ -2857,7 +2348,7 @@ function assertEventRecord(event, expected = null, fileName = null) {
       !isNonEmptyString(event.modelNameOrBoundedTestProfileRef) ||
       !endpointOrigin ||
       endpointOrigin.origin !== event.sanitizedEndpointOrigin ||
-      !isLoopbackHost(endpointOrigin.hostname)
+      !isLivedCompanionLoopbackHost(endpointOrigin.hostname)
     ) {
       fail('EVENT_CHAIN_CORRUPT', 'response event provenance is invalid', {
         eventHash: event.eventHash
@@ -3314,6 +2805,99 @@ export function assertNoSensitivePersistence(root, secretValues = []) {
 
 export function livedCompanionReceiptSha256(file) {
   return fileSha256(file);
+}
+
+export function readCurrentLivedCompanionThreadWriterCurrentness({
+  home,
+  homeRef = null,
+  deviceRef = null,
+  companionLineageRef,
+  threadRef
+}) {
+  const identity = loadHome(home);
+  const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
+  const safeThread = ensureSafeRef(threadRef, 'threadRef');
+  const lockDirectory = resolveHomePath(
+    identity.homeRoot,
+    'runtime',
+    'thread-writer-locks',
+    admitted.companionLineageRef
+  );
+  const lockPath = path.join(lockDirectory, safeThread + '.lock');
+  const base = {
+    schemaVersion: 'vexlife.lived-companion-thread-writer-currentness/v1',
+    projectionRef: 'projection.lived-companion.thread-writer-currentness',
+    currentness: 'CURRENT',
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThread,
+    effectAuthorityGranted: false,
+    recoveryEffectPerformed: false,
+    exactTurnIdentityAvailable: false
+  };
+
+  try {
+    fs.lstatSync(lockPath);
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return Object.freeze({
+        ...base,
+        state: 'IDLE',
+        ownerState: 'NONE',
+        leaseSha256: null,
+        observedLeaseFileSha256: null,
+        leaseValidationState: 'NOT_PRESENT',
+        exactNextSafeRoute: 'NONE_REQUIRED',
+        activeWriterPresent: false,
+        recoveryRequired: false,
+        attentionRequired: false
+      });
+    }
+    // Preserve uncertainty: the existing classifier owns unreadable final-path disposition.
+  }
+
+  try {
+    classifyExistingThreadWriterLease(identity.homeRoot, lockPath, admitted.companionLineageRef, safeThread);
+  } catch (error) {
+    if (!(error instanceof LivedCompanionError)) throw error;
+    if (error.code === 'THREAD_WRITER_RECOVERY_REQUIRED') {
+      return Object.freeze({
+        ...base,
+        state: 'RECOVERY_REQUIRED',
+        ownerState: 'ABSENT',
+        leaseSha256: error.details?.leaseSha256 ?? null,
+        observedLeaseFileSha256: error.details?.observedLeaseFileSha256 ?? null,
+        leaseValidationState: error.details?.leaseValidationState ?? 'VALID',
+        exactNextSafeRoute: 'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED',
+        activeWriterPresent: false,
+        recoveryRequired: true,
+        attentionRequired: false
+      });
+    }
+    if (error.code === 'THREAD_WRITER_CONFLICT') {
+      const active = error.details?.ownerState === 'ACTIVE';
+      const unverifiable = error.details?.ownerState === 'UNVERIFIABLE';
+      if (!active && !unverifiable) throw error;
+      return Object.freeze({
+        ...base,
+        state: active ? 'ACTIVE' : 'HELD_UNVERIFIABLE',
+        ownerState: active ? 'ACTIVE' : 'UNVERIFIABLE',
+        leaseSha256: error.details?.leaseSha256 ?? null,
+        observedLeaseFileSha256: error.details?.observedLeaseFileSha256 ?? null,
+        leaseValidationState: error.details?.leaseValidationState ?? (active ? 'VALID' : 'UNKNOWN'),
+        exactNextSafeRoute: active
+          ? 'WAIT_FOR_ACTIVE_THREAD_WRITER_OR_RETRY'
+          : 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER',
+        activeWriterPresent: active,
+        recoveryRequired: false,
+        attentionRequired: unverifiable
+      });
+    }
+    throw error;
+  }
+
+  throw new Error('thread writer lease classifier returned without a disposition');
 }
 
 export function readCurrentLivedCompanionCompletedTurn({

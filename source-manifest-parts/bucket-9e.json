@@ -3,6 +3,12 @@
   "bucketId": "9e",
   "files": [
     {
+      "path": "docs/VEXLIFE-CONNECTED-SERVICES.md",
+      "mode": "100644",
+      "bytes": 13151,
+      "sha256": "8729aac1f54c522f6db888c45fc9be942673fedbcc547ab2acabe1f25db76a18"
+    },
+    {
       "path": "src/core/activated-model-runtime-binding.mjs",
       "mode": "100644",
       "bytes": 62113,

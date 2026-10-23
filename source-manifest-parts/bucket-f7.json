@@ -15,6 +15,12 @@
       "sha256": "def0fdf9327f7c2d2cfd423dff69e4747ae45235536730c997e6ebe65c43c066"
     },
     {
+      "path": "test/p4-typed-local-effect.test.mjs",
+      "mode": "100644",
+      "bytes": 13005,
+      "sha256": "c87f9bb72af060195e65d9c33b2ecf72cdbd06cf5cfd0813d01c02c63caa64d5"
+    },
+    {
       "path": "test/relationships-invitation-currentness-fixture.mjs",
       "mode": "100644",
       "bytes": 6789,
