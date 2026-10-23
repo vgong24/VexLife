@@ -23,8 +23,8 @@
     {
       "path": "scripts/establish-heretic-runtime.mjs",
       "mode": "100644",
-      "bytes": 6911,
-      "sha256": "bd3d02dec9d1b685cae00e028b218cd39cbad204304bb2ac140cb19bb42d556c"
+      "bytes": 7001,
+      "sha256": "9c95b3a145c77ac646c8b21a7a18ffcffaafba6560777453b2415b58a5601ba0"
     },
     {
       "path": "src/core/living-journal-memory-archive.mjs",

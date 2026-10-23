@@ -12,7 +12,6 @@ import {
   HERETIC_MODEL_BUNDLE_REF,
   HERETIC_MODEL_PROFILE_REF,
   HERETIC_PYTHON_VERSION,
-  HERETIC_PROVIDER_REVISION,
   HERETIC_RUNTIME_ADAPTER_REF,
   computeArtifactContentSetSha256,
   ensureHereticPythonEnvironment,
@@ -52,7 +51,8 @@ test('materialization plan binds the registered generalized bundle without activ
     artifactRef: `artifact.test.${index}`,
     filename,
     sha256,
-    expectedBytes
+    expectedBytes,
+    sourceRef: 'hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57'
   }));
   const plan = formHereticMaterializationPlan({
     state: 'MODEL_BUNDLE_RUNTIME_REALIZATION_HELD',
@@ -69,6 +69,7 @@ test('materialization plan binds the registered generalized bundle without activ
   assert.equal(plan.memberCount, 11);
   assert.equal(plan.totalBytes, 15153242506);
   assert.equal(plan.contentSetSha256, HERETIC_ARTIFACT_CONTENT_SET_SHA256);
+  assert.equal(plan.providerRevision, '808b82a2bd04b2bac362b5d0b7a1197aeea59e57');
 });
 
 test('materialization independently verifies bytes after the delivery owner returns', async () => {
@@ -153,8 +154,35 @@ test('fresh environment uses exact Python, binary-only pinned mlx-lm, retains re
 });
 
 
-test('provider revision remains pinned to the exact registered Heretic source revision', () => {
-  assert.equal(HERETIC_PROVIDER_REVISION, '808b82a2bd04b2bac362b5d0b7a1197aeea59e57');
+test('materialization plan rejects artifact descriptors that disagree on provider revision', () => {
+  const artifactBindings = rows.map(([,], index) => ({
+    roleRef: `role.test.${index}`,
+    artifactRef: `artifact.test.${index}`
+  }));
+  const artifacts = rows.map(([filename, sha256, expectedBytes], index) => ({
+    artifactRef: `artifact.test.${index}`,
+    filename,
+    sha256,
+    expectedBytes,
+    sourceRef: index === 10
+      ? 'hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.1111111111111111111111111111111111111111'
+      : 'hf.donedynamics.qwen3.8-27b-heretic-mlx-4bit.808b82a2bd04b2bac362b5d0b7a1197aeea59e57'
+  }));
+  assert.throws(
+    () => formHereticMaterializationPlan({
+      state: 'MODEL_BUNDLE_RUNTIME_REALIZATION_HELD',
+      bundle: {
+        modelBundleRef: HERETIC_MODEL_BUNDLE_REF,
+        modelProfileRef: HERETIC_MODEL_PROFILE_REF,
+        artifactSetRef: HERETIC_ARTIFACT_SET_REF,
+        contentSetSha256: HERETIC_ARTIFACT_CONTENT_SET_SHA256,
+        runtimeRealizationRefs: [HERETIC_RUNTIME_ADAPTER_REF]
+      },
+      artifactBindings,
+      artifacts
+    }),
+    (error) => error?.code === 'HERETIC_PROVIDER_REVISION_SET_MISMATCH'
+  );
 });
 
 test('fresh-host Hugging Face cache is real, bound during owner work, and restored afterward', async () => {

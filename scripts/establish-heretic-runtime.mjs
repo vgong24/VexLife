@@ -10,8 +10,8 @@ import { resolveAndDownloadArtifact } from '../src/core/artifact-delivery.mjs';
 import { resolveModelBundleByRef } from '../src/core/vex-initialization.mjs';
 import {
   HERETIC_MODEL_BUNDLE_REF,
-  HERETIC_PROVIDER_REVISION,
-  establishHereticRuntime
+  establishHereticRuntime,
+  formHereticMaterializationPlan
 } from '../src/core/heretic-runtime-establishment.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -132,13 +132,14 @@ async function main() {
     artifactRegistry,
     modelBundleRef: process.env.VEX_HERETIC_MODEL_BUNDLE_REF || HERETIC_MODEL_BUNDLE_REF
   });
+  const materializationPlan = formHereticMaterializationPlan(resolution);
 
   const modelPath = path.join(
     vexHome,
     'models',
     'heretic',
     'qwen3.8-27b-mlx4',
-    HERETIC_PROVIDER_REVISION
+    materializationPlan.providerRevision
   );
   const pythonEnvironmentRoot = path.join(
     vexHome,

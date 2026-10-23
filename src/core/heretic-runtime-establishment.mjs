@@ -15,8 +15,6 @@ export const HERETIC_ARTIFACT_SET_REF =
   'artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2';
 export const HERETIC_ARTIFACT_CONTENT_SET_SHA256 =
   '329658ee8f270056bc29d8a6cfd6e9f1b7d9d14c659452c9e4dd46fc7c78d780';
-export const HERETIC_PROVIDER_REVISION =
-  '808b82a2bd04b2bac362b5d0b7a1197aeea59e57';
 export const HERETIC_RUNTIME_ADAPTER_REF =
   'adapter.runtime.mlx.macos-victor.001';
 export const HERETIC_RUNTIME_CLASS = 'MLX_LM_DIRECT_RUNTIME';
@@ -64,6 +62,17 @@ function stableRef(value, label) {
     fail('STABLE_REF_REQUIRED', `${label} must be a stable ref`);
   }
   return value;
+}
+
+function providerRevisionFromSourceRef(sourceRef, label) {
+  const value = stableRef(sourceRef, label);
+  const match = /(?:^|\.)([0-9a-f]{40})$/u.exec(value);
+  if (!match) {
+    fail('HERETIC_PROVIDER_REVISION_REQUIRED', `${label} must end in one exact 40-hex provider revision`, {
+      sourceRef: value
+    });
+  }
+  return match[1];
 }
 
 function safeLogicalPath(value) {
@@ -166,6 +175,7 @@ export function formHereticMaterializationPlan(resolution) {
     }
     artifactsByRef.set(artifact.artifactRef, artifact);
   }
+  const providerRevisions = new Set();
   const members = resolution.artifactBindings.map((binding, index) => {
     object(binding, `resolution.artifactBindings[${index}]`);
     stableRef(binding.roleRef, `resolution.artifactBindings[${index}].roleRef`);
@@ -175,6 +185,10 @@ export function formHereticMaterializationPlan(resolution) {
       fail('HERETIC_ARTIFACT_DESCRIPTOR_MISSING', `artifact descriptor missing for ${binding.artifactRef}`);
     }
     const logicalPath = safeLogicalPath(artifact.filename);
+    providerRevisions.add(providerRevisionFromSourceRef(
+      artifact.sourceRef,
+      `resolution.artifacts[${resolution.artifacts.indexOf(artifact)}].sourceRef`
+    ));
     if (!SHA256.test(artifact.sha256)) {
       fail('HERETIC_ARTIFACT_SHA256_REQUIRED', `${binding.artifactRef} has invalid sha256`);
     }
@@ -189,6 +203,12 @@ export function formHereticMaterializationPlan(resolution) {
       byteLength: artifact.expectedBytes
     });
   }).sort((left, right) => compareUtf8(left.logicalPath, right.logicalPath));
+  if (providerRevisions.size !== 1) {
+    fail('HERETIC_PROVIDER_REVISION_SET_MISMATCH', 'Heretic artifact descriptors must bind one exact provider revision', {
+      providerRevisions: [...providerRevisions].sort()
+    });
+  }
+  const [providerRevision] = providerRevisions;
   const actualContentSetSha256 = computeArtifactContentSetSha256(members);
   if (actualContentSetSha256 !== HERETIC_ARTIFACT_CONTENT_SET_SHA256) {
     fail('HERETIC_CONTENT_SET_RECOMPUTATION_FAILED', 'resolved members do not reproduce the certified Heretic content set', {
@@ -203,6 +223,7 @@ export function formHereticMaterializationPlan(resolution) {
     artifactSetRef: HERETIC_ARTIFACT_SET_REF,
     contentSetSha256: HERETIC_ARTIFACT_CONTENT_SET_SHA256,
     runtimeAdapterRef: HERETIC_RUNTIME_ADAPTER_REF,
+    providerRevision,
     memberCount: members.length,
     totalBytes: members.reduce((sum, member) => sum + member.byteLength, 0),
     members: Object.freeze(members)
