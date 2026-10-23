@@ -56,6 +56,7 @@ function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
     '      trap "exit 143" TERM INT',
     '      while :; do sleep 1; done',
     '    fi',
+    '    if [ "${VEX_FAKE_STOP_BEFORE_BROWSER_OPEN:-no}" = "yes" ] && [[ " $* " == *" --operation start "* || " $* " == *" --operation repair "* || " $* " == *" --operation rebuild-preserve "* ]]; then echo FAKE_LIFECYCLE_STOP_BEFORE_BROWSER_OPEN >&2; exit 92; fi',
     '    if [ "${VEX_FAKE_LIFECYCLE_START_FAIL:-no}" = "yes" ] && [[ " $* " == *" --operation start "* ]]; then echo FAKE_LIFECYCLE_START_REACHED >&2; exit 92; fi',
     `    printf '%s\\n' '${lifecycleJson}'; exit 0 ;;`,
     '  *) echo "UNEXPECTED_FAKE_NODE_CALL: $*" >&2; exit 91 ;;',
@@ -66,7 +67,7 @@ function makeFakeNode(binRoot, state = 'ABSENT', choices = null) {
   fs.writeFileSync(file, fake, { mode: 0o755 });
 }
 
-function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew = false, hostEligible = true, lifecycleStartFails = false } = {}) {
+function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew = false, hostEligible = true, lifecycleStartFails = false, stopBeforeBrowserOpen = false } = {}) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-window-test-'));
   const bin = path.join(temp, 'bin');
   const repo = path.join(temp, 'repo');
@@ -90,7 +91,8 @@ function runController(extraArgs, { state = 'ABSENT', choices = null, withBrew =
       VEX_LIFECYCLE_ARGS_LOG: lifecycleArgsLog,
       VEX_FAKE_HOST_ELIGIBLE: hostEligible ? 'yes' : 'no',
       VEX_FAKE_EXPECT_PROBE_ROOT: selectedHome,
-      VEX_FAKE_LIFECYCLE_START_FAIL: lifecycleStartFails ? 'yes' : 'no'
+      VEX_FAKE_LIFECYCLE_START_FAIL: lifecycleStartFails ? 'yes' : 'no',
+      VEX_FAKE_STOP_BEFORE_BROWSER_OPEN: stopBeforeBrowserOpen ? 'yes' : 'no'
     }
   });
   return { ...result, effectLog, lifecycleArgsLog, temp, selectedHome };
@@ -279,7 +281,7 @@ test('MAC-WIN-10A real duplicate setup writer is rejected and stop-and-clean can
   const cleanupEnv = { ...env, VEX_FAKE_LIFECYCLE_HOLD_FILE: '' };
   const cleanup = spawnSync('/bin/bash', argsFor('cleanup-owner', 'uninstall-preserve'), { encoding: 'utf8', env: cleanupEnv, timeout: 10000 });
   assert.equal(cleanup.status, 0, cleanup.stderr || cleanup.stdout);
-  assert.match(cleanup.stdout, /VEXLIFE_CONTROLLER_RESULT\\tUNINSTALL_PRESERVE_COMPLETE/u);
+  assert.match(cleanup.stdout, /VEXLIFE_CONTROLLER_RESULT\tUNINSTALL_PRESERVE_COMPLETE/u);
 
   const firstExit = (first.exitCode !== null || first.signalCode !== null)
     ? { code: first.exitCode, signal: first.signalCode }
@@ -309,9 +311,14 @@ test('MAC-WIN-05/10 approved repair and rebuild forward runtime consent into non
     const result = runController(['--action', action, '--node-install-consent', 'no', '--runtime-acquisition-consent', 'yes'], {
       state: 'EXISTING_DEGRADED_REPAIRABLE',
       choices: [action],
-      hostEligible: true
+      hostEligible: true,
+      // This controller-unit proof stops at the fake lifecycle boundary. It
+      // must not invoke the production /usr/bin/open host effect against a
+      // browser server that this fixture deliberately does not start.
+      stopBeforeBrowserOpen: true
     });
-    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /FAKE_LIFECYCLE_STOP_BEFORE_BROWSER_OPEN|stopped safely before completing/u);
     const calls = fs.readFileSync(result.lifecycleArgsLog, 'utf8').trim().split(/\r?\n/u);
     const actionCall = calls.find((line) => line.includes(`--operation ${action}`));
     assert.ok(actionCall, `missing lifecycle call for ${action}`);

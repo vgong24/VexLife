@@ -263,7 +263,7 @@ acquire_setup_session() {
   fail "VexLife could not reserve the exact setup operation for this Home."
 }
 stop_active_setup_session() {
-  local dir owner_pid probe_status attempt
+  local dir owner_pid probe_status attempt owner_state=""
   dir="$(setup_session_dir_for_home)"
   [ -e "$dir" ] || return 0
   set +e
@@ -284,6 +284,17 @@ stop_active_setup_session() {
       cleanup_stale_setup_session "$dir" || true
       return 0
     fi
+    # kill -0 also succeeds for a zombie. This PID was already proven as the
+    # exact setup owner before TERM, so a Z state means that owner can no
+    # longer write. Do not wait for its caller to reap it before takeover.
+    owner_state="$(/bin/ps -p "$owner_pid" -o state= 2>/dev/null | tr -d '[:space:]' || true)"
+    case "$owner_state" in
+      *Z*)
+        if [ ! -e "$dir" ]; then return 0; fi
+        cleanup_stale_setup_session "$dir" || fail "the exact setup owner stopped, but its recorded child may still be active; refusing to continue cleanup while it may still be writing."
+        return 0
+        ;;
+    esac
     sleep 0.1
   done
   fail "the exact active setup owner did not stop after cancellation; refusing to continue cleanup while it may still be writing."
