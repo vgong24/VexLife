@@ -35,8 +35,8 @@
     {
       "path": "test/heretic-runtime-establishment.test.mjs",
       "mode": "100644",
-      "bytes": 10324,
-      "sha256": "f63767610eec81c66f85c234501e08afca6a067a01c5f32f4478bc1289b18cdf"
+      "bytes": 12163,
+      "sha256": "93ebdcee9aa6faad136e88c4130b8510d7a36ee12b1e7c0332be2e9d9b3efc44"
     }
   ]
 }

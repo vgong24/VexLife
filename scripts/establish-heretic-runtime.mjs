@@ -17,6 +17,10 @@ import {
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = path.resolve(HERE, '..');
 const SDK_OWNER_RELATIVE_PATH = 'lib/vexlocalbridge/mlx-persistent-runtime-owner.js';
+const SDK_RUNTIME_SOURCE_RELATIVE_PATHS = Object.freeze([
+  SDK_OWNER_RELATIVE_PATH,
+  'lib/vexlocalbridge/mlx-interactive-runtime-binding.js'
+]);
 const ACCEPTED_SDK_REMOTES = new Set([
   'https://github.com/vgong24/Vextreme-SDK.git',
   'git@github.com:vgong24/Vextreme-SDK.git',
@@ -40,7 +44,7 @@ function git(root, args) {
   }).trim();
 }
 
-function inspectSdkSource(sdkRoot) {
+export function inspectSdkSource(sdkRoot) {
   const resolvedRoot = fs.realpathSync(path.resolve(sdkRoot));
   const remote = git(resolvedRoot, ['config', '--get', 'remote.origin.url']);
   if (!ACCEPTED_SDK_REMOTES.has(remote)) {
@@ -48,19 +52,22 @@ function inspectSdkSource(sdkRoot) {
   }
   const revision = git(resolvedRoot, ['rev-parse', 'HEAD']);
   const tree = git(resolvedRoot, ['rev-parse', 'HEAD^{tree}']);
-  const trackedModule = git(resolvedRoot, ['ls-files', '--error-unmatch', SDK_OWNER_RELATIVE_PATH]);
-  if (trackedModule !== SDK_OWNER_RELATIVE_PATH) {
-    throw new Error('Vextreme-SDK MLX persistent runtime owner is not tracked at the expected path');
-  }
-  const moduleStatus = git(resolvedRoot, ['status', '--porcelain=v1', '--', SDK_OWNER_RELATIVE_PATH]);
-  if (moduleStatus !== '') {
-    throw new Error('Vextreme-SDK MLX persistent runtime owner differs from the selected Git revision');
+  for (const relativePath of SDK_RUNTIME_SOURCE_RELATIVE_PATHS) {
+    const trackedPath = git(resolvedRoot, ['ls-files', '--error-unmatch', relativePath]);
+    if (trackedPath !== relativePath) {
+      throw new Error(`Vextreme-SDK Heretic runtime source is not tracked at the expected path: ${relativePath}`);
+    }
+    const sourceStatus = git(resolvedRoot, ['status', '--porcelain=v1', '--', relativePath]);
+    if (sourceStatus !== '') {
+      throw new Error(`Vextreme-SDK Heretic runtime source differs from the selected Git revision: ${relativePath}`);
+    }
+    const sourcePath = path.join(resolvedRoot, relativePath);
+    const stat = fs.lstatSync(sourcePath);
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      throw new Error(`Vextreme-SDK Heretic runtime source must be one real file: ${relativePath}`);
+    }
   }
   const modulePath = path.join(resolvedRoot, SDK_OWNER_RELATIVE_PATH);
-  const stat = fs.lstatSync(modulePath);
-  if (!stat.isFile() || stat.isSymbolicLink()) {
-    throw new Error('Vextreme-SDK MLX persistent runtime owner must be one real file');
-  }
   const moduleSha256 = crypto.createHash('sha256').update(fs.readFileSync(modulePath)).digest('hex');
   return {
     sdkRoot: resolvedRoot,
@@ -194,10 +201,13 @@ async function main() {
   }, null, 2)}\n`);
 }
 
-main().catch((error) => {
-  process.stderr.write(`[VexLife] Heretic runtime establishment failed: ${error.code || error.name}: ${error.message}\n`);
-  if (error.detail) process.stderr.write(`${JSON.stringify(error.detail, null, 2)}\n`);
-  process.exitCode = 1;
-});
+const directExecutionPath = process.argv[1] ? path.resolve(process.argv[1]) : null;
+if (directExecutionPath === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    process.stderr.write(`[VexLife] Heretic runtime establishment failed: ${error.code || error.name}: ${error.message}\n`);
+    if (error.detail) process.stderr.write(`${JSON.stringify(error.detail, null, 2)}\n`);
+    process.exitCode = 1;
+  });
+}
 
 // [VXG RealForever]

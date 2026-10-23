@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 
 import {
@@ -20,6 +21,7 @@ import {
   materializeHereticBundle,
   withHereticHuggingFaceCache
 } from '../src/core/heretic-runtime-establishment.mjs';
+import { inspectSdkSource } from '../scripts/establish-heretic-runtime.mjs';
 
 const rows = [
   ['.gitattributes', '34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930', 1570],
@@ -230,6 +232,37 @@ test('fresh-host Hugging Face cache binding is restored even when owner work fai
   } finally {
     if (prior === undefined) delete process.env.HF_HUB_CACHE;
     else process.env.HF_HUB_CACHE = prior;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('SDK source inspection rejects a dirty interactive runtime dependency before owner use', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-heretic-sdk-source-'));
+  const ownerPath = path.join(root, 'lib', 'vexlocalbridge', 'mlx-persistent-runtime-owner.js');
+  const runtimePath = path.join(root, 'lib', 'vexlocalbridge', 'mlx-interactive-runtime-binding.js');
+  const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  try {
+    fs.mkdirSync(path.dirname(ownerPath), { recursive: true });
+    fs.writeFileSync(ownerPath, "module.exports = { owner: true };\n");
+    fs.writeFileSync(runtimePath, "module.exports = { runtime: true };\n");
+    git(['init']);
+    git(['config', 'user.name', 'VexLife Test']);
+    git(['config', 'user.email', 'vexlife-test@example.invalid']);
+    git(['add', 'lib/vexlocalbridge/mlx-persistent-runtime-owner.js', 'lib/vexlocalbridge/mlx-interactive-runtime-binding.js']);
+    git(['commit', '-m', 'fixture']);
+    git(['remote', 'add', 'origin', 'https://github.com/vgong24/Vextreme-SDK.git']);
+
+    const admitted = inspectSdkSource(root);
+    assert.equal(admitted.sourceIdentity.repository, 'vgong24/Vextreme-SDK');
+    assert.match(admitted.sourceIdentity.revision, /^[0-9a-f]{40}$/u);
+    assert.match(admitted.sourceIdentity.tree, /^[0-9a-f]{40}$/u);
+
+    fs.appendFileSync(runtimePath, '// dirty sibling\n');
+    assert.throws(
+      () => inspectSdkSource(root),
+      /Heretic runtime source differs from the selected Git revision: lib\/vexlocalbridge\/mlx-interactive-runtime-binding\.js/u
+    );
+  } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
