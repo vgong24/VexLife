@@ -27,9 +27,16 @@ const EFFECTS = Object.freeze({
   externalDisclosure: false
 });
 
-const MEMORY_MAX_PAGES = 8;
-const MEMORY_TOKEN_CAP = 768;
-const CONTEXT_INPUT_TOKEN_BUDGET = 3584;
+// [Victor Approved][Memory Bump][2026-10-11]
+// Product intent: keep ordinary Companion context comfortably below the ~220K
+// pressure line while giving durable Memory a materially useful coding/research
+// allowance. These are VexLife prompt-admission bounds, not a claim about the
+// Heretic model's native maximum context.
+const MEMORY_MAX_PAGES = 100;
+const MEMORY_TOKEN_CAP = 100_000;
+const CONTEXT_INPUT_TOKEN_BUDGET = 192_000;
+const CONTEXT_RESERVED_OUTPUT_TOKENS = 16_000;
+const CONTEXT_HARD_TOKEN_LIMIT = 208_000;
 const MEMORY_PACKET_SCHEMA = 'vexlife.prompt-context-memory-packet/v1';
 const MEMORY_TRUTH_CLASS = 'CURRENT_ATTRIBUTED_MEMORY_CONTEXT';
 
@@ -286,8 +293,8 @@ function leaseInput(selection, observedAt, ttlMs) {
     applicableLessonRefs: [],
     applicableReleaseRefs: [],
     inputTokenEstimate: CONTEXT_INPUT_TOKEN_BUDGET,
-    reservedOutputTokens: 512,
-    hardTokenLimit: 4096,
+    reservedOutputTokens: CONTEXT_RESERVED_OUTPUT_TOKENS,
+    hardTokenLimit: CONTEXT_HARD_TOKEN_LIMIT,
     formedAt: observedAt,
     expiresAt,
     observedAt,
