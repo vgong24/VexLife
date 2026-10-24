@@ -45,8 +45,22 @@ const candidateAuthorityRef = value('--candidate-authority-ref');
 const yes = has('--yes');
 const planOnly = has('--plan-only');
 const home = path.resolve(value('--home', path.join(os.homedir(), '.vexlife')));
+const STARTING_RUNTIME_RECEIPT_SCHEMA = 'vexlife.runtime-starting-receipt/v1';
+let pendingRuntimeOwner = null;
+let terminationRequested = false;
 
 function progress(message) { console.error(`[VexLife] ${message}`); }
+function artifactProgressReporter(artifact) {
+  let lastWholeMiB = -1;
+  return ({ bytes }) => {
+    const wholeMiB = Math.floor(bytes / (1024 * 1024));
+    if (wholeMiB === lastWholeMiB && bytes !== artifact.expectedBytes) return;
+    lastWholeMiB = wholeMiB;
+    const expectedMiB = Math.ceil(artifact.expectedBytes / (1024 * 1024));
+    const percent = Math.min(100, Math.floor((bytes * 100) / artifact.expectedBytes));
+    progress(`Downloading ${artifact.filename}: ${wholeMiB} / ${expectedMiB} MiB (${percent}%)`);
+  };
+}
 function fail(state, message, exitCode = 2, detail = {}) {
   const payload = { schemaVersion: 'vexlife.initialization-result/v1', state, message, ...detail };
   console.log(JSON.stringify(payload));
@@ -234,6 +248,7 @@ async function existingRuntimeReuse(profile, receiptPath, { executable, modelPat
   if (!fs.existsSync(receiptPath)) return null;
   try {
     const prior = loadJson(receiptPath);
+    if (!['RUNTIME_QUALIFIED', 'STARTING'].includes(prior.state)) return null;
     const pid = Number(prior.runtime?.pid);
     if (prior.profileRef !== profile.profileRef || prior.endpoint?.origin !== profile.endpoint.origin || !pidAlive(pid)) return null;
     const processEvidence = platformProcessEvidence(pid);
@@ -242,10 +257,44 @@ async function existingRuntimeReuse(profile, receiptPath, { executable, modelPat
     const executableBytes = fs.statSync(executable).size;
     const executableSha256 = await sha256File(executable);
     if (!runtimeExecutableIdentityMatches({ profile, actualSha256: executableSha256, bytes: executableBytes })) return null;
-    if (!await endpointResponding(profile.endpoint.origin, profile.qualification.healthPath)) return null;
-    return { pid, reusedReceiptRef: prior.receiptRef ?? null };
+    if (prior.state === 'RUNTIME_QUALIFIED' && !await endpointResponding(profile.endpoint.origin, profile.qualification.healthPath)) return null;
+    if (prior.state === 'STARTING' && prior.schemaVersion !== STARTING_RUNTIME_RECEIPT_SCHEMA) return null;
+    return { pid, reusedReceiptRef: prior.receiptRef ?? null, priorState: prior.state };
   } catch { return null; }
 }
+function pendingRuntimeMatches(owner) {
+  if (!owner || !pidAlive(owner.pid)) return false;
+  const evidence = platformProcessEvidence(owner.pid);
+  return Boolean(evidence && runtimeProcessEvidenceMatches({
+    processEvidence: evidence,
+    expectedExecutablePath: owner.executablePath,
+    expectedArguments: owner.arguments
+  }));
+}
+function stopPendingRuntime(reason) {
+  const owner = pendingRuntimeOwner;
+  if (!owner) return { disposition: 'NO_PENDING_RUNTIME' };
+  if (!pidAlive(owner.pid)) {
+    pendingRuntimeOwner = null;
+    return { disposition: 'PENDING_RUNTIME_ALREADY_STOPPED', pid: owner.pid };
+  }
+  if (!pendingRuntimeMatches(owner)) {
+    return { disposition: 'PENDING_RUNTIME_OWNERSHIP_UNPROVEN', pid: owner.pid };
+  }
+  try { process.kill(owner.pid, 'SIGTERM'); }
+  catch { return { disposition: 'PENDING_RUNTIME_SIGNAL_FAILED', pid: owner.pid }; }
+  try {
+    if (fs.existsSync(owner.receiptPath)) {
+      const current = loadJson(owner.receiptPath);
+      if (current?.schemaVersion === STARTING_RUNTIME_RECEIPT_SCHEMA && current?.state === 'STARTING' && Number(current.runtime?.pid) === owner.pid) {
+        writeJson(owner.receiptPath, { ...current, state: 'STOP_REQUESTED', stopReason: reason, stopRequestedAt: new Date().toISOString() });
+      }
+    }
+  } catch {}
+  pendingRuntimeOwner = null;
+  return { disposition: 'PENDING_RUNTIME_STOP_REQUESTED', pid: owner.pid };
+}
+
 async function waitForRuntime(profile, pid) {
   const deadline = Date.now() + profile.qualification.timeoutMs;
   while (Date.now() < deadline) {
@@ -303,6 +352,16 @@ function writeFailureReceipt(profile, state, message, detail = {}) {
 }
 
 let profile = null;
+const onTermination = (signal) => {
+  if (terminationRequested) return;
+  terminationRequested = true;
+  const cleanup = stopPendingRuntime(signal);
+  try { writeFailureReceipt(profile, 'INITIALIZATION_CANCELLED', `Initialization cancelled by ${signal}.`, { cleanup }); } catch {}
+  process.exit(130);
+};
+process.once('SIGTERM', () => onTermination('SIGTERM'));
+process.once('SIGINT', () => onTermination('SIGINT'));
+
 try {
   if (!fs.existsSync(PROFILE_PATH)) fail('SOURCE_NOT_FOUND', `Operational profile registry is missing: ${PROFILE_PATH}`, 2);
   if (!fs.existsSync(MODEL_BUNDLE_PATH) || !fs.existsSync(ARTIFACT_REGISTRY_PATH)) fail('SOURCE_NOT_FOUND', 'Canonical model-bundle/artifact registries are missing.', 2);
@@ -385,7 +444,7 @@ try {
       expectedBytes: artifact.expectedBytes,
       maxBytes: artifact.maxBytes,
       finalPath: destination,
-      onProgress: ({ bytes }) => progress(`${artifact.filename}: ${Math.floor(bytes / (1024 * 1024))} MiB received`)
+      onProgress: artifactProgressReporter(artifact)
     });
     artifactPaths.set(artifact.artifactRef, destination);
     artifactReceipts.push({ artifactRef: artifact.artifactRef, filename: artifact.filename, destinationClass: 'RUNTIME_ARCHIVE', disposition: receipt.disposition, bytes: receipt.bytes, sha256: receipt.actualSha256, selectedChannelRef: null, attemptedChannelRefs: [], providerOrNetworkEffect: receipt.disposition !== 'REUSED_VERIFIED' });
@@ -454,8 +513,19 @@ try {
   });
   if (existing) {
     runtimePid = existing.pid;
-    runtimeDisposition = 'REUSED_QUALIFIED_BOUND_RUNTIME';
-    progress(`Reusing already-qualified runtime process ${runtimePid}.`);
+    runtimeDisposition = existing.priorState === 'STARTING' ? 'RESUMED_STARTING_RUNTIME' : 'REUSED_QUALIFIED_BOUND_RUNTIME';
+    if (existing.priorState === 'STARTING') {
+      pendingRuntimeOwner = {
+        pid: runtimePid,
+        executablePath: materialization.executable,
+        arguments: buildRuntimeArguments(profile, { modelPath, projectorPath }),
+        receiptPath: runtimeReceiptPath
+      };
+      progress(`Resuming exact STARTING runtime process ${runtimePid} for qualification.`);
+      await waitForRuntime(profile, runtimePid);
+    } else {
+      progress(`Reusing already-qualified runtime process ${runtimePid}.`);
+    }
   } else {
     if (await endpointResponding(profile.endpoint.origin, profile.qualification.healthPath)) {
       throw Object.assign(new Error(`Something is already answering at ${profile.endpoint.origin}, but it is not owned by this Home/profile receipt.`), { state: 'PORT_OWNERSHIP_CONFLICT' });
@@ -484,6 +554,26 @@ try {
       });
     });
     runtimeDisposition = 'STARTED_NEW_RUNTIME';
+    pendingRuntimeOwner = {
+      pid: runtimePid,
+      executablePath: materialization.executable,
+      arguments: runtimeArgs,
+      receiptPath: runtimeReceiptPath
+    };
+    writeJson(runtimeReceiptPath, {
+      schemaVersion: STARTING_RUNTIME_RECEIPT_SCHEMA,
+      state: 'STARTING',
+      profileRef: profile.profileRef,
+      modelBundleRef: modelBundle.modelBundleRef,
+      formedAt: new Date().toISOString(),
+      endpoint: { ...profile.endpoint, requestModel: modelBundle.requestModel },
+      runtime: { pid: runtimePid, executablePath: materialization.executable, arguments: runtimeArgs },
+      materialization: {
+        executableSha256: materialization.executableSha256,
+        sourcePinnedExecutableSha256: profile.runtime.executableSha256
+      }
+    });
+    progress(`Runtime process ${runtimePid} is exact-owned and awaiting readiness.`);
     await waitForRuntime(profile, runtimePid);
   }
 
@@ -554,6 +644,7 @@ try {
     automaticDownload: false,
     automaticActivation: false
   });
+  pendingRuntimeOwner = null;
 
   console.log(JSON.stringify({
     schemaVersion: 'vexlife.initialization-result/v1',
@@ -569,9 +660,10 @@ try {
     receiptPath: recoveryReceiptPath
   }));
 } catch (error) {
+  const cleanup = stopPendingRuntime('INITIALIZATION_FAILURE');
   const state = error.state ?? (/checksum mismatch/u.test(error.message) ? 'ARTIFACT_HASH_MISMATCH' : 'INITIALIZATION_FAILED_SAFE');
-  const receiptPath = writeFailureReceipt(profile, state, error.message);
-  fail(state, error.message, 6, { receiptPath });
+  const receiptPath = writeFailureReceipt(profile, state, error.message, { pendingRuntimeCleanup: cleanup });
+  fail(state, error.message, 6, { receiptPath, pendingRuntimeCleanup: cleanup });
 }
 
 // [VXG RealForever]

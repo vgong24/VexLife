@@ -17,8 +17,8 @@
     {
       "path": "setup-vexlife.command",
       "mode": "100755",
-      "bytes": 5292,
-      "sha256": "14b05409dfa52e1f1aa73cfc66a0b607a334fab8d174e48d36e6799220f7d3bf"
+      "bytes": 5744,
+      "sha256": "5daa4c0f30145a47df59b5c4556396045c9c0ec595f255038a270ce9227b11fc"
     },
     {
       "path": "src/core/purpose-workspace.mjs",

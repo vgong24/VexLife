@@ -199,6 +199,12 @@ test('MIR-01 production resolver rejects registry/channel/verifier injection and
       error?.code === ARTIFACT_DELIVERY_FAILURE_CODES.ARTIFACT_POLICY_REJECTED &&
       error?.detail?.unexpected?.includes('onProgress'));
 
+  const resolverSource = fs.readFileSync(path.join(ROOT, 'src', 'core', 'artifact-delivery.mjs'), 'utf8');
+  assert.match(resolverSource, /function sourceManagedProgressReporter\(artifact\)/);
+  assert.match(resolverSource, /onProgress: sourceArtifact \? sourceManagedProgressReporter\(sourceArtifact\) : \(\) => \{\}/);
+  assert.match(resolverSource, /\[VexLife\] Downloading \$\{artifact\.filename\}/);
+  assert.doesNotMatch(resolverSource.match(/SOURCE_RESOLVER_FIELDS[^\n]*/u)?.[0] ?? '', /onProgress/);
+
   const calls = [];
   const registry = delivery(artifact.artifactRef, [
     { channelRef: 'channel.primary', transportClass: 'DIRECT_HTTPS_FILE_V1', url: 'https://primary.invalid/a' },

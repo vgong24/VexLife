@@ -165,6 +165,14 @@ function sourceBinding(event) {
   };
 }
 
+function canonicalOwnerBytes(value) {
+  if (Array.isArray(value)) return value.map(canonicalOwnerBytes);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalOwnerBytes(value[key])]));
+  }
+  return value;
+}
+
 function semanticAuthorityDir(ids, leaf) {
   return path.join(ids.home, 'semantic-authority', 'score', ids.companionLineageRef, ids.threadRef, leaf);
 }
@@ -734,6 +742,40 @@ test('raw semantic caller fields cannot override exact owner acceptance', () => 
       [field]: value
     }), (error) => error.code === 'SCORE_SEMANTIC_AUTHORITY_MISMATCH');
   }
+});
+
+test('canonical owner-ledger key ordering preserves exact committed G01 source identity', () => {
+  const ids = tempHome();
+  const g01 = committedG01(ids);
+  const authority = seedSemanticAuthority(ids, g01, {
+    statementState: 'INFERRED',
+    memoryRelation: 'CURRENT_LINEAGE_AUTOBIOGRAPHY',
+    summary: 'Canonical owner storage must not change source-binding meaning.'
+  });
+
+  const candidateFile = path.join(
+    semanticAuthorityDir(ids, 'candidates'),
+    `${authority.candidate.candidateSha256}.json`
+  );
+  writeJson(candidateFile, canonicalOwnerBytes(authority.candidate));
+
+  const result = appendScoreStatement({
+    ...ids,
+    expectedScoreHeadSha256: null,
+    statementRef: 'statement.g02.canonical-owner-storage',
+    semanticAcceptanceRef: authority.acceptance.acceptanceRef,
+    semanticAcceptanceSha256: authority.acceptance.acceptanceSha256
+  });
+  assert.ok(result.head?.scoreHeadSha256);
+
+  const state = loadScoreContextState(ids);
+  assert.equal(state.state, 'CURRENT');
+  const statement = state.statements.find((item) => item.statementRef === 'statement.g02.canonical-owner-storage');
+  assert.ok(statement);
+  assert.deepEqual(
+    statement.sourceBindings.map((item) => item.eventHash),
+    [g01.first.requestEvent.eventHash, g01.first.responseEvent.eventHash]
+  );
 });
 
 test('caller-passed semantic objects and raw sourceEvents are never semantic authority', () => {
