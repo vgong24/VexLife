@@ -499,4 +499,58 @@ test('registered Heretic product bundle is release-qualified without moving the 
   assert.notEqual(registry.activeModelBundleRef, HERETIC_MODEL_BUNDLE_REF);
 });
 
+
+test('Heretic environment runtime probe preserves Python statement boundaries', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-heretic-env-probe-program-'));
+  const environmentRoot = path.join(root, 'env');
+  const pythonPath = path.join(environmentRoot, 'bin', 'python');
+  let observedProgram = null;
+  const runCommand = (command, args) => {
+    if (command === '/opt/homebrew/bin/python3.14' && args[0] === '-c') {
+      return {
+        status: 0,
+        stdout: JSON.stringify({ pythonVersion: HERETIC_PYTHON_VERSION, executable: command }),
+        stderr: ''
+      };
+    }
+    if (command === '/opt/homebrew/bin/python3.14' && args[0] === '-m' && args[1] === 'venv') {
+      fs.mkdirSync(path.dirname(pythonPath), { recursive: true });
+      fs.writeFileSync(pythonPath, '');
+      return { status: 0, stdout: '', stderr: '' };
+    }
+    if (command === pythonPath && args[0] === '-m' && args[1] === 'pip') {
+      const report = args[args.indexOf('--report') + 1];
+      fs.writeFileSync(report, '{}\n');
+      return { status: 0, stdout: '', stderr: '' };
+    }
+    if (command === pythonPath && args[0] === '-c') {
+      observedProgram = args[1];
+      assert.match(observedProgram, /import importlib\.metadata as md,json,sys\nimport mlx_lm\nimport mlx_lm\.server\nprint/);
+      assert.doesNotMatch(observedProgram, /sysimport mlx_lm/);
+      return {
+        status: 0,
+        stdout: JSON.stringify({
+          pythonVersion: HERETIC_PYTHON_VERSION,
+          mlxLmVersion: HERETIC_MLX_LM_VERSION,
+          prefix: environmentRoot,
+          executable: pythonPath
+        }),
+        stderr: ''
+      };
+    }
+    throw new Error(`unexpected command ${command} ${args.join(' ')}`);
+  };
+  try {
+    const result = await ensureHereticPythonEnvironment({
+      bootstrapPython: '/opt/homebrew/bin/python3.14',
+      environmentRoot,
+      runCommand
+    });
+    assert.equal(result.state, 'CREATED_VERIFIED');
+    assert.ok(observedProgram);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 // [VXG RealForever]

@@ -390,7 +390,7 @@ async function runtimeProbe(pythonPath, runCommand) {
     '"prefix":sys.prefix,',
     '"executable":sys.executable',
     '}))'
-  ].join('');
+  ].join('\n');
   const stdout = requireCommandPass(
     await runCommand(pythonPath, ['-c', script], { timeoutMs: 60000 }),
     'HERETIC_ENVIRONMENT_PROBE_FAILED',
