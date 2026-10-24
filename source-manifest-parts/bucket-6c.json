@@ -29,8 +29,8 @@
     {
       "path": "test/vex-assembly-companion-voice-playback.test.mjs",
       "mode": "100644",
-      "bytes": 15106,
-      "sha256": "fc5ffe8325df89978f44901d48f9e9a13d09280994efaa1b8b8ce5a4fb32f73f"
+      "bytes": 15118,
+      "sha256": "8a6f862dc5aaca6f98a93494dbd440471d7b66201fadb92a7baa9fdaf30ca88e"
     }
   ]
 }
