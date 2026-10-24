@@ -1,7 +1,12 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import {
+  HERETIC_PERSISTENT_RUNTIME_BINDING_SCHEMA,
+  currentHereticRuntimeOwnerSourceIdentity,
+  startOrReuseHereticPersistentRuntime
+} from './heretic-persistent-runtime-owner.mjs';
 
 export const HERETIC_RUNTIME_ESTABLISHMENT_SCHEMA =
   'vexlife.heretic-runtime-establishment/v1';
@@ -19,7 +24,7 @@ export const HERETIC_RUNTIME_ADAPTER_REF =
   'adapter.runtime.mlx.macos-victor.001';
 export const HERETIC_RUNTIME_CLASS = 'MLX_LM_DIRECT_RUNTIME';
 export const HERETIC_HOST_EXECUTION_PROFILE_REF =
-  'profile.repository.vextreme-sdk.macos-v1';
+  'profile.repository.vexlife.macos-v1';
 export const HERETIC_PYTHON_VERSION = '3.14.7';
 export const HERETIC_MLX_LM_VERSION = '0.32.0';
 export const HERETIC_TRAINER_SOURCE_COMMIT =
@@ -141,6 +146,9 @@ export function formHereticMaterializationPlan(resolution) {
     });
   }
   const bundle = object(resolution.bundle, 'resolution.bundle');
+  if (bundle.state !== 'RELEASE_QUALIFIED') {
+    fail('HERETIC_BUNDLE_NOT_RELEASE_QUALIFIED', 'ordinary Heretic establishment requires the accepted RELEASE_QUALIFIED product bundle');
+  }
   if (bundle.modelBundleRef !== HERETIC_MODEL_BUNDLE_REF) {
     fail('HERETIC_BUNDLE_REF_MISMATCH', 'resolved modelBundleRef is not the certified Heretic bundle');
   }
@@ -323,20 +331,40 @@ export async function materializeHereticBundle({
 }
 
 function runCommandDefault(command, args, options = {}) {
-  const result = spawnSync(command, args, {
-    encoding: 'utf8',
-    shell: false,
-    timeout: options.timeoutMs ?? 600000,
-    env: options.env ?? process.env,
-    cwd: options.cwd
+  const timeoutMs = options.timeoutMs ?? 600000;
+  return new Promise((resolve) => {
+    const child = spawn(command, args, {
+      shell: false,
+      env: options.env ?? process.env,
+      cwd: options.cwd,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+    let timer = null;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      process.off('SIGTERM', onTerm);
+      process.off('SIGINT', onInt);
+      resolve(value);
+    };
+    const onTerm = () => { try { child.kill('SIGTERM'); } catch {} };
+    const onInt = () => { try { child.kill('SIGINT'); } catch {} };
+    process.on('SIGTERM', onTerm);
+    process.on('SIGINT', onInt);
+    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > 4_000_000) stdout = stdout.slice(-4_000_000); });
+    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > 4_000_000) stderr = stderr.slice(-4_000_000); });
+    child.once('error', (error) => finish({ status: null, signal: null, stdout, stderr, error }));
+    child.once('close', (status, signal) => finish({ status, signal, stdout, stderr, error: null }));
+    timer = setTimeout(() => {
+      try { child.kill('SIGTERM'); } catch {}
+      const escalation = setTimeout(() => { try { child.kill('SIGKILL'); } catch {} }, 5000);
+      escalation.unref?.();
+    }, timeoutMs);
   });
-  return {
-    status: result.status,
-    signal: result.signal,
-    stdout: String(result.stdout ?? ''),
-    stderr: String(result.stderr ?? ''),
-    error: result.error ?? null
-  };
 }
 
 function requireCommandPass(result, code, label) {
@@ -351,7 +379,7 @@ function requireCommandPass(result, code, label) {
   return result.stdout;
 }
 
-function runtimeProbe(pythonPath, runCommand) {
+async function runtimeProbe(pythonPath, runCommand) {
   const script = [
     'import importlib.metadata as md,json,sys',
     'import mlx_lm',
@@ -364,7 +392,7 @@ function runtimeProbe(pythonPath, runCommand) {
     '}))'
   ].join('');
   const stdout = requireCommandPass(
-    runCommand(pythonPath, ['-c', script], { timeoutMs: 60000 }),
+    await runCommand(pythonPath, ['-c', script], { timeoutMs: 60000 }),
     'HERETIC_ENVIRONMENT_PROBE_FAILED',
     'Heretic Python environment probe'
   );
@@ -375,10 +403,10 @@ function runtimeProbe(pythonPath, runCommand) {
   }
 }
 
-function bootstrapProbe(bootstrapPython, runCommand) {
+async function bootstrapProbe(bootstrapPython, runCommand) {
   const script = 'import json,sys;print(json.dumps({"pythonVersion":"%d.%d.%d"%sys.version_info[:3],"executable":sys.executable}))';
   const stdout = requireCommandPass(
-    runCommand(bootstrapPython, ['-c', script], { timeoutMs: 30000 }),
+    await runCommand(bootstrapPython, ['-c', script], { timeoutMs: 30000 }),
     'BOOTSTRAP_PYTHON_PROBE_FAILED',
     'bootstrap Python probe'
   );
@@ -427,6 +455,7 @@ export async function withHereticHuggingFaceCache({ cacheRoot, action }) {
 export async function ensureHereticPythonEnvironment({
   bootstrapPython,
   environmentRoot,
+  allowCreation = true,
   runCommand = runCommandDefault
 }) {
   if (typeof bootstrapPython !== 'string' || bootstrapPython.length === 0) {
@@ -439,24 +468,33 @@ export async function ensureHereticPythonEnvironment({
   const pythonPath = hereticEnvironmentPythonPath(resolvedRoot);
   const existed = fs.existsSync(resolvedRoot);
   if (existed) {
+    // Identity/topology is checked before any repair removal. A symlink or
+    // non-directory never becomes deletion authority.
     assertRealDirectory(resolvedRoot, 'environmentRoot');
-    const probe = runtimeProbe(pythonPath, runCommand);
-    verifyEnvironmentProbe(probe, resolvedRoot, pythonPath);
-    const pipReportPath = path.join(resolvedRoot, 'vexlife-mlx-lm-install-report.json');
-    if (!fs.existsSync(pipReportPath) || !fs.lstatSync(pipReportPath).isFile()) {
-      fail('HERETIC_PIP_REPORT_MISSING', 'existing Heretic environment has no retained pip installation report');
+    try {
+      const probe = await runtimeProbe(pythonPath, runCommand);
+      verifyEnvironmentProbe(probe, resolvedRoot, pythonPath);
+      const pipReportPath = path.join(resolvedRoot, 'vexlife-mlx-lm-install-report.json');
+      if (!fs.existsSync(pipReportPath) || !fs.lstatSync(pipReportPath).isFile()) {
+        fail('HERETIC_PIP_REPORT_MISSING', 'existing Heretic environment has no retained pip installation report');
+      }
+      return Object.freeze({
+        state: 'REUSED_VERIFIED',
+        pythonEnvironmentRoot: resolvedRoot,
+        pythonPath,
+        pythonVersion: HERETIC_PYTHON_VERSION,
+        mlxLmVersion: HERETIC_MLX_LM_VERSION,
+        pipReportPath
+      });
+    } catch (error) {
+      if (allowCreation !== true) throw error;
+      fs.rmSync(resolvedRoot, { recursive: true, force: true });
     }
-    return Object.freeze({
-      state: 'REUSED_VERIFIED',
-      pythonEnvironmentRoot: resolvedRoot,
-      pythonPath,
-      pythonVersion: HERETIC_PYTHON_VERSION,
-      mlxLmVersion: HERETIC_MLX_LM_VERSION,
-      pipReportPath
-    });
+  } else if (allowCreation !== true) {
+    fail('HERETIC_ENVIRONMENT_REACQUISITION_REQUIRED', 'Heretic Python/mlx-lm environment is not locally reusable and acquisition was not authorized');
   }
 
-  const bootstrap = bootstrapProbe(bootstrapPython, runCommand);
+  const bootstrap = await bootstrapProbe(bootstrapPython, runCommand);
   if (bootstrap.pythonVersion !== HERETIC_PYTHON_VERSION) {
     fail('BOOTSTRAP_PYTHON_VERSION_MISMATCH', 'bootstrap Python must be exactly 3.14.7', {
       actualPythonVersion: bootstrap.pythonVersion ?? null
@@ -464,14 +502,14 @@ export async function ensureHereticPythonEnvironment({
   }
   try {
     requireCommandPass(
-      runCommand(bootstrapPython, ['-m', 'venv', resolvedRoot], { timeoutMs: 120000 }),
+      await runCommand(bootstrapPython, ['-m', 'venv', resolvedRoot], { timeoutMs: 120000 }),
       'HERETIC_ENVIRONMENT_CREATE_FAILED',
       'Heretic virtual environment creation'
     );
     assertRealDirectory(resolvedRoot, 'environmentRoot');
     const pipReportPath = path.join(resolvedRoot, 'vexlife-mlx-lm-install-report.json');
     requireCommandPass(
-      runCommand(
+      await runCommand(
         pythonPath,
         [
           '-m',
@@ -489,7 +527,7 @@ export async function ensureHereticPythonEnvironment({
       'HERETIC_MLX_LM_INSTALL_FAILED',
       'binary-only mlx-lm installation'
     );
-    const probe = runtimeProbe(pythonPath, runCommand);
+    const probe = await runtimeProbe(pythonPath, runCommand);
     verifyEnvironmentProbe(probe, resolvedRoot, pythonPath);
     if (!fs.existsSync(pipReportPath) || !fs.lstatSync(pipReportPath).isFile()) {
       fail('HERETIC_PIP_REPORT_MISSING', 'pip did not retain the required installation report');
@@ -510,13 +548,13 @@ export async function ensureHereticPythonEnvironment({
   }
 }
 
-export function formHereticSdkOwnerBinding({
+export function formHereticRuntimeOwnerBinding({
   authorityRef,
   modelPath,
   pythonEnvironmentRoot,
   port,
   receiptPath,
-  sourceIdentity
+  sourceIdentity = currentHereticRuntimeOwnerSourceIdentity()
 }) {
   stableRef(authorityRef, 'authorityRef');
   const model = absolute(modelPath, 'modelPath');
@@ -526,17 +564,15 @@ export function formHereticSdkOwnerBinding({
     fail('HERETIC_RUNTIME_PORT_INVALID', 'port must be an unprivileged numeric TCP port');
   }
   object(sourceIdentity, 'sourceIdentity');
-  if (sourceIdentity.repository !== 'vgong24/Vextreme-SDK') {
-    fail('SDK_SOURCE_REPOSITORY_MISMATCH', 'sourceIdentity.repository must be vgong24/Vextreme-SDK');
-  }
-  if (!GIT_ID.test(sourceIdentity.revision) || !GIT_ID.test(sourceIdentity.tree)) {
-    fail('SDK_SOURCE_GIT_IDENTITY_REQUIRED', 'sourceIdentity revision/tree must be exact Git identities');
+  if (sourceIdentity.repository !== 'vgong24/VexLife'
+      || sourceIdentity.modulePath !== 'src/core/heretic-persistent-runtime-owner.mjs') {
+    fail('HERETIC_RUNTIME_SOURCE_IDENTITY_MISMATCH', 'sourceIdentity must bind the VexLife Heretic runtime owner module');
   }
   if (!SHA256.test(sourceIdentity.moduleSha256)) {
-    fail('SDK_SOURCE_MODULE_SHA256_REQUIRED', 'sourceIdentity.moduleSha256 must be lowercase SHA-256');
+    fail('HERETIC_RUNTIME_SOURCE_MODULE_SHA256_REQUIRED', 'sourceIdentity.moduleSha256 must be lowercase SHA-256');
   }
   return Object.freeze({
-    schemaVersion: 'vexlocalbridge.mlx-persistent-runtime-owner-binding/v1',
+    schemaVersion: HERETIC_PERSISTENT_RUNTIME_BINDING_SCHEMA,
     authorityRef,
     modelRef: HERETIC_MODEL_REF,
     modelProfileRef: HERETIC_MODEL_PROFILE_REF,
@@ -565,16 +601,17 @@ export async function establishHereticRuntime({
   materializeArtifact,
   bootstrapPython,
   pythonEnvironmentRoot,
-  owner,
   authorityRef,
   port,
   receiptPath,
-  sourceIdentity,
+  sourceIdentity = currentHereticRuntimeOwnerSourceIdentity(),
   huggingFaceCacheRoot,
+  allowEnvironmentCreation = true,
+  runtimeOwner = startOrReuseHereticPersistentRuntime,
   runCommand = runCommandDefault
 }) {
-  if (!owner || typeof owner.startOrReusePersistentMlxRuntime !== 'function') {
-    fail('SDK_RUNTIME_OWNER_REQUIRED', 'owner.startOrReusePersistentMlxRuntime must be a function');
+  if (typeof runtimeOwner !== 'function') {
+    fail('HERETIC_RUNTIME_OWNER_REQUIRED', 'runtimeOwner must be the VexLife Heretic persistent-runtime owner');
   }
   const plan = formHereticMaterializationPlan(resolution);
   const materialization = await materializeHereticBundle({
@@ -585,9 +622,10 @@ export async function establishHereticRuntime({
   const environment = await ensureHereticPythonEnvironment({
     bootstrapPython,
     environmentRoot: pythonEnvironmentRoot,
+    allowCreation: allowEnvironmentCreation,
     runCommand
   });
-  const binding = formHereticSdkOwnerBinding({
+  const binding = formHereticRuntimeOwnerBinding({
     authorityRef,
     modelPath: materialization.modelPath,
     pythonEnvironmentRoot: environment.pythonEnvironmentRoot,
@@ -597,7 +635,7 @@ export async function establishHereticRuntime({
   });
   const runtime = await withHereticHuggingFaceCache({
     cacheRoot: huggingFaceCacheRoot,
-    action: () => owner.startOrReusePersistentMlxRuntime({ binding })
+    action: () => runtimeOwner({ binding })
   });
   return Object.freeze({
     schemaVersion: HERETIC_RUNTIME_ESTABLISHMENT_SCHEMA,

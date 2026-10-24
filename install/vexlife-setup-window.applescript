@@ -77,7 +77,7 @@ on run
       end if
       set homeChoice to my promptChoice("Create a Vex Home?", "No VexLife Home was found at the selected location. Continue only if you want VexLife to establish a new local Home there.", "Continue", "Cancel", missing value)
       if homeChoice is not NSAlertFirstButtonReturn then return
-      set runtimeChoice to my promptChoice("Prepare the local Vex runtime?", "This supported Mac can use the current release-qualified source-local profile. Continuing may acquire several GiB of verified model/runtime files and start a local-only model. VexLife, not this window, selects and verifies those exact artifacts.", "Download and continue", "Not now", missing value)
+      set runtimeChoice to my promptChoice("Prepare Heretic 27B?", "This supported Mac can use the current accepted Heretic product route. Continuing may acquire about 15 GiB of verified model/runtime files, establish the exact Python/MLX environment, and start the local-only Heretic runtime. VexLife, not this window, selects and verifies those exact artifacts.", "Download and continue", "Not now", missing value)
       if runtimeChoice is not NSAlertFirstButtonReturn then return
       set setupResult to my runBackend(repoRoot, homePath, "first-setup", "no", "yes")
       if (exitCode of setupResult) is not 0 then
@@ -246,7 +246,7 @@ end recoveryFlow
 
 on progressText(actionName)
   if actionName is "install-node" then return "Installing the prerequisite you approved. Keep this window open."
-  if actionName is "first-setup" then return "Preparing VexLife. Verified model/runtime acquisition can take several minutes; this window will remain responsive."
+  if actionName is "first-setup" then return "Preparing Heretic 27B for VexLife. Verified model/runtime acquisition can take several minutes; this window will remain responsive."
   if actionName is "repair" then return "Repairing VexLife under the accepted preservation boundary. Keep this window open."
   if actionName is "rebuild-preserve" then return "Rebuilding runtime state while preserving Home and durable data. Keep this window open."
   if actionName is "uninstall-preserve" then return "Removing runtime state while preserving Home and durable data. Keep this window open."

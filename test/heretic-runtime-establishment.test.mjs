@@ -3,7 +3,6 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 
 import {
@@ -17,11 +16,15 @@ import {
   computeArtifactContentSetSha256,
   ensureHereticPythonEnvironment,
   formHereticMaterializationPlan,
-  formHereticSdkOwnerBinding,
+  formHereticRuntimeOwnerBinding,
   materializeHereticBundle,
   withHereticHuggingFaceCache
 } from '../src/core/heretic-runtime-establishment.mjs';
-import { inspectSdkSource } from '../scripts/establish-heretic-runtime.mjs';
+import {
+  currentHereticRuntimeOwnerSourceIdentity,
+  startOrReuseHereticPersistentRuntime,
+  stopHereticPersistentRuntime
+} from '../src/core/heretic-persistent-runtime-owner.mjs';
 
 const rows = [
   ['.gitattributes', '34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930', 1570],
@@ -59,6 +62,7 @@ test('materialization plan binds the registered generalized bundle without activ
   const plan = formHereticMaterializationPlan({
     state: 'MODEL_BUNDLE_RUNTIME_REALIZATION_HELD',
     bundle: {
+      state: 'RELEASE_QUALIFIED',
       modelBundleRef: HERETIC_MODEL_BUNDLE_REF,
       modelProfileRef: HERETIC_MODEL_PROFILE_REF,
       artifactSetRef: HERETIC_ARTIFACT_SET_REF,
@@ -174,6 +178,7 @@ test('materialization plan rejects artifact descriptors that disagree on provide
     () => formHereticMaterializationPlan({
       state: 'MODEL_BUNDLE_RUNTIME_REALIZATION_HELD',
       bundle: {
+        state: 'RELEASE_QUALIFIED',
         modelBundleRef: HERETIC_MODEL_BUNDLE_REF,
         modelProfileRef: HERETIC_MODEL_PROFILE_REF,
         artifactSetRef: HERETIC_ARTIFACT_SET_REF,
@@ -236,56 +241,262 @@ test('fresh-host Hugging Face cache binding is restored even when owner work fai
   }
 });
 
-test('SDK source inspection rejects a dirty interactive runtime dependency before owner use', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-heretic-sdk-source-'));
-  const ownerPath = path.join(root, 'lib', 'vexlocalbridge', 'mlx-persistent-runtime-owner.js');
-  const runtimePath = path.join(root, 'lib', 'vexlocalbridge', 'mlx-interactive-runtime-binding.js');
-  const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+test('explicit acquisition repairs a real stale Heretic Python environment while reuse-only holds', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-heretic-env-repair-'));
+  const environmentRoot = path.join(root, 'env');
+  const pythonPath = path.join(environmentRoot, 'bin', 'python');
   try {
-    fs.mkdirSync(path.dirname(ownerPath), { recursive: true });
-    fs.writeFileSync(ownerPath, "module.exports = { owner: true };\n");
-    fs.writeFileSync(runtimePath, "module.exports = { runtime: true };\n");
-    git(['init']);
-    git(['config', 'user.name', 'VexLife Test']);
-    git(['config', 'user.email', 'vexlife-test@example.invalid']);
-    git(['add', 'lib/vexlocalbridge/mlx-persistent-runtime-owner.js', 'lib/vexlocalbridge/mlx-interactive-runtime-binding.js']);
-    git(['commit', '-m', 'fixture']);
-    git(['remote', 'add', 'origin', 'https://github.com/vgong24/Vextreme-SDK.git']);
-
-    const admitted = inspectSdkSource(root);
-    assert.equal(admitted.sourceIdentity.repository, 'vgong24/Vextreme-SDK');
-    assert.match(admitted.sourceIdentity.revision, /^[0-9a-f]{40}$/u);
-    assert.match(admitted.sourceIdentity.tree, /^[0-9a-f]{40}$/u);
-
-    fs.appendFileSync(runtimePath, '// dirty sibling\n');
-    assert.throws(
-      () => inspectSdkSource(root),
-      /Heretic runtime source differs from the selected Git revision: lib\/vexlocalbridge\/mlx-interactive-runtime-binding\.js/u
+    fs.mkdirSync(path.dirname(pythonPath), { recursive: true });
+    fs.writeFileSync(pythonPath, 'stale-python');
+    let recreated = false;
+    const runCommand = async (command, args) => {
+      if (command === pythonPath && args[0] === '-c' && !recreated) {
+        return { status: 0, signal: null, stdout: JSON.stringify({ pythonVersion: '3.13.0', mlxLmVersion: HERETIC_MLX_LM_VERSION, prefix: environmentRoot, executable: pythonPath }), stderr: '', error: null };
+      }
+      if (command === 'python3.14' && args[0] === '-c') {
+        return { status: 0, signal: null, stdout: JSON.stringify({ pythonVersion: HERETIC_PYTHON_VERSION, executable: '/bootstrap/python3.14' }), stderr: '', error: null };
+      }
+      if (command === 'python3.14' && args[0] === '-m' && args[1] === 'venv') {
+        recreated = true;
+        fs.mkdirSync(path.dirname(pythonPath), { recursive: true });
+        fs.writeFileSync(pythonPath, 'fresh-python');
+        return { status: 0, signal: null, stdout: '', stderr: '', error: null };
+      }
+      if (command === pythonPath && args[0] === '-m' && args[1] === 'pip') {
+        const reportIndex = args.indexOf('--report');
+        fs.writeFileSync(args[reportIndex + 1], '{}\\n');
+        return { status: 0, signal: null, stdout: '', stderr: '', error: null };
+      }
+      if (command === pythonPath && args[0] === '-c' && recreated) {
+        return { status: 0, signal: null, stdout: JSON.stringify({ pythonVersion: HERETIC_PYTHON_VERSION, mlxLmVersion: HERETIC_MLX_LM_VERSION, prefix: environmentRoot, executable: pythonPath }), stderr: '', error: null };
+      }
+      throw new Error(`unexpected command ${command} ${args.join(' ')}`);
+    };
+    await assert.rejects(
+      ensureHereticPythonEnvironment({ bootstrapPython: 'python3.14', environmentRoot, allowCreation: false, runCommand }),
+      (error) => error?.code === 'HERETIC_ENVIRONMENT_VERSION_MISMATCH'
     );
+    assert.equal(fs.readFileSync(pythonPath, 'utf8'), 'stale-python');
+    const repaired = await ensureHereticPythonEnvironment({ bootstrapPython: 'python3.14', environmentRoot, allowCreation: true, runCommand });
+    assert.equal(repaired.state, 'CREATED_VERIFIED');
+    assert.equal(recreated, true);
+    assert.equal(fs.readFileSync(pythonPath, 'utf8'), 'fresh-python');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
-test('SDK owner binding carries exact Heretic identity without changing Home activation', () => {
-  const binding = formHereticSdkOwnerBinding({
+test('VexLife-local runtime owner source identity is exact without private SDK checkout', () => {
+  const sourceIdentity = currentHereticRuntimeOwnerSourceIdentity();
+  assert.equal(sourceIdentity.repository, 'vgong24/VexLife');
+  assert.equal(sourceIdentity.modulePath, 'src/core/heretic-persistent-runtime-owner.mjs');
+  assert.match(sourceIdentity.moduleSha256, /^[0-9a-f]{64}$/u);
+  const binding = formHereticRuntimeOwnerBinding({
     authorityRef: 'authority.test.heretic.explicit',
     modelPath: '/tmp/model',
     pythonEnvironmentRoot: '/tmp/env',
     port: 8765,
     receiptPath: '/tmp/runtime/receipt.json',
-    sourceIdentity: {
-      repository: 'vgong24/Vextreme-SDK',
-      revision: '1'.repeat(40),
-      tree: '2'.repeat(40),
-      moduleSha256: '3'.repeat(64)
-    }
+    sourceIdentity
   });
   assert.equal(binding.artifactContentSetSha256, HERETIC_ARTIFACT_CONTENT_SET_SHA256);
   assert.equal(binding.pythonVersion, HERETIC_PYTHON_VERSION);
   assert.equal(binding.mlxLmVersion, HERETIC_MLX_LM_VERSION);
   assert.equal(binding.pythonPath, '/tmp/env/bin/python');
+  assert.equal(binding.hostExecutionProfileRef, 'profile.repository.vexlife.macos-v1');
   assert.equal(Object.hasOwn(binding, 'activeModelBundleRef'), false);
+});
+
+test('VexLife Heretic runtime owner records STARTING before qualification and stops only exact ownership', async () => {
+  const binding = formHereticRuntimeOwnerBinding({
+    authorityRef: 'authority.test.heretic.explicit',
+    modelPath: '/tmp/model',
+    pythonEnvironmentRoot: '/tmp/env',
+    port: 8765,
+    receiptPath: '/tmp/runtime/receipt.json'
+  });
+  let receipt = null;
+  const live = new Set();
+  const writes = [];
+  const hooks = {
+    host: { platform: 'darwin', architecture: 'arm64' },
+    versionProbe: async () => ({
+      pythonVersion: HERETIC_PYTHON_VERSION,
+      mlxLmVersion: HERETIC_MLX_LM_VERSION,
+      prefix: '/tmp/env',
+      executable: '/tmp/env/bin/python'
+    }),
+    readReceipt: () => receipt,
+    writeReceipt: (_path, value) => { receipt = value; writes.push(value.state); },
+    deleteReceipt: () => { receipt = null; },
+    processAlive: (pid) => live.has(pid),
+    processIdentity: ({ pid }) => live.has(pid)
+      ? { pid, pgid: pid, exactOwnedDetachedGroup: true }
+      : null,
+    listMatchingProcesses: async () => [],
+    portOccupied: async () => false,
+    spawnRuntime: async () => { live.add(5151); return 5151; },
+    terminateRuntime: async ({ pid }) => {
+      live.delete(pid);
+      return { state: 'RETIRED_VERIFIED', exactOwnershipVerified: true, verifiedNotLive: true, processGroupId: pid, signalSent: 'SIGTERM' };
+    },
+    endpointHealthy: async () => true,
+    fetchImpl: async (url) => {
+      if (url.endsWith('/health')) return { ok: true, json: async () => ({ status: 'ok' }) };
+      if (url.endsWith('/v1/models')) return { ok: true, json: async () => ({ data: [{ id: '/tmp/model' }] }) };
+      if (url.endsWith('/v1/chat/completions')) return { ok: true, json: async () => ({ model: 'default_model', choices: [{ message: { content: 'OK' } }] }) };
+      throw new Error(`unexpected URL ${url}`);
+    },
+    sleep: async () => {},
+    now: () => '2026-10-23T09:00:00.000Z',
+    nowMs: (() => { let value = 0; return () => (value += 10); })()
+  };
+  const started = await startOrReuseHereticPersistentRuntime({ binding, hooks });
+  assert.equal(started.disposition, 'STARTED_NEW_EXACT_MLX_RUNTIME');
+  assert.deepEqual(writes, ['PERSISTENT_MLX_RUNTIME_STARTING', 'PERSISTENT_MLX_RUNTIME_QUALIFIED']);
+  assert.equal(receipt.sourceIdentity.repository, 'vgong24/VexLife');
+  const stopped = await stopHereticPersistentRuntime({ binding, hooks });
+  assert.equal(stopped.disposition, 'STOPPED_EXACT_OWNED_MLX_RUNTIME');
+  assert.equal(stopped.processTerminationPerformed, true);
+  assert.equal(live.has(5151), false);
+});
+
+
+test('VexLife Heretic runtime cancellation after STARTING receipt retires the exact provisional process', async () => {
+  const binding = formHereticRuntimeOwnerBinding({
+    authorityRef: 'authority.test.heretic.cancel',
+    modelPath: '/tmp/model-cancel',
+    pythonEnvironmentRoot: '/tmp/env-cancel',
+    port: 8765,
+    receiptPath: '/tmp/runtime/cancel-receipt.json'
+  });
+  let receipt = null;
+  let cancelled = false;
+  const live = new Set();
+  const hooks = {
+    host: { platform: 'darwin', architecture: 'arm64' },
+    versionProbe: async () => ({
+      pythonVersion: HERETIC_PYTHON_VERSION,
+      mlxLmVersion: HERETIC_MLX_LM_VERSION,
+      prefix: '/tmp/env-cancel',
+      executable: '/tmp/env-cancel/bin/python'
+    }),
+    readReceipt: () => receipt,
+    writeReceipt: (_path, value) => {
+      receipt = value;
+      if (value.state === 'PERSISTENT_MLX_RUNTIME_STARTING') cancelled = true;
+    },
+    deleteReceipt: () => { receipt = null; },
+    processAlive: (pid) => live.has(pid),
+    processIdentity: ({ pid }) => live.has(pid) ? { pid, pgid: pid, exactOwnedDetachedGroup: true } : null,
+    listMatchingProcesses: async () => [],
+    portOccupied: async () => false,
+    spawnRuntime: async () => { live.add(6161); return 6161; },
+    terminateRuntime: async ({ pid }) => {
+      live.delete(pid);
+      return { state: 'RETIRED_VERIFIED', exactOwnershipVerified: true, verifiedNotLive: true, processGroupId: pid, signalSent: 'SIGTERM' };
+    },
+    endpointHealthy: async () => false,
+    fetchImpl: async () => { throw new Error('qualification must not run after cancellation'); },
+    sleep: async () => {},
+    now: () => '2026-10-23T09:00:00.000Z',
+    nowMs: (() => { let value = 0; return () => (value += 10); })(),
+    cancellationRequested: () => cancelled
+  };
+  await assert.rejects(
+    startOrReuseHereticPersistentRuntime({ binding, hooks }),
+    (error) => error?.code === 'HERETIC_RUNTIME_CANCELLED'
+  );
+  assert.equal(live.has(6161), false);
+  assert.equal(receipt, null);
+});
+
+test('VexLife Heretic runtime rotates an exact stale-source receipt before current-source restart', async () => {
+  const binding = formHereticRuntimeOwnerBinding({
+    authorityRef: 'authority.test.heretic.rotate',
+    modelPath: '/tmp/model-rotate',
+    pythonEnvironmentRoot: '/tmp/env-rotate',
+    port: 8765,
+    receiptPath: '/tmp/runtime/rotate-receipt.json'
+  });
+  const args = ['-m','mlx_lm.server','--model','/tmp/model-rotate','--host','127.0.0.1','--port','8765','--chat-template-args','{"enable_thinking":false}'];
+  let receipt = {
+    schemaVersion: 'vexlife.heretic-persistent-runtime-owner-receipt/v1',
+    receiptRef: 'receipt.vexlife.heretic-persistent-runtime.stale',
+    state: 'PERSISTENT_MLX_RUNTIME_QUALIFIED',
+    formedAt: '2026-10-23T08:00:00.000Z',
+    authorityRef: binding.authorityRef,
+    modelRef: binding.modelRef,
+    modelProfileRef: binding.modelProfileRef,
+    artifactRef: binding.artifactRef,
+    artifactCustodyEvidenceRef: binding.artifactCustodyEvidenceRef,
+    artifactContentSetSha256: binding.artifactContentSetSha256,
+    runtimeAdapterRef: binding.runtimeAdapterRef,
+    runtimeClass: binding.runtimeClass,
+    transportClass: 'MLX_LM_OPENAI_NUMERIC_LOOPBACK',
+    hostExecutionProfileRef: binding.hostExecutionProfileRef,
+    pythonVersion: binding.pythonVersion,
+    mlxLmVersion: binding.mlxLmVersion,
+    trainerSourceCommit: binding.trainerSourceCommit,
+    modelPath: binding.modelPath,
+    pythonPath: binding.pythonPath,
+    pythonEnvironmentRoot: binding.pythonEnvironmentRoot,
+    endpoint: 'http://127.0.0.1:8765',
+    requestModel: 'default_model',
+    sourceIdentity: { ...binding.sourceIdentity, moduleSha256: 'a'.repeat(64) },
+    runtime: { pid: 7171, processGroupId: 7171, exactOwnedDetachedGroup: true, args },
+    qualification: { healthAndExactModelVerified: true, actualChatCompletionPerformed: true, loadResultRef: null },
+    effects: {
+      modelRuntime: true, providerNetwork: false, modelDownload: false, artifactMutation: false,
+      training: false, weightMutation: false, memoryMutation: false, activation: false,
+      succession: false, publication: false, repositoryMutation: false, homeMutation: false
+    }
+  };
+  const live = new Set([7171]);
+  let nextPid = 8181;
+  const hooks = {
+    host: { platform: 'darwin', architecture: 'arm64' },
+    versionProbe: async () => ({
+      pythonVersion: HERETIC_PYTHON_VERSION,
+      mlxLmVersion: HERETIC_MLX_LM_VERSION,
+      prefix: '/tmp/env-rotate',
+      executable: '/tmp/env-rotate/bin/python'
+    }),
+    readReceipt: () => receipt,
+    writeReceipt: (_path, value) => { receipt = value; },
+    deleteReceipt: () => { receipt = null; },
+    processAlive: (pid) => live.has(pid),
+    processIdentity: ({ pid }) => live.has(pid) ? { pid, pgid: pid, exactOwnedDetachedGroup: true } : null,
+    listMatchingProcesses: async () => [],
+    portOccupied: async () => false,
+    spawnRuntime: async () => { live.add(nextPid); return nextPid; },
+    terminateRuntime: async ({ pid }) => {
+      live.delete(pid);
+      return { state: 'RETIRED_VERIFIED', exactOwnershipVerified: true, verifiedNotLive: true, processGroupId: pid, signalSent: 'SIGTERM' };
+    },
+    endpointHealthy: async () => true,
+    fetchImpl: async (url) => {
+      if (url.endsWith('/health')) return { ok: true, json: async () => ({ status: 'ok' }) };
+      if (url.endsWith('/v1/models')) return { ok: true, json: async () => ({ data: [{ id: '/tmp/model-rotate' }] }) };
+      if (url.endsWith('/v1/chat/completions')) return { ok: true, json: async () => ({ model: 'default_model', choices: [{ message: { content: 'OK' } }] }) };
+      throw new Error(`unexpected URL ${url}`);
+    },
+    sleep: async () => {},
+    now: () => '2026-10-23T09:00:00.000Z',
+    nowMs: (() => { let value = 0; return () => (value += 10); })()
+  };
+  const result = await startOrReuseHereticPersistentRuntime({ binding, hooks });
+  assert.equal(result.disposition, 'ROTATED_STALE_SOURCE_AND_STARTED_NEW_EXACT_MLX_RUNTIME');
+  assert.equal(live.has(7171), false);
+  assert.equal(live.has(8181), true);
+  assert.equal(receipt.sourceIdentity.moduleSha256, binding.sourceIdentity.moduleSha256);
+});
+
+test('registered Heretic product bundle is release-qualified without moving the legacy cross-platform active pointer', () => {
+  const registry = JSON.parse(fs.readFileSync(new URL('../blueprint/model-bundle-registry.json', import.meta.url), 'utf8'));
+  const heretic = registry.bundles.find((bundle) => bundle.modelBundleRef === HERETIC_MODEL_BUNDLE_REF);
+  assert.equal(heretic.state, 'RELEASE_QUALIFIED');
+  assert.notEqual(registry.activeModelBundleRef, HERETIC_MODEL_BUNDLE_REF);
 });
 
 // [VXG RealForever]

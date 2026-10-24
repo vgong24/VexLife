@@ -1,7 +1,17 @@
 import crypto from 'node:crypto';
 
 export const HERETIC_RUNTIME_LINK_SCHEMA = 'vexlife.heretic-persistent-runtime-link/v1';
+// Historical accepted P1/P4 receipts remain readable. New ordinary product
+// runtime ownership is VexLife-local and uses the current schema below.
 export const HERETIC_RUNTIME_RECEIPT_SCHEMA = 'vexlocalbridge.mlx-persistent-runtime-owner-receipt/v1';
+export const HERETIC_VEXLIFE_RUNTIME_RECEIPT_SCHEMA = 'vexlife.heretic-persistent-runtime-owner-receipt/v1';
+export const HERETIC_MODEL_CONFIGURATION_SCHEMA = 'vexlife.heretic-model-configuration/v1';
+export const HERETIC_MODEL_CONFIGURATION_PENDING_STATE = 'HERETIC_ESTABLISHMENT_PENDING';
+export const HERETIC_MODEL_CONFIGURATION_BOUND_STATE = 'BOUND_HERETIC_PRODUCT_MODEL';
+export const HERETIC_RUNTIME_RECEIPT_RELATIVE_PATH = 'runtime/heretic/persistent-runtime-owner-receipt.json';
+export const HERETIC_VEXLIFE_RUNTIME_OWNER_MODULE_PATH = 'src/core/heretic-persistent-runtime-owner.mjs';
+export const HERETIC_VEXLIFE_HOST_EXECUTION_PROFILE_REF = 'profile.repository.vexlife.macos-v1';
+export const HERETIC_PRODUCT_ENDPOINT = 'http://127.0.0.1:8765';
 export const HERETIC_RUNTIME_ADAPTER_REF = 'adapter.runtime.mlx.macos-victor.001';
 export const HERETIC_RUNTIME_CLASS = 'MLX_LM_DIRECT_RUNTIME';
 export const HERETIC_TRANSPORT_CLASS = 'MLX_LM_OPENAI_NUMERIC_LOOPBACK';
@@ -87,12 +97,23 @@ function digestRef(prefix, input) {
 
 export function validateHereticPersistentRuntimeReceipt(value) {
   if (!object(value)) fail('HERETIC_RUNTIME_RECEIPT_INVALID', 'Heretic runtime receipt must be one object');
-  exact(value.schemaVersion, HERETIC_RUNTIME_RECEIPT_SCHEMA, 'schemaVersion');
+  const sourceClass = value.schemaVersion === HERETIC_RUNTIME_RECEIPT_SCHEMA
+    ? 'LEGACY_SDK'
+    : value.schemaVersion === HERETIC_VEXLIFE_RUNTIME_RECEIPT_SCHEMA
+      ? 'VEXLIFE_PRODUCT'
+      : null;
+  if (sourceClass === null) fail('HERETIC_RUNTIME_RECEIPT_INVALID', 'Heretic runtime receipt schema is not admitted');
   exact(value.state, 'PERSISTENT_MLX_RUNTIME_QUALIFIED', 'state');
 
   for (const [key, expected] of Object.entries(HERETIC_RUNTIME_IDENTITY)) {
+    if (key === 'hostExecutionProfileRef') continue;
     exact(value[key], expected, key);
   }
+  exact(
+    value.hostExecutionProfileRef,
+    sourceClass === 'LEGACY_SDK' ? HERETIC_RUNTIME_IDENTITY.hostExecutionProfileRef : HERETIC_VEXLIFE_HOST_EXECUTION_PROFILE_REF,
+    'hostExecutionProfileRef'
+  );
   exact(value.requestModel, HERETIC_REQUEST_MODEL, 'requestModel');
   portableRef(value.receiptRef, 'receiptRef');
   portableRef(value.authorityRef, 'authorityRef');
@@ -127,12 +148,19 @@ export function validateHereticPersistentRuntimeReceipt(value) {
     portableRef(value.qualification.loadResultRef, 'qualification.loadResultRef');
   }
 
-  if (!object(value.sourceIdentity)
-      || value.sourceIdentity.repository !== 'vgong24/Vextreme-SDK'
-      || !GIT_ID_RE.test(value.sourceIdentity.revision ?? '')
-      || !GIT_ID_RE.test(value.sourceIdentity.tree ?? '')
+  if (sourceClass === 'LEGACY_SDK') {
+    if (!object(value.sourceIdentity)
+        || value.sourceIdentity.repository !== 'vgong24/Vextreme-SDK'
+        || !GIT_ID_RE.test(value.sourceIdentity.revision ?? '')
+        || !GIT_ID_RE.test(value.sourceIdentity.tree ?? '')
+        || !SHA256_RE.test(value.sourceIdentity.moduleSha256 ?? '')) {
+      fail('HERETIC_RUNTIME_SOURCE_IDENTITY_INVALID', 'legacy Heretic runtime receipt source identity is incomplete');
+    }
+  } else if (!object(value.sourceIdentity)
+      || value.sourceIdentity.repository !== 'vgong24/VexLife'
+      || value.sourceIdentity.modulePath !== HERETIC_VEXLIFE_RUNTIME_OWNER_MODULE_PATH
       || !SHA256_RE.test(value.sourceIdentity.moduleSha256 ?? '')) {
-    fail('HERETIC_RUNTIME_SOURCE_IDENTITY_INVALID', 'Heretic runtime receipt source identity is incomplete');
+    fail('HERETIC_RUNTIME_SOURCE_IDENTITY_INVALID', 'VexLife Heretic runtime receipt source identity is incomplete');
   }
 
   const effects = value.effects;
@@ -171,6 +199,84 @@ export function formHereticPersistentRuntimeBindingRef(homeIdentity) {
     HERETIC_RUNTIME_ADAPTER_REF,
   ].join('|');
   return digestRef('binding.vexlife.heretic-persistent-runtime', identitySeed);
+}
+
+export function validateHereticModelConfiguration(value, { homeIdentity } = {}) {
+  if (!object(value)) fail('HERETIC_MODEL_CONFIGURATION_INVALID', 'Heretic model configuration must be one object');
+  if (!object(homeIdentity)) fail('HERETIC_MODEL_CONFIGURATION_INVALID', 'Heretic model configuration requires current Home identity');
+  portableRef(homeIdentity.homeRef, 'homeIdentity.homeRef');
+  portableRef(homeIdentity.companionLineageRef, 'homeIdentity.companionLineageRef');
+  const expectedKeys = [
+    'schemaVersion','state','homeRef','companionLineageRef','modelRef','modelProfileRef',
+    'artifactRef','artifactContentSetSha256','runtimeAdapterRef','runtimeClass','endpoint',
+    'requestModel','runtimeReceiptPath','automaticFallback','automaticDownload','automaticActivation'
+  ].sort();
+  const actualKeys = Object.keys(value).sort();
+  if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
+    fail('HERETIC_MODEL_CONFIGURATION_INVALID', 'Heretic model configuration fields are not exact');
+  }
+  exact(value.schemaVersion, HERETIC_MODEL_CONFIGURATION_SCHEMA, 'modelConfiguration.schemaVersion');
+  if (![HERETIC_MODEL_CONFIGURATION_PENDING_STATE, HERETIC_MODEL_CONFIGURATION_BOUND_STATE].includes(value.state)) {
+    fail('HERETIC_MODEL_CONFIGURATION_INVALID', 'Heretic model configuration state is not admitted');
+  }
+  exact(value.homeRef, homeIdentity.homeRef, 'modelConfiguration.homeRef');
+  exact(value.companionLineageRef, homeIdentity.companionLineageRef, 'modelConfiguration.companionLineageRef');
+  for (const field of ['modelRef','modelProfileRef','artifactRef','artifactContentSetSha256','runtimeAdapterRef','runtimeClass']) {
+    exact(value[field], HERETIC_RUNTIME_IDENTITY[field], `modelConfiguration.${field}`);
+  }
+  exact(value.endpoint, HERETIC_PRODUCT_ENDPOINT, 'modelConfiguration.endpoint');
+  exact(value.requestModel, HERETIC_REQUEST_MODEL, 'modelConfiguration.requestModel');
+  exact(value.runtimeReceiptPath, HERETIC_RUNTIME_RECEIPT_RELATIVE_PATH, 'modelConfiguration.runtimeReceiptPath');
+  validateEndpoint(value.endpoint);
+  if (value.automaticFallback !== false || value.automaticDownload !== false || value.automaticActivation !== false) {
+    fail('HERETIC_MODEL_CONFIGURATION_INVALID', 'Heretic model configuration cannot grant fallback/download/activation authority');
+  }
+  return freezeDeep(structuredClone(value));
+}
+
+function baseHereticModelConfiguration(homeIdentity, state) {
+  return validateHereticModelConfiguration({
+    schemaVersion: HERETIC_MODEL_CONFIGURATION_SCHEMA,
+    state,
+    homeRef: homeIdentity.homeRef,
+    companionLineageRef: homeIdentity.companionLineageRef,
+    modelRef: HERETIC_RUNTIME_IDENTITY.modelRef,
+    modelProfileRef: HERETIC_RUNTIME_IDENTITY.modelProfileRef,
+    artifactRef: HERETIC_RUNTIME_IDENTITY.artifactRef,
+    artifactContentSetSha256: HERETIC_RUNTIME_IDENTITY.artifactContentSetSha256,
+    runtimeAdapterRef: HERETIC_RUNTIME_IDENTITY.runtimeAdapterRef,
+    runtimeClass: HERETIC_RUNTIME_IDENTITY.runtimeClass,
+    endpoint: HERETIC_PRODUCT_ENDPOINT,
+    requestModel: HERETIC_REQUEST_MODEL,
+    runtimeReceiptPath: HERETIC_RUNTIME_RECEIPT_RELATIVE_PATH,
+    automaticFallback: false,
+    automaticDownload: false,
+    automaticActivation: false,
+  }, { homeIdentity });
+}
+
+export function formHereticPendingModelConfiguration({ homeIdentity }) {
+  return baseHereticModelConfiguration(homeIdentity, HERETIC_MODEL_CONFIGURATION_PENDING_STATE);
+}
+
+export function formHereticModelConfiguration({ homeIdentity, receipt }) {
+  const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
+  if (runtimeReceipt.schemaVersion !== HERETIC_VEXLIFE_RUNTIME_RECEIPT_SCHEMA) {
+    fail('HERETIC_MODEL_CONFIGURATION_INVALID', 'new ordinary Heretic configuration requires a VexLife-owned runtime receipt');
+  }
+  exact(runtimeReceipt.endpoint, HERETIC_PRODUCT_ENDPOINT, 'runtimeReceipt.endpoint');
+  const configuration = baseHereticModelConfiguration(homeIdentity, HERETIC_MODEL_CONFIGURATION_BOUND_STATE);
+  return freezeDeep({ ...configuration });
+}
+
+export function isHereticModelConfiguration(value) {
+  return object(value)
+    && value.schemaVersion === HERETIC_MODEL_CONFIGURATION_SCHEMA
+    && [HERETIC_MODEL_CONFIGURATION_PENDING_STATE, HERETIC_MODEL_CONFIGURATION_BOUND_STATE].includes(value.state);
+}
+
+export function isBoundHereticModelConfiguration(value) {
+  return isHereticModelConfiguration(value) && value.state === HERETIC_MODEL_CONFIGURATION_BOUND_STATE;
 }
 
 export function formHereticPersistentRuntimeStoppedObservation({ receipt, homeIdentity, stopResult }) {
@@ -227,16 +333,22 @@ export function formHereticPersistentRuntimeStoppedObservation({ receipt, homeId
 export function formHereticPersistentRuntimeLink({ receipt, homeIdentity }) {
   const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
   const bindingRef = formHereticPersistentRuntimeBindingRef(homeIdentity);
+  const sourceIdentityVersion = runtimeReceipt.sourceIdentity.repository === 'vgong24/VexLife'
+    ? runtimeReceipt.sourceIdentity.moduleSha256
+    : runtimeReceipt.sourceIdentity.revision;
+  const sourceIdentityRef = runtimeReceipt.sourceIdentity.repository === 'vgong24/VexLife'
+    ? `source.vexlife.heretic-runtime-owner.${runtimeReceipt.sourceIdentity.moduleSha256}`
+    : `git.vextreme-sdk.${runtimeReceipt.sourceIdentity.revision}`;
   const observationSeed = [
     bindingRef,
     runtimeReceipt.receiptRef,
-    runtimeReceipt.sourceIdentity.revision,
+    sourceIdentityVersion,
     String(runtimeReceipt.runtime.pid),
   ].join('|');
   const observationRef = digestRef('observation.vexlife.heretic-persistent-runtime', observationSeed);
   const sourceRefs = [
     runtimeReceipt.receiptRef,
-    `git.vextreme-sdk.${runtimeReceipt.sourceIdentity.revision}`,
+    sourceIdentityRef,
   ];
   const evidenceRefs = [
     runtimeReceipt.receiptRef,

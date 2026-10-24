@@ -5,8 +5,8 @@
     {
       "path": "blueprint/model-bundle-registry.json",
       "mode": "100644",
-      "bytes": 7459,
-      "sha256": "97e002821b6a6eda18e7f6a16a6463014d90174d33b2751099f809ddb4bc4c8d"
+      "bytes": 7598,
+      "sha256": "55b28dc2ecc6d6a226a3ad6cc8404aae89ec1456cb9229ff1f110ddf939b7e32"
     },
     {
       "path": "blueprint/module-registry/project-reconciliation.json",

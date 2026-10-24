@@ -16,10 +16,19 @@ import {
   validateOperationalProfileRegistry
 } from '../src/core/vex-initialization.mjs';
 import {
+  HERETIC_REQUEST_MODEL,
+  HERETIC_RUNTIME_IDENTITY,
+  HERETIC_VEXLIFE_HOST_EXECUTION_PROFILE_REF,
+  HERETIC_VEXLIFE_RUNTIME_RECEIPT_SCHEMA,
+  formHereticModelConfiguration,
+  formHereticPendingModelConfiguration
+} from '../src/core/heretic-runtime-link.mjs';
+import {
   ALLOWED_OPERATIONS,
   choicesForLifecycleState,
   canonicalMacHomeDirectory,
   classifyMacLifecycleState,
+  cleanupRepairState,
   cleanupRebuildPreserveState,
   protectedHomeSnapshot,
   qualifiedInitializationFromCurrentHome,
@@ -548,6 +557,94 @@ test('MAC06B preservation-safe cleanup stops an exact STARTING runtime without r
     const after = JSON.parse(fs.readFileSync(path.join(runtimeDir, 'receipt.json'), 'utf8'));
     assert.equal(after.state, 'STOPPED_BY_LIFECYCLE');
     assert.equal(after.runtime.pid, pid);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('MAC06C Heretic product configuration survives transient cleanup and keeps lifecycle on the Heretic route', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-heretic-product-'));
+  const home = path.join(root, 'home');
+  const runtimeDir = path.join(home, 'runtime', 'heretic');
+  const receiptPath = path.join(runtimeDir, 'persistent-runtime-owner-receipt.json');
+  try {
+    fs.mkdirSync(path.join(home, 'config'), { recursive: true });
+    fs.mkdirSync(runtimeDir, { recursive: true });
+    const homeIdentity = {
+      homeRef: 'vex-home.heretic.product.test',
+      companionLineageRef: 'companion-lineage.heretic.product.test'
+    };
+    fs.writeFileSync(path.join(home, 'config', 'home.json'), JSON.stringify({
+      schemaVersion: 'vexlife.home/v0',
+      homeRef: homeIdentity.homeRef,
+      currentDeviceRef: 'device.heretic.product.test',
+      currentCompanionLineageRef: homeIdentity.companionLineageRef
+    }, null, 2) + '\n');
+    const receipt = {
+      schemaVersion: HERETIC_VEXLIFE_RUNTIME_RECEIPT_SCHEMA,
+      receiptRef: 'receipt.vexlife.heretic-persistent-runtime.test',
+      state: 'PERSISTENT_MLX_RUNTIME_QUALIFIED',
+      formedAt: '2026-10-23T09:00:00.000Z',
+      authorityRef: 'authority.vexlife.heretic.test',
+      ...HERETIC_RUNTIME_IDENTITY,
+      hostExecutionProfileRef: HERETIC_VEXLIFE_HOST_EXECUTION_PROFILE_REF,
+      modelPath: '/private/heretic/model',
+      pythonPath: '/private/heretic/env/bin/python',
+      pythonEnvironmentRoot: '/private/heretic/env',
+      endpoint: 'http://127.0.0.1:8765',
+      requestModel: HERETIC_REQUEST_MODEL,
+      sourceIdentity: {
+        repository: 'vgong24/VexLife',
+        modulePath: 'src/core/heretic-persistent-runtime-owner.mjs',
+        moduleSha256: '3'.repeat(64)
+      },
+      runtime: {
+        pid: 5151,
+        processGroupId: 5151,
+        exactOwnedDetachedGroup: true,
+        args: ['-m','mlx_lm.server','--model','/private/heretic/model','--host','127.0.0.1','--port','8765']
+      },
+      qualification: {
+        healthAndExactModelVerified: true,
+        actualChatCompletionPerformed: true,
+        loadResultRef: null
+      },
+      effects: {
+        modelRuntime: true,
+        providerNetwork: false,
+        modelDownload: false,
+        artifactMutation: false,
+        training: false,
+        weightMutation: false,
+        memoryMutation: false,
+        activation: false,
+        succession: false,
+        publication: false,
+        repositoryMutation: false,
+        homeMutation: false
+      }
+    };
+    fs.writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
+    const configuration = formHereticModelConfiguration({ homeIdentity, receipt });
+    fs.writeFileSync(path.join(home, 'config', 'model.json'), JSON.stringify(configuration, null, 2) + '\n');
+
+    assert.equal(classifyMacLifecycleState(home), 'EXISTING_HEALTHY');
+    const protectedBefore = protectedHomeSnapshot(home);
+    assert.equal(protectedBefore.records.some((record) => record.path === 'config/model.json'), true);
+    const removed = cleanupRebuildPreserveState(home);
+    assert.equal(removed.includes('runtime'), true);
+    assert.equal(fs.existsSync(receiptPath), false);
+    assert.equal(fs.existsSync(path.join(home, 'config', 'model.json')), true);
+    const protectedAfter = protectedHomeSnapshot(home);
+    assert.equal(protectedAfter.records.some((record) => record.path === 'config/model.json'), true);
+    assert.equal(classifyMacLifecycleState(home), 'EXISTING_DEGRADED_REPAIRABLE');
+
+    const pending = formHereticPendingModelConfiguration({ homeIdentity });
+    fs.writeFileSync(path.join(home, 'config', 'model.json'), JSON.stringify(pending, null, 2) + '\n');
+    assert.equal(classifyMacLifecycleState(home), 'EXISTING_DEGRADED_REPAIRABLE');
+    const pendingRemoved = cleanupRepairState(home);
+    assert.equal(pendingRemoved.includes('config/model.json'), false);
+    assert.equal(fs.existsSync(path.join(home, 'config', 'model.json')), true);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

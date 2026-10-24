@@ -17,6 +17,7 @@ const setupCommand = fs.readFileSync(path.join(ROOT, 'setup-vexlife.command'), '
 const setup = fs.readFileSync(path.join(ROOT, 'install', 'vexlife-setup.sh'), 'utf8');
 const lifecycle = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
 const initializer = fs.readFileSync(path.join(ROOT, 'scripts', 'initialize-vex.mjs'), 'utf8');
+const hereticEstablishment = fs.readFileSync(path.join(ROOT, 'scripts', 'establish-heretic-runtime.mjs'), 'utf8');
 
 test('MACHUMAN01 root Mac front door resolves exact Git source before repository delegation', () => {
   assert.match(setupCommand, /^#!\/bin\/bash/m);
@@ -140,12 +141,13 @@ test('MACHUMAN03 fresh setup does not offer repair rebuild or uninstall before H
   assert.doesNotMatch(absent, /run_lifecycle uninstall-preserve/);
 });
 
-test('MACHUMAN04 fresh Terminal setup collects consent before the owned noninteractive initializer child', () => {
+test('MACHUMAN04 fresh Terminal setup collects consent before the owned Heretic establishment child', () => {
   const absent = setup.slice(setup.indexOf('  ABSENT)'), setup.indexOf('  EXISTING_HEALTHY)'));
-  assert.match(absent, /initialize-vex\.mjs" --home "\$VEX_HOME" --plan-only/);
-  assert.match(absent, /ask_yes_no "Prepare the local Vex runtime now\?/);
-  assert.match(absent, /run_owned node "\$REPO_ROOT\/scripts\/initialize-vex\.mjs" --home "\$VEX_HOME" --yes/);
-  assert.ok(absent.indexOf('ask_yes_no "Prepare the local Vex runtime now?') < absent.indexOf('run_owned node "$REPO_ROOT/scripts/initialize-vex.mjs" --home "$VEX_HOME" --yes'));
+  assert.match(absent, /establish-heretic-runtime\.mjs" --home "\$VEX_HOME" --plan-only/);
+  assert.match(absent, /ask_yes_no "Prepare Heretic 27B now\?/);
+  assert.match(absent, /run_owned node "\$REPO_ROOT\/scripts\/establish-heretic-runtime\.mjs" --home "\$VEX_HOME" --allow-acquisition/);
+  assert.ok(absent.indexOf('ask_yes_no "Prepare Heretic 27B now?') < absent.indexOf('run_owned node "$REPO_ROOT/scripts/establish-heretic-runtime.mjs" --home "$VEX_HOME" --allow-acquisition'));
+  assert.doesNotMatch(absent, /run_owned node "\$REPO_ROOT\/scripts\/initialize-vex\.mjs" --home "\$VEX_HOME" --yes/);
 });
 
 test('MACHUMAN05 state-derived actions are explicit and browser opens only after start-class completion', () => {
@@ -322,6 +324,16 @@ test('MACHUMAN10 exact STARTING runtime resumes readiness instead of requiring p
   assert.ok(resumeBlock.indexOf('pendingRuntimeOwner =') < resumeBlock.indexOf('await waitForRuntime'));
 });
 
+test('MACHUMAN10B ordinary Heretic product start does not require a private SDK checkout', () => {
+  assert.doesNotMatch(hereticEstablishment, /VEXTREME_SDK_ROOT|Vextreme-SDK\.git|gh repo clone/u);
+  assert.match(hereticEstablishment, /heretic-persistent-runtime-owner\.mjs/u);
+  assert.match(hereticEstablishment, /formHereticPendingModelConfiguration/u);
+  assert.match(hereticEstablishment, /hostPlan\(\{ requireBootstrapPython: allowAcquisition \}\)/u);
+  assert.match(hereticEstablishment, /NOT_REQUIRED_FOR_LOCAL_REUSE/u);
+  assert.match(lifecycle, /establish-heretic-runtime\.mjs/u);
+  assert.match(lifecycle, /VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH/u);
+});
+
 test('MACHUMAN11 lifecycle cancellation is forwarded to the exact bootstrap/initializer child', () => {
   const runNodeStart = lifecycle.indexOf('async function runNode(');
   const runNodeEnd = lifecycle.indexOf('\nfunction parseLastJson', runNodeStart);
@@ -340,7 +352,8 @@ test('MACHUMAN11 lifecycle cancellation is forwarded to the exact bootstrap/init
   assert.match(lifecycle, /async function initialize\(home, repo, options\)/);
   assert.match(lifecycle, /runNode\(argv, \{ cwd: repo, forwardStderr: true \}\)/);
   assert.match(lifecycle, /await bootstrap\(home, repo\)/);
-  assert.match(lifecycle, /const initialized = await initialize\(home, repo, options\)/);
+  assert.match(lifecycle, /initialized = await establishHeretic\(home, repo, options\)/);
+  assert.match(lifecycle, /initialized = await initialize\(home, repo, options\)/);
 });
 
 // [VXG RealForever]
