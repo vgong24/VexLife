@@ -50,4 +50,16 @@ test('lived proof binds served browser assets to the tested source before sendin
   assert.match(source, /localSha256 === servedSha256/);
 });
 
+test('interactive mode opens the real Vex relationship for human-authored turns without scripted prompts', () => {
+  assert.match(source, /process\.argv\.includes\('--interactive'\)/);
+  const block = source.match(/if \(INTERACTIVE_MODE\) \{([\s\S]*?)\n    \} else \{/);
+  assert.ok(block, 'interactive branch is missing');
+  assert.match(block[1], /INTERACTIVE_READY/);
+  assert.match(block[1], /automaticPromptSent:\s*false/);
+  assert.match(block[1], /humanComposerReady:\s*true/);
+  assert.match(block[1], /page\.waitForEvent\('close', \{ timeout: 0 \}\)/);
+  assert.doesNotMatch(block[1], /sendThroughEvolutionComposer/);
+  assert.doesNotMatch(block[1], /FIRST_PROMPT|SECOND_PROMPT/);
+});
+
 // [VXG RealForever]

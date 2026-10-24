@@ -7,6 +7,7 @@ import { collectRepositoryEvidence } from '../src/core/repository-evidence.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SERVER_URL = String(process.env.VEXLIFE_LIVED_BROWSER_URL ?? 'http://127.0.0.1:18110').replace(/\/$/u, '');
+const INTERACTIVE_MODE = process.argv.includes('--interactive');
 const OUTPUT_DIR = path.resolve(ROOT, process.env.VEXLIFE_EVOLUTION_CONVERSATION_PROOF_DIR ?? 'generated/health/evolution-conversation-lived');
 const FIRST_PROMPT = process.env.VEXLIFE_EVOLUTION_CONVERSATION_FIRST_PROMPT
   ?? 'This is a lived VexLife interface proof. Reply with one short sentence acknowledging this first turn. Do not request tools or effects.';
@@ -173,6 +174,30 @@ if (playwright) {
     assert(initial.roleKey === 'companion', 'lived proof is not on the canonical Companion relationship');
     assert(initial.presentationMode === 'CONTINUOUS_VEX_RELATIONSHIP', 'Evolution Conversation is not presenting the continuous Vex relationship');
     assert(initial.title === 'Vex', 'Evolution Conversation relationship title is not Vex');
+    if (INTERACTIVE_MODE) {
+      receipt.state = 'INTERACTIVE_READY';
+      receipt.interactive = {
+        automaticPromptSent: false,
+        humanComposerReady: true,
+        relationshipTitle: initial.title,
+        presentationMode: initial.presentationMode
+      };
+      receipt.readyAt = new Date().toISOString();
+      const receiptPath = path.join(OUTPUT_DIR, 'receipt.json');
+      writeJson(receiptPath, receipt);
+      console.log(JSON.stringify({
+        state: 'INTERACTIVE_READY',
+        title: initial.title,
+        presentationMode: initial.presentationMode,
+        projectRef: initial.projectRef,
+        threadRef: initial.threadRef,
+        channelRef: initial.channelRef,
+        instruction: 'Type in the visible Vex Conversation and press Send. Close the browser window when finished.'
+      }, null, 2));
+      await page.waitForEvent('close', { timeout: 0 });
+      receipt.state = 'INTERACTIVE_SESSION_CLOSED';
+      receipt.completedAt = new Date().toISOString();
+    } else {
     const beforeShot = path.join(OUTPUT_DIR, 'before-first-turn.png');
     await page.screenshot({ path: beforeShot, type: 'png', fullPage: true, animations: 'disabled' });
     receipt.screenshots.push({ file: path.basename(beforeShot), sha256: sha256(fs.readFileSync(beforeShot)) });
@@ -197,13 +222,14 @@ if (playwright) {
     receipt.pageErrors = pageErrors;
     receipt.state = 'PASS';
     receipt.completedAt = new Date().toISOString();
+    }
   } catch (error) {
     receipt.state = 'FAILED';
     receipt.error = error instanceof Error ? error.message : String(error);
     receipt.completedAt = new Date().toISOString();
     process.exitCode = 1;
   } finally {
-    if (browser) await browser.close();
+    if (browser?.isConnected()) await browser.close();
     const receiptPath = path.join(OUTPUT_DIR, 'receipt.json');
     writeJson(receiptPath, receipt);
     console.log(JSON.stringify({ ...receipt, outputDir: OUTPUT_DIR, receiptPath }, null, 2));
