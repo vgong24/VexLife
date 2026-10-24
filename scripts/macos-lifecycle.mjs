@@ -782,12 +782,17 @@ async function runNode(argv, { cwd = SOURCE_ROOT, accepted = [0], env = {}, forw
   });
 }
 function parseLastJson(stdout) {
-  const lines = String(stdout || '').split(/\r?\n/u).map((x) => x.trim()).filter(Boolean);
+  const payload = String(stdout || '').trim();
+  if (payload) {
+    try { return JSON.parse(payload); } catch {}
+  }
+  const lines = payload.split(/\r?\n/u).map((x) => x.trim()).filter(Boolean);
   for (let i = lines.length - 1; i >= 0; i -= 1) {
     try { return JSON.parse(lines[i]); } catch {}
   }
   throw new Error('command emitted no machine-readable JSON result');
 }
+export { parseLastJson };
 async function bootstrap(home, repo) {
   return runNode([path.join(repo, 'scripts', 'bootstrap.mjs'), '--device-name', os.hostname(), '--home', home], {
     cwd: repo, accepted: [0, 3]

@@ -30,6 +30,7 @@ import {
   classifyMacLifecycleState,
   cleanupRepairState,
   cleanupRebuildPreserveState,
+  parseLastJson,
   protectedHomeSnapshot,
   qualifiedInitializationFromCurrentHome,
   readMacProcessEvidence,
@@ -426,6 +427,25 @@ test('MAC06 lifecycle state distinguishes absent, healthy and repairable existin
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+
+test('MAC06D lifecycle command-result parser accepts pretty Heretic JSON and preserves fail-closed fallback semantics', () => {
+  const pretty = {
+    state: 'HERETIC_RUNTIME_ESTABLISHED',
+    runtimeDisposition: 'STARTED_NEW_EXACT_MLX_RUNTIME'
+  };
+  assert.deepEqual(parseLastJson(`${JSON.stringify(pretty, null, 2)}\n`), pretty);
+
+  const compact = {
+    state: 'HERETIC_RUNTIME_ESTABLISHED',
+    runtimeDisposition: 'REUSED_EXACT_MLX_RUNTIME'
+  };
+  assert.deepEqual(parseLastJson(`diagnostic line\n${JSON.stringify(compact)}\n`), compact);
+
+  assert.throws(
+    () => parseLastJson('diagnostic only\nstill not json\n'),
+    /command emitted no machine-readable JSON result/u
+  );
+});
 
 test('MAC06A lifecycle recognizes and reuses one exact activated-M4 v2 runtime binding', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-activated-m4-'));
