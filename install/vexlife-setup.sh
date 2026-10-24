@@ -406,7 +406,7 @@ controller_host_eligibility_state() {
     printf 'HOST_PREFLIGHT_MUTATED'
     return 1
   fi
-  state="$(printf '%s' "$output" | tail -n 1 | parse_json_state)"
+  state="$(printf '%s' "$output" | parse_json_state)"
   case "$state" in
     HERETIC_PLAN_READY_NO_EFFECT)
       printf 'HOST_ELIGIBLE'
@@ -531,7 +531,7 @@ controller_run() {
       if ! plan_output="$(node "$REPO_ROOT/scripts/establish-heretic-runtime.mjs" --home "$VEX_HOME" --plan-only)"; then
         fail "this Mac is not currently eligible for automatic Heretic setup; no model/runtime download was started."
       fi
-      plan_state="$(printf '%s' "$plan_output" | tail -n 1 | parse_json_state)"
+      plan_state="$(printf '%s' "$plan_output" | parse_json_state)"
       [ "$plan_state" = "HERETIC_PLAN_READY_NO_EFFECT" ] || fail "this Mac is not currently eligible for automatic Heretic setup; no model/runtime download was started."
       if ! run_owned node "$REPO_ROOT/scripts/establish-heretic-runtime.mjs" --home "$VEX_HOME" --allow-acquisition; then
         fail "setup stopped safely before the accepted Heretic runtime was ready."
@@ -638,7 +638,7 @@ case "$STATE" in
       say "This Mac is not currently eligible for automatic Heretic setup. No model/runtime download was started."
       exit 1
     fi
-    PLAN_STATE="$(printf '%s' "$PLAN_OUTPUT" | tail -n 1 | parse_json_state)"
+    PLAN_STATE="$(printf '%s' "$PLAN_OUTPUT" | parse_json_state)"
     if [ "$PLAN_STATE" != "HERETIC_PLAN_READY_NO_EFFECT" ]; then
       say "This Mac is not currently eligible for automatic Heretic setup. No model/runtime download was started."
       exit 1

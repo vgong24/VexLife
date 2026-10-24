@@ -356,4 +356,13 @@ test('MACHUMAN11 lifecycle cancellation is forwarded to the exact bootstrap/init
   assert.match(lifecycle, /initialized = await initialize\(home, repo, options\)/);
 });
 
+
+test('MACHUMAN10C complete pretty Heretic plan JSON is parsed without line-tail truncation', () => {
+  assert.match(hereticEstablishment, /JSON\.stringify\(result, null, 2\)/);
+  assert.match(setup, /state="\$\(printf '%s' "\$output" \| parse_json_state\)"/);
+  assert.match(setup, /plan_state="\$\(printf '%s' "\$plan_output" \| parse_json_state\)"/);
+  assert.match(setup, /PLAN_STATE="\$\(printf '%s' "\$PLAN_OUTPUT" \| parse_json_state\)"/);
+  assert.doesNotMatch(setup, /tail -n 1 \| parse_json_state/);
+});
+
 // [VXG RealForever]
