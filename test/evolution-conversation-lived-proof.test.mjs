@@ -33,6 +33,8 @@ test('lived proof requires two current local-model responses and durable head ad
   assert.match(source, /ordinal:\s*1/);
   assert.match(source, /ordinal:\s*2/);
   assert.match(source, /second\.lastResponse\.conversationHeadSha256 !== first\.lastResponse\.conversationHeadSha256/);
+  assert.match(source, /sendThroughEvolutionComposer\(page, SECOND_PROMPT, first\.realResponseCount\)/);
+  assert.doesNotMatch(source, /SECOND_PROMT\b/);
   assert.match(source, /conversationEventsWritten:\s*true/);
   assert.match(source, /modelInferencePerformed:\s*true/);
 });

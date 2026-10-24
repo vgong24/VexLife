@@ -183,7 +183,7 @@ if (playwright) {
     await page.screenshot({ path: firstShot, type: 'png', fullPage: true, animations: 'disabled' });
     receipt.screenshots.push({ file: path.basename(firstShot), sha256: sha256(fs.readFileSync(firstShot)) });
 
-    const second = await sendThroughEvolutionComposer(page, SECOND_PROMT);
+    const second = await sendThroughEvolutionComposer(page, SECOND_PROMPT, first.realResponseCount);
     assert(second.lastResponse.conversationHeadSha256 !== first.lastResponse.conversationHeadSha256, 'second real Companion turn did not advance the durable conversation head');
     assert(second.projectRef === first.projectRef && second.threadRef === first.threadRef && second.channelRef === first.channelRef, 'second turn left the canonical Companion relationship');
     receipt.turns.push({ ordinal: 2, prompt: SECOND_PROMPT, response: second.lastResponse });
