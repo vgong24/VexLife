@@ -164,7 +164,7 @@ test('V1 composer sends on unmodified Enter while Shift+Enter remains newline in
   assert.match(source,/composer\.requestSubmit\(\)/);
 });
 
-test('V1 ordinary interface controls can re-enter the canonical current Vex relationship',()=>{
+test('V1 dedicated Vex Conversation entry preserves canonical Chat navigation while enabling lived re-entry',()=>{
   assert.match(app,/CURRENT_VEX_CONVERSATION=Object\.freeze/);
   assert.match(app,/projectRef:'project\.self-development'/);
   assert.match(app,/threadRef:'thread\.self-development\.open-conversation'/);
@@ -174,8 +174,13 @@ test('V1 ordinary interface controls can re-enter the canonical current Vex rela
   assert.match(app,/chat\.selectChannel\(companion,'element\.channel\.companion'\)/);
   assert.match(app,/await setUxProjection\(UX_EVOLUTION_PROJECTION\)/);
   assert.match(app,/await openEvolutionSurface\(CONVERSATION_EVOLUTION_SURFACE_REF\)/);
-  assert.match(app,/openConversation'\)\.addEventListener\('click',\(\)=>\{void openCurrentVexConversation\(\)/);
-  assert.match(app,/event\.detail\?\.context==='chat'\)void openCurrentVexConversation\(\)/);
+  assert.match(app,/function ensureCurrentVexConversationMenuEntry\(\)/);
+  assert.match(app,/button\.id='openVexConversation'/);
+  assert.match(app,/button\.dataset\.nodeRef='element\.nav\.vex-conversation'/);
+  assert.match(app,/button\.addEventListener\('click',\(\)=>\{void openCurrentVexConversation\(\)/);
+  assert.match(app,/canonical\.insertAdjacentElement\('afterend',button\)/);
+  assert.match(app,/openConversation'\)\.addEventListener\('click',\(\)=>\{void routeCurrentSurface\('surface\.vexlife\.conversation',\(\)=>openContext\('chat'\)\)/);
+  assert.match(app,/document\.addEventListener\('vexlife:open-context',\(event\)=>\{if\(event\.detail\?\.context==='health'\)void openHealth\(\);else openContext\('chat'\);\}\)/);
   assert.match(app,/openContext,openCurrentVexConversation,openLivingJournal/);
 });
 
