@@ -29,7 +29,7 @@ const RUNTIME_STRING_REFS = new Set([
   'status.languageChanged', 'status.chapterChanged', 'status.releaseHeld', 'status.complete'
 ]);
 const FAMILY_WORLD_HREFS = Object.freeze([
-  'https://vgong24.github.io/Vextreme/pages/terrain-map.html?view=content&amp;profile=evolution-v1',
+  'https://vgong24.github.io/Vextreme/pages/terrain-map.html',
   'https://vexgpt.github.io/VexWork/'
 ]);
 
@@ -115,10 +115,14 @@ test('the page remains zero-effect while admitting only exact human-activated fa
   const externalSrcRefs = srcRefs.filter((ref) => /^(?:https?:|\/\/|data:|javascript:)/iu.test(ref));
 
   assert.match(html, /<body data-effect-class="NONE" data-publication-state="SOURCE_ACCEPTED">/u);
+  assert.match(html, /<span class="family-mark" aria-hidden="true">[\s\S]*class="vex-mark"/u);
   assert.match(html, /<nav class="family-worlds" aria-label="Vextreme \/ VexLife \/ VexWork">/u);
-  assert.match(html, /<a data-family-world="vextreme" href="https:\/\/vgong24\.github\.io\/Vextreme\/pages\/terrain-map\.html\?view=content&amp;profile=evolution-v1">Vextreme<\/a>/u);
-  assert.match(html, /<span class="family-world-current" data-family-world="vexlife" aria-current="page">VexLife<\/span>/u);
-  assert.match(html, /<a data-family-world="vexwork" href="https:\/\/vexgpt\.github\.io\/VexWork\/">VexWork<\/a>/u);
+  assert.match(html, /class="family-world" data-family-world="vextreme" href="https:\/\/vgong24\.github\.io\/Vextreme\/pages\/terrain-map\.html">Vextreme<\/a>/u);
+  assert.match(html, /class="family-world family-world-current" data-family-world="vexlife" href="\.\/" aria-current="page">VexLife<\/a>/u);
+  assert.match(html, /class="family-world" data-family-world="vexwork" href="https:\/\/vexgpt\.github\.io\/VexWork\/">VexWork<\/a>/u);
+  assert.doesNotMatch(html, /class="brand-lockup"/u);
+  assert.match(css, /grid-template-columns:\s*5\.6rem auto 5\.3rem auto 5\.3rem/u);
+  assert.match(css, /\.family-world-current\s*\{[\s\S]*font-family:\s*var\(--display\)/u);
   assert.deepEqual(sorted(externalHrefRefs), sorted(FAMILY_WORLD_HREFS));
   assert.deepEqual(externalSrcRefs, []);
   assert.doesNotMatch(html, /<form\b|<iframe\b|<object\b|<embed\b/iu);
