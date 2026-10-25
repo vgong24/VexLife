@@ -448,7 +448,7 @@ export function createBrowserPromptContextRuntime({
       deviceRef,
       companionLineageRef,
       threadRef,
-      memoryTokenCap: Math.min(MEMORY_TOKEN_CAP, remainingInputTokens)
+      memoryTokenCap: Math.max(1, Math.min(MEMORY_TOKEN_CAP, remainingInputTokens))
     });
     const selection = selectionCore(prior, current, memoryContext, currentRequestInputTokenEstimate);
     const observedAt = now();
@@ -515,7 +515,7 @@ export function createBrowserPromptContextRuntime({
         deviceRef,
         companionLineageRef,
         threadRef: query.threadRef,
-        memoryTokenCap: Math.min(MEMORY_TOKEN_CAP, reboundRemainingInputTokens)
+        memoryTokenCap: Math.max(1, Math.min(MEMORY_TOKEN_CAP, reboundRemainingInputTokens))
       });
       const reboundSelection = selectionCore(
         prior,
