@@ -222,7 +222,7 @@ code {
 
 .family-worlds {
   display: grid;
-  grid-template-columns: 5.8rem auto 5.3rem auto 5.3rem;
+  grid-template-columns: 5.8rem 0.65rem 5.3rem 0.65rem 5.3rem;
   align-items: baseline;
   gap: 7px;
   color: var(--ink-muted);
@@ -263,6 +263,8 @@ code {
   font-family: var(--mono);
   font-size: 0.78rem;
   font-weight: 500;
+  text-align: center;
+  justify-self: center;
 }
 
 .header-tools {
@@ -1304,7 +1306,7 @@ body[data-enhanced="true"] .journey-panel[data-active="true"] {
   }
 
   .family-worlds {
-    grid-template-columns: 4.9rem auto 4.7rem auto 4.8rem;
+    grid-template-columns: 4.9rem 0.65rem 4.7rem 0.65rem 4.8rem;
     gap: 4px;
   }
 
