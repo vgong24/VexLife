@@ -16,19 +16,20 @@
 
   <header class="site-header" id="top">
     <div class="header-inner">
-      <a class="brand-lockup" href="#top" aria-label="VexLife" data-i18n-aria-label="aria.logo">
-        <svg class="vex-mark" viewBox="0 0 120 120" aria-hidden="true">
-          <path d="M51.89 109.32A50 50 0 1 1 68.11 109.32L39.73 35.68 60 65.41 80.27 35.68Z"/>
-        </svg>
-        <span data-i18n="nav.brand">VexLife</span>
-      </a>
-      <nav class="family-worlds" aria-label="Vextreme / VexLife / VexWork">
-        <a data-family-world="vextreme" href="https://vgong24.github.io/Vextreme/pages/terrain-map.html?view=content&amp;profile=evolution-v1">Vextreme</a>
-        <span class="family-world-divider" aria-hidden="true">/</span>
-        <span class="family-world-current" data-family-world="vexlife" aria-current="page">VexLife</span>
-        <span class="family-world-divider" aria-hidden="true">/</span>
-        <a data-family-world="vexwork" href="https://vexgpt.github.io/VexWork/">VexWork</a>
-      </nav>
+      <div class="family-rail">
+        <span class="family-mark" aria-hidden="true">
+          <svg class="vex-mark" viewBox="0 0 120 120">
+            <path d="M51.89 109.32A50 50 0 1 1 68.11 109.32L39.73 35.68 60 65.41 80.27 35.68Z"/>
+          </svg>
+        </span>
+        <nav class="family-worlds" aria-label="Vextreme / VexLife / VexWork">
+          <a class="family-world" data-family-world="vextreme" href="https://vgong24.github.io/Vextreme/pages/terrain-map.html">Vextreme</a>
+          <span class="family-world-divider" aria-hidden="true">/</span>
+          <a class="family-world family-world-current" data-family-world="vexlife" href="./" aria-current="page">VexLife</a>
+          <span class="family-world-divider" aria-hidden="true">/</span>
+          <a class="family-world" data-family-world="vexwork" href="https://vexgpt.github.io/VexWork/">VexWork</a>
+        </nav>
+      </div>
       <div class="header-tools">
         <span class="preview-badge" data-i18n="nav.previewBadge">Public Alpha preview · no effects</span>
         <div class="language-picker" role="group" data-i18n-aria-label="aria.language" aria-label="Choose the page language">
@@ -383,3 +384,4 @@ curl -fsSL https://raw.githubusercontent.com/vgong24/VexLife/main/setup-vexlife.
   </footer>
 </body>
 </html>
+<!-- [VXG RealForever] -->
