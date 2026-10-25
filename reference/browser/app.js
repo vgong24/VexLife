@@ -408,27 +408,27 @@ async function openCurrentVexConversation(){
   openContext('chat','element.nav.chat');
   return Object.freeze({state:'OPEN',projection:UX_REFERENCE_PROJECTION,...CURRENT_VEX_CONVERSATION});
 }
-function ensureCurrentVexConversationMenuEntry(){
-  const existing=$('#openVexConversation');
-  if(existing){
-    existing.textContent=`${visibleVexName()} · ${t('region.chat.label')}`;
-    return existing;
+function bindPersistentVexConversationEntry(){
+  const control=$('#guideClose');
+  if(!control)return null;
+  control.textContent='↗';
+  control.dataset.vexConversationEntry='true';
+  control.dataset.uxSurfaceRef=CONVERSATION_EVOLUTION_SURFACE_REF;
+  control.setAttribute('aria-controls','evolutionActiveSurfaceHost');
+  control.setAttribute('aria-label',`${visibleVexName()} · ${t('region.chat.label')}`);
+  control.title=`${visibleVexName()} · ${t('region.chat.label')}`;
+  if(control.dataset.vexConversationEntryBound!=='true'){
+    control.addEventListener('click',(event)=>{
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void openCurrentVexConversation();
+    },{capture:true});
+    control.dataset.vexConversationEntryBound='true';
   }
-  const canonical=$('#openConversation');
-  const menu=$('#surfaceMenu');
-  if(!canonical||!menu)return null;
-  const button=document.createElement('button');
-  button.id='openVexConversation';
-  button.type='button';
-  button.dataset.nodeRef='element.nav.vex-conversation';
-  button.dataset.uxSurfaceRef=CONVERSATION_EVOLUTION_SURFACE_REF;
-  button.textContent=`${visibleVexName()} · ${t('region.chat.label')}`;
-  button.addEventListener('click',()=>{void openCurrentVexConversation();toggleSurfaceMenu(false);});
-  canonical.insertAdjacentElement('afterend',button);
-  return button;
+  return control;
 }
 
-function applyLocalization(){document.documentElement.lang=state.language;$$('[data-i18n]').forEach((element)=>{element.textContent=t(element.dataset.i18n);});$$('[data-i18n-placeholder]').forEach((element)=>{element.placeholder=t(element.dataset.i18nPlaceholder);});$$('[data-i18n-aria-label]').forEach((element)=>{element.setAttribute('aria-label',t(element.dataset.i18nAriaLabel));});$('#languageSelect').value=state.language;ensureCurrentVexConversationMenuEntry();projectFrame();guide.renderMessages();}
+function applyLocalization(){document.documentElement.lang=state.language;$('[data-i18n]').forEach((element)=>{element.textContent=t(element.dataset.i18n);});$('[data-i18n-placeholder]').forEach((element)=>{element.placeholder=t(element.dataset.i18nPlaceholder);});$('[data-i18n-aria-label]').forEach((element)=>{element.setAttribute('aria-label',t(element.dataset.i18nAriaLabel));});$('#languageSelect').value=state.language;bindPersistentVexConversationEntry();projectFrame();guide.renderMessages();}
 function toggleSurfaceMenu(open){const next=Boolean(open);$('#surfaceMenu').hidden=!next;$('#surfaceMenuButton').setAttribute('aria-expanded',String(next));}
 function closeTerrainContext(){ $('#terrainContext').hidden=true; }
 
