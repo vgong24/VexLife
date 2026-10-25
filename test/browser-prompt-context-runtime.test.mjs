@@ -489,6 +489,39 @@ test('authority verifier rejects an expired exact lease', async () => {
   }
 });
 
+test('zero remaining prompt headroom bounds Memory out without forming an invalid zero-cap packet', async () => {
+  const home = makeHome('zero-memory-headroom');
+  const model = await startModelServer(({ callIndex }) =>
+    callIndex === 0 ? 'x'.repeat(800_000) : 'Current exact reply.');
+  try {
+    await firstTurn(home, model);
+    const owner = runtime(home);
+    const current = {
+      threadRef: 'thread.vexlife.browser-prompt-context-runtime-test',
+      currentRequestEventRef: 'event.vexlife.request.zero-memory-headroom',
+      currentRequestEventHash: '7'.repeat(64),
+      currentRequestSequence: 2,
+      priorConversationHeadSha256: JSON.parse(fs.readFileSync(path.join(
+        home.home,
+        'conversations',
+        home.companionLineageRef,
+        'thread.vexlife.browser-prompt-context-runtime-test',
+        'head.json'
+      ), 'utf8')).conversationHeadSha256
+    };
+    const selected = await owner.promptContextResolver({
+      context: current,
+      taskIntent: 'Current request stays inside browser request admission.'
+    });
+    assert.equal(selected.memoryContext.included, false);
+    assert.equal(selected.memoryContext.memoryTokenCap, 1);
+    assert.equal(selected.memoryContext.estimatedSystemMessageTokens, 0);
+  } finally {
+    await model.close();
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
 test('post-MATERIALIZE failure retains no selection beyond the finite lease TTL', async () => {
   const home = makeHome('materialization-failure-expiry');
   const model = await startModelServer(({ callIndex }) =>
