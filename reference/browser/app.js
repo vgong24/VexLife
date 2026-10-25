@@ -408,15 +408,34 @@ async function openCurrentVexConversation(){
   openContext('chat','element.nav.chat');
   return Object.freeze({state:'OPEN',projection:UX_REFERENCE_PROJECTION,...CURRENT_VEX_CONVERSATION});
 }
+function ensureCurrentVexConversationMenuEntry(){
+  const existing=$('#openVexConversation');
+  if(existing){
+    existing.textContent=`${visibleVexName()} · ${t('region.chat.label')}`;
+    return existing;
+  }
+  const canonical=$('#openConversation');
+  const menu=$('#surfaceMenu');
+  if(!canonical||!menu)return null;
+  const button=document.createElement('button');
+  button.id='openVexConversation';
+  button.type='button';
+  button.dataset.nodeRef='element.nav.vex-conversation';
+  button.dataset.uxSurfaceRef=CONVERSATION_EVOLUTION_SURFACE_REF;
+  button.textContent=`${visibleVexName()} · ${t('region.chat.label')}`;
+  button.addEventListener('click',()=>{void openCurrentVexConversation();toggleSurfaceMenu(false);});
+  canonical.insertAdjacentElement('afterend',button);
+  return button;
+}
 
-function applyLocalization(){document.documentElement.lang=state.language;$$('[data-i18n]').forEach((element)=>{element.textContent=t(element.dataset.i18n);});$$('[data-i18n-placeholder]').forEach((element)=>{element.placeholder=t(element.dataset.i18nPlaceholder);});$$('[data-i18n-aria-label]').forEach((element)=>{element.setAttribute('aria-label',t(element.dataset.i18nAriaLabel));});$('#languageSelect').value=state.language;projectFrame();guide.renderMessages();}
+function applyLocalization(){document.documentElement.lang=state.language;$('[data-i18n]').forEach((element)=>{element.textContent=t(element.dataset.i18n);});$('[data-i18n-placeholder]').forEach((element)=>{element.placeholder=t(element.dataset.i18nPlaceholder);});$('[data-i18n-aria-label]').forEach((element)=>{element.setAttribute('aria-label',t(element.dataset.i18nAriaLabel));});$('#languageSelect').value=state.language;ensureCurrentVexConversationMenuEntry();projectFrame();guide.renderMessages();}
 function toggleSurfaceMenu(open){const next=Boolean(open);$('#surfaceMenu').hidden=!next;$('#surfaceMenuButton').setAttribute('aria-expanded',String(next));}
 function closeTerrainContext(){ $('#terrainContext').hidden=true; }
 
 $('#terrainFullJourneyToggle').addEventListener('click',()=>terrain.openJourney());$('#terrainJourneyClose').addEventListener('click',()=>terrain.closeJourney());$('#terrainUp').addEventListener('click',()=>terrain.up());$('#terrainReset').addEventListener('click',()=>terrain.reset());$('#terrainCenter').addEventListener('click',()=>{terrain.centerOn();toggleSurfaceMenu(false);});
 $('#surfaceMenuButton').addEventListener('click',(event)=>{event.stopPropagation();const open=$('#surfaceMenu').hidden;$('#surfaceMenu').hidden=!open;$('#surfaceMenuButton').setAttribute('aria-expanded',String(open));});
 const openLivingJournal=async({loadMemory=true}={})=>{restoreLivingJournalPresentDefault();livingJournal.open({selectedNodeRef:state.selectedNodeRef});navigation.openContext('living-journal','element.living-journal.open','action.living-journal.open');projectFrame();if(loadMemory){await loadLivingJournalMemory();projectFrame();}return livingJournal.snapshot();};
-$('#openConversation').addEventListener('click',()=>{void openCurrentVexConversation();toggleSurfaceMenu(false);});
+$('#openConversation').addEventListener('click',()=>{void routeCurrentSurface('surface.vexlife.conversation',()=>openContext('chat'));toggleSurfaceMenu(false);});
 $('#openHealth').addEventListener('click',()=>{void routeCurrentSurface('surface.vexlife.health',()=>void openHealth());toggleSurfaceMenu(false);});
 $('#openLivingJournal').addEventListener('click',()=>{void routeCurrentSurface('surface.vexlife.living-journal',()=>void openLivingJournal());toggleSurfaceMenu(false);});
 $('#openWorkspace').addEventListener('click',()=>{void routeCurrentSurface('surface.vexlife.workspace',()=>{openContext('chat');setWorkspaceOpen(true)});toggleSurfaceMenu(false);});
@@ -428,7 +447,7 @@ $('#livingJournalArchiveOpen')?.addEventListener('click',()=>{void loadLivingJou
 $('#livingJournalWalkthroughShow').addEventListener('click',()=>patientZeroWalkthrough.show());$('#livingJournalWalkthroughLater').addEventListener('click',()=>patientZeroWalkthrough.later());$('#livingJournalWalkthroughSuppress').addEventListener('click',()=>patientZeroWalkthrough.suppress());$('#livingJournalWalkthroughReplay').addEventListener('click',()=>patientZeroWalkthrough.replay());$('#livingJournalWalkthroughNextStep').addEventListener('click',()=>patientZeroWalkthrough.next());
 $('#contextWorkspaceDock').addEventListener('change',(event)=>setContextWorkspaceDock(event.currentTarget.value));$('#contextWorkspaceSplit').addEventListener('change',(event)=>setContextWorkspaceSplitFocus(event.currentTarget.checked));$('#contextWorkspaceReset').addEventListener('click',resetContextWorkspaceLayout);$$('[data-context-workspace-resize-corner][data-node-ref^="element.context-workspace.resize."]').forEach((handle)=>{handle.addEventListener('pointerdown',beginContextWorkspaceResize);handle.addEventListener('keydown',keyboardContextWorkspaceResize)});globalThis.addEventListener('resize',applyContextWorkspaceLayout);
 $('#languageSelect').addEventListener('change',(event)=>{state.language=event.target.value;localStorage.setItem('vexlife.language',state.language);navigation.navigate('element.language.selector',{},'action.language.select');applyLocalization();});$('#architectureButton').addEventListener('click',()=>{void explainSelectedArchitectureNode();});
-document.addEventListener('vexlife:open-context',(event)=>{if(event.detail?.context==='health')void openHealth();else if(event.detail?.context==='chat')void openCurrentVexConversation();else openContext('chat');});
+document.addEventListener('vexlife:open-context',(event)=>{if(event.detail?.context==='health')void openHealth();else openContext('chat');});
 $$('[data-terrain-context]').forEach((button)=>button.addEventListener('click',()=>{const action=button.dataset.terrainContext;if(action==='center')terrain.centerOn();else if(action==='projection')terrain.cycleProjection();else if(action==='workspace')terrain.toggleWorkspace();else if(action==='chat')openContext('chat');else if(action==='health')void openHealth();closeTerrainContext();}));
 document.addEventListener('pointerdown',(event)=>{if(!event.target.closest('#surfaceMenu,#surfaceMenuButton'))toggleSurfaceMenu(false);if(!event.target.closest('#terrainContext'))closeTerrainContext();});
 globalThis.addEventListener('keydown',(event)=>{if(event.key!=='Escape')return;if(!$('#terrainContext').hidden)closeTerrainContext();else if(!$('#surfaceMenu').hidden)toggleSurfaceMenu(false);else if(state.uxActiveSurfaceRef){void closeEvolutionActiveSurface('SHELL_ESCAPE');}else if(state.contextProjection)returnToTerrain('element.nav.terrain','action.navigation.back');else if($('#terrainJourneyDrawer').getAttribute('aria-hidden')!=='true')terrain.closeJourney();else terrain.up();});globalThis.addEventListener('popstate',()=>navigation.back());
