@@ -118,7 +118,7 @@ test('the page remains zero-effect while admitting only exact human-activated fa
   assert.match(html, /<span class="family-mark" aria-hidden="true">[\s\S]*class="vex-mark"/u);
   assert.match(html, /<nav class="family-worlds" aria-label="Vextreme \/ VexLife \/ VexWork">/u);
   assert.match(html, /class="family-world" data-family-world="vextreme" href="https:\/\/vgong24\.github\.io\/Vextreme\/pages\/terrain-map\.html">Vextreme<\/a>/u);
-  assert.match(html, /class="family-world family-world-current" data-family-world="vexlife" href="\.\/" aria-current="page">VexLife<\/a>/u);
+  assert.match(html, /class="family-world family-world-current" data-family-world="vexlife" href="\.\/" aria-current="page" data-i18n="nav\.brand" data-i18n-aria-label="aria\.logo" aria-label="VexLife">VexLife<\/a>/u);
   assert.match(html, /class="family-world" data-family-world="vexwork" href="https:\/\/vexgpt\.github\.io\/VexWork\/">VexWork<\/a>/u);
   assert.doesNotMatch(html, /class="brand-lockup"/u);
   assert.match(css, /grid-template-columns:\s*5\.8rem auto 5\.3rem auto 5\.3rem/u);
