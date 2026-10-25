@@ -119,12 +119,19 @@ test('runtime executes independent reads concurrently, uses ToolResultRelay exac
   let activeReads = 0;
   let maximumActiveReads = 0;
   const sequence = [];
-  const inference = async () => {
+  const visibleDeltas = [];
+  const responseDeltaObserver = async (delta) => { visibleDeltas.push(delta); };
+  const inference = async (input) => {
     inferenceCount += 1;
-    if (inferenceCount === 1) return requestResult([
+    if (inferenceCount === 1) {
+      assert.equal(Object.hasOwn(input, 'responseDeltaObserver'), false);
+      return requestResult([
       { requestRef: 'read.search', capabilityRef: 'capability.search', arguments: { query: 'capability' }, dependencyRefs: [] },
       { requestRef: 'read.context', capabilityRef: 'context.where', arguments: {}, dependencyRefs: [] }
-    ]);
+      ]);
+    }
+    assert.equal(input.responseDeltaObserver, responseDeltaObserver);
+    await input.responseDeltaObserver({ contentDelta: 'Synthesized' });
     return { content: 'Synthesized from two current observations.', model: 'model.test.synthesis' };
   };
   const delayed = (name) => async () => {
@@ -156,11 +163,13 @@ test('runtime executes independent reads concurrently, uses ToolResultRelay exac
   const result = await runtime.resolveTurn({
     taskIntent: 'Find current capability and context information.',
     inference,
+    responseDeltaObserver,
     endpointProfile: { profileRef: 'profile.test', admitted: true, endpoint: 'http://127.0.0.1:1', model: 'test' },
     context: { taskRef: 'task.test.parallel', threadRef: 'thread.test.parallel' }
   });
   assert.equal(result.response.content, 'Synthesized from two current observations.');
   assert.equal(inferenceCount, 2);
+  assert.deepEqual(visibleDeltas, [{ contentDelta: 'Synthesized' }]);
   assert.equal(maximumActiveReads, 2);
   assert.equal(result.runtimeProjection.toolRequestCount, 2);
   assert.equal(result.runtimeProjection.observationRefs.length, 2);

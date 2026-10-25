@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   LIVED_COMPANION_CONNECTION_FAILURE_CODES,
+  LIVED_COMPANION_OUTPUT_TOKEN_LIMIT,
   LivedCompanionConnectionError,
   invokeLivedCompanionEndpoint,
   isLivedCompanionLoopbackHost,
@@ -78,6 +79,8 @@ test('Connection performs one admitted loopback call and returns closed runtime 
     assert.equal(observed[0].url, '/v1/chat/completions');
     assert.equal(observed[0].authorization, 'Bearer ephemeral-fixture');
     assert.deepEqual(observed[0].body.messages, [{ role: 'user', content: 'Hello' }]);
+    assert.equal(observed[0].body.max_tokens, LIVED_COMPANION_OUTPUT_TOKEN_LIMIT);
+    assert.equal(Object.hasOwn(observed[0].body, 'stream'), false);
     assert.equal(JSON.stringify(result).includes('ephemeral-fixture'), false);
   });
 });
@@ -162,6 +165,39 @@ test('Connection timeout remains a typed endpoint failure and does not widen the
     'ENDPOINT_TIMEOUT',
     'ENDPOINT_UNREACHABLE'
   ]);
+});
+
+test('Connection streams visible content deltas while closing one final runtime observation', async () => {
+  const observed = [];
+  await withServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    observed.push(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+    response.writeHead(200, { 'content-type': 'text/event-stream' });
+    for (const frame of [
+      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{role:'assistant',content:'Hello '}}] },
+      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{role:'assistant',content:'stream.'}}] },
+      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:'stop',delta:{role:'assistant'}}] },
+      { id:'fixture-stream', object:'chat.completion', model:'fixture-model', created:1, choices:[], usage:{prompt_tokens:3,completion_tokens:2,total_tokens:5} }
+    ]) response.write(`data: ${JSON.stringify(frame)}\n\n`);
+    response.end('data: [DONE]\n\n');
+  }, async (endpoint) => {
+    const deltas = [];
+    const result = await invokeLivedCompanionEndpoint({
+      endpointProfile: profile(endpoint),
+      messages: [{ role:'user', content:'Hello' }],
+      responseDeltaObserver: async (delta) => { deltas.push(delta); },
+      timeoutMs: 1000
+    });
+    assert.equal(result.content, 'Hello stream.');
+    assert.equal(verifyModelRuntimeObservation(result.runtimeObservation), true);
+    assert.equal(verifyModelRuntimeInvocationEvidence(result.invocationEvidence), true);
+    assert.deepEqual(deltas.map((delta) => delta.contentDelta), ['Hello ', 'stream.']);
+    assert.ok(deltas.every((delta) => delta.truthClass === 'EPHEMERAL_LOCAL_MODEL_PROGRESS' && delta.effectsPerformed === false));
+    assert.equal(observed[0].stream, true);
+    assert.equal(observed[0].stream_options.include_usage, true);
+    assert.equal(observed[0].max_tokens, LIVED_COMPANION_OUTPUT_TOKEN_LIMIT);
+  });
 });
 
 // [VXG RealForever]

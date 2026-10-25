@@ -316,12 +316,19 @@ test('VA-I06 public source consumes package exports without embedding private SD
   assert.doesNotMatch(source, /b3de9ae0375948085eb5f927ac0e157bbfe62ea1/);
 });
 
-test('VA-I06 live browser composition adds Voice only after the completed Companion turn', () => {
+test('VA-I06 live browser composition adds Voice only after each completed Companion turn', () => {
   const source = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser-core.mjs'), 'utf8');
-  const turn = source.indexOf('const result = await companionBridge.performConversationTurn(input);');
-  const voice = source.indexOf('await companionVoicePlayback.playCompletedTurn({');
-  const response = source.indexOf('sendJson(response, 200, { ...result, voicePlayback });');
-  assert.ok(turn >= 0 && voice > turn && response > voice);
+  const streamRoute = source.indexOf('if (url.pathname === BROWSER_COMPANION_STREAM_API_PATH)');
+  const jsonRoute = source.indexOf('if (url.pathname === BROWSER_COMPANION_API_PATH)', streamRoute + 1);
+  const streamTurn = source.indexOf('let result = await companionBridge.performConversationTurn(input, {', streamRoute);
+  const streamVoice = source.indexOf('await companionVoicePlayback.playCompletedTurn({', streamTurn);
+  const streamFinal = source.indexOf("writeCompanionStreamFrame(response, 'FINAL', frameSequence, result);", streamVoice);
+  assert.ok(streamRoute >= 0 && streamTurn > streamRoute && streamVoice > streamTurn && streamFinal > streamVoice && jsonRoute > streamFinal);
+
+  const turn = source.indexOf('const result = await companionBridge.performConversationTurn(input);', jsonRoute);
+  const voice = source.indexOf('await companionVoicePlayback.playCompletedTurn({', turn);
+  const response = source.indexOf('sendJson(response, 200, { ...result, voicePlayback });', voice);
+  assert.ok(jsonRoute >= 0 && turn > jsonRoute && voice > turn && response > voice);
   assert.match(source, /createVexLifeBrowserServer\(\{ companionVoicePlayback: companionVoice \}\)/);
 });
 

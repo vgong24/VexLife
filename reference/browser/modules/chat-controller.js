@@ -20,6 +20,38 @@ const THREAD_NODE = {
 
 export const BROWSER_COMPANION_AVAILABILITY_PATH = '/api/v1/companion/availability';
 export const BROWSER_COMPANION_RECOVERY_ACTION_PATH = '/api/v1/companion/recovery-action';
+export const BROWSER_COMPANION_STREAM_API_PATH = '/api/v1/companion/turn/stream';
+export const BROWSER_COMPANION_STREAM_FRAME_SCHEMA = 'vexlife.browser-companion-turn-stream-frame/v1';
+
+export async function readBrowserCompanionTurnStream(response, { onDelta = null } = {}) {
+  if (!response?.ok) return response.json();
+  if (!response.body || typeof response.body.getReader !== 'function') throw new Error('Companion streaming response has no readable body');
+  if (onDelta !== null && typeof onDelta !== 'function') throw new TypeError('Companion onDelta must be null or one function');
+  const reader = response.body.getReader(), decoder = new TextDecoder();
+  let buffer = '', terminal = null;
+  for (;;) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+    for (;;) {
+      const newline = buffer.indexOf('\n');
+      if (newline < 0) break;
+      const line = buffer.slice(0, newline).trim();
+      buffer = buffer.slice(newline + 1);
+      if (!line) continue;
+      const frame = JSON.parse(line);
+      if (frame?.schemaVersion !== BROWSER_COMPANION_STREAM_FRAME_SCHEMA || !Number.isSafeInteger(frame.sequence) || frame.sequence < 1) throw new Error('Companion stream frame contract is invalid');
+      if (frame.frameType === 'DELTA') {
+        if (frame.payload?.truthClass !== 'EPHEMERAL_LOCAL_MODEL_PROGRESS' || typeof frame.payload.contentDelta !== 'string' || frame.payload.effectsPerformed !== false) throw new Error('Companion stream delta contract is invalid');
+        if (onDelta) await onDelta(frame.payload);
+      } else if (frame.frameType === 'FINAL' || frame.frameType === 'FAILURE') terminal = frame.payload;
+      else throw new Error('Companion stream frame type is invalid');
+    }
+    if (done) break;
+  }
+  if (buffer.trim()) throw new Error('Companion stream ended with a partial frame');
+  if (!terminal) throw new Error('Companion stream ended without a terminal frame');
+  return terminal;
+}
 
 const BROWSER_COMPANION_RECOVERY_ACTION_BINDING_KEYS = new Set([
   'schemaVersion',
@@ -825,6 +857,35 @@ export function createChatController({ state, projects, roles, channels, message
     updateNewMessageButton();
   }
 
+  function clearCompanionStreamProgress(channel) {
+    const feed = $('#messageFeed');
+    for (const article of feed.querySelectorAll('[data-companion-stream-progress="true"]')) if (article.dataset.channelRef === channel.channelRef) article.remove();
+  }
+
+  function renderCompanionStreamProgress(channel, content) {
+    if (keyForChannel(channel) !== keyForChannel(currentChannel())) return false;
+    const feed = $('#messageFeed'), wasNearBottom = isNearBottom(feed);
+    let article = [...feed.querySelectorAll('[data-companion-stream-progress="true"]')].find((candidate) => candidate.dataset.channelRef === channel.channelRef) ?? null;
+    if (!article) {
+      article = document.createElement('article');
+      article.className = 'message';
+      article.dataset.companionStreamProgress = 'true';
+      article.dataset.projectRef = channel.projectRef;
+      article.dataset.threadRef = channel.threadRef;
+      article.dataset.channelRef = channel.channelRef;
+      article.dataset.speaker = roles.companion.actorRef;
+      article.dataset.componentRef = 'component.vexlife.message-row';
+      article.dataset.instanceRef = 'instance.message-row.ephemeral-companion-stream';
+      article.dataset.truthClass = 'EPHEMERAL_LOCAL_MODEL_PROGRESS';
+      const thread = currentThread();
+      article.innerHTML = `<div class="avatar" aria-hidden="true">${escapeHtml(roles.companion.avatar)}</div><div><div class="message-header"><strong>${escapeHtml(roleLabel('companion'))} → ${escapeHtml(roleLabel('victor'))}</strong><span>${escapeHtml(thread ? t(thread.topicRef) : channel.threadRef)}</span><span class="message-index">[…]</span></div><div class="message-body"></div></div>`;
+      feed.append(article);
+    }
+    $('.message-body', article).textContent = content;
+    if (wasNearBottom) feed.scrollTop = feed.scrollHeight;
+    return true;
+  }
+
   function appendMessageNode(message, considerScroll = true) {
     const selectedKey = keyForChannel(currentChannel());
     const messageKey = conversationKey(message.projectRef, message.threadRef, message.channelRef);
@@ -1078,7 +1139,7 @@ export function createChatController({ state, projects, roles, channels, message
     const sendIdempotencyKey = sourceMessage?.sendIdempotencyKey ?? `browser-send.${globalThis.crypto.randomUUID()}`;
     if (sourceMessage && !sourceMessage.sendIdempotencyKey) sourceMessage.sendIdempotencyKey = sendIdempotencyKey;
     try {
-      const response = await fetch('/api/v1/companion/turn', {
+      const response = await fetch(BROWSER_COMPANION_STREAM_API_PATH, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         cache: 'no-store',
@@ -1096,7 +1157,14 @@ export function createChatController({ state, projects, roles, channels, message
           ...(semanticRelayAction ? { semanticRelayAction } : {})
         })
       });
-      const body = await response.json();
+      let streamedContent = '';
+      const body = await readBrowserCompanionTurnStream(response, {
+        onDelta(delta) {
+          streamedContent += delta.contentDelta;
+          renderCompanionStreamProgress(channel, streamedContent);
+        }
+      });
+      clearCompanionStreamProgress(channel);
       if (response.ok && body?.state === 'CONFIRMATION_REQUIRED' && body?.truthClass === 'CURRENT_SEMANTIC_RELAY_ATTENTION') {
         const list = listForChannel(channel);
         if (sourceMessage) {
@@ -1169,9 +1237,11 @@ export function createChatController({ state, projects, roles, channels, message
       }
       return true;
     } catch {
+      clearCompanionStreamProgress(channel);
       restoreCompanionDraft(channel, content, sourceMessage);
       return false;
     } finally {
+      clearCompanionStreamProgress(channel);
       companionTurnPending = false;
       await refreshCompanionAvailability();
     }

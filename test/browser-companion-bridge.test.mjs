@@ -222,7 +222,11 @@ test('browser source never routes companion channel through simulatedReply', () 
   const server = `${serverEntry}\n${serverCore}`;
   assert.match(chat, /channel\.roleKey === 'companion'[\s\S]*requestRealCompanionReply/u);
   assert.match(chat, /simulatedReply\(channel, frameAtSend\)[\s\S]*channel\.roleKey === 'companion'\) return false/u);
-  assert.match(chat, /fetch\('\/api\/v1\/companion\/turn'/u);
+  assert.match(chat, /fetch\(BROWSER_COMPANION_STREAM_API_PATH/u);
+  assert.match(chat, /EPHEMERAL_LOCAL_MODEL_PROGRESS/u);
+  assert.match(server, /BROWSER_COMPANION_STREAM_API_PATH/u);
+  assert.match(server, /application\/x-ndjson/u);
+  assert.match(server, /frameType, sequence, payload/u);
   assert.match(chat, /channel\.roleKey === 'companion'[\s\S]*browserCompanionAvailabilityAllowsTurn\(companionAvailability\) && !companionTurnPending[\s\S]*isVexAvailable\(\)/u);
   assert.doesNotMatch(chat, /if \(currentChannel\(\)\?\.roleKey === 'companion'\) void refreshCompanionAvailability\(\);\s+return \{/u);
   const selectThreadSource = chat.slice(chat.indexOf('function selectThread'), chat.indexOf('function renderChannels'));
