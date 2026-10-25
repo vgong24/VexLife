@@ -381,8 +381,54 @@ function routeCurrentSurface(surfaceRef,referenceOpen){if(state.uxProjection===U
 async function setUxProjection(next){const requested=String(next);if(![UX_REFERENCE_PROJECTION,UX_EVOLUTION_PROJECTION].includes(requested))return Object.freeze({state:'BLOCKED',reason:'UNKNOWN_PROJECTION'});if(requested===UX_EVOLUTION_PROJECTION&&!uxEvolutionLocalExecution()){state.uxProjection=UX_REFERENCE_PROJECTION;renderUxProjectionShell();return Object.freeze({state:'BLOCKED',reason:'EVOLUTION_LOCAL_DEV_ONLY'})}if(requested===UX_REFERENCE_PROJECTION&&state.uxActiveSurfaceRef)await closeEvolutionActiveSurface('REFERENCE_FALLBACK');state.uxProjection=requested;if(requested===UX_REFERENCE_PROJECTION)projectFrame();else renderUxProjectionShell();return Object.freeze({state:'PASS',projection:state.uxProjection})}
 function registerEvolutionSurfaceAdapter(surfaceRef,adapter){if(!uxShellSurfaceByRef.has(surfaceRef))throw new Error('Unknown Evolution shell surface: '+surfaceRef);if(!adapter||typeof adapter.mount!=='function')throw new TypeError('Evolution surface adapter must expose mount()');if(adapter.requestClose!==undefined&&typeof adapter.requestClose!=='function')throw new TypeError('Evolution surface adapter requestClose must be a function');uxEvolutionAdapters.set(surfaceRef,Object.freeze({...adapter}));renderUxProjectionShell();return uxProjectionSnapshot()}
 const uxProjectionShell=Object.freeze({snapshot:uxProjectionSnapshot,setProjection:setUxProjection,registerEvolutionSurfaceAdapter,openEvolutionSurface,closeEvolutionActiveSurface,render:renderUxProjectionShell});
+const CURRENT_VEX_CONVERSATION=Object.freeze({
+  projectRef:'project.self-development',
+  threadRef:'thread.self-development.open-conversation',
+  channelRef:'channel.self-development.companion'
+});
+async function openCurrentVexConversation(){
+  const project=projects.find((item)=>item.projectRef===CURRENT_VEX_CONVERSATION.projectRef);
+  const thread=project?.threads.find((item)=>item.threadRef===CURRENT_VEX_CONVERSATION.threadRef);
+  if(!project||!thread)return Object.freeze({state:'HELD',reason:'CURRENT_VEX_CONVERSATION_SOURCE_UNAVAILABLE'});
+  chat.selectThread(project,thread,'element.thread.open-conversation');
+  const companion=chat.channelsForThread(project.projectRef,thread.threadRef)
+    .find((item)=>item.channelRef===CURRENT_VEX_CONVERSATION.channelRef&&item.kind==='DIRECT'&&item.roleKey==='companion');
+  if(!companion)return Object.freeze({state:'HELD',reason:'CURRENT_VEX_RELATIONSHIP_UNAVAILABLE'});
+  chat.selectChannel(companion,'element.channel.companion');
+  if(uxEvolutionLocalExecution()){
+    const projection=await setUxProjection(UX_EVOLUTION_PROJECTION);
+    if(projection.state==='PASS'){
+      const opened=await openEvolutionSurface(CONVERSATION_EVOLUTION_SURFACE_REF);
+      if(opened.state==='OPEN'){
+        projectFrame();
+        return Object.freeze({state:'OPEN',projection:UX_EVOLUTION_PROJECTION,...CURRENT_VEX_CONVERSATION});
+      }
+    }
+  }
+  openContext('chat','element.nav.chat');
+  return Object.freeze({state:'OPEN',projection:UX_REFERENCE_PROJECTION,...CURRENT_VEX_CONVERSATION});
+}
+function bindPersistentVexConversationEntry(){
+  const control=$('#guideClose');
+  if(!control)return null;
+  control.textContent='↗';
+  control.dataset.vexConversationEntry='true';
+  control.dataset.uxSurfaceRef=CONVERSATION_EVOLUTION_SURFACE_REF;
+  control.setAttribute('aria-controls','evolutionActiveSurfaceHost');
+  control.setAttribute('aria-label',`${visibleVexName()} · ${t('region.chat.label')}`);
+  control.title=`${visibleVexName()} · ${t('region.chat.label')}`;
+  if(control.dataset.vexConversationEntryBound!=='true'){
+    control.addEventListener('click',(event)=>{
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void openCurrentVexConversation();
+    },{capture:true});
+    control.dataset.vexConversationEntryBound='true';
+  }
+  return control;
+}
 
-function applyLocalization(){document.documentElement.lang=state.language;$$('[data-i18n]').forEach((element)=>{element.textContent=t(element.dataset.i18n);});$$('[data-i18n-placeholder]').forEach((element)=>{element.placeholder=t(element.dataset.i18nPlaceholder);});$$('[data-i18n-aria-label]').forEach((element)=>{element.setAttribute('aria-label',t(element.dataset.i18nAriaLabel));});$('#languageSelect').value=state.language;projectFrame();guide.renderMessages();}
+function applyLocalization(){document.documentElement.lang=state.language;$$('[data-i18n]').forEach((element)=>{element.textContent=t(element.dataset.i18n);});$$('[data-i18n-placeholder]').forEach((element)=>{element.placeholder=t(element.dataset.i18nPlaceholder);});$$('[data-i18n-aria-label]').forEach((element)=>{element.setAttribute('aria-label',t(element.dataset.i18nAriaLabel));});$('#languageSelect').value=state.language;bindPersistentVexConversationEntry();projectFrame();guide.renderMessages();}
 function toggleSurfaceMenu(open){const next=Boolean(open);$('#surfaceMenu').hidden=!next;$('#surfaceMenuButton').setAttribute('aria-expanded',String(next));}
 function closeTerrainContext(){ $('#terrainContext').hidden=true; }
 
@@ -410,7 +456,7 @@ chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.render
 void familyRoom.refresh();
 
 const purposeWorkspaceEvolution=createPurposeWorkspaceEvolutionAdapter({t,projectRefForTerrain:(terrainRef)=>TERRAIN_CONTEXT[terrainRef]?.projectRef??null});
-globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,familyRoom,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,openHealth,refreshHealthCompanionAvailability,healthCompanionAvailability:healthCompanionAvailabilitySnapshot,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,explainSelectedArchitectureNode,familyComposerIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout,purposeWorkspaceEvolution,uxProjectionShell};
+globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,familyRoom,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,openCurrentVexConversation,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,openHealth,refreshHealthCompanionAvailability,healthCompanionAvailability:healthCompanionAvailabilitySnapshot,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,explainSelectedArchitectureNode,familyComposerIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout,purposeWorkspaceEvolution,uxProjectionShell};
 ensureConversationEvolutionStylesheet();
 ensurePurposeWorkspaceEvolutionStylesheet();
 registerEvolutionSurfaceAdapter(CONVERSATION_EVOLUTION_SURFACE_REF,createConversationEvolutionAdapter({state,chat,roles,messages,conversationKey,t}));

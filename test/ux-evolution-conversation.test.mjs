@@ -154,6 +154,47 @@ test('presentation makes feed/composer primary and context secondary with compac
   assert.doesNotMatch(css,/family-room/);
 });
 
+test('V1 composer sends on unmodified Enter while Shift+Enter remains newline input',()=>{
+  assert.match(source,/textarea\.setAttribute\('enterkeyhint', 'send'\)/);
+  assert.match(source,/textarea\.addEventListener\('keydown'/);
+  assert.match(source,/event\.key==='Enter'/);
+  assert.match(source,/!event\.shiftKey&&!event\.ctrlKey&&!event\.altKey&&!event\.metaKey&&!event\.isComposing/);
+  assert.match(source,/if\(!enterOnly\|\|send\.disabled\)return/);
+  assert.match(source,/event\.preventDefault\(\)/);
+  assert.match(source,/composer\.requestSubmit\(\)/);
+});
+
+test('V1 re-entry helper preserves query-all localization bootstrap',()=>{
+  assert.match(app,/function applyLocalization\(\)\{document\.documentElement\.lang=state\.language;\$\$\('\[data-i18n\]'\)\.forEach/);
+  assert.match(app,/\$\$\('\[data-i18n-placeholder\]'\)\.forEach/);
+  assert.match(app,/\$\$\('\[data-i18n-aria-label\]'\)\.forEach/);
+  assert.doesNotMatch(app,/;\$\('\[data-i18n\]'\)\.forEach/);
+});
+
+test('V1 persistent Vex vessel opens the lived Conversation without adding another menu route',()=>{
+  assert.match(app,/CURRENT_VEX_CONVERSATION=Object\.freeze/);
+  assert.match(app,/projectRef:'project\.self-development'/);
+  assert.match(app,/threadRef:'thread\.self-development\.open-conversation'/);
+  assert.match(app,/channelRef:'channel\.self-development\.companion'/);
+  assert.match(app,/async function openCurrentVexConversation\(\)/);
+  assert.match(app,/chat\.selectThread\(project,thread,'element\.thread\.open-conversation'\)/);
+  assert.match(app,/chat\.selectChannel\(companion,'element\.channel\.companion'\)/);
+  assert.match(app,/await setUxProjection\(UX_EVOLUTION_PROJECTION\)/);
+  assert.match(app,/await openEvolutionSurface\(CONVERSATION_EVOLUTION_SURFACE_REF\)/);
+  assert.match(app,/function bindPersistentVexConversationEntry\(\)/);
+  assert.match(app,/const control=\$\('#guideClose'\)/);
+  assert.match(app,/control\.textContent='↗'/);
+  assert.match(app,/control\.dataset\.vexConversationEntry='true'/);
+  assert.match(app,/control\.setAttribute\('aria-controls','evolutionActiveSurfaceHost'\)/);
+  assert.match(app,/event\.stopImmediatePropagation\(\)/);
+  assert.match(app,/void openCurrentVexConversation\(\)/);
+  assert.doesNotMatch(app,/openVexConversation/);
+  assert.doesNotMatch(app,/ensureCurrentVexConversationMenuEntry/);
+  assert.match(app,/openConversation'\)\.addEventListener\('click',\(\)=>\{void routeCurrentSurface\('surface\.vexlife\.conversation',\(\)=>openContext\('chat'\)\)/);
+  assert.match(app,/document\.addEventListener\('vexlife:open-context',\(event\)=>\{if\(event\.detail\?\.context==='health'\)void openHealth\(\);else openContext\('chat'\);\}\)/);
+  assert.match(app,/openContext,openCurrentVexConversation,openLivingJournal/);
+});
+
 test('accepted app.js seam registers the same canonical Conversation adapter and stylesheet',()=>{
   assert.match(app,/createConversationEvolutionAdapter/);
   assert.match(app,/CONVERSATION_EVOLUTION_SURFACE_REF/);
