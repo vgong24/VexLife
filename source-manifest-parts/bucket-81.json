@@ -9,6 +9,12 @@
       "sha256": "4a1ca3a1dbb1b90304c808caf40fcec6b166158a000386dc744d45112e7b0d55"
     },
     {
+      "path": "blueprint/projects/vexlife-tocompletion.board.view.json",
+      "mode": "100644",
+      "bytes": 573,
+      "sha256": "7f4c4a25bde6d104de094e7a19b9bcafd3e6015f79be2d55afc30f9e60725117"
+    },
+    {
       "path": "blueprint/vessel-studio-practicum-registry.json",
       "mode": "100644",
       "bytes": 5808,

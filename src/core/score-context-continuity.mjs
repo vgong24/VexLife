@@ -979,7 +979,7 @@ function validateSourceBindingAgainstCommittedG01(binding, committed) {
     fail('SCORE_SOURCE_INVALID', 'stored G01 source binding is malformed');
   }
   const observed = committed.byHash.get(binding.eventHash);
-  if (!observed || JSON.stringify(sourceBindingFromEvent(observed)) !== JSON.stringify(binding)) {
+  if (!observed || semanticHash(sourceBindingFromEvent(observed)) !== semanticHash(binding)) {
     fail('SCORE_SOURCE_INVALID', 'stored G01 source binding is absent or substituted from the committed chain', { eventHash: binding.eventHash });
   }
   return observed;
@@ -1165,8 +1165,8 @@ function validateScoreEventSemanticAuthority(event, identity, threadRef) {
   for (const [observed, expected, field] of checks) {
     if (observed !== expected) fail('SCORE_SEMANTIC_AUTHORITY_MISMATCH', `stored Score ${field} differs from historical owner acceptance`, { observed, expected });
   }
-  if (JSON.stringify(event.sourceBindings) !== JSON.stringify(candidate.sourceBindings) ||
-      JSON.stringify(event.classificationEvidenceBindings) !== JSON.stringify(expectedEvidenceBindings)) {
+  if (semanticHash(event.sourceBindings) !== semanticHash(candidate.sourceBindings) ||
+      semanticHash(event.classificationEvidenceBindings) !== semanticHash(expectedEvidenceBindings)) {
     fail('SCORE_SEMANTIC_AUTHORITY_MISMATCH', 'stored Score source/evidence bindings differ from historical owner authority');
   }
   const expectedCorrects = acceptance.transitionKind === 'CORRECTS' ? acceptance.transitionTargetRef : null;
@@ -1632,7 +1632,7 @@ export function appendScoreStatement(input) {
     }
     const sourceEvents = candidate.sourceBindings.map((binding) => validateSourceBindingAgainstCommittedG01(binding, committed));
     const canonicalBindings = sourceEvents.map(sourceBindingFromEvent);
-    if (JSON.stringify(canonicalBindings) !== JSON.stringify(candidate.sourceBindings)) {
+    if (semanticHash(canonicalBindings) !== semanticHash(candidate.sourceBindings)) {
       fail('SCORE_SOURCE_INVALID', 'accepted semantic candidate source bindings differ from exact committed G01 bytes');
     }
     const convenience = {

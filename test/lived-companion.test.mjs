@@ -14,6 +14,7 @@ import {
   initializeLivedCompanionHome,
   materializeLivedCompanionPromptContext,
   performLivedCompanionTurn,
+  readCurrentLivedCompanionThreadWriterCurrentness,
   requestLivedCompanionInference,
   resumeLivedCompanionConversation,
   sanitizeEndpointOrigin,
@@ -123,6 +124,24 @@ function absentProcessId() {
     catch (error) { if (error?.code === 'ESRCH') return pid; }
   }
   throw new Error('could not identify one absent process id for the host proof');
+}
+
+function writeActiveWriterLease(home, threadRef) {
+  const lockDirectory = path.join(home.home, 'runtime', 'thread-writer-locks', home.companionLineageRef);
+  fs.mkdirSync(lockDirectory, { recursive: true });
+  const leaseCore = {
+    schemaVersion: 'vexlife.thread-writer-lease/v1',
+    companionLineageRef: home.companionLineageRef,
+    threadRef,
+    instanceRef: ref('instance.active-writer'),
+    lockToken: crypto.randomUUID(),
+    pid: process.pid,
+    formedAt: new Date().toISOString()
+  };
+  const lease = { ...leaseCore, leaseSha256: semanticHash(leaseCore) };
+  const lockPath = path.join(lockDirectory, threadRef + '.lock');
+  fs.writeFileSync(lockPath, JSON.stringify(lease, null, 2) + '\n', 'utf8');
+  return { lockPath, lease };
 }
 
 function writeAbandonedWriterLease(home, threadRef) {
@@ -1136,6 +1155,146 @@ test('one atomic writer lease prevents concurrent thread forks and releases for 
   } finally { await service.close(); }
 });
 
+
+test('thread writer currentness projection reports idle without creating writer evidence', () => {
+  const home = makeHome('writer-currentness-idle');
+  const threadRef = ref('thread.writer-currentness-idle');
+  const value = readCurrentLivedCompanionThreadWriterCurrentness({ ...home, threadRef });
+  assert.equal(value.state, 'IDLE');
+  assert.equal(value.ownerState, 'NONE');
+  assert.equal(value.currentness, 'CURRENT');
+  assert.equal(value.activeWriterPresent, false);
+  assert.equal(value.recoveryRequired, false);
+  assert.equal(value.attentionRequired, false);
+  assert.equal(value.effectAuthorityGranted, false);
+  assert.equal(value.exactTurnIdentityAvailable, false);
+  assert.equal(fs.existsSync(writerLeasePath(home, threadRef)), false);
+});
+
+test('thread writer currentness projection reports active without leaking lease secrets or mutating the lease', () => {
+  const home = makeHome('writer-currentness-active');
+  const threadRef = ref('thread.writer-currentness-active');
+  const { lockPath, lease } = writeActiveWriterLease(home, threadRef);
+  const beforeBytes = fs.readFileSync(lockPath);
+  const value = readCurrentLivedCompanionThreadWriterCurrentness({ ...home, threadRef });
+  assert.equal(value.state, 'ACTIVE');
+  assert.equal(value.ownerState, 'ACTIVE');
+  assert.equal(value.leaseSha256, lease.leaseSha256);
+  assert.equal(value.exactNextSafeRoute, 'WAIT_FOR_ACTIVE_THREAD_WRITER_OR_RETRY');
+  assert.equal(value.activeWriterPresent, true);
+  assert.equal(value.recoveryRequired, false);
+  assert.equal(value.attentionRequired, false);
+  assert.equal(Object.hasOwn(value, 'ownerPid'), false);
+  assert.equal(Object.hasOwn(value, 'lockToken'), false);
+  assert.equal(JSON.stringify(value).includes(lease.lockToken), false);
+  assert.deepEqual(fs.readFileSync(lockPath), beforeBytes);
+});
+
+test('thread writer currentness projection reports explicit recovery for a proven-absent owner without repairing it', () => {
+  const home = makeHome('writer-currentness-recovery');
+  const threadRef = ref('thread.writer-currentness-recovery');
+  const { lockPath, lease } = writeAbandonedWriterLease(home, threadRef);
+  const beforeBytes = fs.readFileSync(lockPath);
+  const value = readCurrentLivedCompanionThreadWriterCurrentness({ ...home, threadRef });
+  assert.equal(value.state, 'RECOVERY_REQUIRED');
+  assert.equal(value.ownerState, 'ABSENT');
+  assert.equal(value.leaseSha256, lease.leaseSha256);
+  assert.equal(value.exactNextSafeRoute, 'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED');
+  assert.equal(value.activeWriterPresent, false);
+  assert.equal(value.recoveryRequired, true);
+  assert.equal(value.attentionRequired, false);
+  assert.equal(Object.hasOwn(value, 'ownerPid'), false);
+  assert.equal(Object.hasOwn(value, 'lockToken'), false);
+  assert.deepEqual(fs.readFileSync(lockPath), beforeBytes);
+});
+
+test('thread writer currentness projection preserves unverifiable evidence and fails closed', () => {
+  for (const variant of ['malformed', 'invalid-hash', 'invalid-identity']) {
+    const home = makeHome('writer-currentness-unverifiable-' + variant);
+    const threadRef = ref('thread.writer-currentness-unverifiable.' + variant);
+    const evidence = writeUnverifiableWriterLease(home, threadRef, variant);
+    const beforeBytes = fs.readFileSync(evidence.lockPath);
+    const value = readCurrentLivedCompanionThreadWriterCurrentness({ ...home, threadRef });
+    assert.equal(value.state, 'HELD_UNVERIFIABLE');
+    assert.equal(value.ownerState, 'UNVERIFIABLE');
+    assert.equal(value.exactNextSafeRoute, 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER');
+    assert.equal(value.activeWriterPresent, false);
+    assert.equal(value.recoveryRequired, false);
+    assert.equal(value.attentionRequired, true);
+    assert.equal(Object.hasOwn(value, 'ownerPid'), false);
+    assert.equal(Object.hasOwn(value, 'lockToken'), false);
+    assert.deepEqual(fs.readFileSync(evidence.lockPath), beforeBytes);
+  }
+
+  const home = makeHome('writer-currentness-nonregular');
+  const threadRef = ref('thread.writer-currentness-nonregular');
+  const lockPath = writerLeasePath(home, threadRef);
+  fs.mkdirSync(lockPath);
+  const value = readCurrentLivedCompanionThreadWriterCurrentness({ ...home, threadRef });
+  assert.equal(value.state, 'HELD_UNVERIFIABLE');
+  assert.equal(value.leaseValidationState, 'LOCK_PATH_NOT_REGULAR_FILE');
+  assert.equal(value.observedLeaseFileSha256, null);
+  assert.equal(fs.lstatSync(lockPath).isDirectory(), true);
+
+  if (process.platform !== 'win32') {
+    const linkedHome = makeHome('writer-currentness-symlink');
+    const linkedThreadRef = ref('thread.writer-currentness-symlink');
+    const linkedLockPath = writerLeasePath(linkedHome, linkedThreadRef);
+    const outside = path.join(temp('writer-currentness-symlink-target'), 'outside.lock');
+    fs.mkdirSync(path.dirname(linkedLockPath), { recursive: true });
+    fs.writeFileSync(outside, 'outside-writer-evidence\n', 'utf8');
+    const outsideBytes = fs.readFileSync(outside);
+    fs.symlinkSync(outside, linkedLockPath, 'file');
+    const linkedValue = readCurrentLivedCompanionThreadWriterCurrentness({
+      ...linkedHome,
+      threadRef: linkedThreadRef
+    });
+    assert.equal(linkedValue.state, 'HELD_UNVERIFIABLE');
+    assert.equal(linkedValue.ownerState, 'UNVERIFIABLE');
+    assert.equal(linkedValue.leaseValidationState, 'LOCK_PATH_NOT_REGULAR_FILE');
+    assert.equal(linkedValue.observedLeaseFileSha256, null);
+    assert.equal(linkedValue.exactNextSafeRoute, 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER');
+    assert.equal(fs.lstatSync(linkedLockPath).isSymbolicLink(), true);
+    assert.deepEqual(fs.readFileSync(outside), outsideBytes);
+  }
+
+  {
+    const unreadableHome = makeHome('writer-currentness-unreadable');
+    const unreadableThreadRef = ref('thread.writer-currentness-unreadable');
+    const evidence = writeActiveWriterLease(unreadableHome, unreadableThreadRef);
+    const beforeBytes = fs.readFileSync(evidence.lockPath);
+    const originalExistsSync = fs.existsSync;
+    const originalLstatSync = fs.lstatSync;
+    const isUnreadableLock = (value) => typeof value === 'string' && value === evidence.lockPath;
+    try {
+      fs.existsSync = (value) => isUnreadableLock(value) ? false : originalExistsSync(value);
+      fs.lstatSync = (value, ...args) => {
+        if (isUnreadableLock(value)) {
+          const error = new Error('synthetic unreadable thread-writer lease');
+          error.code = 'EACCES';
+          throw error;
+        }
+        return originalLstatSync(value, ...args);
+      };
+      const unreadableValue = readCurrentLivedCompanionThreadWriterCurrentness({
+        ...unreadableHome,
+        threadRef: unreadableThreadRef
+      });
+      assert.equal(unreadableValue.state, 'HELD_UNVERIFIABLE');
+      assert.equal(unreadableValue.ownerState, 'UNVERIFIABLE');
+      assert.equal(unreadableValue.leaseValidationState, 'LOCK_PATH_UNREADABLE');
+      assert.equal(unreadableValue.observedLeaseFileSha256, null);
+      assert.equal(unreadableValue.exactNextSafeRoute, 'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER');
+      assert.equal(unreadableValue.activeWriterPresent, false);
+      assert.equal(unreadableValue.recoveryRequired, false);
+      assert.equal(unreadableValue.attentionRequired, true);
+    } finally {
+      fs.existsSync = originalExistsSync;
+      fs.lstatSync = originalLstatSync;
+    }
+    assert.deepEqual(fs.readFileSync(evidence.lockPath), beforeBytes);
+  }
+});
 
 test('abandoned writer lease is classified for explicit recovery instead of impossible retry', async () => {
   const service = await server();

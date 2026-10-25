@@ -85,6 +85,7 @@
       "registry.vexlife.capabilities.001",
       "registry.vexlife.intent-scheduler.001",
       "module.vexlife.core.capability-assimilation-runtime",
+      "module.vexlife.core.typed-command-runtime",
       "module.vexlife.core.model-connection-turn-composer",
       "module.vexlife.core.browser-prompt-context-runtime",
       "blueprint/ux-evolution-registry.json",
@@ -98,6 +99,7 @@
       "test/browser.test.mjs",
       "test/browser-living-journal-memory-http-route.test.mjs",
       "test/capability-assimilation-runtime.test.mjs",
+      "test/p4-typed-local-effect.test.mjs",
       "test/browser-model-connection-server-composition.test.mjs",
       "test/browser-prompt-context-runtime.test.mjs",
       "test/ux-evolution-host.test.mjs"

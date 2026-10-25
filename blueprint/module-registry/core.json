@@ -204,20 +204,68 @@
   {
     "moduleRef": "module.vexlife.core.conversation",
     "path": "src/core/conversation.mjs",
-    "role": "Addressed direct/group channel and immutable message-envelope contracts.",
+    "role": "Addressed direct/group channel and immutable message-envelope contracts, retaining the stable Semantic Relay compatibility export surface while dedicated Relay interpretation/projection logic is owned by module.vexlife.core.semantic-relay.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "state.channels",
-      "state.messages"
+      "state.messages",
+      "module.vexlife.core.semantic-relay"
     ],
     "writes": [],
     "loadedBy": [],
     "tests": [
-      "test/core.test.mjs"
+      "test/core.test.mjs",
+      "test/core-semantic-relay-module-boundary.test.mjs"
     ],
     "changeMap": [
       "reference/browser/app.js",
-      "src/core/localization.mjs"
+      "src/core/localization.mjs",
+      "src/core/semantic-relay.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.semantic-relay",
+    "path": "src/core/semantic-relay.mjs",
+    "role": "Reference-only Semantic Relay composition and validation: preserves attributed source/intent/meaning/currentness evidence, exact human confirmation/correction boundaries, target projection-mode derivation, semantic-equivalence classification, and message attachment without owning message persistence, translation generation, model runtime, delivery, or UI.",
+    "platformScope": "UNIVERSAL",
+    "reads": [],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.conversation"
+    ],
+    "tests": [
+      "test/core.test.mjs",
+      "test/core-semantic-relay-module-boundary.test.mjs",
+      "test/experience-command-projection.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/conversation.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.conversation-send-admission",
+    "path": "src/core/conversation-send-admission.mjs",
+    "role": "Forms content-addressed no-effect admission receipts binding one exact addressed Conversation send attempt to current source, membership, COMPOSER_SEND, active-turn, writer, resource and context evidence without owning append, inference or generic authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils",
+      "module.vexlife.core.conversation",
+      "blueprint/fragments/actions.json",
+      "blueprint/fragments/permissions.json",
+      "blueprint/process-factory/processes-conversation-and-interface.json",
+      "module.vexlife.core.lived-companion",
+      "module.vexlife.core.resource-admission",
+      "module.vexlife.core.context-lease"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/conversation-send-admission.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/feature-registry.json",
+      "src/core/browser-companion-bridge.mjs",
+      "reference/browser/modules/chat-controller.js"
     ]
   },
   {
@@ -576,10 +624,11 @@
   {
     "moduleRef": "module.vexlife.core.repository-evidence",
     "path": "src/core/repository-evidence.mjs",
-    "role": "Separates live candidate head, tested checkout or merge, base, branch, upstream and repository identity evidence.",
+    "role": "Separates live candidate head, tested checkout or merge, base, branch, upstream and repository identity evidence, and forms bounded exact local-source observations by composing Source Manifest index identity with byte-sensitive changed worktree evidence.",
     "platformScope": "BUILD_TIME",
     "reads": [
-      "Git worktree and explicit environment receipts"
+      "Git worktree and explicit environment receipts",
+      "module.vexlife.core.source-manifest"
     ],
     "writes": [],
     "loadedBy": [
@@ -589,10 +638,12 @@
     ],
     "tests": [
       "test/orientation.test.mjs",
-      "test/foundation-health.test.mjs"
+      "test/foundation-health.test.mjs",
+      "test/live-source-observation.test.mjs"
     ],
     "changeMap": [
-      ".github/workflows/check.yml"
+      ".github/workflows/check.yml",
+      "src/core/live-workspace-observation.mjs"
     ]
   },
   {
@@ -714,10 +765,16 @@
   {
     "moduleRef": "module.vexlife.core.state",
     "path": "src/core/state.mjs",
-    "role": "Validates typed scheduler and continuity events into canonical aggregates, rejects same-ref content conflicts, keeps transient contexts separate, applies atomic supersessions and exact recurrence chains, then derives distinct Queue, Terrain, Health, Guide and bounded current projections.",
+    "role": "Owns Intent Scheduler State aggregate, recovery/prior-state receipts and Queue/Terrain/Health/Guide projections while remaining the stable compatibility/navigation entrypoint that re-exports dedicated Continuity Evolution State; it no longer implements Continuity Evolution internals.",
     "platformScope": "UNIVERSAL",
     "reads": [
-      "module.vexlife.core.state-relay"
+      "module.vexlife.core.state-relay",
+      "module.vexlife.core.utils",
+      "module.vexlife.core.intent-checkpoint",
+      "module.vexlife.core.context-lease",
+      "module.vexlife.core.intent-workgraph",
+      "module.vexlife.core.scheduler-runtime-trust",
+      "module.vexlife.core.continuity-evolution-state"
     ],
     "writes": [],
     "loadedBy": [
@@ -726,12 +783,37 @@
     ],
     "tests": [
       "test/intent-scheduler.test.mjs",
-      "test/continuity-evolution-router.test.mjs"
+      "test/core-state-module-boundary.test.mjs"
     ],
     "changeMap": [
       "blueprint/fragments/state-domains.json",
       "docs/INTENT-ORCHESTRATION-SCHEDULER.md",
-      "docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md"
+      "src/core/continuity-evolution-state.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.continuity-evolution-state",
+    "path": "src/core/continuity-evolution-state.mjs",
+    "role": "Owns canonical Continuity Evolution State aggregates/events, current-record-set and simulated-currentness receipts, and human/transient/Burden/applicable projections over exact router-owned lineage without owning Intent Scheduler state, continuity routing/acceptance semantics, or external effects.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.state-relay",
+      "module.vexlife.core.utils",
+      "module.vexlife.core.continuity-evolution-router",
+      "module.vexlife.core.burden-release"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.state"
+    ],
+    "tests": [
+      "test/core-state-module-boundary.test.mjs",
+      "test/continuity-evolution-router.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/state.mjs",
+      "docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md",
+      "blueprint/evolution-registry.json"
     ]
   },
   {
@@ -972,6 +1054,27 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.lived-companion-connection",
+    "path": "src/core/lived-companion-connection.mjs",
+    "role": "Own admitted numeric-loopback Companion model-runtime HTTP invocation, redirect/timeout confinement, closed runtime normalization and invocation evidence without owning prompt context, turn persistence, Conversation state, model identity or execution scheduling.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "src/core/model-runtime-adapter.mjs",
+      "src/core/model-turn-witness.mjs"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.lived-companion"
+    ],
+    "tests": [
+      "test/lived-companion-connection.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/lived-companion.mjs",
+      "docs/LIVED-COMPANION-CONNECTION.md"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.lived-companion",
     "path": "src/core/lived-companion.mjs",
     "role": "Provider-neutral device-private companion turn persistence, typed failures, atomic heads, clean shutdown, and exact fresh-process resume.",
@@ -981,7 +1084,9 @@
       "state.device-family",
       "state.messages",
       "state.context",
-      "state.model"
+      "state.model",
+      "module.vexlife.core.lived-companion-connection",
+      "module.vexlife.core.family-companion-prompt-context"
     ],
     "writes": [
       "selected Vex Home conversations/context/runtime/recovery"
@@ -1282,14 +1387,35 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.interaction-control",
+    "path": "src/core/interaction-control.mjs",
+    "role": "Projects read-only active-turn identity/currentness over real interaction lifecycle and current cancellation-target evidence; explicit ABSENT, UNKNOWN and STALE states fail closed and never grant send or effect authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.browser-companion-bridge"
+    ],
+    "tests": [
+      "test/interaction-control.test.mjs",
+      "test/browser-companion-bridge.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/browser-companion-bridge.mjs"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.browser-companion-bridge",
     "path": "src/core/browser-companion-bridge.mjs",
-    "role": "Server-side browser Companion bridge that binds canonical Vex Home identity, admitted loopback runtime identity, semantic relay input, and durable Lived Companion turns; capability assimilation remains an optional server-owned runtime policy and internal tool observations never become human messages.",
+    "role": "Server-side browser Companion bridge that binds canonical Vex Home identity, admitted loopback runtime identity, semantic relay input, durable Lived Companion turns, and read-only Interaction Control active-turn currentness when a validated current Context Lease supplies the rightful cancellation target; capability assimilation remains optional server-owned runtime policy and internal tool observations never become human messages.",
     "platformScope": "BROWSER",
     "reads": [
       "module.vexlife.core.lived-companion",
       "module.vexlife.core.conversation",
-      "module.vexlife.core.capability-assimilation-runtime"
+      "module.vexlife.core.capability-assimilation-runtime",
+      "module.vexlife.core.interaction-control"
     ],
     "writes": [],
     "loadedBy": [
@@ -1302,6 +1428,34 @@
     "changeMap": [
       "src/core/lived-companion.mjs",
       "scripts/serve-browser.mjs",
+      "docs/CAPABILITY-ASSIMILATION-RUNTIME.md",
+      "src/core/interaction-control.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.typed-command-runtime",
+    "path": "src/core/typed-command-runtime.mjs",
+    "role": "Bind one source-registered typed local process to a separate current one-time authority, exact Native Worker execution/completion, and one bounded no-effect result observation for later semantic reinjection without granting the model standing process authority.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.native-worker-supervisor",
+      "module.vexlife.core.utils",
+      "blueprint/cli-typed-command-registry.json"
+    ],
+    "writes": [
+      "selected Vex Home runtime Native Worker receipts/completion for the exact admitted typed-command effect only"
+    ],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
+    "tests": [
+      "test/p4-typed-local-effect.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/capability-registry.json",
+      "blueprint/capability-runtime-startup-policy.json",
+      "src/core/capability-assimilation-runtime.mjs",
+      "scripts/serve-browser-core.mjs",
       "docs/CAPABILITY-ASSIMILATION-RUNTIME.md"
     ]
   },
@@ -1371,6 +1525,65 @@
       "reference/browser/evolution/living-journal.css",
       "test/ux-evolution-host.test.mjs",
       "test/ux-evolution.test.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.live-workspace-observation",
+    "path": "src/core/live-workspace-observation.mjs",
+    "role": "Coordinates revisioned read-only Live Workspace convergence over source-owned truth, including the canonical adapter to Repository Evidence local-source observation, preserving semantic no-ops, last-known-good truth and stale-result rejection without becoming an observation or Git truth owner.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.utils",
+      "module.vexlife.core.repository-evidence"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/live-workspace.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/repository-evidence.mjs",
+      "scripts/serve-browser.mjs",
+      "scripts/serve-browser-core.mjs"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.home-maps-place-search",
+    "path": "src/core/home-maps-place-search.mjs",
+    "role": "Deterministic provider-neutral Home-routed Maps place-search admission over current Home Bridge session authority and exact runtime capability scope; performs no provider request or Home write.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.home-bridge",
+      "src/core/home-bridge-session-authority.mjs",
+      "capability.vexlife.maps-place-search"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/home-maps-place-search.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/fragments/actions.json",
+      "blueprint/capability-registry.json",
+      "docs/VEXHOME-MAPS-PLACE-SEARCH.md"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.home-maps-photon-place-search",
+    "path": "src/core/home-maps-photon-place-search.mjs",
+    "role": "Photon-specific no-effect forward place-search protocol adapter over exact accepted Home Maps admission; forms a typed /api descriptor and projects supplied bounded GeoJSON Point results with canonical OpenStreetMap identity and attribution without owning transport, endpoint selection, persistence, location authority, destination selection, routing or navigation.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.home-maps-place-search",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/home-maps-photon-place-search.test.mjs"
+    ],
+    "changeMap": [
+      "docs/VEXHOME-MAPS-PLACE-SEARCH.md"
     ]
   }
 ]

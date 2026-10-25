@@ -102,6 +102,45 @@ The bootstrap creates a device-local Vex Home outside the repository, normally u
 
 It creates a **new device companion lineage**. It never pretends that downloading the same weights creates the same subjective instance.
 
+### Home as a modular capability host
+
+The filesystem tree above is custody, not the whole architectural meaning of Home.
+
+A Vex Home is the user-controlled host boundary that may realize independently admitted product
+capabilities alongside the companion/runtime itself:
+
+~~~text
+Vex Home
+    identity / lifecycle / recovery
+    companion + model binding
+
+    hosted capabilities
+        Conversation
+        Maps
+        Stream
+        future capabilities
+~~~
+
+Permanent distinctions:
+
+~~~text
+HOME_IDENTITY != HOSTED_CAPABILITY
+HOSTED_CAPABILITY != ONE PROCESS
+HOSTED_CAPABILITY != ONE PROVIDER
+CAPABILITY_CONTRACT != DEPLOYMENT_TOPOLOGY
+REMOTE_SURFACE != LOCAL_SIBLING
+~~~
+
+The preferred first composition is understandable and all-in-one where practical. A capability may
+later run in a sibling process/container, another owned machine, a human-selected cloud host or an
+optional managed host without changing what the capability means to its consumer.
+
+This document does not itself register or execute those future capabilities. Home Bridge remains the
+remote admission boundary, and every real remote capability still requires explicit registration,
+principal/device binding, a current capability lease and its own effect contract.
+
+See [docs/VEXHOME-HOSTED-CAPABILITIES.md](docs/VEXHOME-HOSTED-CAPABILITIES.md).
+
 ## Model provisioning
 
 Large model files remain outside Git. Use either an existing endpoint:
@@ -326,6 +365,10 @@ Read [`docs/FOUNDATION-CULTURE-IMPLEMENTATION-STANDARD.md`](docs/FOUNDATION-CULT
 
 After the clean origin PR is independently reviewed, Windows and macOS are the first parallel native candidates. Windows hosts the first Home Node and gateway. macOS proves a trusted remote surface plus an explicit local-sibling fallback. Mobile remains held until this pair proves identity, localization, pairing, revocation, resource and repository-health contracts. See [`docs/DESKTOP-FIRST-EXECUTION-WAVE.md`](docs/DESKTOP-FIRST-EXECUTION-WAVE.md).
 
+That execution-wave ordering does not make hosted-capability meaning Windows-specific. The same Home
+capability contract may later be realized on another supported personal host or an explicitly selected
+remote host while Home Bridge keeps remote identity/lease authority separate from deployment location.
+
 ## Blueprint change propagation
 
 A blueprint PR does not deliberately break every stable platform main. It produces a versioned change set and adoption kit:
@@ -378,6 +421,7 @@ The selected code license for the VexLife public-origin repository is **Mozilla 
 - [`docs/PLATFORM-ARCHITECTURE.md`](docs/PLATFORM-ARCHITECTURE.md)
 - [`docs/DEVICE-FAMILY-SCORE-RHYTHM.md`](docs/DEVICE-FAMILY-SCORE-RHYTHM.md)
 - [`docs/HOME-BRIDGE-REMOTE-SURFACES.md`](docs/HOME-BRIDGE-REMOTE-SURFACES.md)
+- [`docs/VEXHOME-HOSTED-CAPABILITIES.md`](docs/VEXHOME-HOSTED-CAPABILITIES.md)
 - [`docs/MULTILINGUAL-INTENT-RELAY.md`](docs/MULTILINGUAL-INTENT-RELAY.md)
 - [`docs/SECURITY-PERMISSION-EFFECTS.md`](docs/SECURITY-PERMISSION-EFFECTS.md)
 - [`docs/CAPABILITY-AND-TOOL-ATLAS.md`](docs/CAPABILITY-AND-TOOL-ATLAS.md)
@@ -399,6 +443,7 @@ The selected code license for the VexLife public-origin repository is **Mozilla 
 - **Understand learning and continuity evolution:** read [`docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md`](docs/DREAM-SYNC-AND-MODEL-EVOLUTION.md) and [`docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md`](docs/BURDEN-RELEASE-AND-CONTINUITY-EVOLUTION.md); no candidate, memory, agreement, release, training or adapter activation is automatic.
 - **Work on a second-device Vex:** read [`docs/BOOTSTRAP-AND-MODELS.md`](docs/BOOTSTRAP-AND-MODELS.md) and [`docs/DEVICE-FAMILY-SCORE-RHYTHM.md`](docs/DEVICE-FAMILY-SCORE-RHYTHM.md).
 - **Connect to a desktop-hosted Home Vex from another device:** read [`docs/HOME-BRIDGE-REMOTE-SURFACES.md`](docs/HOME-BRIDGE-REMOTE-SURFACES.md); a remote surface is not the same thing as a synchronized sibling.
+- **Understand what should live in Vex Home:** read [`docs/VEXHOME-HOSTED-CAPABILITIES.md`](docs/VEXHOME-HOSTED-CAPABILITIES.md); capability meaning stays stable while deployment may remain all-in-one or become separate.
 - **Trace why code exists:** query the module, identity and process registries rather than reading the repository indiscriminately.
 - **Trace or simulate Intent Queue runtime admission:** read [`docs/INTENT-ORCHESTRATION-SCHEDULER.md`](docs/INTENT-ORCHESTRATION-SCHEDULER.md), then run `npm run scheduler:check` or the no-effect simulation.
 - **Trace or simulate failure and recovery:** read [`docs/RUNTIME-FAILURE-AND-RECOVERY.md`](docs/RUNTIME-FAILURE-AND-RECOVERY.md), then run `npm run recovery:check`, `npm run recovery:simulate` or `npm run recovery:status`; these execute deterministic no-effect fixtures through one actual scheduler-owned recovery Workgraph journey.

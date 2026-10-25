@@ -3,6 +3,12 @@
   "bucketId": "14",
   "files": [
     {
+      "path": "docs/VEXHOME-MAPS-PLACE-SEARCH.md",
+      "mode": "100644",
+      "bytes": 11054,
+      "sha256": "69cbdae9f892a721a9bf5647983ebfd19dde7f7905d7946c1b16c71d0b44a6f7"
+    },
+    {
       "path": "fixtures/companion-navigation/vnav-00.synthetic.json",
       "mode": "100644",
       "bytes": 3465,
@@ -23,8 +29,8 @@
     {
       "path": "test/vex-core-family-session-authority.test.mjs",
       "mode": "100644",
-      "bytes": 12503,
-      "sha256": "ff43a3bb88ec645ea3981a78145fbf665554b6368dab8f35da607bdc8d32e5d7"
+      "bytes": 13599,
+      "sha256": "b9a43727b4736431358eff18e90d66fd614450d279f5f1d8eca9177880f2d326"
     }
   ]
 }

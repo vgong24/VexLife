@@ -11,14 +11,20 @@
     {
       "path": "test/browser-family-room-projection.test.mjs",
       "mode": "100644",
-      "bytes": 43375,
-      "sha256": "b5515a31c71c87656452bfef5f19a678d9704dbd5faa4b29e0e48c9a9c3624be"
+      "bytes": 43671,
+      "sha256": "f1778d128c867eadc52027f07c74400965d59df59177fc14928eac297984e781"
     },
     {
       "path": "test/experience-guidance-devex-perception.test.mjs",
       "mode": "100644",
       "bytes": 15329,
       "sha256": "f865d91188cc4b03aea97d13fbf8d8b548545e949e627f0df82cd8650d6e0013"
+    },
+    {
+      "path": "test/home-maps-photon-place-search.test.mjs",
+      "mode": "100644",
+      "bytes": 14625,
+      "sha256": "660baf1b5916f2281ce48dabccb205f556e78d40ae833d16a3fc5a6013130f1b"
     }
   ]
 }

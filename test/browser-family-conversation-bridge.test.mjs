@@ -15,12 +15,16 @@ import {
   transitionFamilyMember
 } from '../src/core/family-space-store.mjs';
 import { createFamilyChannel } from '../src/core/family-conversation.mjs';
-import { readConversationChannel } from '../src/core/conversation-store.mjs';
+import {
+  materializeConversationChannel,
+  readConversationChannel
+} from '../src/core/conversation-store.mjs';
 import {
   BrowserFamilyConversationBridgeError,
   appendBrowserFamilyMessage,
   listBrowserFamilyChannels,
-  readBrowserFamilyConversation
+  readBrowserFamilyConversation,
+  readBrowserFamilyThreadHistory
 } from '../src/core/browser-family-conversation-bridge.mjs';
 
 const T0 = '2026-09-12T10:00:00.000Z';
@@ -29,6 +33,7 @@ const T2 = '2026-09-12T10:20:00.000Z';
 const T3 = '2026-09-12T10:30:00.000Z';
 const T4 = '2026-09-12T10:40:00.000Z';
 const T5 = '2026-09-12T10:50:00.000Z';
+const T6 = '2026-09-12T11:00:00.000Z';
 const T9 = '2026-09-12T15:00:00.000Z';
 const SPACE = 'space.vex-family.bridge-test';
 const GROUP = 'channel.vex-family.bridge-group';
@@ -187,6 +192,25 @@ test('VFB-03: stale membership generation fails before append or read', (t) => {
   );
 });
 
+test('VFB-03B: thread-history intent rejects caller-authored authority and stale currentness', (t) => {
+  const { home, record, channel } = setupFamily(t);
+  const forged = readArgs({ home, record, channel, name: 'victor' });
+  forged.intent.principalBindingRef = 'principal-binding.forged';
+  assert.throws(
+    () => readBrowserFamilyThreadHistory(forged),
+    (error) => error instanceof BrowserFamilyConversationBridgeError
+      && error.code === 'BROWSER_FAMILY_BRIDGE_UNTRUSTED_FIELD'
+  );
+
+  const stale = readArgs({ home, record, channel, name: 'victor' });
+  stale.intent.expectedMembershipGeneration -= 1;
+  assert.throws(
+    () => readBrowserFamilyThreadHistory(stale),
+    (error) => error instanceof BrowserFamilyConversationBridgeError
+      && error.code === 'BROWSER_FAMILY_BRIDGE_STALE'
+  );
+});
+
 test('VFB-04: removed or revoked Family member cannot append or receive a new current projection', (t) => {
   const { home, record } = setupFamily(t);
   const transitioned = transitionFamilyMember({
@@ -254,6 +278,88 @@ test('VFB-05: FROM_JOIN excludes pre-join durable history without rewriting earl
   assert.deepEqual(visible.messages.map((message) => message.messageRef), [after.message.messageRef]);
   const durable = readConversationChannel({ home, channelRef: GROUP });
   assert.deepEqual(durable.messages.map((message) => message.messageRef), [before.message.messageRef, after.message.messageRef]);
+});
+
+test('VFB-05B: authenticated thread history preserves cross-generation source truth and FROM_JOIN visibility', (t) => {
+  const { home, record: initialRecord, channel: initialChannel } = setupFamily(t, ['alex']);
+  const materialized = materializeConversationChannel({
+    home,
+    channel: initialChannel,
+    instanceRef: 'instance.vf02c.thread-history.initial-channel',
+    observedAt: T3
+  });
+  assert.equal(materialized.state, 'MATERIALIZED');
+
+  const beforeBri = appendBrowserFamilyMessage(appendArgs({
+    home,
+    record: initialRecord,
+    channel: initialChannel,
+    content: 'Before Bri joined.',
+    idempotencyKey: 'thread-history-before-bri',
+    now: T3
+  }));
+
+  const currentRecord = addMember(home, initialRecord, 'bri', T4);
+  const currentChannel = createFamilyChannel({
+    channelRef: 'channel.vex-family.bridge-group.after-bri',
+    threadRef: initialChannel.threadRef,
+    familySpaceRecord: currentRecord,
+    createdAt: T4
+  });
+  const currentMaterialized = materializeConversationChannel({
+    home,
+    channel: currentChannel,
+    instanceRef: 'instance.vf02c.thread-history.after-bri-channel',
+    observedAt: T4
+  });
+  assert.equal(currentMaterialized.state, 'MATERIALIZED');
+
+  const afterBri = appendBrowserFamilyMessage(appendArgs({
+    home,
+    record: currentRecord,
+    channel: currentChannel,
+    content: 'After Bri joined.',
+    idempotencyKey: 'thread-history-after-bri',
+    now: T5
+  }));
+
+  const victorHistory = readBrowserFamilyThreadHistory(
+    readArgs({ home, record: currentRecord, channel: currentChannel, name: 'victor', now: T6 })
+  );
+  assert.equal(victorHistory.state, 'CURRENT');
+  assert.equal(victorHistory.spaceRef, SPACE);
+  assert.equal(victorHistory.threadRef, initialChannel.threadRef);
+  assert.equal(victorHistory.currentChannelRef, currentChannel.channelRef);
+  assert.equal(victorHistory.membershipGeneration, currentRecord.membershipGeneration);
+  assert.deepEqual(victorHistory.segmentRefs, [initialChannel.channelRef, currentChannel.channelRef]);
+  assert.deepEqual(
+    victorHistory.messages.map((message) => message.messageRef),
+    [beforeBri.message.messageRef, afterBri.message.messageRef]
+  );
+  assert.deepEqual(
+    victorHistory.messages.map((message) => message.channelRef),
+    [initialChannel.channelRef, currentChannel.channelRef]
+  );
+  assert.ok(victorHistory.messages[0].witnessRefs.includes('principal.alex'));
+  assert.equal(victorHistory.messages[0].witnessRefs.includes('principal.bri'), false);
+  assert.ok(victorHistory.messages[1].witnessRefs.includes('principal.bri'));
+  assert.equal(Object.hasOwn(victorHistory.messages[0], 'membershipSnapshotRef'), false);
+  assert.equal(Object.hasOwn(victorHistory.messages[0], 'familySpaceRecordSha256'), false);
+  assert.equal(Object.hasOwn(victorHistory, 'principalRef'), false);
+
+  const briHistory = readBrowserFamilyThreadHistory(
+    readArgs({ home, record: currentRecord, channel: currentChannel, name: 'bri', now: T6 })
+  );
+  assert.deepEqual(
+    briHistory.messages.map((message) => message.messageRef),
+    [afterBri.message.messageRef]
+  );
+
+  const currentRead = readBrowserFamilyConversation(
+    readArgs({ home, record: currentRecord, channel: currentChannel, name: 'victor', now: T6 })
+  );
+  assert.deepEqual(currentRead.messages.map((message) => message.messageRef), [afterBri.message.messageRef]);
+  assert.equal(Object.hasOwn(currentRead.messages[0], 'witnessRefs'), false);
 });
 
 test('VFB-06: private-channel metadata is not listed or readable by a Family-room-only member', (t) => {

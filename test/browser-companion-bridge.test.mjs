@@ -587,5 +587,106 @@ test('browser bridge carries one server-owned same-turn model-connection project
   }
 });
 
+test('browser active-turn projection is UNKNOWN until a current Context Lease supplies cancellation identity', async () => {
+  const { root, home } = makeHome();
+  const model = await startModelServer();
+  let observedProjection = null;
+  let bridge = null;
+  try {
+    const capabilityRuntime = {
+      resolveTurn: async ({ inference, endpointProfile, taskIntent, inMemoryAuthorization, timeoutMs }) => {
+        const pending = inference({ endpointProfile, requestContent: taskIntent, inMemoryAuthorization, timeoutMs });
+        await new Promise((resolve) => setImmediate(resolve));
+        observedProjection = bridge.activeTurnCurrentness();
+        return { response: await pending };
+      }
+    };
+    bridge = createBrowserCompanionBridge({
+      home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.browser-active-turn-unknown',
+      capabilityRuntime
+    });
+    const result = await bridge.performTurn({
+      threadRef: 'thread.local-vex.active-turn-unknown',
+      channelRef: 'channel.local-vex.companion',
+      content: 'Observe the active turn without inventing cancellation identity.'
+    });
+    assert.equal(observedProjection.state, 'UNKNOWN');
+    assert.equal(observedProjection.currentness, 'UNKNOWN');
+    assert.equal(observedProjection.phase, 'ACTIVE');
+    assert.equal(observedProjection.turnRefOrNull, result.turnRef);
+    assert.equal(observedProjection.cancellationTargetRefOrNull, null);
+    assert.equal(observedProjection.reasonCodeOrNull, 'CANCELLATION_TARGET_UNAVAILABLE');
+    assert.equal(observedProjection.effectAuthorityGranted, false);
+    assert.equal(bridge.activeTurnCurrentness().state, 'ABSENT');
+    assert.equal(bridge.activeTurnCurrentness({ expectedTurnRef: result.turnRef }).state, 'STALE');
+  } finally {
+    await model.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('browser active-turn projection becomes CURRENT only after validated Context Lease cancellation binding', async () => {
+  const { root, home } = makeHome();
+  const model = await startModelServer();
+  const threadRef = 'thread.local-vex.active-turn-current';
+  const lease = browserPromptContextLease([]);
+  const continuityProjection = browserPromptContinuity('companion-lineage.vexlife.browser-companion-test', threadRef, lease);
+  let observedProjection = null;
+  let bridge = null;
+  try {
+    const capabilityRuntime = {
+      resolveTurn: async ({ inference, endpointProfile, taskIntent, inMemoryAuthorization, timeoutMs }) => {
+        const pending = inference({ endpointProfile, requestContent: taskIntent, inMemoryAuthorization, timeoutMs });
+        await new Promise((resolve) => setImmediate(resolve));
+        observedProjection = bridge.activeTurnCurrentness();
+        return { response: await pending };
+      }
+    };
+    bridge = createBrowserCompanionBridge({
+      home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.browser-active-turn-current',
+      capabilityRuntime,
+      promptContextResolver: async () => ({
+        contextLease: lease,
+        continuityProjection,
+        selectedConversationEventRefs: []
+      }),
+      promptContextAuthorityVerifier: async (query) => browserPromptAuthority(
+        home,
+        'companion-lineage.vexlife.browser-companion-test',
+        threadRef,
+        lease,
+        continuityProjection,
+        query
+      )
+    });
+    const result = await bridge.performTurn({
+      threadRef,
+      channelRef: 'channel.local-vex.companion',
+      content: 'Bind this active turn only to the current Context Lease.'
+    });
+    assert.equal(observedProjection.state, 'CURRENT');
+    assert.equal(observedProjection.currentness, 'CURRENT');
+    assert.equal(observedProjection.phase, 'ACTIVE');
+    assert.equal(observedProjection.turnRefOrNull, result.turnRef);
+    assert.equal(observedProjection.cancellationTargetRefOrNull, lease.cancellationTokenRef);
+    assert.equal(observedProjection.cancellationTargetExpiresAtOrNull, lease.expiresAt);
+    assert.equal(observedProjection.sourceRefs.includes(lease.leaseRef), true);
+    assert.equal(observedProjection.effectAuthorityGranted, false);
+    assert.equal(bridge.activeTurnCurrentness().state, 'ABSENT');
+    const stale = bridge.activeTurnCurrentness({ expectedTurnRef: result.turnRef });
+    assert.equal(stale.state, 'STALE');
+    assert.equal(stale.reasonCodeOrNull, 'EXPECTED_TURN_NOT_ACTIVE');
+  } finally {
+    await model.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 
 // [VXG RealForever]

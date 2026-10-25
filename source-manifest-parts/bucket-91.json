@@ -11,8 +11,8 @@
     {
       "path": "blueprint/module-registry/vex-family.json",
       "mode": "100644",
-      "bytes": 899,
-      "sha256": "7f29d499ceb7cc97284fbea8fc0a4e6f149429c07e8bc28e68912537c0a3ac9c"
+      "bytes": 2000,
+      "sha256": "9b448d5b87a849c3e2c12c3590dcc7abec0b9af31b44061357a93fe7557a0fd8"
     },
     {
       "path": "reference/browser/integration/feature-perceptibility-suite.js",

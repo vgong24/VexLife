@@ -13,6 +13,7 @@ import {
 const operationalProfiles = JSON.parse(fs.readFileSync(new URL('../blueprint/vex-operational-profiles.json', import.meta.url), 'utf8'));
 const modelBundleRegistry = JSON.parse(fs.readFileSync(new URL('../blueprint/model-bundle-registry.json', import.meta.url), 'utf8'));
 const artifactRegistry = JSON.parse(fs.readFileSync(new URL('../blueprint/artifact-registry.json', import.meta.url), 'utf8'));
+const artifactDeliveryRegistry = JSON.parse(fs.readFileSync(new URL('../blueprint/artifact-delivery-registry.json', import.meta.url), 'utf8'));
 const profile = operationalProfiles.profiles[0];
 
 test('current G0 v1 bundle remains the live release-qualified selection', () => {
@@ -82,6 +83,36 @@ test('current M4 is registered as an exact 12-member candidate while G0 remains 
     .update(rows.map((row) => `${row.path}|${row.bytes}|${row.sha256}\n`).join(''))
     .digest('hex');
   assert.equal(aggregate, candidate.contentSetSha256);
+});
+
+test('accepted Heretic 27B is registered as an exact 11-member release-qualified v2 bundle while G0 remains active', () => {
+  const candidateRef = 'model-bundle.vexlife.heretic.qwen3.8-27b.mlx4.329658ee8f27.001';
+  const candidate = modelBundleRegistry.bundles.find((item) => item.modelBundleRef === candidateRef);
+  assert.ok(candidate);
+  assert.equal(modelBundleRegistry.activeModelBundleRef, 'model-bundle.vexlife.g0.qwen3.5-4b.q4-k-m.001');
+  assert.equal(candidate.bundleSchemaVersion, 'vexlife.model-bundle/v2');
+  assert.equal(candidate.state, 'RELEASE_QUALIFIED');
+  assert.equal(candidate.generationRef, 'generation.devex.heretic27b4.preexisting-certified-foundation.normalized.20261001A');
+  assert.equal(candidate.modelProfileRef, 'model-profile.devex.qwen38-27b-heretic-mlx4.certified.20260928A');
+  assert.equal(candidate.artifactBindings.length, 11);
+  assert.equal(candidate.artifactSetRef, 'artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2');
+  assert.equal(candidate.contentSetSha256, '329658ee8f270056bc29d8a6cfd6e9f1b7d9d14c659452c9e4dd46fc7c78d780');
+  assert.deepEqual(candidate.runtimeRealizationRefs, ['adapter.runtime.mlx.macos-victor.001']);
+  const resolution = resolveModelBundleByRef({ registry: modelBundleRegistry, artifactRegistry, modelBundleRef: candidateRef });
+  assert.equal(resolution.state, 'MODEL_BUNDLE_RUNTIME_REALIZATION_HELD');
+  assert.equal(resolution.artifacts.length, 11);
+  const rows = resolution.artifacts.map((artifact) => ({ path: artifact.filename, bytes: artifact.expectedBytes, sha256: artifact.sha256 })).sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+  assert.deepEqual(rows.map((row) => row.path), ['.gitattributes','README.md','chat_template.jinja','config.json','generation_config.json','model-00001-of-00003.safetensors','model-00002-of-00003.safetensors','model-00003-of-00003.safetensors','model.safetensors.index.json','tokenizer.json','tokenizer_config.json']);
+  assert.equal(rows.reduce((sum, row) => sum + row.bytes, 0), 15153242506);
+  const aggregate = crypto.createHash('sha256');
+  for (const row of rows) { aggregate.update(row.path); aggregate.update('\0'); aggregate.update(row.sha256); aggregate.update('\0'); aggregate.update(String(row.bytes)); aggregate.update('\n'); }
+  assert.equal(aggregate.digest('hex'), candidate.contentSetSha256);
+  for (const binding of candidate.artifactBindings) {
+    const channels = artifactDeliveryRegistry.channelsByArtifactRef[binding.artifactRef];
+    assert.equal(channels.length, 1);
+    assert.equal(channels[0].transportClass, 'DIRECT_HTTPS_FILE_V1');
+    assert.match(channels[0].url, /^https:\/\/huggingface\.co\/donedynamics\/Qwen3\.8-27B-heretic-MLX-4bit\/resolve\/808b82a2bd04b2bac362b5d0b7a1197aeea59e57\//u);
+  }
 });
 
 test('generalized v2 candidate can coexist with current G0 and resolve structurally without runtime admission', () => {

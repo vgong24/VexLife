@@ -9,6 +9,12 @@
       "sha256": "a20e3d1133ae5493efc4efb925e4f0b137b7dd017189cc7cdd1fdf4ace6ce4e9"
     },
     {
+      "path": "blueprint/project-reconciliation-registry.json",
+      "mode": "100644",
+      "bytes": 1673,
+      "sha256": "ba3f977f32c24b5244979775a8747ffea6d5e1b5c826eca92aad86c32cf844fd"
+    },
+    {
       "path": "docs/vexlife-assortment/practicum-candidates/vex-node-01/README.md",
       "mode": "100644",
       "bytes": 2437,
@@ -23,8 +29,8 @@
     {
       "path": "test/lived-companion.test.mjs",
       "mode": "100644",
-      "bytes": 106373,
-      "sha256": "e5fb5dcd91059b5b9ec03562729caeb6f012e0fed0f7869d3c0b78a481d1c12e"
+      "bytes": 114635,
+      "sha256": "813f6596f7c1f5d9acf93f18970f6206cc8137428830a0bbcd9dc2f48c91e436"
     }
   ]
 }

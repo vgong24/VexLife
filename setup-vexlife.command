@@ -95,11 +95,16 @@ INFO_PLIST="$WINDOW_APP/Contents/Info.plist"
 [ -f "$INFO_PLIST" ] || fail "the source-local Mac setup app is missing its bundle metadata."
 /usr/bin/plutil -insert VexLifeSourceRoot -string "$TARGET" "$INFO_PLIST" \
   || fail "the exact source root could not be bound to the source-local Mac setup app."
+/usr/bin/plutil -replace CFBundleIdentifier -string "com.vextreme.vexlife.setup" "$INFO_PLIST" \
+  || fail "the source-local Mac setup app could not bind its stable application identity."
+/usr/bin/plutil -insert LSMultipleInstancesProhibited -bool true "$INFO_PLIST" 2>/dev/null \
+  || /usr/bin/plutil -replace LSMultipleInstancesProhibited -bool true "$INFO_PLIST" \
+  || fail "the source-local Mac setup app could not prohibit duplicate app instances."
 BOUND_SOURCE_ROOT="$(/usr/bin/plutil -extract VexLifeSourceRoot raw -o - "$INFO_PLIST" 2>/dev/null || true)"
 [ "$BOUND_SOURCE_ROOT" = "$TARGET" ] \
   || fail "the source-local Mac setup app did not retain the exact source-root binding."
 
-/usr/bin/open -W -n "$WINDOW_APP" \
+/usr/bin/open -W "$WINDOW_APP" \
   || fail "the source-local Mac setup app could not be opened. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
 
 # [VXG RealForever]

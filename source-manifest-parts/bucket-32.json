@@ -13,6 +13,24 @@
       "mode": "100644",
       "bytes": 17372,
       "sha256": "9978d9c1354ae3ede8c44056ddc62aa283fa7a804fa4e0c960ba8030e3b0385a"
+    },
+    {
+      "path": "src/core/heretic-persistent-runtime-owner.mjs",
+      "mode": "100644",
+      "bytes": 29625,
+      "sha256": "f68e7f9111f193f198e6d6c3763a885bb498047519678dbfbd9cf91b68e4101d"
+    },
+    {
+      "path": "src/core/project-continuity.mjs",
+      "mode": "100644",
+      "bytes": 24121,
+      "sha256": "576a5bedabfb5b2a38473709c9be4c4970fc10175e7f9d0f842c5c03ce7f87c6"
+    },
+    {
+      "path": "src/core/vexlife-tocompletion-project.mjs",
+      "mode": "100644",
+      "bytes": 12984,
+      "sha256": "48e295fbdef36ef8f2b279a84be72322a637a6504ee9a126be1714f3eb780b43"
     }
   ]
 }

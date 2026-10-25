@@ -36,6 +36,9 @@
     "feature:check": "node scripts/feature-check.mjs",
     "feature:scaffold": "node scripts/feature-scaffold.mjs",
     "feature:construction": "node scripts/feature-construction.mjs",
+    "project:status": "node scripts/project-continuity.mjs",
+    "project:planning": "node scripts/project-planning.mjs",
+    "project:tocompletion:import": "node scripts/vexlife-tocompletion-project.mjs",
     "bridge:check": "node scripts/bridge-check.mjs",
     "intent:check": "node scripts/intent-check.mjs",
     "intent:plan": "node scripts/intent-plan.mjs",
@@ -52,6 +55,7 @@
     "localization:check": "node scripts/localization-check.mjs",
     "health:check": "node scripts/build-admission-check.mjs --consumer HEALTH && node scripts/health-check.mjs",
     "current": "node scripts/current.mjs",
+    "refinement:current": "node scripts/refinement-current.mjs",
     "projections:build": "node scripts/build-projections.mjs",
     "pr-ready": "node scripts/build-admission-check.mjs --consumer PR_READY && node scripts/pr-ready.mjs",
     "build-admission:host-proof": "node scripts/build-admission-check.mjs --host-proof",
@@ -61,7 +65,8 @@
     "evaluated-rhythm-learning:proof": "node scripts/evaluated-rhythm-learning.mjs proof",
     "scheduled-daily-autonomy:proof": "node scripts/scheduled-daily-autonomy.mjs proof",
     "g05-runtime-authority-substrate:proof": "node scripts/g05-runtime-authority-substrate.mjs proof",
-    "presentation:health": "node scripts/presentation-health.mjs"
+    "presentation:health": "node scripts/presentation-health.mjs",
+    "project:reconcile": "node scripts/project-reconciliation.mjs"
   },
   "devDependencies": {
     "playwright": "1.61.1"

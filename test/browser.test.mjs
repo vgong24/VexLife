@@ -18,7 +18,16 @@ test('direct-root executable chain has no transitional Stage-B overlay',()=>{ass
 test('browser modules remain syntactically valid',()=>{for(const name of ['app.js',...moduleNames.map((name)=>`modules/${name}`)]){const result=spawnSync(process.execPath,['--check',fileURLToPath(new URL(name,browserRoot))],{encoding:'utf8'});assert.equal(result.status,0,`${name}: ${result.stderr}`)}});
 test('current semantic owners remain present beneath the E2.7 body',()=>{for(const marker of ['createChatController','createNavigationController','createGuideController','createTerrainController','conversationKey','UNSENT_LOCAL_DRAFT','vexAvailability','vex.visible.name'])assert.match(allJs,new RegExp(marker.replaceAll('.','\\.')));assert.doesNotMatch(`${html}\n${allJs}`,/VexOrg Demo Company|Maya Chen/)});
 test('demo conversations remain relation-owned browser evidence',()=>{const data=createDemoData({storage:{getItem:()=>null},loadJson:(_key,fallback)=>fallback});for(const channel of data.channels){const project=data.projects.find((candidate)=>candidate.projectRef===channel.projectRef);assert.ok(project?.threads.some((thread)=>thread.threadRef===channel.threadRef));const key=conversationKey(channel.projectRef,channel.threadRef,channel.channelRef);assert.ok(data.messages.has(key));for(const message of data.messages.get(key)){assert.equal(message.projectRef,channel.projectRef);assert.equal(message.threadRef,channel.threadRef);assert.equal(message.channelRef,channel.channelRef)}}});
-test('required localization remains available',()=>{for(const ref of ['product.vexlife.name','vex.visible.name','vex.summon','terrain.reset','terrain.center-current-context','composer.send','health.reference.summary','guide.answer.current'])for(const language of bundle.blueprint.product.requiredLanguages)assert.ok(bundle.strings[language][ref],`${language} missing ${ref}`);assert.match(app,/data-i18n-aria-label/)});
+test('required localization remains available',()=>{for(const ref of ['product.vexlife.name','vex.visible.name','vex.summon','terrain.reset','terrain.center-current-context','composer.send','health.reference.summary','guide.answer.current','guide.answer.architecture-node','guide.answer.architecture-node-unavailable','guide.architecture.purpose-unresolved','guide.architecture.features-none','guide.architecture.sources-none','feature.addressed-conversation.purpose'])for(const language of bundle.blueprint.product.requiredLanguages)assert.ok(bundle.strings[language][ref],`${language} missing ${ref}`);assert.match(app,/data-i18n-aria-label/)});
+test('lived architecture affordance source-descends the selected semantic node',()=>{
+  assert.match(app,/BROWSER_ARCHITECTURE_NODE_API_PATH='\/api\/v1\/architecture\/node'/u);
+  assert.match(app,/async function explainSelectedArchitectureNode\(\)/u);
+  assert.match(app,/guide\.answer\.architecture-node/u);
+  assert.match(app,/SOURCE_BOUND_READ_ONLY_ARCHITECTURE_NODE/u);
+  assert.match(app,/architectureDisplayValue\(item\?\.purposeStringRef\)/u);
+  assert.doesNotMatch(app,/featurePurposes\.map\(\(item\)=>item\?\.purpose\)/u);
+  assert.doesNotMatch(app,/guide\.askIntent\(GUIDE_INTENTS\.ARCHITECTURE\)/u);
+});
 test('integration source proves direct-root and carried truth',()=>{const integration=fs.readFileSync(new URL('integration-test.js',browserRoot),'utf8');for(const marker of ['exact E2.7 body is the first rendered product surface','canonical VexLife topology is projected into the E2.7 body','UNSENT_LOCAL_DRAFT','semantic auto-entry remains opt-in','one visible Vex occupies the E2.7 ambient vessel',"state:'PASS'"])assert.match(integration,new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))});
 test('semantic browser history restores an exact frame after document reload',()=>{
   const savedHistory=Object.getOwnPropertyDescriptor(globalThis,'history'),savedLocation=Object.getOwnPropertyDescriptor(globalThis,'location');
@@ -39,6 +48,63 @@ test('semantic browser history restores an exact frame after document reload',()
   }
 });
 
-test('browser server serves direct root app',async(t)=>{const child=spawn(process.execPath,['scripts/serve-browser.mjs'],{cwd:new URL('..',import.meta.url),env:{...process.env,VEXLIFE_PORT:'0'},stdio:['ignore','pipe','pipe']});t.after(()=>child.kill());child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');const serverUrl=await Promise.race([new Promise((resolve,reject)=>{let stderr='';child.stderr.on('data',(chunk)=>stderr+=chunk);child.stdout.on('data',(chunk)=>{const match=chunk.match(/http:\/\/127\.0\.0\.1:\d+/);if(match)resolve(match[0])});child.once('exit',(code)=>reject(new Error(`browser server exited ${code}: ${stderr}`)));child.once('error',reject)}),delay(5000,undefined,{ref:false}).then(()=>{throw new Error('browser server did not become ready')})]);const rootResponse=await fetch(`${serverUrl}/`,{redirect:'manual'});assert.equal(rootResponse.status,302);const doc=await fetch(new URL(rootResponse.headers.get('location'),serverUrl));assert.equal(doc.status,200);assert.match(await doc.text(),/<title>VexLife Terrain<\/title>/);const appResponse=await fetch(new URL('app.js',doc.url));assert.equal(appResponse.status,200);assert.doesNotMatch(await appResponse.text(),/e27-terrain-convergence\.js/)});
+test('browser server serves direct root app and bounded selected-node source descent',async(t)=>{
+  const child=spawn(process.execPath,['scripts/serve-browser.mjs'],{cwd:new URL('..',import.meta.url),env:{...process.env,VEXLIFE_PORT:'0'},stdio:['ignore','pipe','pipe']});
+  t.after(()=>child.kill());
+  child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');
+  const serverUrl=await Promise.race([
+    new Promise((resolve,reject)=>{
+      let stderr='';
+      child.stderr.on('data',(chunk)=>stderr+=chunk);
+      child.stdout.on('data',(chunk)=>{const match=chunk.match(/http:\/\/127\.0\.0\.1:\d+/);if(match)resolve(match[0])});
+      child.once('exit',(code)=>reject(new Error(`browser server exited ${code}: ${stderr}`)));
+      child.once('error',reject);
+    }),
+    delay(5000,undefined,{ref:false}).then(()=>{throw new Error('browser server did not become ready')})
+  ]);
+  const rootResponse=await fetch(`${serverUrl}/`,{redirect:'manual'});
+  assert.equal(rootResponse.status,302);
+  const doc=await fetch(new URL(rootResponse.headers.get('location'),serverUrl));
+  assert.equal(doc.status,200);
+  assert.match(await doc.text(),/<title>VexLife Terrain<\/title>/);
+  const appResponse=await fetch(new URL('app.js',doc.url));
+  assert.equal(appResponse.status,200);
+  assert.doesNotMatch(await appResponse.text(),/e27-terrain-convergence\.js/);
+
+  const architectureResponse=await fetch(
+    `${serverUrl}/api/v1/architecture/node?ref=${encodeURIComponent('terrain.thread.open-conversation')}`
+  );
+  assert.equal(architectureResponse.status,200);
+  const architecture=await architectureResponse.json();
+  assert.equal(architecture.schemaVersion,'vexlife.browser-architecture-node/v1');
+  assert.equal(architecture.state,'CURRENT');
+  assert.equal(architecture.truthClass,'SOURCE_BOUND_READ_ONLY_ARCHITECTURE_NODE');
+  assert.equal(architecture.ref,'terrain.thread.open-conversation');
+  assert.equal(architecture.kind,'TERRAIN');
+  const addressedPurpose=architecture.featurePurposes.find((item)=>item.featureRef==='feature.vexlife.addressed-conversation');
+  assert.ok(addressedPurpose);
+  assert.equal(addressedPurpose.purposeStringRef,'feature.addressed-conversation.purpose');
+  assert.equal(addressedPurpose.sourcePurpose,'Direct and group channels preserve speaker, recipient, witness, membership and channel-isolated continuity.');
+  assert.ok(addressedPurpose.processRefs.includes('process.vexlife.conversation.send-addressed'));
+  assert.ok(architecture.relationships.outgoing.length<=24);
+  assert.ok(architecture.relationships.incoming.length<=24);
+  assert.equal(Object.values(architecture.effects).every((value)=>value===false),true);
+
+  const unknownResponse=await fetch(
+    `${serverUrl}/api/v1/architecture/node?ref=${encodeURIComponent('terrain.not-registered')}`
+  );
+  assert.equal(unknownResponse.status,404);
+  const unknown=await unknownResponse.json();
+  assert.equal(unknown.schemaVersion,'vexlife.browser-architecture-node-failure/v1');
+  assert.equal(unknown.state,'HELD');
+  assert.equal(unknown.failureCode,'ARCHITECTURE_NODE_NOT_FOUND');
+  assert.equal(Object.values(unknown.effects).every((value)=>value===false),true);
+
+  const unboundResponse=await fetch(`${serverUrl}/api/v1/architecture/node`);
+  assert.equal(unboundResponse.status,400);
+  const unbound=await unboundResponse.json();
+  assert.equal(unbound.failureCode,'ARCHITECTURE_NODE_REF_REQUIRED');
+});
+
 
 // [VXG RealForever]

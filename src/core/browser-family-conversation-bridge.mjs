@@ -14,12 +14,18 @@ import {
   readConversationChannel,
   readConversationMessage
 } from './conversation-store.mjs';
+import {
+  FamilyMembershipRuntimeError,
+  readFamilyThreadHistory
+} from './family-membership-runtime.mjs';
 import { semanticHash } from './utils.mjs';
 
 export const BROWSER_FAMILY_CONVERSATION_BRIDGE_SCHEMA = 'vexlife.browser-family-conversation-bridge/v1';
+export const BROWSER_FAMILY_THREAD_HISTORY_SCHEMA = 'vexlife.browser-family-thread-history/v1';
 export const BROWSER_FAMILY_CONVERSATION_ACTIONS = Object.freeze({
   APPEND: 'action.vex-family.conversation.append',
   READ: 'action.vex-family.conversation.read',
+  READ_THREAD_HISTORY: 'action.vex-family.conversation.read-thread-history',
   LIST: 'action.vex-family.conversation.list'
 });
 
@@ -36,6 +42,7 @@ const READ_INTENT_FIELDS = new Set([
   'channelRef',
   'expectedMembershipGeneration'
 ]);
+const THREAD_HISTORY_INTENT_FIELDS = new Set(READ_INTENT_FIELDS);
 const LIST_INTENT_FIELDS = new Set([
   'spaceRef',
   'expectedMembershipGeneration'
@@ -148,12 +155,22 @@ function assertChannelIdentity(channel, intent) {
   }
   const bindings = channel.familySpaceBinding?.audienceMemberBindings;
   const principalRefs = Array.isArray(bindings) ? bindings.map((binding) => binding?.principalRef) : [];
+  const minimumHumanAudience =
+    channel.kind === 'GROUP'
+      ? 1
+      : channel.kind === 'PRIVATE'
+        ? 2
+        : null;
   if (
-    principalRefs.length < 2
+    minimumHumanAudience === null
+    || principalRefs.length < minimumHumanAudience
     || principalRefs.some((principalRef) => typeof principalRef !== 'string')
     || new Set(principalRefs).size !== principalRefs.length
   ) {
-    fail('BROWSER_FAMILY_BRIDGE_DENIED', 'Trusted Family channel audience must contain distinct human principals');
+    fail(
+      'BROWSER_FAMILY_BRIDGE_DENIED',
+      'Trusted Family channel audience does not satisfy its human-principal minimum'
+    );
   }
 }
 
@@ -207,6 +224,31 @@ function safeMessage(event) {
   });
 }
 
+/**
+ * Thread history exposes the historical witness snapshot because a second consumer must preserve who
+ * could truthfully observe each immutable message when it was formed. Current-channel READ stays
+ * narrower and continues to use safeMessage(...).
+ *
+ * Owner-internal membership snapshot hashes/binding refs remain absent. This is a bounded projection
+ * of canonical history, not a second history record.
+ */
+function safeThreadHistoryMessage(event) {
+  return Object.freeze({
+    messageRef: event.messageRef,
+    spaceRef: event.spaceRef,
+    threadRef: event.threadRef,
+    channelRef: event.channelRef,
+    speakerRef: event.speakerRef,
+    recipientRefs: Object.freeze([...(event.recipientRefs ?? [])]),
+    witnessRefs: Object.freeze([...(event.witnessRefs ?? [])]),
+    membershipGeneration: event.membershipGeneration,
+    sequence: event.sequence,
+    content: event.content,
+    contentHash: event.contentHash,
+    createdAt: event.createdAt
+  });
+}
+
 function sameRetryIntent(event, { intent, member, channel }) {
   const expectedRecipients = currentHumanRecipients(channel, member.principalRef);
   const expectedContentHash = semanticHash(intent.content);
@@ -220,6 +262,30 @@ function sameRetryIntent(event, { intent, member, channel }) {
 
 function sanitizeOwnerError(error) {
   if (error instanceof BrowserFamilyConversationBridgeError) throw error;
+  if (error instanceof FamilyMembershipRuntimeError) {
+    if (error.code === 'FAMILY_MEMBERSHIP_RUNTIME_INPUT_INVALID') {
+      fail('BROWSER_FAMILY_BRIDGE_INPUT_INVALID', 'Family thread-history input is invalid');
+    }
+    if (
+      error.code === 'FAMILY_MEMBERSHIP_RUNTIME_MEMBER_DENIED'
+      || error.code === 'FAMILY_MEMBERSHIP_RUNTIME_BINDING_MISMATCH'
+      || error.code === 'FAMILY_MEMBERSHIP_RUNTIME_HISTORY_POLICY_UNSUPPORTED'
+    ) {
+      fail('BROWSER_FAMILY_BRIDGE_DENIED', 'Family thread history is not authorized for the current principal');
+    }
+    if (error.code === 'FAMILY_MEMBERSHIP_RUNTIME_CHANNEL_NOT_FOUND') {
+      fail('BROWSER_FAMILY_BRIDGE_NOT_FOUND', 'Current Family conversation channel is unavailable');
+    }
+    if (error.code === 'FAMILY_MEMBERSHIP_RUNTIME_CHANNEL_MISMATCH') {
+      fail('BROWSER_FAMILY_BRIDGE_STALE', 'Current Family conversation channel binding is stale');
+    }
+    if (
+      error.code === 'FAMILY_MEMBERSHIP_RUNTIME_CHANNEL_CONFLICT'
+      || error.code === 'FAMILY_MEMBERSHIP_RUNTIME_HISTORY_CORRUPT'
+    ) {
+      fail('BROWSER_FAMILY_BRIDGE_STORE_UNAVAILABLE', 'Canonical Family thread history is unavailable');
+    }
+  }
   if (error instanceof FamilyConversationError) {
     if (error.code === 'FAMILY_CONVERSATION_STALE') {
       fail('BROWSER_FAMILY_BRIDGE_STALE', 'Family conversation binding is stale');
@@ -334,6 +400,66 @@ export function readBrowserFamilyConversation({
       state: projection.state,
       channelRef: currentIntent.channelRef,
       messages: Object.freeze(visible.map(safeMessage)),
+      truncated: projection.truncated
+    });
+  } catch (error) {
+    return sanitizeOwnerError(error);
+  }
+}
+
+/**
+ * Authenticated cross-generation Family history projection.
+ *
+ * The browser supplies only current routing/currentness intent. The bridge derives the trusted
+ * principal from Home Bridge authority, revalidates current Family membership, and delegates the
+ * actual segment/history law to readFamilyThreadHistory(...). It never reconstructs historical
+ * audiences from current membership.
+ */
+export function readBrowserFamilyThreadHistory({
+  home,
+  intent,
+  channel,
+  membership,
+  lease,
+  currentRevocationGeneration,
+  now,
+  limit = 200
+} = {}) {
+  try {
+    const currentIntent = exactIntent(intent, THREAD_HISTORY_INTENT_FIELDS, { requireChannel: true });
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) {
+      fail('BROWSER_FAMILY_BRIDGE_INPUT_INVALID', 'limit must be 1..1000');
+    }
+    assertChannelIdentity(channel, currentIntent);
+    const principalRef = admitHomePrincipal({
+      actionRef: BROWSER_FAMILY_CONVERSATION_ACTIONS.READ_THREAD_HISTORY,
+      intent: currentIntent,
+      membership,
+      lease,
+      currentRevocationGeneration,
+      now
+    });
+    const { record, member } = currentFamilyMember({ home, intent: currentIntent, principalRef });
+    visibleToCurrentMember([], channel, record, member);
+
+    const projection = readFamilyThreadHistory({
+      home,
+      spaceRef: currentIntent.spaceRef,
+      currentChannelRef: currentIntent.channelRef,
+      principalRef,
+      principalBindingRef: member.principalBindingRef,
+      limit
+    });
+
+    return Object.freeze({
+      schemaVersion: BROWSER_FAMILY_THREAD_HISTORY_SCHEMA,
+      state: projection.state,
+      spaceRef: projection.spaceRef,
+      threadRef: projection.threadRef,
+      currentChannelRef: projection.currentChannelRef,
+      membershipGeneration: projection.membershipGeneration,
+      segmentRefs: Object.freeze([...projection.segmentRefs]),
+      messages: Object.freeze(projection.messages.map(safeThreadHistoryMessage)),
       truncated: projection.truncated
     });
   } catch (error) {

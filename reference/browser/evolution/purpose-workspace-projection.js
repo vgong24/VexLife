@@ -7,6 +7,10 @@ export const PURPOSE_WORKSPACE_EVOLUTION_SURFACE_REF='surface.vexlife.purpose-wo
 export const PURPOSE_WORKSPACE_EVOLUTION_PROJECTION_REF='projection.purpose-workspace.evolution-active-surface';
 export const PURPOSE_WORKSPACE_PROGRESS_API_PATH='/api/v1/intent/project-status';
 export const PURPOSE_WORKSPACE_PROGRESS_SCHEMA='vexlife.browser-intent-project-status/v1';
+export const PURPOSE_WORKSPACE_PROJECT_API_PATH='/api/v1/purpose-workspace/project';
+export const PURPOSE_WORKSPACE_PROJECT_MOVE_API_PATH='/api/v1/purpose-workspace/project/move';
+export const PURPOSE_WORKSPACE_PROJECT_SCHEMA='vexlife.purpose-workspace-project-projection/v1';
+export const PURPOSE_WORKSPACE_PROJECT_MOVE_SCHEMA='vexlife.purpose-workspace-board-move/v1';
 
 const ROOT=new URL('../../../',import.meta.url);
 const json=async(relative)=>{
@@ -40,6 +44,7 @@ async function loadAcceptedPurposeWorkspace(){
 
 export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefForTerrain=()=>null}={}){
   let source=null,host=null,progress=null,progressProjectRef=null;
+  let projectWorkspace=null,projectMoveFeedback=null,projectMode='BOARD';
   let domainRef=null,taskRef=null,semanticDepth='DO';
   const emptyDraft=()=>({featureRef:'',purpose:'',platformRefs:['platform.browser']});
   let draft=emptyDraft(),draftRevision=0,draftReceipts=[],draftReceiptOrdinal=0,draftTransactionOrdinal=0,draftControls=null;
@@ -204,6 +209,173 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
       return heldProgress('PROGRESS_TRANSPORT_UNAVAILABLE');
     }
   };
+  const heldProjectWorkspace=(reason)=>Object.freeze({
+    schemaVersion:PURPOSE_WORKSPACE_PROJECT_SCHEMA,
+    state:'HELD_UNAVAILABLE',
+    currentness:'UNKNOWN',
+    projectRef:progressProjectRef,
+    projectSnapshotFingerprint:null,
+    board:null,
+    graph:null,
+    planning:null,
+    reason,
+    effects:false,
+    executionAuthority:'NONE'
+  });
+  const loadProjectWorkspace=async()=>{
+    if(!progressProjectRef)return heldProjectWorkspace('PROJECT_SCOPE_UNAVAILABLE');
+    try{
+      const response=await fetch(`${PURPOSE_WORKSPACE_PROJECT_API_PATH}?projectRef=${encodeURIComponent(progressProjectRef)}`,{cache:'no-store'});
+      if(!response.ok)return heldProjectWorkspace('PROJECT_TRANSPORT_UNAVAILABLE');
+      const value=await response.json();
+      if(value?.schemaVersion!==PURPOSE_WORKSPACE_PROJECT_SCHEMA||value?.projectRef!==progressProjectRef||value?.effects!==false||value?.executionAuthority!=='NONE'){
+        return heldProjectWorkspace('PROJECT_TRANSPORT_INVALID');
+      }
+      return Object.freeze(value);
+    }catch{
+      return heldProjectWorkspace('PROJECT_TRANSPORT_UNAVAILABLE');
+    }
+  };
+  const projectCard=(workNodeRef)=>{
+    for(const lane of projectWorkspace?.board?.lanes??[]){
+      const card=lane.cards?.find((item)=>item.workNodeRef===workNodeRef);
+      if(card)return card;
+    }
+    return null;
+  };
+  const requestProjectMove=async(workNodeRef,targetLaneRef,targetStateOrNull=null)=>{
+    const card=projectCard(workNodeRef);
+    if(!card||projectWorkspace?.currentness!=='CURRENT'){
+      projectMoveFeedback=Object.freeze({state:'INVALID_REJECTED',reason:'PROJECT_NOT_CURRENT'});
+      render();
+      return projectMoveFeedback;
+    }
+    const body={
+      projectRef:projectWorkspace.projectRef,
+      workNodeRef,
+      targetLaneRef,
+      targetStateOrNull,
+      expectedProjectSnapshotFingerprint:projectWorkspace.projectSnapshotFingerprint,
+      expectedState:card.state
+    };
+    try{
+      const response=await fetch(PURPOSE_WORKSPACE_PROJECT_MOVE_API_PATH,{
+        method:'POST',
+        cache:'no-store',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+      });
+      const value=await response.json();
+      if(value?.schemaVersion!==PURPOSE_WORKSPACE_PROJECT_MOVE_SCHEMA||value?.effects!==false||value?.executionAuthority!=='NONE'){
+        throw new Error('invalid Purpose Workspace move response');
+      }
+      projectMoveFeedback=Object.freeze({state:value.state,reason:value.reason??null});
+      projectWorkspace=value.authoritativeProjection?.schemaVersion===PURPOSE_WORKSPACE_PROJECT_SCHEMA
+        ?Object.freeze(value.authoritativeProjection)
+        :await loadProjectWorkspace();
+    }catch{
+      projectMoveFeedback=Object.freeze({state:'TRANSPORT_HELD',reason:'PROJECT_MOVE_TRANSPORT_UNAVAILABLE'});
+      projectWorkspace=await loadProjectWorkspace();
+    }
+    render();
+    return projectMoveFeedback;
+  };
+  const renderProjectBoard=(parent)=>{
+    const lanes=element('div','purpose-workspace-evolution__project-board');
+    for(const lane of projectWorkspace.board?.lanes??[]){
+      const laneNode=element('section','purpose-workspace-evolution__project-lane');
+      laneNode.dataset.laneRef=lane.laneRef;
+      laneNode.append(element('h4','',lane.label));
+      laneNode.addEventListener('dragover',(event)=>{event.preventDefault()});
+      laneNode.addEventListener('drop',(event)=>{
+        event.preventDefault();
+        const workNodeRef=event.dataTransfer?.getData('text/plain')??'';
+        if(workNodeRef)void requestProjectMove(workNodeRef,lane.laneRef,null);
+      });
+      const list=element('ul','purpose-workspace-evolution__project-cards');
+      for(const card of lane.cards??[]){
+        const item=element('li','purpose-workspace-evolution__project-card');
+        item.dataset.workNodeRef=card.workNodeRef;
+        item.dataset.state=card.state;
+        item.draggable=(card.interaction?.laneMoveAffordances??[]).length>0;
+        item.addEventListener('dragstart',(event)=>{
+          event.dataTransfer?.setData('text/plain',card.workNodeRef);
+          if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
+        });
+        item.append(
+          element('strong','',card.purpose??card.workNodeRef),
+          element('small','purpose-workspace-evolution__project-card-state',card.state)
+        );
+        if(card.reconciliation){
+          item.append(element('small','purpose-workspace-evolution__project-evidence',`${card.reconciliation.state} · ${card.reconciliation.proofState}`));
+        }
+        const choices=(card.interaction?.nextStateChoices??[]).filter((choice)=>choice.visibleOnBoard);
+        if(choices.length){
+          const actions=element('div','purpose-workspace-evolution__project-card-actions');
+          actions.setAttribute('aria-label',`Move ${card.purpose??card.workNodeRef}`);
+          for(const choice of choices){
+            const action=element('button','purpose-workspace-evolution__project-move',`Move to ${choice.state.replaceAll('_',' ')}`);
+            action.type='button';
+            action.dataset.nextState=choice.state;
+            action.dataset.targetLaneRef=choice.laneRef??'';
+            action.addEventListener('click',()=>void requestProjectMove(card.workNodeRef,choice.laneRef,choice.state));
+            actions.append(action);
+          }
+          item.append(actions);
+        }
+        list.append(item);
+      }
+      if(!(lane.cards??[]).length)list.append(element('li','purpose-workspace-evolution__project-lane-empty','No current work'));
+      laneNode.append(list);
+      lanes.append(laneNode);
+    }
+    parent.append(lanes);
+  };
+  const renderProjectGraph=(parent)=>{
+    const graph=element('div','purpose-workspace-evolution__project-graph');
+    const list=element('ul','purpose-workspace-evolution__project-graph-nodes');
+    for(const node of projectWorkspace.graph?.nodes??[]){
+      const row=element('li','purpose-workspace-evolution__project-graph-node');
+      row.dataset.workNodeRef=node.workNodeRef;
+      row.append(element('strong','',node.purpose??node.workNodeRef),element('small','',node.state));
+      list.append(row);
+    }
+    graph.append(list,element('p','purpose-workspace-evolution__project-meta',`${projectWorkspace.graph?.edges?.length??0} relationship edges`));
+    parent.append(graph);
+  };
+  const renderProjectWorkspace=(parent)=>{
+    const section=element('section','purpose-workspace-evolution__project');
+    section.dataset.state=projectWorkspace?.state??'HELD_UNAVAILABLE';
+    section.dataset.currentness=projectWorkspace?.currentness??'UNKNOWN';
+    section.dataset.projectRef=progressProjectRef??'';
+    section.append(element('h3','','Project'));
+    if(projectWorkspace?.currentness!=='CURRENT'){
+      section.append(
+        element('p','purpose-workspace-evolution__project-empty','Project Board/Graph is ready; B06 must import a source-managed Project before production work can appear here.')
+      );
+      parent.append(section);
+      return;
+    }
+    const controls=element('nav','purpose-workspace-evolution__project-controls');
+    controls.setAttribute('aria-label','Project view');
+    for(const mode of ['BOARD','GRAPH']){
+      controls.append(button(mode,mode,projectMode===mode,(next)=>{projectMode=next;render()}));
+    }
+    section.append(controls);
+    if(projectMoveFeedback){
+      section.append(element('p','purpose-workspace-evolution__project-feedback',
+        `${projectMoveFeedback.state}${projectMoveFeedback.reason?` · ${projectMoveFeedback.reason}`:''}`));
+    }
+    const planning=projectWorkspace.planning;
+    section.append(element('p','purpose-workspace-evolution__project-meta',
+      planning?.state==='CURRENT'
+        ?`Planning current · ${planning.iterations?.length??0} iterations`
+        :'No current Project Planning snapshot'));
+    if(projectMode==='GRAPH')renderProjectGraph(section);
+    else renderProjectBoard(section);
+    parent.append(section);
+  };
+
   const appendProgressLane=(parent,label,nodes)=>{
     if(!Array.isArray(nodes)||nodes.length===0)return false;
     const lane=element('section','purpose-workspace-evolution__progress-lane');
@@ -266,6 +438,8 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
     const purpose=element('section','purpose-workspace-evolution__purpose');
     purpose.append(element('strong','',domain.purposeCompletionQuestion));
     root.append(purpose);
+
+    renderProjectWorkspace(root);
 
     const progressSection=element('section','purpose-workspace-evolution__progress');
     progressSection.dataset.state=progress?.state??'HELD_UNAVAILABLE';
@@ -449,6 +623,7 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
       domainRef??=source.domainPacks[0]?.domainRef??null;
       taskRef??=source.domainPacks[0]?.primaryTaskRefs?.[0]??null;
       progress=await loadProgress();
+      projectWorkspace=await loadProjectWorkspace();
       render();
       return Object.freeze({state:'MOUNTED',surfaceRef:PURPOSE_WORKSPACE_EVOLUTION_SURFACE_REF,effects:false});
     },
@@ -469,6 +644,12 @@ export function createPurposeWorkspaceEvolutionAdapter({t=(ref)=>ref,projectRefF
         progressProjectRef,
         progressGraphCount:Array.isArray(progress?.statusProjections)?progress.statusProjections.length:0,
         progressExecutionAuthority:progress?.executionAuthority??'NONE',
+        projectWorkspaceState:projectWorkspace?.state??'HELD_UNAVAILABLE',
+        projectWorkspaceCurrentness:projectWorkspace?.currentness??'UNKNOWN',
+        projectWorkspaceFingerprint:projectWorkspace?.semanticFingerprint??null,
+        projectMode,
+        projectMoveFeedback,
+        projectExecutionAuthority:projectWorkspace?.executionAuthority??'NONE',
         draft:Object.freeze({featureRef:draft.featureRef,purpose:draft.purpose,platformRefs:Object.freeze([...draft.platformRefs])}),
         draftRef:draftTransactionContract()?.draftRef??null,
         draftSessionRef,

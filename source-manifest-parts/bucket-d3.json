@@ -11,8 +11,8 @@
     {
       "path": "blueprint/fragments/tests.json",
       "mode": "100644",
-      "bytes": 62921,
-      "sha256": "11aa30fec5d5b06bb005da428bf2d5aaa997ad4b0034f80025a0aa653edffc03"
+      "bytes": 63958,
+      "sha256": "f9caddda222337262007dc29744624fa90d062a1e54f6f28570f37c9deba9ac6"
     },
     {
       "path": "blueprint/module-registry/vessel-studio.json",
@@ -47,8 +47,8 @@
     {
       "path": "scripts/capability-runtime-policy-bootstrap.mjs",
       "mode": "100644",
-      "bytes": 8454,
-      "sha256": "1af65c14c699fea0635371bee78c907edf44c8ba0af9def63e723ec5cc78f3e9"
+      "bytes": 8485,
+      "sha256": "e67aa0a3e3e71cc1e6b82ef535cdd61f838a60cd21deed139ec3114e6376faa3"
     },
     {
       "path": "scripts/intent-status.mjs",

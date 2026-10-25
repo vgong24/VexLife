@@ -11,8 +11,14 @@
     {
       "path": "src/core/model-connection-turn-composer.mjs",
       "mode": "100644",
-      "bytes": 6265,
-      "sha256": "f1728a2436dee4c9f101f2fa8de045f4d71835fccea1a2d36d308607ff2578b0"
+      "bytes": 6309,
+      "sha256": "390d4dc63472663d08afe3bfbb9c21e7623b6e2cf75f60939f07a73e9b120884"
+    },
+    {
+      "path": "test/server-family-conversation-capability.test.mjs",
+      "mode": "100644",
+      "bytes": 7715,
+      "sha256": "d3c79dc378ef84de4855eafc5198c32b38b3c8b3d6c80992e7c90c0f813ef733"
     },
     {
       "path": "test/ux-evolution-host.test.mjs",

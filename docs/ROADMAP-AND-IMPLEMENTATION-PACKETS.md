@@ -111,10 +111,44 @@ Android and iOS remain held until the desktop pair proves pairing, revocation,
 Remote-capable native clients must consume one accepted Home Bridge contract;
   they may not invent separate account, pairing or transport authority models.
 
+Hosted product capabilities may be realized inside the Home process, as sibling services, on another
+owned machine, or on an explicitly selected cloud/managed host. The semantic capability contract and
+Home Bridge authorization boundary remain stable across those deployment choices.
+
 Dream Sync UI must not outrun Dream candidate and consent contracts.
 
 A platform-specific permission adapter may not redefine the universal permission meaning.
 ```
+
+### Hosted-capability placement
+
+The current roadmap did not originally need a separate "Home hosts product capabilities" stage.
+VexMaps now supplies the first concrete pressure, but this documentation-only placement does **not**
+invent a new F-number or rewrite `blueprint/implementation-plan.json`.
+
+Use this ordering when a capability is earned:
+
+~~~text
+human/product question
+→ semantic capability contract
+→ rightful Home owner + permission/effect boundary
+→ engine/provider realization
+→ deployment choice
+→ platform adapter
+→ environment/lived proof
+~~~
+
+Default direction:
+
+~~~text
+one understandable Vex Home composition first
+→ separate process/machine/cloud only when pressure earns it
+→ separate repository only when independent release/ownership genuinely requires it
+~~~
+
+Maps is the first explicit hosted-capability placement pressure. Photon/OpenStreetMap is a candidate
+search engine behind that future Home Maps contract; it is not a canonical VexLife dependency or
+accepted runtime in this docs stage.
 
 Every work unit declares:
 

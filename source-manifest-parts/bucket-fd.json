@@ -21,6 +21,12 @@
       "sha256": "8d6cc63d59067b6fe40abc8aa9b35d24a93e24a24abd00b743585e9f6791a9fc"
     },
     {
+      "path": "src/core/home-maps-place-search.mjs",
+      "mode": "100644",
+      "bytes": 12090,
+      "sha256": "b63f98f77cadabc5e2b6fb42278b9e6ccd8e467cf9a830ddba14e9a30b21df51"
+    },
+    {
       "path": "test/evolution.test.mjs",
       "mode": "100644",
       "bytes": 3808,
@@ -29,8 +35,8 @@
     {
       "path": "test/model-bundle-v2.test.mjs",
       "mode": "100644",
-      "bytes": 10255,
-      "sha256": "dfaca937740e24ec3a40f679c9d5cbc59d8dd286177eca680694cbd6a6b7d249"
+      "bytes": 13186,
+      "sha256": "9e67a0facf27348a05217df442d3122cb792b0c1ba7ff8516598b831203447cc"
     }
   ]
 }

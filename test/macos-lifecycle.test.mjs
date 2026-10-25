@@ -16,11 +16,21 @@ import {
   validateOperationalProfileRegistry
 } from '../src/core/vex-initialization.mjs';
 import {
+  HERETIC_REQUEST_MODEL,
+  HERETIC_RUNTIME_IDENTITY,
+  HERETIC_VEXLIFE_HOST_EXECUTION_PROFILE_REF,
+  HERETIC_VEXLIFE_RUNTIME_RECEIPT_SCHEMA,
+  formHereticModelConfiguration,
+  formHereticPendingModelConfiguration
+} from '../src/core/heretic-runtime-link.mjs';
+import {
   ALLOWED_OPERATIONS,
   choicesForLifecycleState,
   canonicalMacHomeDirectory,
   classifyMacLifecycleState,
+  cleanupRepairState,
   cleanupRebuildPreserveState,
+  parseLastJson,
   protectedHomeSnapshot,
   qualifiedInitializationFromCurrentHome,
   readMacProcessEvidence,
@@ -418,6 +428,25 @@ test('MAC06 lifecycle state distinguishes absent, healthy and repairable existin
 });
 
 
+test('MAC06D lifecycle command-result parser accepts pretty Heretic JSON and preserves fail-closed fallback semantics', () => {
+  const pretty = {
+    state: 'HERETIC_RUNTIME_ESTABLISHED',
+    runtimeDisposition: 'STARTED_NEW_EXACT_MLX_RUNTIME'
+  };
+  assert.deepEqual(parseLastJson(`${JSON.stringify(pretty, null, 2)}\n`), pretty);
+
+  const compact = {
+    state: 'HERETIC_RUNTIME_ESTABLISHED',
+    runtimeDisposition: 'REUSED_EXACT_MLX_RUNTIME'
+  };
+  assert.deepEqual(parseLastJson(`diagnostic line\n${JSON.stringify(compact)}\n`), compact);
+
+  assert.throws(
+    () => parseLastJson('diagnostic only\nstill not json\n'),
+    /command emitted no machine-readable JSON result/u
+  );
+});
+
 test('MAC06A lifecycle recognizes and reuses one exact activated-M4 v2 runtime binding', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-activated-m4-'));
   const home = path.join(root, 'home');
@@ -502,6 +531,140 @@ test('MAC06A lifecycle recognizes and reuses one exact activated-M4 v2 runtime b
     });
     assert.equal(stopped.disposition, 'EXACT_ACTIVATED_M4_RUNTIME_STOPPED');
     assert.equal(stoppedPid, pid);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('MAC06B preservation-safe cleanup stops an exact STARTING runtime without requiring final model configuration', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-starting-runtime-'));
+  const home = path.join(root, 'home');
+  const runtimeDir = path.join(home, 'runtime', 'initialization');
+  const executable = path.join(home, 'runtime', 'llama-server');
+  const pid = 5151;
+  const args = ['-m', path.join(home, 'models', 'model.gguf'), '--host', '127.0.0.1', '--port', '18080'];
+  try {
+    fs.mkdirSync(runtimeDir, { recursive: true });
+    fs.writeFileSync(executable, 'exact-starting-runtime-bytes');
+    const executableSha256 = crypto.createHash('sha256').update(fs.readFileSync(executable)).digest('hex');
+    fs.writeFileSync(path.join(runtimeDir, 'receipt.json'), JSON.stringify({
+      schemaVersion: 'vexlife.runtime-starting-receipt/v1',
+      state: 'STARTING',
+      profileRef: 'profile.vexlife.test.starting',
+      endpoint: { origin: 'http://127.0.0.1:18080', requestModel: 'test-model' },
+      runtime: { pid, executablePath: executable, arguments: args },
+      materialization: { executableSha256, sourcePinnedExecutableSha256: executableSha256 }
+    }, null, 2) + '\n');
+    const evidence = {
+      platform: 'darwin',
+      processId: pid,
+      processGroupId: pid,
+      name: 'llama-server',
+      executablePath: executable,
+      commandLine: [executable, ...args].join(' '),
+      commandLineClass: 'DARWIN_PS_FLATTENED_ARGV',
+      argvBoundaryPreserved: false,
+      tokens: null
+    };
+    let stoppedPid = null;
+    const stopped = await stopOwnedRuntime(home, {
+      pidAliveImpl: (observedPid) => observedPid === pid,
+      processEvidenceReader: () => evidence,
+      stopPidImpl: async (observedPid) => { stoppedPid = observedPid; }
+    });
+    assert.equal(stopped.disposition, 'EXACT_STARTING_RUNTIME_STOPPED');
+    assert.equal(stoppedPid, pid);
+    const after = JSON.parse(fs.readFileSync(path.join(runtimeDir, 'receipt.json'), 'utf8'));
+    assert.equal(after.state, 'STOPPED_BY_LIFECYCLE');
+    assert.equal(after.runtime.pid, pid);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('MAC06C Heretic product configuration survives transient cleanup and keeps lifecycle on the Heretic route', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-heretic-product-'));
+  const home = path.join(root, 'home');
+  const runtimeDir = path.join(home, 'runtime', 'heretic');
+  const receiptPath = path.join(runtimeDir, 'persistent-runtime-owner-receipt.json');
+  try {
+    fs.mkdirSync(path.join(home, 'config'), { recursive: true });
+    fs.mkdirSync(runtimeDir, { recursive: true });
+    const homeIdentity = {
+      homeRef: 'vex-home.heretic.product.test',
+      companionLineageRef: 'companion-lineage.heretic.product.test'
+    };
+    fs.writeFileSync(path.join(home, 'config', 'home.json'), JSON.stringify({
+      schemaVersion: 'vexlife.home/v0',
+      homeRef: homeIdentity.homeRef,
+      currentDeviceRef: 'device.heretic.product.test',
+      currentCompanionLineageRef: homeIdentity.companionLineageRef
+    }, null, 2) + '\n');
+    const receipt = {
+      schemaVersion: HERETIC_VEXLIFE_RUNTIME_RECEIPT_SCHEMA,
+      receiptRef: 'receipt.vexlife.heretic-persistent-runtime.test',
+      state: 'PERSISTENT_MLX_RUNTIME_QUALIFIED',
+      formedAt: '2026-10-23T09:00:00.000Z',
+      authorityRef: 'authority.vexlife.heretic.test',
+      ...HERETIC_RUNTIME_IDENTITY,
+      hostExecutionProfileRef: HERETIC_VEXLIFE_HOST_EXECUTION_PROFILE_REF,
+      modelPath: '/private/heretic/model',
+      pythonPath: '/private/heretic/env/bin/python',
+      pythonEnvironmentRoot: '/private/heretic/env',
+      endpoint: 'http://127.0.0.1:8765',
+      requestModel: HERETIC_REQUEST_MODEL,
+      sourceIdentity: {
+        repository: 'vgong24/VexLife',
+        modulePath: 'src/core/heretic-persistent-runtime-owner.mjs',
+        moduleSha256: '3'.repeat(64)
+      },
+      runtime: {
+        pid: 5151,
+        processGroupId: 5151,
+        exactOwnedDetachedGroup: true,
+        args: ['-m','mlx_lm.server','--model','/private/heretic/model','--host','127.0.0.1','--port','8765']
+      },
+      qualification: {
+        healthAndExactModelVerified: true,
+        actualChatCompletionPerformed: true,
+        loadResultRef: null
+      },
+      effects: {
+        modelRuntime: true,
+        providerNetwork: false,
+        modelDownload: false,
+        artifactMutation: false,
+        training: false,
+        weightMutation: false,
+        memoryMutation: false,
+        activation: false,
+        succession: false,
+        publication: false,
+        repositoryMutation: false,
+        homeMutation: false
+      }
+    };
+    fs.writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
+    const configuration = formHereticModelConfiguration({ homeIdentity, receipt });
+    fs.writeFileSync(path.join(home, 'config', 'model.json'), JSON.stringify(configuration, null, 2) + '\n');
+
+    assert.equal(classifyMacLifecycleState(home), 'EXISTING_HEALTHY');
+    const protectedBefore = protectedHomeSnapshot(home);
+    assert.equal(protectedBefore.records.some((record) => record.path === 'config/model.json'), true);
+    const removed = cleanupRebuildPreserveState(home);
+    assert.equal(removed.includes('runtime'), true);
+    assert.equal(fs.existsSync(receiptPath), false);
+    assert.equal(fs.existsSync(path.join(home, 'config', 'model.json')), true);
+    const protectedAfter = protectedHomeSnapshot(home);
+    assert.equal(protectedAfter.records.some((record) => record.path === 'config/model.json'), true);
+    assert.equal(classifyMacLifecycleState(home), 'EXISTING_DEGRADED_REPAIRABLE');
+
+    const pending = formHereticPendingModelConfiguration({ homeIdentity });
+    fs.writeFileSync(path.join(home, 'config', 'model.json'), JSON.stringify(pending, null, 2) + '\n');
+    assert.equal(classifyMacLifecycleState(home), 'EXISTING_DEGRADED_REPAIRABLE');
+    const pendingRemoved = cleanupRepairState(home);
+    assert.equal(pendingRemoved.includes('config/model.json'), false);
+    assert.equal(fs.existsSync(path.join(home, 'config', 'model.json')), true);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

@@ -27,6 +27,7 @@ import { semanticHash } from './utils.mjs';
 export const CAPABILITY_ASSIMILATION_MODES = Object.freeze({
   DIRECT_SINGLE_TURN: 'DIRECT_SINGLE_TURN',
   ADOPTED_READ_ONLY: 'ADOPTED_READ_ONLY',
+  ADOPTED_AUTHORIZED_EFFECT: 'ADOPTED_AUTHORIZED_EFFECT',
   CANONICAL_E2_UNTAUGHT_G0: 'CANONICAL_E2_UNTAUGHT_G0'
 });
 
@@ -66,6 +67,11 @@ export const FRESH_COMPANION_FOUNDATION_FRAME = Object.freeze({
 const MAXIMUM_REQUESTS = 8;
 const MAXIMUM_ARGUMENT_BYTES = 8 * 1024;
 const PROCESS_REF = 'process.vexlife.capability-assimilation.runtime-adoption';
+const TYPED_COMMAND_PROCESS_REF = 'process.vexlife.cli.execute-typed';
+const TYPED_COMMAND_CAPABILITY_REF = 'capability.vexlife.cli.typed';
+const TYPED_COMMAND_EFFECT_CLASS = 'TYPED_LOCAL_PROCESS';
+const TYPED_COMMAND_PERMISSION_REF = 'permission.cli.execute';
+const TYPED_COMMAND_RESOURCE_CLASS = 'COMMAND_DECLARED';
 const MODEL_WORKER_REF = 'worker.model.capability-assimilation.primary';
 const MODEL_SCHEDULER_INSTANCE_REF = 'scheduler.capability-assimilation.model-worker';
 const EXECUTABLE_STAGES = new Set(['EXECUTABLE', 'COMPLETED']);
@@ -326,7 +332,62 @@ function createSchedulerOwnedInferenceGate(schedulerRegistry, nextTime) {
   });
 }
 
-function requestContract(value, frame) {
+function requestContract(value, frame, { authorizedEffect = null } = {}) {
+  if (value.intentDisposition === 'REQUEST_AUTHORIZED_EFFECT') {
+    if (authorizedEffect?.state !== 'ADMITTED') {
+      throw new Error('REQUEST_AUTHORIZED_EFFECT requires one current server-owned authority');
+    }
+    if (!Array.isArray(value.requests) || value.requests.length !== 1) {
+      throw new Error('REQUEST_AUTHORIZED_EFFECT requires exactly one request');
+    }
+    const raw = value.requests[0];
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      throw new Error('authorized-effect request must be one object');
+    }
+    const requestRef = raw.requestRef ?? 'request.capability-runtime.effect.001';
+    if (typeof requestRef !== 'string' || !requestRef) throw new Error('authorized-effect requestRef is invalid');
+    if (raw.capabilityRef !== TYPED_COMMAND_CAPABILITY_REF || authorizedEffect.capabilityRef !== TYPED_COMMAND_CAPABILITY_REF) {
+      throw new Error('authorized-effect request capability does not match the admitted typed-command capability');
+    }
+    if (Array.isArray(raw.dependencyRefs) && raw.dependencyRefs.length !== 0) {
+      throw new Error('generation-one authorized effect does not admit request dependencies');
+    }
+    const executable = requireExecutable(frame, raw.capabilityRef);
+    if (executable.state !== 'CAPABILITY_EXECUTABLE') {
+      throw new Error(`authorized-effect capability is not executable: ${executable.state}`);
+    }
+    const capability = frame.entries.find((entry) => entry.capabilityRef === raw.capabilityRef);
+    if (!capability?.toolContract || capability.effectClass !== TYPED_COMMAND_EFFECT_CLASS ||
+        capability.currentness.state !== 'CURRENT' || capability.currentness.compatibility !== 'COMPATIBLE') {
+      throw new Error('authorized-effect capability is not exact-current compatible typed local process');
+    }
+    const argumentsValue = raw.arguments ?? {};
+    if (!argumentsValue || typeof argumentsValue !== 'object' || Array.isArray(argumentsValue) ||
+        JSON.stringify(Object.keys(argumentsValue).sort()) !== JSON.stringify(['commandRef', 'parameters'])) {
+      throw new Error('authorized-effect arguments must contain exactly commandRef and parameters');
+    }
+    if (argumentsValue.commandRef !== authorizedEffect.commandRef ||
+        semanticHash(argumentsValue.parameters) !== authorizedEffect.parametersSha256) {
+      throw new Error('authorized-effect request does not match the exact server-owned authority cue');
+    }
+    return freeze({ requests: [freeze({
+      requestRef,
+      capabilityRef: raw.capabilityRef,
+      arguments: clone(argumentsValue),
+      dependencyRefs: [],
+      reasonCue: typeof raw.reasonCue === 'string' ? raw.reasonCue.slice(0, 240) : null,
+      toolContract: clone(capability.toolContract),
+      currentness: clone(capability.currentness),
+      permissionRef: capability.permissionRef,
+      permissionStage: capability.permissionStage,
+      effectStage: capability.effectStage,
+      resourceClass: capability.resourceClass,
+      resourceStage: capability.resourceStage,
+      effectClass: capability.effectClass,
+      parallelClass: capability.parallelClass ?? 'SERIAL_EFFECT',
+      effectExecution: true
+    })] });
+  }
   if (value.intentDisposition === 'NO_READ_ONLY_FUNCTION_NEEDED') {
     if (!Array.isArray(value.requests) || value.requests.length !== 0) {
       throw new Error('NO_READ_ONLY_FUNCTION_NEEDED requires requests=[]');
@@ -403,7 +464,7 @@ function processDefinition(requests) {
     processes: [{
       processRef: PROCESS_REF,
       processVersion: 1,
-      purpose: 'Compile exact-current read-only capability requests for one later Companion synthesis turn.',
+      purpose: 'Compile exact-current capability requests for one later Companion synthesis turn while keeping actual effects outside Process Factory.',
       requiredInputs: ['taskIntent'],
       foundationDependencies: [],
       authorityEnvelope: { effects: [] },
@@ -429,7 +490,7 @@ function processDefinition(requests) {
           toolContractFingerprint: semanticHash(request.toolContract)
         }
       })),
-      effectOwnerRule: 'Read-only executors own observations; Process Factory remains no-effect.',
+      effectOwnerRule: 'Read executors own observations; separately admitted effect support owns exact effects; Process Factory remains no-effect.',
       outputTemplateRefs: [],
       returnRouteRule: 'ToolResultRelay accepts and reinjects exact observations once before synthesis.',
       closureRule: 'One later Companion inference synthesizes terminal observations.',
@@ -869,14 +930,18 @@ function defaultExecutors({ capabilityRegistry, processFactoryDefinition, frame,
   };
 }
 
-function requestPrompt(taskIntent, frontier) {
+function requestPrompt(taskIntent, frontier, authorizedEffectCue = null) {
   return [
     'VEXLIFE_CAPABILITY_REQUEST_FORMATION/v1',
-    'Select only exact-current READ_ONLY functions from the supplied compact frontier.',
-    'If the human request needs no current observation, choose NO_READ_ONLY_FUNCTION_NEEDED instead of inventing a tool call.',
+    authorizedEffectCue
+      ? 'Select exact-current READ_ONLY functions, or request exactly the one server-cued authorized effect. The cue is not standing authority and cannot be widened.'
+      : 'Select only exact-current READ_ONLY functions from the supplied compact frontier.',
+    'If the human request needs no current observation or admitted effect, choose NO_READ_ONLY_FUNCTION_NEEDED instead of inventing a tool call.',
     'Return one JSON object and no prose, markdown, hidden reasoning, or chain-of-thought.',
     'Read schema: {"intentDisposition":"REQUEST_READ_ONLY_FUNCTIONS","requests":[{"requestRef":"stable ref","capabilityRef":"canonical ref","arguments":{},"dependencyRefs":[],"reasonCue":"short public routing cue or null"}]}',
+    'Authorized-effect schema: {"intentDisposition":"REQUEST_AUTHORIZED_EFFECT","requests":[{"requestRef":"stable ref","capabilityRef":"capability.vexlife.cli.typed","arguments":{"commandRef":"exact cue commandRef","parameters":{}},"dependencyRefs":[],"reasonCue":"short public routing cue or null"}]}',
     'No-read schema: {"intentDisposition":"NO_READ_ONLY_FUNCTION_NEEDED","requests":[]}',
+    `AUTHORIZED_EFFECT_CUE=${JSON.stringify(authorizedEffectCue)}`,
     `FRESH_COMPANION_FOUNDATION_FRAME=${JSON.stringify(FRESH_COMPANION_FOUNDATION_FRAME)}`,
     `TASK_INTENT=${JSON.stringify(taskIntent)}`,
     `COMPACT_CAPABILITY_FRONTIER=${JSON.stringify(frontier)}`
@@ -913,11 +978,17 @@ export function createCapabilityAssimilationRuntime({
   platformRef = 'platform.browser',
   maximumConcurrency = 8,
   executors = {},
+  authorizedEffectSupport = null,
   clock = () => Date.now(),
   exactlyOnceNegativeControl = false
 }) {
   if (!Object.values(CAPABILITY_ASSIMILATION_MODES).includes(mode)) {
     throw new Error(`unknown capability-assimilation mode ${mode}`);
+  }
+  if (mode === CAPABILITY_ASSIMILATION_MODES.ADOPTED_AUTHORIZED_EFFECT &&
+      (!authorizedEffectSupport || typeof authorizedEffectSupport.currentAuthority !== 'function' ||
+       typeof authorizedEffectSupport.execute !== 'function' || typeof authorizedEffectSupport.registryRef !== 'string')) {
+    throw new Error('authorized-effect mode requires one server-owned typed-command support');
   }
   if (typeof clock !== 'function') throw new Error('capability runtime clock must be a function');
   let sequence = 0;
@@ -1131,19 +1202,35 @@ export function createCapabilityAssimilationRuntime({
       });
     }
 
+    let admittedAuthorizedEffect = null;
+    if (mode === CAPABILITY_ASSIMILATION_MODES.ADOPTED_AUTHORIZED_EFFECT) {
+      const observedAuthority = authorizedEffectSupport.currentAuthority({ taskIntent, context });
+      if (observedAuthority?.state === 'ADMITTED') admittedAuthorizedEffect = freeze(clone(observedAuthority));
+    }
     const projectCapabilityStages = Object.fromEntries(
       ROOT_CAPABILITY_KERNEL.map((capabilityRef) => [capabilityRef, 'COMPLETED']));
+    const permissionStages = { 'permission.none': 'COMPLETED' };
+    const effectStages = { READ_ONLY: 'COMPLETED' };
+    const resourceStages = { IO_BOUNDED: 'COMPLETED' };
+    if (admittedAuthorizedEffect) {
+      projectCapabilityStages[TYPED_COMMAND_CAPABILITY_REF] = 'COMPLETED';
+      permissionStages[TYPED_COMMAND_PERMISSION_REF] = 'COMPLETED';
+      effectStages[TYPED_COMMAND_EFFECT_CLASS] = 'COMPLETED';
+      resourceStages[TYPED_COMMAND_RESOURCE_CLASS] = 'COMPLETED';
+    }
     const capabilityFrameInput = freeze({
       roleRef,
       platformRef,
       projectCapabilityStages: clone(projectCapabilityStages),
-      permissionStages: { 'permission.none': 'COMPLETED' },
-      effectStages: { READ_ONLY: 'COMPLETED' },
-      resourceStages: { IO_BOUNDED: 'COMPLETED' }
+      permissionStages: clone(permissionStages),
+      effectStages: clone(effectStages),
+      resourceStages: clone(resourceStages)
     });
     const frame = compileCapabilityFrame(capabilityRegistry, capabilityFrameInput);
     const frontier = projectCapabilityFrontier(frame, {
-      activeCapabilityRef: context.activeCapabilityRef ?? null
+      activeCapabilityRef: admittedAuthorizedEffect
+        ? TYPED_COMMAND_CAPABILITY_REF
+        : context.activeCapabilityRef ?? null
     });
     progress.push(progressEvent('CAPABILITY_FRONTIER_PROJECTED', {
       visibleCapabilityCount: frontier.entries.length,
@@ -1155,7 +1242,11 @@ export function createCapabilityAssimilationRuntime({
       inference,
       input: {
         endpointProfile,
-        requestContent: requestPrompt(taskIntent, frontier),
+          requestContent: requestPrompt(taskIntent, frontier, admittedAuthorizedEffect ? {
+            capabilityRef: TYPED_COMMAND_CAPABILITY_REF,
+            commandRef: admittedAuthorizedEffect.commandRef,
+            parameters: clone(admittedAuthorizedEffect.parametersTemplate ?? {})
+          } : null),
         inMemoryAuthorization,
         timeoutMs
       },
@@ -1163,7 +1254,7 @@ export function createCapabilityAssimilationRuntime({
     });
     modelSequenceReceipts.push(requestPhase.receipt);
     const requestInference = requestPhase.normalized;
-    const requestProjection = requestContract(exactJson(requestInference.content, 'request-formation'), frame);
+    const requestProjection = requestContract(exactJson(requestInference.content, 'request-formation'), frame, { authorizedEffect: admittedAuthorizedEffect });
     progress.push(progressEvent('READ_ONLY_REQUESTS_FORMED', {
       requestCount: requestProjection.requests.length
     }));
@@ -1208,6 +1299,7 @@ export function createCapabilityAssimilationRuntime({
           heldNodes: [],
           exactlyOnceReceipts: [],
           schedulerDispatchReceipts: [],
+          effectExecutionReceipts: [],
           progress,
           hiddenReasoningIncluded: false,
           externalEffectsExecuted: false
@@ -1242,22 +1334,166 @@ export function createCapabilityAssimilationRuntime({
     const observations = [];
     const held = [];
     const exactlyOnceReceipts = [];
+    const effectExecutionReceipts = [];
+
+    async function executeAuthorizedEffectNode(node, request) {
+      if (!admittedAuthorizedEffect || mode !== CAPABILITY_ASSIMILATION_MODES.ADOPTED_AUTHORIZED_EFFECT) {
+        throw new Error('authorized effect node has no current server-owned authority');
+      }
+      const reobservedAuthority = authorizedEffectSupport.currentAuthority({ taskIntent, context });
+      if (reobservedAuthority?.state !== 'ADMITTED' ||
+          reobservedAuthority.semanticFingerprint !== admittedAuthorizedEffect.semanticFingerprint ||
+          reobservedAuthority.commandRef !== request.arguments.commandRef) {
+        throw new Error('authorized effect authority changed before execution');
+      }
+      let dispatch = null;
+      try {
+        dispatch = await acquireSchedulerDispatch({ request, roleRef });
+        const effectFactory = new ProcessFactory(processFactoryDefinition);
+        const compiledEffect = effectFactory.compile({
+          processRef: TYPED_COMMAND_PROCESS_REF,
+          inputs: {
+            commandRef: request.arguments.commandRef,
+            parameters: clone(request.arguments.parameters),
+            workingScopeRef: reobservedAuthority.workingScopeRef,
+            resourceLeaseRef: reobservedAuthority.resourceLeaseRef
+          },
+          sourceRefs: {
+            capabilityRegistry: capabilityRegistry.registryRef,
+            commandRegistry: authorizedEffectSupport.registryRef
+          },
+          authority: { effects: ['EXECUTE_TYPED_COMMAND'] },
+          resourceBudget: { requiredTokens: 0, availableTokens: Number.POSITIVE_INFINITY },
+          recipientRef: roleRef,
+          now: nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot)
+        });
+        if (compiledEffect.state !== 'PLAN_READY_NO_EFFECT') {
+          throw new Error(`typed-command process did not compile: ${compiledEffect.state}:${compiledEffect.reason ?? ''}`);
+        }
+        const executed = await authorizedEffectSupport.execute({
+          request,
+          workRef: dispatch.node.workNodeRef,
+          taskIntent,
+          context,
+          authority: reobservedAuthority,
+          processPlan: compiledEffect.plan
+        });
+        if (!executed?.effectReceipt?.effectReceiptRef || executed.effectReceipt.externalEffectsExecuted !== true ||
+            executed.effectReceipt.effectRef !== request.toolContract.effectRef) {
+          throw new Error('typed-command executor did not return one verified external-effect receipt');
+        }
+        const rawObservation = assertCurrentObservation(executed.observation, request);
+        const result = resultFromObservation(dispatch.call, mappedPracticeObservation(rawObservation));
+        const accepted = dispatch.relay.accept(result, {
+          receivedAt: nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot)
+        });
+        if (!accepted.accepted || accepted.state !== 'ACCEPTED') {
+          throw new Error(`ToolResultRelay rejected ${request.requestRef}: ${accepted.reason}`);
+        }
+        const reinjected = dispatch.relay.reinject(
+          dispatch.active.contextLease,
+          accepted.observation,
+          { observedAt: nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot) }
+        );
+        if (!reinjected.accepted || reinjected.state !== 'REINJECTED') {
+          throw new Error(`ToolResultRelay did not reinject ${request.requestRef}: ${reinjected.reason}`);
+        }
+        if (exactlyOnceNegativeControl) {
+          const duplicateAccept = dispatch.relay.accept(result, {
+            receivedAt: nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot)
+          });
+          const duplicateReinject = dispatch.relay.reinject(
+            dispatch.active.contextLease,
+            accepted.observation,
+            { observedAt: nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot) }
+          );
+          if (duplicateAccept.reason !== 'DUPLICATE_RESULT' ||
+              duplicateReinject.reason !== 'OBSERVATION_ALREADY_REINJECTED') {
+            throw new Error('ToolResultRelay exactly-once negative control did not fail closed');
+          }
+          exactlyOnceReceipts.push({
+            requestRef: request.requestRef,
+            duplicateAcceptReason: duplicateAccept.reason,
+            duplicateReinjectReason: duplicateReinject.reason
+          });
+        }
+        const completedAt = nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot);
+        const completion = dispatch.scheduler.completeActive({
+          graph: dispatch.graph,
+          intentRegistry: owner.intentRegistry,
+          trustSnapshot: dispatch.trustSnapshot,
+          registeredProcessRefs: owner.registeredProcessRefs,
+          registeredRoleRefs: owner.registeredRoleRefs,
+          completionEvidence: schedulerCompletionEvidence({
+            graph: dispatch.graph,
+            node: dispatch.node,
+            active: dispatch.active,
+            runtimeTrustSnapshot: dispatch.observed.runtimeTrustSnapshot,
+            observation: accepted.observation,
+            completedAt
+          }),
+          completionReceiptRef: `completion.capability-practice.${dispatch.identity}`,
+          releaseReceiptRef: `release.capability-practice.${dispatch.identity}`,
+          completedAt
+        });
+        schedulerDispatchReceipts.push(freeze({
+          schemaVersion: 'vexlife.capability-assimilation-scheduler-dispatch/v1',
+          requestRef: request.requestRef,
+          capabilityRef: request.capabilityRef,
+          schedulerInstanceRef: dispatch.active.active.schedulerInstanceRef,
+          schedulerGeneration: dispatch.schedulerGeneration,
+          workerRef: dispatch.workerRef,
+          workerLeaseRef: dispatch.active.workerLease.leaseRef,
+          admissionReceiptRef: dispatch.queue.admissionReceipt.admissionReceiptRef,
+          admissionReceiptFingerprint: dispatch.queue.admissionReceipt.semanticFingerprint,
+          toolCallRef: dispatch.call.toolCallRef,
+          toolContractRef: dispatch.call.toolContractRef,
+          toolRef: dispatch.call.toolRef,
+          effectRef: dispatch.call.effectRef,
+          capabilityToolRef: request.toolContract.toolRef,
+          capabilityEffectRef: request.toolContract.effectRef,
+          capabilityExecutorRef: request.toolContract.executorRef,
+          completionReceiptRef: completion.completionReceipt.receiptRef,
+          completionReceiptFingerprint: completion.completionReceipt.semanticFingerprint,
+          externalEffectsExecuted: false
+        }));
+        effectExecutionReceipts.push(freeze(clone(executed.effectReceipt)));
+        return { nodeRef: node.nodeRef, observation: accepted.observation };
+      } catch (error) {
+        if (dispatch?.scheduler?.active) {
+          try {
+            dispatch.scheduler.cancelActive({
+              releaseReceiptRef: `release.capability-practice.failed.${dispatch.identity}`,
+              releasedAt: nextSchedulerTime(dispatch.observed.runtimeTrustSnapshot),
+              reason: 'CAPABILITY_AUTHORIZED_EFFECT_FAILED'
+            });
+          } catch {}
+        }
+        throw error;
+      } finally {
+        releaseReadSlot(dispatch?.workerRef);
+      }
+    }
 
     while (completed.size < dag.nodes.length) {
-      const evidenceMaps = executionEvidenceMaps(dag, requestByRef, capabilityRegistry);
-      const decision = selectIndependentReadOnlyBatch({
-        nodes: dag.nodes,
-        completedNodeRefs: [...completed],
-        currentnessByNodeRef: evidenceMaps.currentnessByNodeRef,
-        authorityByNodeRef: evidenceMaps.authorityByNodeRef,
-        resourceByNodeRef: evidenceMaps.resourceByNodeRef,
-        maximumConcurrency
-      });
+      const effectNode = dag.nodes.find((node) =>
+        !completed.has(node.nodeRef) && requestByRef.get(node.nodeRef)?.effectClass === TYPED_COMMAND_EFFECT_CLASS) ?? null;
+      const evidenceMaps = effectNode ? null : executionEvidenceMaps(dag, requestByRef, capabilityRegistry);
+      const decision = effectNode
+        ? { batch: [effectNode], held: [] }
+        : selectIndependentReadOnlyBatch({
+            nodes: dag.nodes,
+            completedNodeRefs: [...completed],
+            currentnessByNodeRef: evidenceMaps.currentnessByNodeRef,
+            authorityByNodeRef: evidenceMaps.authorityByNodeRef,
+            resourceByNodeRef: evidenceMaps.resourceByNodeRef,
+            maximumConcurrency
+          });
       held.splice(0, held.length, ...decision.held);
       if (decision.batch.length === 0) {
         throw new Error(`capability DAG cannot advance: ${JSON.stringify(decision.held)}`);
       }
-      progress.push(progressEvent('READ_ONLY_BATCH_STARTED', {
+      progress.push(progressEvent(effectNode ? 'AUTHORIZED_EFFECT_STARTED' : 'READ_ONLY_BATCH_STARTED', {
         nodeRefs: decision.batch.map((node) => node.nodeRef),
         batchSize: decision.batch.length
       }));
@@ -1265,6 +1501,9 @@ export function createCapabilityAssimilationRuntime({
       const batchResults = await Promise.all(decision.batch.map(async (node) => {
         const request = requestByRef.get(node.nodeRef);
         if (!request) throw new Error(`dependency DAG node ${node.nodeRef} has no canonical request`);
+        if (request.effectClass === TYPED_COMMAND_EFFECT_CLASS) {
+          return executeAuthorizedEffectNode(node, request);
+        }
         const beforeEvidence = evidenceMaps.evidenceByNodeRef.get(node.nodeRef);
         if (!beforeEvidence || beforeEvidence.currentness !== 'CURRENT' || beforeEvidence.authority !== 'ADMITTED' || beforeEvidence.resource !== 'AVAILABLE') {
           throw new Error(`execution evidence is not current/admitted for ${node.nodeRef}`);
@@ -1433,9 +1672,10 @@ export function createCapabilityAssimilationRuntime({
         heldNodes: clone(held),
         exactlyOnceReceipts: clone(exactlyOnceReceipts),
         schedulerDispatchReceipts: clone([...schedulerDispatchReceipts].sort((left, right) => left.requestRef.localeCompare(right.requestRef))),
+        effectExecutionReceipts: clone(effectExecutionReceipts),
         progress,
         hiddenReasoningIncluded: false,
-        externalEffectsExecuted: false
+        externalEffectsExecuted: effectExecutionReceipts.length > 0
       }
     });
   }

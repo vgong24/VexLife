@@ -24,8 +24,8 @@ const capabilityRegistry = JSON.parse(fs.readFileSync(
   new URL('../blueprint/capability-registry.json', import.meta.url),
   'utf8'
 ));
-const conversationSource = fs.readFileSync(
-  new URL('../src/core/conversation.mjs', import.meta.url),
+const semanticRelaySource = fs.readFileSync(
+  new URL('../src/core/semantic-relay.mjs', import.meta.url),
   'utf8'
 );
 
@@ -602,17 +602,17 @@ test('FTA-06 the five prior accepted command bindings remain byte-semantically u
   }
 });
 
-test('FTA-07/08 Conversation acknowledgement semantics remain source-owned and distinct', () => {
+test('FTA-07/08 Conversation acknowledgement semantics remain source-owned and distinct through Semantic Relay role extraction', () => {
   assert.match(
-    conversationSource,
+    semanticRelaySource,
     /const ACKNOWLEDGEMENT_STATES = new Set\(\['NOT_REQUESTED', 'PENDING', 'ACKNOWLEDGED', 'UNKNOWN'\]\);/
   );
-  assert.match(conversationSource, /cannot acknowledge before delivery/);
-  assert.match(conversationSource, /cannot record understanding before acknowledgement/);
-  assert.equal(conversationSource.toLowerCase().includes('agreement'), false);
-  assert.equal(conversationSource.includes('acceptedAssignment'), false);
-  assert.equal(conversationSource.includes('assignmentRef'), false);
-  assert.equal(conversationSource.toLowerCase().includes('completion'), false);
+  assert.match(semanticRelaySource, /cannot acknowledge before delivery/);
+  assert.match(semanticRelaySource, /cannot record understanding before acknowledgement/);
+  assert.equal(semanticRelaySource.toLowerCase().includes('agreement'), false);
+  assert.equal(semanticRelaySource.includes('acceptedAssignment'), false);
+  assert.equal(semanticRelaySource.includes('assignmentRef'), false);
+  assert.equal(semanticRelaySource.toLowerCase().includes('completion'), false);
 });
 
 // [VXG RealForever][EFX-02]

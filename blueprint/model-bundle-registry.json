@@ -88,6 +88,73 @@
         "github.issue.vextreme-sdk.1796",
         "github.issue.vextreme-sdk.1823"
       ]
+    },
+    {
+      "bundleSchemaVersion": "vexlife.model-bundle/v2",
+      "modelBundleRef": "model-bundle.vexlife.heretic.qwen3.8-27b.mlx4.329658ee8f27.001",
+      "generationRef": "generation.devex.heretic27b4.preexisting-certified-foundation.normalized.20261001A",
+      "modelProfileRef": "model-profile.devex.qwen38-27b-heretic-mlx4.certified.20260928A",
+      "state": "RELEASE_QUALIFIED",
+      "artifactBindings": [
+        {
+          "roleRef": "artifact-role.devex.heretic.qwen3.8-27b.mlx4.member.gitattributes",
+          "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.gitattributes"
+        },
+        {
+          "roleRef": "artifact-role.devex.heretic.qwen3.8-27b.mlx4.member.readme",
+          "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.readme"
+        },
+        {
+          "roleRef": "artifact-role.devex.heretic.qwen3.8-27b.mlx4.member.chat-template",
+          "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.chat-template"
+        },
+        {
+          "roleRef": "artifact-role.devex.heretic.qwen3.8-27b.mlx4.member.config",
+          "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.config"
+        },
+        {
+          "roleRef": "artifact-role.devex.heretic.qwen3.8-27b.mlx4.member.generation-config",
+          "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.generation-config"
+        },
+        {
+          "roleRef": "artifact-role.devex.heretic.qwen3.8-27b.mlx4.member.model-00001-of-00003-safetensors",
+          "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.model-00001-of-00003-safetensors"
+        },
+        {
+          "roleRef": "artifact-role.devex.heretic.qwen3.8-27b.mlx4.member.model-00002-of-00003-safetensors",
+          "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.model-00002-of-00003-safetensors"
+        },
+        {
+          "roleRef": "artifact-role.devex.heretic.qwen3.8-27b.mlx4.member.model-00003-of-00003-safetensors",
+          "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.model-00003-of-00003-safetensors"
+        },
+        {
+          "roleRef": "artifact-role.devex.heretic.qwen3.8-27b.mlx4.member.model-safetensors-index",
+          "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.model-safetensors-index"
+        },
+        {
+          "roleRef": "artifact-role.devex.heretic.qwen3.8-27b.mlx4.member.tokenizer",
+          "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.tokenizer"
+        },
+        {
+          "roleRef": "artifact-role.devex.heretic.qwen3.8-27b.mlx4.member.tokenizer-config",
+          "artifactRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2.member.tokenizer-config"
+        }
+      ],
+      "artifactSetRef": "artifact.devex.qwen3.8-27b-heretic-mlx-4bit.808b82a2",
+      "contentSetSha256": "329658ee8f270056bc29d8a6cfd6e9f1b7d9d14c659452c9e4dd46fc7c78d780",
+      "runtimeRealizationRefs": [
+        "adapter.runtime.mlx.macos-victor.001"
+      ],
+      "sourceRefs": [
+        "github.issue.vexlife.857.comment.6289035585",
+        "github.issue.vexlife.857.comment.6289157446",
+        "github.issue.vextreme-sdk.1399.comment.5947727630",
+        "github.issue.vextreme-sdk.636",
+        "github.pull.vexlife.919",
+        "github.issue.vexlife.866.comment.6361696437",
+        "github.issue.vexlife.857.comment.6362544331"
+      ]
     }
   ]
 }

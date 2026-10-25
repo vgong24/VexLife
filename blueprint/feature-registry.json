@@ -59,6 +59,7 @@
     {
       "featureRef": "feature.vexlife.addressed-conversation",
       "purpose": "Direct and group channels preserve speaker, recipient, witness, membership and channel-isolated continuity.",
+      "purposeStringRef": "feature.addressed-conversation.purpose",
       "status": "IMPLEMENTED_REFERENCE",
       "humanIntroduction": {
         "disposition": "DISCOVERABLE_ONLY",
@@ -85,14 +86,17 @@
         "permission.conversation.send"
       ],
       "processRefs": [
-        "process.vexlife.communication.translate-and-refine"
+        "process.vexlife.communication.translate-and-refine",
+        "process.vexlife.conversation.send-addressed"
       ],
       "moduleRefs": [
         "module.vexlife.core.conversation",
+        "module.vexlife.core.conversation-send-admission",
         "module.vexlife.browser.chat-controller"
       ],
       "localizationRefs": [
-        "screen.chat.title"
+        "screen.chat.title",
+        "feature.addressed-conversation.purpose"
       ],
       "testRefs": [
         "test.channel.direction",
@@ -1303,7 +1307,11 @@
         "test.lived-companion.fresh-process-resume",
         "test.lived-companion.identity-head-replay",
         "test.lived-companion.privacy",
-        "test.lived-companion.windows-proof"
+        "test.lived-companion.windows-proof",
+        "test.lived-companion.thread-writer-currentness-idle",
+        "test.lived-companion.thread-writer-currentness-active",
+        "test.lived-companion.thread-writer-currentness-recovery-required",
+        "test.lived-companion.thread-writer-currentness-held-unverifiable"
       ],
       "platformRefs": [
         "platform.windows"
@@ -1333,7 +1341,8 @@
       "rollbackRouteRef": "recovery.lived-companion.last-valid-head",
       "projectionRefs": [
         "projection.lived-companion.current-head",
-        "projection.lived-companion.failure"
+        "projection.lived-companion.failure",
+        "projection.lived-companion.thread-writer-currentness"
       ],
       "knownGaps": [
         "automatic abandoned or unverifiable writer lease recovery remains held; G01 classifies proven-absent owners and invalid lease evidence, preserves the exact blocking evidence, and routes to explicit recovery/attention",

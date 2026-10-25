@@ -20,5 +20,30 @@
       "docs/VEX-FAMILY-GROUP-CONTEXT-RUNTIME.md",
       "src/core/family-companion-runtime.mjs"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.family-companion-prompt-context",
+    "path": "src/core/family-companion-prompt-context.mjs",
+    "role": "Materializes one exact-current Family group frontier into bounded provider-ready Family messages and a source-bound receipt, with private in-process anti-forgery and provider-boundary revalidation, without owning Family membership, durable Conversation, provider invocation, model identity, execution, Home, Memory or training.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.family-group-context-runtime",
+      "module.vexlife.core.conversation-store",
+      "src/core/context-lease.mjs",
+      "src/core/scheduler-runtime-trust.mjs",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.core.lived-companion"
+    ],
+    "tests": [
+      "test/family-companion-prompt-context.test.mjs",
+      "test/vex-family-prompt-materialization.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/lived-companion.mjs",
+      "docs/FAMILY-COMPANION-PROMPT-CONTEXT.md"
+    ]
   }
 ]
