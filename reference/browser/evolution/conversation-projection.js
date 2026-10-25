@@ -191,6 +191,39 @@ function renderMessage(document, message, { relationshipDirect = false } = {}) {
   return article;
 }
 
+export function projectConversationEvolutionStreamProgress(referenceFeed, channelRef) {
+  if (!referenceFeed || typeof referenceFeed.querySelectorAll !== 'function') return null;
+  const row = [...referenceFeed.querySelectorAll('[data-companion-stream-progress="true"]')]
+    .find((candidate) => candidate?.dataset?.channelRef === channelRef) ?? null;
+  if (!row || row.dataset.truthClass !== 'EPHEMERAL_LOCAL_MODEL_PROGRESS') return null;
+  if (row.dataset.messageRef || row.dataset.conversationHeadSha256) return null;
+  const content = row.querySelector?.('.message-body')?.textContent ?? '';
+  if (!content) return null;
+  return Object.freeze({
+    schemaVersion: 'vexlife.ux-evolution.conversation-stream-progress/v1',
+    truthClass: 'EPHEMERAL_LOCAL_MODEL_PROGRESS',
+    channelRef,
+    content,
+    effectsPerformed: false
+  });
+}
+
+function renderStreamProgress(document, binding, progress, { relationshipDirect = false } = {}) {
+  const article = renderMessage(document, {
+    messageRef: null,
+    sequence: null,
+    speaker: participant(binding, 'companion'),
+    recipients: [participant(binding, 'victor')],
+    content: progress.content,
+    truthClass: progress.truthClass,
+    semanticRelay: null
+  }, { relationshipDirect });
+  article.dataset.companionStreamProgress = 'true';
+  article.dataset.channelRef = progress.channelRef;
+  article.dataset.effectsPerformed = 'false';
+  return article;
+}
+
 function composerTruth(snapshot, canonical, value, binding) {
   const slash = value.trim().startsWith('/');
   const relationshipDirect = snapshot.channelKind === 'DIRECT' && snapshot.channelRoleKey === 'companion';
@@ -222,9 +255,12 @@ export function createConversationEvolutionAdapter(input) {
 
     const document = body.ownerDocument;
     const canonical = canonicalComposer(document);
+    const referenceFeed = document.querySelector('#messageFeed');
+    const referenceChannels = document.querySelector('#channelTabs');
 
     const render = () => {
       const snapshot = projectConversationEvolutionState(binding);
+      const streamProgress = projectConversationEvolutionStreamProgress(referenceFeed, snapshot.channelRef);
       const relationshipDirect = snapshot.channelKind === 'DIRECT' && snapshot.channelRoleKey === 'companion';
       // Only ephemeral presentation continuity crosses a same-channel render.
       // Canonical messages, draft content and availability remain source-owned.
@@ -237,12 +273,16 @@ export function createConversationEvolutionAdapter(input) {
       const contextOpen = sameChannel && previous.querySelector('.conversation-evolution__context')?.open;
       const priorScroll = sameChannel ? previous.scrollTop : 0;
       const followedEnd = sameChannel && previous.scrollHeight - previous.clientHeight - priorScroll < 24;
+      const priorProgressContent = sameChannel
+        ? (previous.querySelector('[data-companion-stream-progress="true"] .conversation-evolution__message-body')?.textContent ?? null)
+        : null;
+      const progressChanged = sameChannel && (streamProgress?.content ?? null) !== priorProgressContent;
       const messageCountChanged = sameChannel && Number(previous.dataset.messageCount) !== snapshot.messages.length;
       const root = el(document, 'section', 'conversation-evolution');
       root.dataset.surfaceRef = snapshot.surfaceRef;
       root.dataset.channelRef = snapshot.channelRef;
       root.dataset.messageCount = String(snapshot.messages.length);
-      root.dataset.feedState = snapshot.messages.length ? 'POPULATED' : 'EMPTY';
+      root.dataset.feedState = snapshot.messages.length || streamProgress ? 'POPULATED' : 'EMPTY';
       root.dataset.semanticOwnerRef = snapshot.semanticOwnerRef;
       root.dataset.interactionOwnerRef = snapshot.interactionOwnerRef;
       root.dataset.oneSemanticState = 'true';
@@ -334,8 +374,9 @@ export function createConversationEvolutionAdapter(input) {
       const feed = el(document, 'div', 'conversation-evolution__feed');
       feed.setAttribute('role', 'log');
       feed.setAttribute('aria-live', 'polite');
-      feed.hidden = snapshot.messages.length === 0;
+      feed.hidden = snapshot.messages.length === 0 && !streamProgress;
       for (const message of snapshot.messages) feed.append(renderMessage(document, message, { relationshipDirect }));
+      if (streamProgress) feed.append(renderStreamProgress(document, binding, streamProgress, { relationshipDirect }));
       root.append(feed);
 
       const composer = el(document, 'form', 'conversation-evolution__composer');
@@ -423,13 +464,11 @@ export function createConversationEvolutionAdapter(input) {
           replacement?.focus({ preventScroll: true });
           if (selection && replacement === textarea) textarea.setSelectionRange(...selection);
         }
-        root.scrollTop = messageCountChanged && followedEnd ? root.scrollHeight : priorScroll;
+        root.scrollTop = followedEnd && (messageCountChanged || progressChanged) ? root.scrollHeight : priorScroll;
       }
       return snapshot;
     };
 
-    const referenceFeed = document.querySelector('#messageFeed');
-    const referenceChannels = document.querySelector('#channelTabs');
     observer?.disconnect();
     if (typeof document.defaultView?.MutationObserver === 'function') {
       observer = new document.defaultView.MutationObserver((mutations) => {
