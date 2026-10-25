@@ -94,26 +94,52 @@ test('browser Companion adaptive reveal decouples provider arrival from paint an
   time = 16;
   frames.shift()(16);
   const initial = reveal.snapshot();
-  assert.ok(initial.revealedUnits > 0);
+  assert.equal(initial.revealedUnits, 1);
   assert.ok(initial.revealedUnits < initial.receivedUnits);
   const initialAdvance = initial.revealedUnits;
 
-  time = 20;
-  reveal.push(' efghijklmnopqrstuvwxyz');
   time = 32;
   frames.shift()(32);
+  assert.equal(reveal.snapshot().revealedUnits, 2, 'steady arrival should advance gradually rather than drain the whole chunk');
+
+  time = 36;
+  reveal.push(' efghijklmnopqrstuvwxyz');
+  time = 48;
+  frames.shift()(48);
   const burst = reveal.snapshot();
   assert.ok(burst.revealedUnits - initial.revealedUnits > initialAdvance);
   assert.ok(burst.backlogUnits > 0);
 
   const finishPromise = reveal.finish();
-  time = 48;
-  frames.shift()(48);
   time = 64;
   frames.shift()(64);
+  time = 80;
+  frames.shift()(80);
   await finishPromise;
   assert.equal(reveal.snapshot().backlogUnits, 0);
   assert.equal(renders.at(-1), 'abcd efghijklmnopqrstuvwxyz');
+});
+
+test('browser Companion adaptive reveal flushes an already-scheduled frame when the surface becomes hidden', async () => {
+  let hidden = false;
+  const frames = [];
+  const cancelled = [];
+  const renders = [];
+  const reveal = createBrowserCompanionAdaptiveReveal({
+    render(content) { renders.push(content); },
+    requestFrame(callback) { frames.push(callback); return frames.length; },
+    cancelFrame(handle) { cancelled.push(handle); },
+    now: () => 0,
+    visible: () => !hidden,
+    reducedMotion: () => false
+  });
+  reveal.push('abcd');
+  assert.equal(frames.length, 1);
+  hidden = true;
+  await reveal.finish();
+  assert.deepEqual(cancelled, [1]);
+  assert.equal(reveal.snapshot().backlogUnits, 0);
+  assert.equal(renders.at(-1), 'abcd');
 });
 
 test('browser Companion adaptive reveal bypasses animation for reduced motion', async () => {

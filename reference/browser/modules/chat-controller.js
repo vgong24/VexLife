@@ -59,6 +59,7 @@ export function createBrowserCompanionAdaptiveReveal({
   let finishFramesRemaining = BROWSER_COMPANION_REVEAL_FINISH_FRAMES;
   let finishPromise = null;
   let resolveFinish = null;
+  let revealCredit = 0;
   let cancelled = false;
 
   const currentVisible = () => typeof visible === 'function' ? visible() : Boolean(visible);
@@ -88,12 +89,17 @@ export function createBrowserCompanionAdaptiveReveal({
     settleFinish();
   };
   const schedule = () => {
-    if (cancelled || frameHandle !== null || revealedUnits >= received.length) {
-      settleFinish();
+    if (cancelled) return;
+    if (currentReducedMotion() || !currentVisible() || typeof requestFrame !== 'function') {
+      if (frameHandle !== null && typeof cancelFrame === 'function') {
+        try { cancelFrame(frameHandle); } catch {}
+      }
+      frameHandle = null;
+      flush();
       return;
     }
-    if (currentReducedMotion() || !currentVisible() || typeof requestFrame !== 'function') {
-      flush();
+    if (frameHandle !== null || revealedUnits >= received.length) {
+      settleFinish();
       return;
     }
     frameHandle = requestFrame(step);
@@ -117,18 +123,23 @@ export function createBrowserCompanionAdaptiveReveal({
       budget = Math.ceil(backlog / frames);
       finishFramesRemaining -= 1;
     } else {
-      const arrivalBudget = Math.max(1, Math.ceil(arrivalUnitsPerMs * elapsedMs * 1.15));
-      const backlogBudget = backlog >= 48
-        ? Math.ceil(backlog * 0.5)
-        : backlog >= 16
-          ? Math.ceil(backlog * 0.3)
-          : backlog >= 6
-            ? 2
-            : 1;
-      budget = Math.max(arrivalBudget, backlogBudget);
+      const pressure = backlog >= 48
+        ? 3
+        : backlog >= 24
+          ? 2
+          : backlog >= 12
+            ? 1.4
+            : backlog >= 6
+              ? 1.15
+              : 1;
+      revealCredit += arrivalUnitsPerMs * elapsedMs * pressure;
+      budget = Math.floor(revealCredit);
+      if (budget > 0) revealCredit -= budget;
     }
-    revealedUnits += Math.min(backlog, budget);
-    renderCurrent();
+    if (budget > 0) {
+      revealedUnits += Math.min(backlog, budget);
+      renderCurrent();
+    }
     if (revealedUnits < received.length) schedule();
     else settleFinish();
   };
@@ -142,7 +153,8 @@ export function createBrowserCompanionAdaptiveReveal({
     const observedAt = Number(now());
     if (Number.isFinite(observedAt)) {
       if (lastArrivalAt === null) {
-        arrivalUnitsPerMs = Math.max(BROWSER_COMPANION_REVEAL_DEFAULT_RATE_PER_MS, units.length / 48);
+        arrivalUnitsPerMs = BROWSER_COMPANION_REVEAL_DEFAULT_RATE_PER_MS;
+        if (revealedUnits === 0) revealCredit = Math.max(revealCredit, 1);
       } else {
         const elapsedMs = Math.max(1, observedAt - lastArrivalAt);
         const instantaneousRate = units.length / elapsedMs;
