@@ -348,6 +348,7 @@ export function createConversationEvolutionAdapter(input) {
       textarea.id = 'conversationEvolutionMessage';
       textarea.dataset.presentationFocusKey = 'composer';
       textarea.setAttribute('aria-describedby', 'conversationEvolutionHint');
+      textarea.setAttribute('enterkeyhint', 'send');
       textarea.rows = 3;
       textarea.placeholder = binding.t('composer.placeholder');
       textarea.value = canonical.input.value;
@@ -372,6 +373,13 @@ export function createConversationEvolutionAdapter(input) {
         canonical.input.value = textarea.value;
         canonical.input.dispatchEvent(new document.defaultView.Event('input', { bubbles:true }));
         syncComposer();
+      });
+      textarea.addEventListener('keydown', (event) => {
+        const enterOnly=event.key==='Enter'&&!event.shiftKey&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.isComposing;
+        if(!enterOnly||send.disabled)return;
+        event.preventDefault();
+        if(typeof composer.requestSubmit==='function')composer.requestSubmit();
+        else composer.dispatchEvent(new document.defaultView.Event('submit',{bubbles:true,cancelable:true}));
       });
       composer.addEventListener('submit', (event) => {
         event.preventDefault();
