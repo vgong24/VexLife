@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   BROWSER_COMPANION_API_PATH,
+  BROWSER_COMPANION_STREAM_API_PATH,
   BROWSER_COMPANION_STATUS_PATH,
   BROWSER_COMPANION_RECOVERY_PATH,
   BROWSER_COMPANION_RECOVERY_MAX_BODY_BYTES,
@@ -733,6 +734,11 @@ function sendJson(response, statusCode, value) {
     'Content-Length': Buffer.byteLength(body)
   });
   response.end(body);
+}
+
+const BROWSER_COMPANION_STREAM_FRAME_SCHEMA = 'vexlife.browser-companion-turn-stream-frame/v1';
+function writeCompanionStreamFrame(response, frameType, sequence, payload) {
+  response.write(`${JSON.stringify({ schemaVersion: BROWSER_COMPANION_STREAM_FRAME_SCHEMA, frameType, sequence, payload })}\n`);
 }
 
 function companionRequestError(message, httpStatus) {
@@ -1844,6 +1850,46 @@ export function createVexLifeBrowserServer({
             : new BrowserCompanionBridgeError('COMPANION_RECOVERY_FAILED', 'Companion recovery failed safely', 500);
           sendJson(response, typed.httpStatus, browserCompanionRecoveryFailurePayload(typed));
         }
+        return;
+      }
+
+      if (url.pathname === BROWSER_COMPANION_STREAM_API_PATH) {
+        if (request.method !== 'POST') {
+          response.writeHead(405, { Allow: 'POST', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        let input;
+        try { input = await readBoundedJson(request); }
+        catch (error) {
+          const typed = error instanceof BrowserCompanionBridgeError ? error : new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'Companion streaming request was not admitted', 400);
+          sendJson(response, typed.httpStatus, browserCompanionFailurePayload(typed));
+          return;
+        }
+        response.writeHead(200, {
+          'Content-Type': 'application/x-ndjson; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'X-Content-Type-Options': 'nosniff'
+        });
+        let frameSequence = 0;
+        try {
+          let result = await companionBridge.performConversationTurn(input, {
+            responseDeltaObserver: async (delta) => {
+              frameSequence += 1;
+              writeCompanionStreamFrame(response, 'DELTA', frameSequence, delta);
+            }
+          });
+          if (companionVoicePlayback && typeof companionVoicePlayback.playCompletedTurn === 'function' && result?.state === 'TURN_COMPLETED') {
+            const voicePlayback = await companionVoicePlayback.playCompletedTurn({ completedTurn: result, threadRef: input.threadRef, homeIdentity: resolveHomeIdentity() });
+            result = { ...result, voicePlayback };
+          }
+          frameSequence += 1;
+          writeCompanionStreamFrame(response, 'FINAL', frameSequence, result);
+        } catch (error) {
+          const typed = error instanceof BrowserCompanionBridgeError ? error : new BrowserCompanionBridgeError('COMPANION_TURN_FAILED', 'Local companion turn failed safely', 500, error?.message ?? String(error));
+          frameSequence += 1;
+          writeCompanionStreamFrame(response, 'FAILURE', frameSequence, browserCompanionFailurePayload(typed));
+        } finally { response.end(); }
         return;
       }
 
