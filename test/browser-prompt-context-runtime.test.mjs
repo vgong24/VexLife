@@ -8,7 +8,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { createServerOwnedBrowserCompanionBridge } from '../scripts/serve-browser.mjs';
-import { createBrowserCompanionBridge } from '../src/core/browser-companion-bridge.mjs';
+import { BrowserCompanionBridgeError, createBrowserCompanionBridge } from '../src/core/browser-companion-bridge.mjs';
 import {
   LivedCompanionError,
   initializeLivedCompanionHome,
@@ -249,6 +249,9 @@ test('ordinary provider request receives one attributed bounded current Memory s
     assert.match(result.promptContextMaterialization.memoryContextFingerprintOrNull, /^[0-9a-f]{64}$/u);
     assert.ok(result.promptContextMaterialization.memorySourceRefs.includes('statement.g03.active'));
     assert.equal(result.promptContextMaterialization.memoryEffectPerformed, false);
+    assert.equal(result.promptContextMaterialization.contextLeaseInputTokenEstimate, 192_000);
+    assert.equal(result.promptContextMaterialization.reservedOutputTokens, 16_000);
+    assert.equal(result.promptContextMaterialization.hardTokenLimit, 208_000);
     assert.equal(result.promptContextMaterialization.providerBoundaryCurrentnessVerified, true);
     assert.equal(result.promptContextMaterialization.providerBoundarySourceBindingsVerified, true);
   } finally {
@@ -270,13 +273,15 @@ test('Memory is bounded out when the immediate conversation consumes the shared 
       currentRequestSequence: fixture.g01.head.sequence + 1,
       priorConversationHeadSha256: fixture.g01.head.conversationHeadSha256
     };
-    const taskIntent = 'x'.repeat(14000);
+    const taskIntent = 'x'.repeat(767_600);
     const selected = await owner.promptContextResolver({ context: current, taskIntent });
     assert.equal(selected.memoryContext.included, false);
     assert.equal(selected.memoryContext.estimatedSystemMessageTokens, 0);
     assert.equal(selected.memoryContext.memoryTokenCap < 100, true);
     assert.ok(selected.memoryContext.tokenBoundedOutPageRefs.length >= 1);
-    assert.equal(selected.contextLease.inputTokenEstimate, 3584);
+    assert.equal(selected.contextLease.inputTokenEstimate, 192_000);
+    assert.equal(selected.contextLease.reservedOutputTokens, 16_000);
+    assert.equal(selected.contextLease.hardTokenLimit, 208_000);
   } finally {
     fs.rmSync(home.root, { recursive: true, force: true });
   }
@@ -484,9 +489,43 @@ test('authority verifier rejects an expired exact lease', async () => {
   }
 });
 
+test('zero remaining prompt headroom bounds Memory out without forming an invalid zero-cap packet', async () => {
+  const home = makeHome('zero-memory-headroom');
+  const model = await startModelServer(({ callIndex }) =>
+    callIndex === 0 ? 'x'.repeat(800_000) : 'Current exact reply.');
+  try {
+    await firstTurn(home, model);
+    const owner = runtime(home);
+    const current = {
+      threadRef: 'thread.vexlife.browser-prompt-context-runtime-test',
+      currentRequestEventRef: 'event.vexlife.request.zero-memory-headroom',
+      currentRequestEventHash: '7'.repeat(64),
+      currentRequestSequence: 2,
+      priorConversationHeadSha256: JSON.parse(fs.readFileSync(path.join(
+        home.home,
+        'conversations',
+        home.companionLineageRef,
+        'thread.vexlife.browser-prompt-context-runtime-test',
+        'head.json'
+      ), 'utf8')).conversationHeadSha256
+    };
+    const selected = await owner.promptContextResolver({
+      context: current,
+      taskIntent: 'Current request stays inside browser request admission.'
+    });
+    assert.equal(selected.memoryContext.included, false);
+    assert.equal(selected.memoryContext.memoryTokenCap, 1);
+    assert.equal(selected.memoryContext.estimatedSystemMessageTokens, 0);
+  } finally {
+    await model.close();
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
 test('post-MATERIALIZE failure retains no selection beyond the finite lease TTL', async () => {
   const home = makeHome('materialization-failure-expiry');
-  const model = await startModelServer();
+  const model = await startModelServer(({ callIndex }) =>
+    callIndex === 0 ? 'x'.repeat(800_000) : 'Current exact reply.');
   try {
     await firstTurn(home, model);
     const owner = runtime(home, { leaseTtlMs: 1_000 });
@@ -494,8 +533,11 @@ test('post-MATERIALIZE failure retains no selection beyond the finite lease TTL'
       () => bridge(home, model, owner, 'instance.vexlife.browser-prompt-context-budget-failure').performTurn({
         threadRef: 'thread.vexlife.browser-prompt-context-runtime-test',
         channelRef: 'channel.local-vex.companion',
-        content: 'x'.repeat(16_000)
-      })
+        content: 'Current request stays inside browser request admission.'
+      }),
+      (error) => error instanceof BrowserCompanionBridgeError
+        && error.code === 'CONTEXT_HASH_MISMATCH'
+        && /materialized prompt exceeds the exact Context Lease input budget/u.test(error.internalCause ?? '')
     );
     assert.equal(model.calls.length, 1);
     assert.equal(owner.activeSelectionCount(), 1);
