@@ -194,57 +194,57 @@ code {
   gap: 1.5rem;
 }
 
-.brand-lockup {
-  display: inline-flex;
+.family-rail {
+  display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0.7rem;
-  color: var(--ink);
-  font-family: var(--display);
-  font-size: 1.22rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  text-decoration: none;
+  gap: 12px;
+  margin-right: auto;
+}
+
+.family-mark {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  color: var(--accent);
 }
 
 .vex-mark {
-  width: 2rem;
-  height: 2rem;
+  width: 100%;
+  height: 100%;
   fill: none;
-  stroke: var(--accent);
+  stroke: currentColor;
   stroke-linejoin: round;
   stroke-width: 4.2;
 }
 
 .family-worlds {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.48rem;
-  margin-right: auto;
+  display: grid;
+  grid-template-columns: 5.8rem 0.65rem 5.3rem 0.65rem 5.3rem;
+  align-items: baseline;
+  gap: 7px;
   color: var(--ink-muted);
-  font-size: 0.82rem;
-  font-weight: 720;
-  letter-spacing: 0.01em;
   white-space: nowrap;
 }
 
-.family-worlds a,
-.family-world-current {
+.family-world {
+  display: block;
   padding: 0.34rem 0.08rem;
-}
-
-.family-worlds a {
   color: var(--ink-soft);
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  font-weight: 720;
+  letter-spacing: 0.01em;
   text-decoration: none;
   transition: color 150ms ease;
 }
 
-.family-worlds a:hover,
-.family-worlds a:focus-visible {
-  color: var(--accent-bright);
-}
+.family-world:hover,
+.family-world:focus-visible { color: var(--accent-bright); }
 
-.family-worlds a:focus-visible {
+.family-world:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
   border-radius: 0.18rem;
@@ -252,12 +252,19 @@ code {
 
 .family-world-current {
   color: var(--ink);
-  font-weight: 800;
+  font-family: var(--display);
+  font-size: 1.22rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .family-world-divider {
   color: rgba(255, 255, 255, 0.24);
+  font-family: var(--mono);
+  font-size: 0.78rem;
   font-weight: 500;
+  text-align: center;
+  justify-self: center;
 }
 
 .header-tools {
@@ -1282,24 +1289,34 @@ body[data-enhanced="true"] .journey-panel[data-active="true"] {
   .header-inner {
     min-height: 4.25rem;
     flex-wrap: wrap;
-    gap: 0.65rem;
+    gap: 8px;
     padding-block: 0.55rem;
   }
 
-  .family-worlds {
-    order: 3;
+  .family-rail {
     width: 100%;
     margin-right: 0;
-    padding-top: 0.45rem;
-    border-top: 1px solid var(--line);
+    gap: 0.65rem;
   }
+
+  .family-mark {
+    width: 22px;
+    height: 22px;
+    flex-basis: 22px;
+  }
+
+  .family-worlds {
+    grid-template-columns: 4.9rem 0.65rem 4.7rem 0.65rem 4.8rem;
+    gap: 4px;
+  }
+
+  .family-world { font-size: 0.78rem; }
+  .family-world-current { font-size: 1.05rem; }
 
   .header-tools {
-    margin-left: auto;
-  }
-
-  .brand-lockup > span {
-    display: none;
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
   }
 
   .language-picker button {
@@ -1468,3 +1485,4 @@ body[data-enhanced="true"] .journey-panel[data-active="true"] {
     border-width: 2px;
   }
 }
+/* [VXG RealForever] */
