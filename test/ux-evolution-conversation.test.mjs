@@ -164,6 +164,13 @@ test('V1 composer sends on unmodified Enter while Shift+Enter remains newline in
   assert.match(source,/composer\.requestSubmit\(\)/);
 });
 
+test('V1 re-entry helper preserves query-all localization bootstrap',()=>{
+  assert.match(app,/function applyLocalization\(\)\{document\.documentElement\.lang=state\.language;\$\$\('\[data-i18n\]'\)\.forEach/);
+  assert.match(app,/\$\$\('\[data-i18n-placeholder\]'\)\.forEach/);
+  assert.match(app,/\$\$\('\[data-i18n-aria-label\]'\)\.forEach/);
+  assert.doesNotMatch(app,/;\$\('\[data-i18n\]'\)\.forEach/);
+});
+
 test('V1 dedicated Vex Conversation entry preserves canonical Chat navigation while enabling lived re-entry',()=>{
   assert.match(app,/CURRENT_VEX_CONVERSATION=Object\.freeze/);
   assert.match(app,/projectRef:'project\.self-development'/);
