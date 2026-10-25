@@ -8,7 +8,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { createServerOwnedBrowserCompanionBridge } from '../scripts/serve-browser.mjs';
-import { createBrowserCompanionBridge } from '../src/core/browser-companion-bridge.mjs';
+import { BrowserCompanionBridgeError, createBrowserCompanionBridge } from '../src/core/browser-companion-bridge.mjs';
 import {
   LivedCompanionError,
   initializeLivedCompanionHome,
@@ -502,9 +502,9 @@ test('post-MATERIALIZE failure retains no selection beyond the finite lease TTL'
         channelRef: 'channel.local-vex.companion',
         content: 'Current request stays inside browser request admission.'
       }),
-      (error) => error instanceof LivedCompanionError
+      (error) => error instanceof BrowserCompanionBridgeError
         && error.code === 'CONTEXT_HASH_MISMATCH'
-        && /materialized prompt exceeds the exact Context Lease input budget/u.test(error.message)
+        && /materialized prompt exceeds the exact Context Lease input budget/u.test(error.internalCause ?? '')
     );
     assert.equal(model.calls.length, 1);
     assert.equal(owner.activeSelectionCount(), 1);
