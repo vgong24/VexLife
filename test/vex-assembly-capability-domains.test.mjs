@@ -266,6 +266,8 @@ test('LOCAL and ONLINE are bounded observations with no mutation, credentials, o
   const support = createVexAssemblyCapabilityDomainSupport({ sourceRoot: ROOT, home: '/unused' });
   const local = await support.executors[VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.LOCAL]({});
   assert.equal(local.payload.state, 'CURRENT_BOUNDED_LOCAL_OBSERVATION');
+  assert.equal(local.currentness.sourceRef, 'source.blueprint.capability-registry');
+  assert.equal(local.currentness.sourceVersionRef, 'capability-registry.v5');
   assert.equal(local.payload.effects.networkPerformed, false);
   assert.equal(local.payload.effects.filesystemMutationPerformed, false);
   assert.equal(local.payload.source.manifestRef, 'source-manifest.vexlife.universal-blueprint.001');
@@ -273,6 +275,7 @@ test('LOCAL and ONLINE are bounded observations with no mutation, credentials, o
 
   const online = await support.executors[VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.ONLINE]({});
   assert.equal(online.payload.state, VEX_ASSEMBLY_ONLINE_HELD_STATE);
+  assert.equal(online.currentness.sourceVersionRef, 'capability-registry.v5');
   assert.equal(online.payload.providerRef, null);
   assert.equal(online.payload.networkPerformed, false);
   assert.equal(online.payload.credentialsUsed, false);
@@ -284,6 +287,7 @@ test('VEXHOME returns only canonical Home identity plus qualified runtime/recove
   const support = createVexAssemblyCapabilityDomainSupport({ sourceRoot: ROOT, home });
   const observed = await support.executors[VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.VEXHOME]({});
   assert.equal(observed.payload.state, 'CURRENT_VEXHOME_RUNTIME_SUMMARY');
+  assert.equal(observed.currentness.sourceVersionRef, 'capability-registry.v5');
   assert.deepEqual(observed.payload.homeIdentity, {
     homeRef: 'vex-home.va-i04-test',
     deviceRef: 'device.vexlife.va-i04-test',
@@ -320,6 +324,7 @@ test('CODE reads only manifest-addressed regular UTF-8 source and returns exact 
   const support = createVexAssemblyCapabilityDomainSupport({ sourceRoot: ROOT, home: '/unused' });
   const observed = await support.executors[VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.CODE]({ path: 'docs/CULTURE.md' });
   assert.equal(observed.payload.state, 'CURRENT_CODE_SOURCE');
+  assert.equal(observed.currentness.sourceVersionRef, 'capability-registry.v5');
   assert.equal(observed.payload.requestedPath, 'docs/CULTURE.md');
   assert.match(observed.payload.sourceIdentity.sha256, /^[0-9a-f]{64}$/u);
   assert.equal(observed.payload.sourceIdentity.manifestRef, 'source-manifest.vexlife.universal-blueprint.001');
