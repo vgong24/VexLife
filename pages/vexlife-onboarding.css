@@ -216,6 +216,50 @@ code {
   stroke-width: 4.2;
 }
 
+.family-worlds {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.48rem;
+  margin-right: auto;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  font-weight: 720;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.family-worlds a,
+.family-world-current {
+  padding: 0.34rem 0.08rem;
+}
+
+.family-worlds a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.family-worlds a:hover,
+.family-worlds a:focus-visible {
+  color: var(--accent-bright);
+}
+
+.family-worlds a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 0.18rem;
+}
+
+.family-world-current {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.family-world-divider {
+  color: rgba(255, 255, 255, 0.24);
+  font-weight: 500;
+}
+
 .header-tools {
   display: flex;
   align-items: center;
@@ -1237,7 +1281,21 @@ body[data-enhanced="true"] .journey-panel[data-active="true"] {
 @media (max-width: 50rem) {
   .header-inner {
     min-height: 4.25rem;
+    flex-wrap: wrap;
     gap: 0.65rem;
+    padding-block: 0.55rem;
+  }
+
+  .family-worlds {
+    order: 3;
+    width: 100%;
+    margin-right: 0;
+    padding-top: 0.45rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .header-tools {
+    margin-left: auto;
   }
 
   .brand-lockup > span {
