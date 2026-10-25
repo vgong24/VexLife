@@ -121,8 +121,10 @@ test('the page remains zero-effect while admitting only exact human-activated fa
   assert.match(html, /class="family-world family-world-current" data-family-world="vexlife" href="\.\/" aria-current="page" data-i18n="nav\.brand" data-i18n-aria-label="aria\.logo" aria-label="VexLife">VexLife<\/a>/u);
   assert.match(html, /class="family-world" data-family-world="vexwork" href="https:\/\/vexgpt\.github\.io\/VexWork\/">VexWork<\/a>/u);
   assert.doesNotMatch(html, /class="brand-lockup"/u);
-  assert.match(css, /grid-template-columns:\s*5\.8rem auto 5\.3rem auto 5\.3rem/u);
+  assert.match(css, /grid-template-columns:\s*5\.8rem 0\.65rem 5\.3rem 0\.65rem 5\.3rem/u);
   assert.match(css, /\.family-world-current\s*\{[\s\S]*font-family:\s*var\(--display\)/u);
+  assert.match(css, /\.family-world-divider\s*\{[\s\S]*text-align:\s*center;[\s\S]*justify-self:\s*center;/u);
+  assert.match(css, /grid-template-columns:\s*4\.9rem 0\.65rem 4\.7rem 0\.65rem 4\.8rem/u);
   assert.deepEqual(sorted(externalHrefRefs), sorted(FAMILY_WORLD_HREFS));
   assert.deepEqual(externalSrcRefs, []);
   assert.doesNotMatch(html, /<form\b|<iframe\b|<object\b|<embed\b/iu);
