@@ -20,7 +20,7 @@ import { semanticHash } from '../src/core/utils.mjs';
 import crypto from 'node:crypto';
 
 import {
-  waitForBrowserCompanionPaintOpportunity
+  createBrowserCompanionAdaptiveReveal
 } from '../reference/browser/modules/chat-controller.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -75,34 +75,97 @@ function browserTurn(bridge, input) {
   });
 }
 
-test('browser Companion paint gate waits through a visible animation frame and following task', async () => {
-  const order = [];
-  const result = await waitForBrowserCompanionPaintOpportunity({
-    visible: true,
-    requestFrame(callback) {
-      order.push('frame-requested');
-      queueMicrotask(() => {
-        order.push('frame-fired');
-        callback();
-      });
-      return 1;
-    },
-    scheduleTask(callback) {
-      order.push('task-scheduled');
-      queueMicrotask(() => {
-        order.push('task-fired');
-        callback();
-      });
-      return 1;
-    }
+test('browser Companion adaptive reveal decouples provider arrival from paint and accelerates under backlog', async () => {
+  let time = 0;
+  const frames = [];
+  const renders = [];
+  const reveal = createBrowserCompanionAdaptiveReveal({
+    render(content) { renders.push(content); },
+    requestFrame(callback) { frames.push(callback); return frames.length; },
+    cancelFrame() {},
+    now: () => time,
+    visible: () => true,
+    reducedMotion: () => false
   });
-  assert.equal(result, 'VISIBLE_ANIMATION_FRAME');
-  assert.deepEqual(order, ['frame-requested', 'frame-fired', 'task-scheduled', 'task-fired']);
+
+  reveal.push('abcd');
+  assert.equal(renders.length, 0);
+  assert.equal(frames.length, 1);
+  time = 16;
+  frames.shift()(16);
+  const initial = reveal.snapshot();
+  assert.equal(initial.revealedUnits, 1);
+  assert.ok(initial.revealedUnits < initial.receivedUnits);
+  const initialAdvance = initial.revealedUnits;
+
+  time = 32;
+  frames.shift()(32);
+  assert.equal(reveal.snapshot().revealedUnits, 2, 'steady arrival should advance gradually rather than drain the whole chunk');
+
+  time = 36;
+  reveal.push(' efghijklmnopqrstuvwxyz');
+  time = 48;
+  frames.shift()(48);
+  const burst = reveal.snapshot();
+  assert.ok(burst.revealedUnits - initial.revealedUnits > initialAdvance);
+  assert.ok(burst.backlogUnits > 0);
+
+  const finishPromise = reveal.finish();
+  time = 64;
+  frames.shift()(64);
+  time = 80;
+  frames.shift()(80);
+  await finishPromise;
+  assert.equal(reveal.snapshot().backlogUnits, 0);
+  assert.equal(renders.at(-1), 'abcd efghijklmnopqrstuvwxyz');
 });
 
-test('browser source yields one paint opportunity after each ephemeral Companion delta', () => {
+test('browser Companion adaptive reveal flushes an already-scheduled frame when the surface becomes hidden', async () => {
+  let hidden = false;
+  const frames = [];
+  const cancelled = [];
+  const renders = [];
+  const reveal = createBrowserCompanionAdaptiveReveal({
+    render(content) { renders.push(content); },
+    requestFrame(callback) { frames.push(callback); return frames.length; },
+    cancelFrame(handle) { cancelled.push(handle); },
+    now: () => 0,
+    visible: () => !hidden,
+    reducedMotion: () => false
+  });
+  reveal.push('abcd');
+  assert.equal(frames.length, 1);
+  hidden = true;
+  await reveal.finish();
+  assert.deepEqual(cancelled, [1]);
+  assert.equal(reveal.snapshot().backlogUnits, 0);
+  assert.equal(renders.at(-1), 'abcd');
+});
+
+test('browser Companion adaptive reveal bypasses animation for reduced motion', async () => {
+  const frames = [];
+  const renders = [];
+  const reveal = createBrowserCompanionAdaptiveReveal({
+    render(content) { renders.push(content); },
+    requestFrame(callback) { frames.push(callback); return frames.length; },
+    cancelFrame() {},
+    now: () => 0,
+    visible: () => true,
+    reducedMotion: () => true
+  });
+  reveal.push('Immediate received text.');
+  assert.deepEqual(renders, ['Immediate received text.']);
+  assert.equal(frames.length, 0);
+  await reveal.finish();
+  assert.equal(reveal.snapshot().backlogUnits, 0);
+});
+
+test('browser source consumes provider deltas without waiting for paint and fast-drains before durable projection', () => {
   const source = fs.readFileSync(path.join(ROOT, 'reference/browser/modules/chat-controller.js'), 'utf8');
-  assert.match(source, /async onDelta\(delta\)[\s\S]*renderCompanionStreamProgress\(channel, streamedContent\);[\s\S]*await waitForBrowserCompanionPaintOpportunity\(\);/u);
+  assert.match(source, /companionStreamReveal = createBrowserCompanionAdaptiveReveal/u);
+  assert.match(source, /onDelta\(delta\) \{\s*companionStreamReveal\.push\(delta\.contentDelta\);\s*\}/u);
+  assert.doesNotMatch(source, /async\s+onDelta\(delta\)/u);
+  assert.match(source, /await companionStreamReveal\.finish\(\);\s*clearCompanionStreamProgress\(channel\);/u);
 });
 
 test('browser companion runtime binding is server-side numeric loopback only', () => {

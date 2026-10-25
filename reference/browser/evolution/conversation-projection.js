@@ -224,6 +224,19 @@ function renderStreamProgress(document, binding, progress, { relationshipDirect 
   return article;
 }
 
+export function syncConversationEvolutionStreamProgress(body, referenceFeed, channelRef) {
+  const progress = projectConversationEvolutionStreamProgress(referenceFeed, channelRef);
+  const mounted = body?.querySelector?.('[data-companion-stream-progress="true"]') ?? null;
+  if (!progress || !mounted || mounted.dataset.channelRef !== channelRef) return false;
+  const messageBody = mounted.querySelector?.('.conversation-evolution__message-body') ?? null;
+  if (!messageBody) return false;
+  const root = mounted.closest?.('.conversation-evolution') ?? body.querySelector?.('.conversation-evolution') ?? null;
+  const followedEnd = root ? root.scrollHeight - root.clientHeight - root.scrollTop < 24 : false;
+  if (messageBody.textContent !== progress.content) messageBody.textContent = progress.content;
+  if (followedEnd && root) root.scrollTop = root.scrollHeight;
+  return true;
+}
+
 function composerTruth(snapshot, canonical, value, binding) {
   const slash = value.trim().startsWith('/');
   const relationshipDirect = snapshot.channelKind === 'DIRECT' && snapshot.channelRoleKey === 'companion';
@@ -480,8 +493,18 @@ export function createConversationEvolutionAdapter(input) {
           return;
         }
         const structural = mutations.some(({ target }) => target === referenceFeed || referenceFeed?.contains(target) || target === referenceChannels || referenceChannels?.contains(target));
-        if (structural) render();
-        else {
+        if (structural) {
+          const streamOnly = mutations.every(({ target }) => {
+            const element = target?.nodeType === 1 ? target : target?.parentElement;
+            return Boolean(
+              element?.closest?.('[data-companion-stream-progress="true"]')
+              && referenceFeed?.contains(element)
+            );
+          });
+          const activeChannelRef = body.querySelector('.conversation-evolution')?.dataset.channelRef
+            ?? projectConversationEvolutionState(binding).channelRef;
+          if (!streamOnly || !syncConversationEvolutionStreamProgress(body, referenceFeed, activeChannelRef)) render();
+        } else {
           const mounted = body.querySelector('.conversation-evolution__composer');
           const mountedInput = mounted?.querySelector('.conversation-evolution__input');
           const mountedHint = mounted?.querySelector('.conversation-evolution__hint');
