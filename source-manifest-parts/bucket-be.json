@@ -5,8 +5,8 @@
     {
       "path": "src/core/conversation-send-admission.mjs",
       "mode": "100644",
-      "bytes": 16590,
-      "sha256": "fd9bcf791aee4d79d2d227f4987383d6856e3c185f8ad1d8bac8d793a307119c"
+      "bytes": 17547,
+      "sha256": "309c025a8a80143bea9960b44438d50e41fe34866efcd9938850ccd7bacbd6e4"
     },
     {
       "path": "src/core/family-group-context-runtime.mjs",

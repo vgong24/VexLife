@@ -1075,6 +1075,8 @@ export function createChatController({ state, projects, roles, channels, message
     if (channel.roleKey !== 'companion') return false;
     companionTurnPending = true;
     updateComposer();
+    const sendIdempotencyKey = sourceMessage?.sendIdempotencyKey ?? `browser-send.${globalThis.crypto.randomUUID()}`;
+    if (sourceMessage && !sourceMessage.sendIdempotencyKey) sourceMessage.sendIdempotencyKey = sendIdempotencyKey;
     try {
       const response = await fetch('/api/v1/companion/turn', {
         method: 'POST',
@@ -1085,6 +1087,9 @@ export function createChatController({ state, projects, roles, channels, message
           threadRef: channel.threadRef,
           channelRef: channel.channelRef,
           content,
+          idempotencyKey: sendIdempotencyKey,
+          messageCreatedAt: sourceMessage?.createdAt ?? new Date().toISOString(),
+          originalLanguage: state.language,
           screenRef: frameAtSend.screenRef,
           selectedNodeRef: frameAtSend.selectedNodeRef,
           ...(semanticRelayInput ? { semanticRelayInput } : {}),
@@ -1112,12 +1117,27 @@ export function createChatController({ state, projects, roles, channels, message
         return false;
       }
       if (!response.ok || body?.state !== 'TURN_COMPLETED' || body?.truthClass !== 'CURRENT_LOCAL_MODEL' || typeof body.content !== 'string' || !body.content) {
+        if (body?.sendState === 'DURABLE' && sourceMessage && typeof body.requestMessageRef === 'string') {
+          sourceMessage.messageRef = body.requestMessageRef;
+          sourceMessage.truthClass = 'DURABLE_CONVERSATION_HUMAN';
+          sourceMessage.canonicalConversationHeadSha256 = body.canonicalConversationHeadSha256 ?? null;
+          sourceMessage.companionAttentionState = 'FAILED_AFTER_DURABLE_SEND';
+          renderMessages();
+          return false;
+        }
         restoreCompanionDraft(channel, content, sourceMessage);
         return false;
       }
       const list = listForChannel(channel);
+      if (sourceMessage && typeof body.requestMessageRef === 'string') {
+        sourceMessage.messageRef = body.requestMessageRef;
+        sourceMessage.truthClass = 'DURABLE_CONVERSATION_HUMAN';
+        sourceMessage.canonicalConversationHeadSha256 = body.humanConversationHeadSha256 ?? null;
+        sourceMessage.companionAttentionState = 'COMPLETED';
+      }
       if (sourceMessage && body.requestSemanticRelay) { sourceMessage.semanticRelay = body.requestSemanticRelay; renderMessages(); }
       const message = createMessage(channel.channelRef, 'companion', ['victor'], body.content, list.length);
+      if (typeof body.responseMessageRef === 'string') message.messageRef = body.responseMessageRef;
       message.truthClass = 'CURRENT_LOCAL_MODEL';
       if (body.responseSemanticRelay) message.semanticRelay = body.responseSemanticRelay;
       message.conversationHeadSha256 = body.conversationHeadSha256;
@@ -1220,6 +1240,7 @@ export function createChatController({ state, projects, roles, channels, message
     const recipients = channel.memberKeys.filter((key) => key !== 'victor');
     const list = listForChannel(channel);
     const message = createMessage(channel.channelRef, 'victor', recipients, content, list.length);
+    if (channel.roleKey === 'companion') message.sendIdempotencyKey = `browser-send.${globalThis.crypto.randomUUID()}`;
     list.push(message);
     appendMessageNode(message);
     input.value = '';

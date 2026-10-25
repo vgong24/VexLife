@@ -1981,6 +1981,47 @@ export async function performLivedCompanionTurn({
       phase: 'response'
     });
     const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, threadRef);
+    const recoveredDelivery = readCurrentLivedCompanionResponseDelivery({
+      home: identity.homeRoot,
+      homeRef: admitted.homeRef,
+      deviceRef: admitted.deviceRef,
+      companionLineageRef: admitted.companionLineageRef,
+      threadRef,
+      requestMessageRef,
+      responseMessageRef
+    });
+    if (recoveredDelivery.state === 'COMPLETED') {
+      const exactRequest =
+        recoveredDelivery.requestEvent.channelRef === channelRef
+        && recoveredDelivery.requestEvent.speakerRef === speakerRef
+        && JSON.stringify(recoveredDelivery.requestEvent.recipientRefs) === JSON.stringify(recipientRefs)
+        && recoveredDelivery.requestEvent.content === content
+        && recoveredDelivery.requestEvent.contentHash === contentHash(content)
+        && contentHash(recoveredDelivery.requestEvent.semanticRelay ?? null) === contentHash(requestRelay ?? null)
+        && contentHash(recoveredDelivery.responseEvent.semanticRelay ?? null) === contentHash(responseRelay ?? null);
+      if (!exactRequest) fail('DUPLICATE_TURN_SUPPRESSED', 'canonical message refs already identify a different completed Lived turn');
+      const writerLeaseReleased = releaseThreadWriterLease(writerLease);
+      writerLease = null;
+      if (!writerLeaseReleased) fail('PERSISTENCE_WRITE_FAILED', 'thread writer lease could not be released after completed-turn reconciliation');
+      return {
+        state: 'TURN_COMPLETED',
+        writerLeaseReleased,
+        actualHttpCall: false,
+        modelCallPerformed: false,
+        recoveredCompletedTurn: true,
+        loopbackOnly: isLivedCompanionLoopbackHost(new URL(recoveredDelivery.responseEvent.sanitizedEndpointOrigin).hostname),
+        runtimeProjection: null,
+        promptContextMaterializationReceipt: null,
+        modelTurnWitness: null,
+        requestDurablyRecorded: true,
+        responseDurablyRecorded: true,
+        requestEvent: recoveredDelivery.requestEvent,
+        responseEvent: recoveredDelivery.responseEvent,
+        contextRecord: null,
+        head: recoveredDelivery.head,
+        headPath: paths.head
+      };
+    }
     const priorState = validateCompletedConversationState({
       home: identity.homeRoot,
       admitted,
@@ -2214,6 +2255,8 @@ export async function performLivedCompanionTurn({
       state: 'TURN_COMPLETED',
       writerLeaseReleased,
       actualHttpCall,
+      modelCallPerformed: true,
+      recoveredCompletedTurn: false,
       loopbackOnly: isLivedCompanionLoopbackHost(new URL(endpointProfile.endpoint).hostname),
       runtimeProjection: runtimeProjection ? structuredClone(runtimeProjection) : null,
       promptContextMaterializationReceipt: promptContextMaterializationReceipt ? structuredClone(promptContextMaterializationReceipt) : null,
@@ -3083,6 +3126,96 @@ export function readCurrentLivedCompanionCompletedTurn({
     headMetadataReadCount,
     wholeHistoryEventEnumerationPerformed: false,
     rawConversationContentIncluded: false
+  });
+}
+
+
+export function readCurrentLivedCompanionResponseDelivery({
+  home,
+  homeRef = null,
+  deviceRef = null,
+  companionLineageRef,
+  threadRef,
+  requestMessageRef,
+  responseMessageRef
+}) {
+  const identity = loadHome(home);
+  const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
+  const safeThread = ensureSafeRef(threadRef, 'threadRef', 'CONVERSATION_HEAD_MISMATCH');
+  ensureString(requestMessageRef, 'requestMessageRef', 'CONVERSATION_HEAD_MISMATCH');
+  ensureString(responseMessageRef, 'responseMessageRef', 'CONVERSATION_HEAD_MISMATCH');
+  const paths = homePaths(identity.homeRoot, admitted.companionLineageRef, safeThread);
+  const none = () => Object.freeze({
+    schemaVersion: 'vexlife.lived-companion-current-response-delivery/v1',
+    state: 'NONE',
+    currentness: 'CURRENT',
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThread,
+    requestMessageRef,
+    responseMessageRef,
+    exactEventFileReadCount: 0,
+    wholeHistoryEventEnumerationPerformed: false,
+    rawConversationContentIncluded: false
+  });
+  if (!fs.existsSync(paths.head)) return none();
+
+  const head = verifyHead(readJson(paths.head, 'CONVERSATION_HEAD_MISMATCH', 'current response-delivery head'));
+  if (head.requestMessageRef !== requestMessageRef || head.responseMessageRef !== responseMessageRef) return none();
+
+  const completed = readCurrentLivedCompanionCompletedTurn({
+    home: identity.homeRoot,
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThread,
+    expectedConversationHeadSha256: head.conversationHeadSha256
+  });
+  if (completed.state !== 'COMPLETED') return none();
+
+  const expectedIdentity = {
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThread
+  };
+  const responseFile = eventPath(paths.events, completed.responseEventBinding.sequence, completed.responseEventBinding.eventHash);
+  const responseEvent = readJson(responseFile, 'EVENT_CHAIN_CORRUPT', 'current response-delivery response event');
+  assertEventRecord(responseEvent, expectedIdentity, path.basename(responseFile));
+  const requestFile = eventPath(paths.events, completed.requestEventBinding.sequence, completed.requestEventBinding.eventHash);
+  const requestEvent = readJson(requestFile, 'EVENT_CHAIN_CORRUPT', 'current response-delivery request event');
+  assertEventRecord(requestEvent, expectedIdentity, path.basename(requestFile));
+  if (
+    requestEvent.messageRef !== requestMessageRef
+    || responseEvent.messageRef !== responseMessageRef
+    || requestEvent.eventHash !== completed.requestEventBinding.eventHash
+    || responseEvent.eventHash !== completed.responseEventBinding.eventHash
+    || responseEvent.priorEventHash !== requestEvent.eventHash
+  ) {
+    fail('CONVERSATION_HEAD_MISMATCH', 'current response-delivery pair does not match the requested canonical message refs');
+  }
+
+  return Object.freeze({
+    schemaVersion: 'vexlife.lived-companion-current-response-delivery/v1',
+    state: 'COMPLETED',
+    currentness: 'CURRENT',
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThread,
+    requestMessageRef,
+    responseMessageRef,
+    conversationHeadSha256: completed.conversationHeadSha256,
+    turnRef: completed.turnRef,
+    instanceRef: completed.instanceRef,
+    requestEvent: Object.freeze(structuredClone(requestEvent)),
+    responseEvent: Object.freeze(structuredClone(responseEvent)),
+    head: Object.freeze(structuredClone(head)),
+    exactEventFileReadCount: completed.exactEventFileReadCount + 2,
+    headMetadataReadCount: completed.headMetadataReadCount,
+    wholeHistoryEventEnumerationPerformed: false,
+    rawConversationContentIncluded: true
   });
 }
 
