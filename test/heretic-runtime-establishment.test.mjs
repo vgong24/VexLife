@@ -22,6 +22,7 @@ import {
 } from '../src/core/heretic-runtime-establishment.mjs';
 import {
   currentHereticRuntimeOwnerSourceIdentity,
+  HERETIC_QUALIFICATION_COMPLETION_TIMEOUT_MS,
   startOrReuseHereticPersistentRuntime,
   stopHereticPersistentRuntime
 } from '../src/core/heretic-persistent-runtime-owner.mjs';
@@ -284,6 +285,10 @@ test('explicit acquisition repairs a real stale Heretic Python environment while
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('cold Heretic qualification keeps the lived Conversation response window', () => {
+  assert.equal(HERETIC_QUALIFICATION_COMPLETION_TIMEOUT_MS, 180000);
 });
 
 test('VexLife-local runtime owner source identity is exact without private SDK checkout', () => {
