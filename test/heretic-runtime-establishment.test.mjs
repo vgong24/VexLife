@@ -287,8 +287,11 @@ test('explicit acquisition repairs a real stale Heretic Python environment while
   }
 });
 
-test('cold Heretic qualification keeps the lived Conversation response window', () => {
+test('cold Heretic qualification keeps and applies the lived Conversation response window', () => {
   assert.equal(HERETIC_QUALIFICATION_COMPLETION_TIMEOUT_MS, 180000);
+  const ownerSource = fs.readFileSync(new URL('../src/core/heretic-persistent-runtime-owner.mjs', import.meta.url), 'utf8');
+  assert.match(ownerSource, /AbortSignal\.timeout\(HERETIC_QUALIFICATION_COMPLETION_TIMEOUT_MS\)/u);
+  assert.doesNotMatch(ownerSource, /v1\/chat\/completions[\\s\\S]{0,700}AbortSignal\.timeout\(30000\)/u);
 });
 
 test('VexLife-local runtime owner source identity is exact without private SDK checkout', () => {
