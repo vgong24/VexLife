@@ -23,6 +23,20 @@ export const BROWSER_COMPANION_RECOVERY_ACTION_PATH = '/api/v1/companion/recover
 export const BROWSER_COMPANION_STREAM_API_PATH = '/api/v1/companion/turn/stream';
 export const BROWSER_COMPANION_STREAM_FRAME_SCHEMA = 'vexlife.browser-companion-turn-stream-frame/v1';
 
+export async function waitForBrowserCompanionPaintOpportunity({
+  requestFrame = globalThis.requestAnimationFrame,
+  scheduleTask = globalThis.setTimeout,
+  visible = globalThis.document?.visibilityState !== 'hidden'
+} = {}) {
+  if (typeof scheduleTask !== 'function') throw new TypeError('Companion stream paint gate requires a task scheduler');
+  if (visible && typeof requestFrame === 'function') {
+    await new Promise((resolve) => requestFrame(() => scheduleTask(resolve, 0)));
+    return 'VISIBLE_ANIMATION_FRAME';
+  }
+  await new Promise((resolve) => scheduleTask(resolve, 0));
+  return 'TASK_YIELD';
+}
+
 export async function readBrowserCompanionTurnStream(response, { onDelta = null } = {}) {
   if (!response?.ok) return response.json();
   if (!response.body || typeof response.body.getReader !== 'function') throw new Error('Companion streaming response has no readable body');
@@ -1159,9 +1173,10 @@ export function createChatController({ state, projects, roles, channels, message
       });
       let streamedContent = '';
       const body = await readBrowserCompanionTurnStream(response, {
-        onDelta(delta) {
+        async onDelta(delta) {
           streamedContent += delta.contentDelta;
           renderCompanionStreamProgress(channel, streamedContent);
+          await waitForBrowserCompanionPaintOpportunity();
         }
       });
       clearCompanionStreamProgress(channel);
