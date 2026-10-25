@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import {
   CONVERSATION_EVOLUTION_SURFACE_REF,
   createConversationEvolutionAdapter,
-  projectConversationEvolutionState
+  projectConversationEvolutionState,
+  projectConversationEvolutionStreamProgress
 } from '../reference/browser/evolution/conversation-projection.js';
 
 const source=fs.readFileSync(new URL('../reference/browser/evolution/conversation-projection.js',import.meta.url),'utf8');
@@ -63,6 +64,41 @@ function fixture({availabilityState='READY',group=false,family=false,securitySta
   const familyRoom={snapshot:()=>({securityStatus:structuredClone(securityStatus)})};
   return {state,chat,roles,messages,conversationKey,t,familyRoom};
 }
+
+test('Evolution projection mirrors canonical ephemeral Companion stream progress without acquiring durable message truth',()=>{
+  const body={textContent:'partial Vex response'};
+  const row={
+    dataset:{
+      companionStreamProgress:'true',
+      channelRef:'channel.self-development.companion',
+      truthClass:'EPHEMERAL_LOCAL_MODEL_PROGRESS'
+    },
+    querySelector:(selector)=>selector==='.message-body'?body:null
+  };
+  const feed={querySelectorAll:(selector)=>selector==='[data-companion-stream-progress="true"]'?[row]:[]};
+  assert.deepEqual(projectConversationEvolutionStreamProgress(feed,row.dataset.channelRef),{
+    schemaVersion:'vexlife.ux-evolution.conversation-stream-progress/v1',
+    truthClass:'EPHEMERAL_LOCAL_MODEL_PROGRESS',
+    channelRef:'channel.self-development.companion',
+    content:'partial Vex response',
+    effectsPerformed:false
+  });
+  row.dataset.messageRef='message.must-not-project';
+  assert.equal(projectConversationEvolutionStreamProgress(feed,row.dataset.channelRef),null);
+  delete row.dataset.messageRef;
+  row.dataset.conversationHeadSha256='a'.repeat(64);
+  assert.equal(projectConversationEvolutionStreamProgress(feed,row.dataset.channelRef),null);
+});
+
+test('Evolution active Conversation renders presentation-only stream progress alongside durable canonical messages',()=>{
+  assert.match(source,/const streamProgress = projectConversationEvolutionStreamProgress\(referenceFeed, snapshot\.channelRef\)/);
+  assert.match(source,/feed\.hidden = snapshot\.messages\.length === 0 && !streamProgress/);
+  assert.match(source,/if \(streamProgress\) feed\.append\(renderStreamProgress\(document, binding, streamProgress/);
+  assert.match(source,/article\.dataset\.companionStreamProgress = 'true'/);
+  assert.match(source,/article\.dataset\.effectsPerformed = 'false'/);
+  assert.match(source,/root\.scrollTop = followedEnd && \(messageCountChanged \|\| progressChanged\)/);
+  assert.doesNotMatch(source,/snapshot\.messages\.push\(streamProgress/);
+});
 
 test('Conversation projection preserves canonical direct addressing and unsent draft truth',()=>{
   const projected=projectConversationEvolutionState(fixture());
@@ -252,7 +288,7 @@ test('presentation continuity stays ephemeral and delegates draft truth to the c
   assert.match(source,/previous\?\.dataset.channelRef === snapshot.channelRef/);
   assert.match(source,/textarea.setSelectionRange/);
   assert.match(source,/context.open = Boolean\(contextOpen\)/);
-  assert.match(source,/root.scrollTop = messageCountChanged && followedEnd/);
+  assert.match(source,/root\.scrollTop = followedEnd && \(messageCountChanged \|\| progressChanged\)/);
   assert.match(source,/canonical.input.dispatchEvent/);
   assert.match(source,/composerAddress.htmlFor = 'conversationEvolutionMessage'/);
   assert.match(source,/binding.t\('context.visible-to'\)/);
