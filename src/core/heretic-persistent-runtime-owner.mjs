@@ -35,6 +35,7 @@ const PYTHON_VERSION = '3.14.7';
 const MLX_LM_VERSION = '0.32.0';
 const TRAINER_SOURCE_COMMIT = '170a11c58ce7d22a720901a2535adb0c218b871b';
 const STARTUP_TIMEOUT_MS = 600000;
+export const HERETIC_QUALIFICATION_COMPLETION_TIMEOUT_MS = 180000;
 const POLL_MS = 500;
 
 const EFFECTS = Object.freeze({
@@ -289,7 +290,7 @@ async function qualify(binding, fetchImpl) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(HERETIC_QUALIFICATION_COMPLETION_TIMEOUT_MS),
   }, 'HERETIC_RUNTIME_QUALIFICATION_FAILED', 'MLX chat completion');
   if (completion?.model !== REQUEST_MODEL) {
     fail('HERETIC_RUNTIME_QUALIFICATION_FAILED', 'MLX response model does not match the exact request model');
