@@ -22,6 +22,13 @@
         </svg>
         <span data-i18n="nav.brand">VexLife</span>
       </a>
+      <nav class="family-worlds" aria-label="Vextreme / VexLife / VexWork">
+        <a data-family-world="vextreme" href="https://vgong24.github.io/Vextreme/pages/terrain-map.html?view=content&amp;profile=evolution-v1">Vextreme</a>
+        <span class="family-world-divider" aria-hidden="true">/</span>
+        <span class="family-world-current" data-family-world="vexlife" aria-current="page">VexLife</span>
+        <span class="family-world-divider" aria-hidden="true">/</span>
+        <a data-family-world="vexwork" href="https://vexgpt.github.io/VexWork/">VexWork</a>
+      </nav>
       <div class="header-tools">
         <span class="preview-badge" data-i18n="nav.previewBadge">Public Alpha preview · no effects</span>
         <div class="language-picker" role="group" data-i18n-aria-label="aria.language" aria-label="Choose the page language">
@@ -44,6 +51,13 @@
           <a class="button button-primary" href="#journey" data-i18n="hero.primaryCta">Start the calm path</a>
           <a class="button button-secondary" href="#distribution" data-i18n="hero.secondaryCta">See the distribution map</a>
         </div>
+        <details class="mac-bootstrap">
+          <summary class="button button-terminal">Copy Paste Into Mac Terminal to Begin</summary>
+          <div class="mac-bootstrap-panel">
+            <pre id="mac-terminal-command" aria-label="Exact current Mac Terminal bootstrap command"><code>rm -f /tmp/setup-vexlife.command
+curl -fsSL https://raw.githubusercontent.com/vgong24/VexLife/main/setup-vexlife.command -o /tmp/setup-vexlife.command &amp;&amp; bash /tmp/setup-vexlife.command</code></pre>
+          </div>
+        </details>
         <p class="zero-effect-note">
           <span aria-hidden="true">○</span>
           <span data-i18n="hero.note">You can explore this entire preview safely. Nothing on this page downloads, installs, starts a model, changes Vex Home, or publishes anything.</span>

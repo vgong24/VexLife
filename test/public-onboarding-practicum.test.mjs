@@ -28,6 +28,10 @@ const STAGE_REFS = Object.freeze([
 const RUNTIME_STRING_REFS = new Set([
   'status.languageChanged', 'status.chapterChanged', 'status.releaseHeld', 'status.complete'
 ]);
+const FAMILY_WORLD_HREFS = Object.freeze([
+  'https://vgong24.github.io/Vextreme/pages/terrain-map.html?view=content&amp;profile=evolution-v1',
+  'https://vexgpt.github.io/VexWork/'
+]);
 
 function read(relativePath) { return fs.readFileSync(path.join(ROOT, relativePath), 'utf8'); }
 function readJson(relativePath) { return JSON.parse(read(relativePath)); }
@@ -87,18 +91,59 @@ test('the HTML preserves exact thirteen-stage order and five-chapter coverage', 
   assert.equal(exactAttributeValues(html, 'data-chapter-panel').length, 5);
 });
 
-test('the page remains a same-origin zero-effect accepted source', () => {
+test('the hero exposes the stable Mac bootstrap without executing or copying it', () => {
+  const html = read('pages/vexlife-onboarding.html');
+  const js = read('pages/vexlife-onboarding.js');
+  const readme = read('README.md');
+  const removeTemp = 'rm -f /tmp/setup-vexlife.command';
+  const downloadAndRun = 'curl -fsSL https://raw.githubusercontent.com/vgong24/VexLife/main/setup-vexlife.command -o /tmp/setup-vexlife.command && bash /tmp/setup-vexlife.command';
+
+  assert.ok(readme.includes(`${removeTemp}\n${downloadAndRun}`));
+  assert.match(html, /<summary class="button button-terminal">Copy Paste Into Mac Terminal to Begin<\/summary>/u);
+  assert.ok(html.includes(removeTemp));
+  assert.ok(html.includes(downloadAndRun.replace('&&', '&amp;&amp;')));
+  assert.doesNotMatch(js, /navigator\.clipboard|document\.execCommand/iu);
+});
+
+test('the page remains zero-effect while admitting only exact human-activated family-world portals', () => {
   const html = read('pages/vexlife-onboarding.html');
   const css = read('pages/vexlife-onboarding.css');
   const js = read('pages/vexlife-onboarding.js');
-  const refs = [...attributeValues(html, 'href'), ...attributeValues(html, 'src')];
+  const hrefRefs = attributeValues(html, 'href');
+  const srcRefs = attributeValues(html, 'src');
+  const externalHrefRefs = hrefRefs.filter((ref) => /^(?:https?:|\/\/|data:|javascript:)/iu.test(ref));
+  const externalSrcRefs = srcRefs.filter((ref) => /^(?:https?:|\/\/|data:|javascript:)/iu.test(ref));
+
   assert.match(html, /<body data-effect-class="NONE" data-publication-state="SOURCE_ACCEPTED">/u);
+  assert.match(html, /<nav class="family-worlds" aria-label="Vextreme \/ VexLife \/ VexWork">/u);
+  assert.match(html, /<a data-family-world="vextreme" href="https:\/\/vgong24\.github\.io\/Vextreme\/pages\/terrain-map\.html\?view=content&amp;profile=evolution-v1">Vextreme<\/a>/u);
+  assert.match(html, /<span class="family-world-current" data-family-world="vexlife" aria-current="page">VexLife<\/span>/u);
+  assert.match(html, /<a data-family-world="vexwork" href="https:\/\/vexgpt\.github\.io\/VexWork\/">VexWork<\/a>/u);
+  assert.deepEqual(sorted(externalHrefRefs), sorted(FAMILY_WORLD_HREFS));
+  assert.deepEqual(externalSrcRefs, []);
   assert.doesNotMatch(html, /<form\b|<iframe\b|<object\b|<embed\b/iu);
   assert.doesNotMatch(html, /<[^>]+\sdownload(?:\s|=|>)/iu);
-  for (const ref of refs) {
-    assert.equal(/^(?:https?:|\/\/|data:|javascript:)/iu.test(ref), false, `external ref ${ref}`);
-    assert.ok(ref.startsWith('#') || ref.startsWith('./'), `non-relative ref ${ref}`);
+  assert.doesNotMatch(html, /data-family-world="(?:vextreme|vexwork)"[^>]*\starget=/iu);
+
+  for (const ref of hrefRefs) {
+    if (FAMILY_WORLD_HREFS.includes(ref)) continue;
+    assert.equal(/^(?:https?:|\/\/|data:|javascript:)/iu.test(ref), false, `unexpected external href ${ref}`);
+    assert.ok(ref.startsWith('#') || ref.startsWith('./'), `non-relative href ${ref}`);
   }
+  for (const ref of srcRefs) {
+    assert.equal(/^(?:https?:|\/\/|data:|javascript:)/iu.test(ref), false, `external src ${ref}`);
+    assert.ok(ref.startsWith('./'), `non-relative src ${ref}`);
+  }
+
+  const navigation = readJson('blueprint/navigation-continuity-registry.json');
+  const portal = navigation.transitionClassDescriptors.find(
+    (entry) => entry.transitionClassRef === 'transition-class.navigation.visible-portal'
+  );
+  assert.equal(portal?.crossRealmNonHierarchyAllowed, true);
+  assert.equal(portal?.visiblePortalRequired, true);
+  assert.equal(navigation.effects.network, false);
+  assert.equal(navigation.effects.externalDisclosure, false);
+
   assert.doesNotMatch(css, /url\s*\(/iu);
   assert.match(css, /prefers-reduced-motion/u);
   assert.equal((js.match(/\bfetch\s*\(/gu) ?? []).length, 1);

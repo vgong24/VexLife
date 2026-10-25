@@ -216,6 +216,50 @@ code {
   stroke-width: 4.2;
 }
 
+.family-worlds {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.48rem;
+  margin-right: auto;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  font-weight: 720;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.family-worlds a,
+.family-world-current {
+  padding: 0.34rem 0.08rem;
+}
+
+.family-worlds a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.family-worlds a:hover,
+.family-worlds a:focus-visible {
+  color: var(--accent-bright);
+}
+
+.family-worlds a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 0.18rem;
+}
+
+.family-world-current {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.family-world-divider {
+  color: rgba(255, 255, 255, 0.24);
+  font-weight: 500;
+}
+
 .header-tools {
   display: flex;
   align-items: center;
@@ -400,6 +444,53 @@ code {
 .button-secondary:hover {
   border-color: rgba(230, 199, 132, 0.45);
   background: var(--accent-soft);
+}
+
+.mac-bootstrap {
+  width: 100%;
+  margin-top: 0.85rem;
+}
+
+.mac-bootstrap > summary {
+  width: 100%;
+  list-style: none;
+}
+
+.mac-bootstrap > summary::-webkit-details-marker {
+  display: none;
+}
+
+.button-terminal {
+  border-color: rgba(230, 199, 132, 0.34);
+  color: var(--accent-bright);
+  background:
+    linear-gradient(90deg, rgba(230, 199, 132, 0.10), rgba(255, 255, 255, 0.025));
+  box-shadow: inset 0 0 0 1px rgba(230, 199, 132, 0.05);
+}
+
+.button-terminal:hover,
+.mac-bootstrap[open] > .button-terminal {
+  border-color: rgba(230, 199, 132, 0.62);
+  background:
+    linear-gradient(90deg, rgba(230, 199, 132, 0.17), rgba(255, 255, 255, 0.045));
+}
+
+.mac-bootstrap-panel {
+  margin-top: 0.7rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.34);
+}
+
+.mac-bootstrap-panel pre {
+  margin: 0;
+  overflow-x: auto;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .button:disabled {
@@ -1190,7 +1281,21 @@ body[data-enhanced="true"] .journey-panel[data-active="true"] {
 @media (max-width: 50rem) {
   .header-inner {
     min-height: 4.25rem;
+    flex-wrap: wrap;
     gap: 0.65rem;
+    padding-block: 0.55rem;
+  }
+
+  .family-worlds {
+    order: 3;
+    width: 100%;
+    margin-right: 0;
+    padding-top: 0.45rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .header-tools {
+    margin-left: auto;
   }
 
   .brand-lockup > span {
