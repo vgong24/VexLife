@@ -19,6 +19,10 @@ import { createContextLease } from '../src/core/context-lease.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
 import crypto from 'node:crypto';
 
+import {
+  waitForBrowserCompanionPaintOpportunity
+} from '../reference/browser/modules/chat-controller.js';
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 async function startModelServer() {
@@ -70,6 +74,36 @@ function browserTurn(bridge, input) {
     originalLanguage: input.originalLanguage ?? 'en'
   });
 }
+
+test('browser Companion paint gate waits through a visible animation frame and following task', async () => {
+  const order = [];
+  const result = await waitForBrowserCompanionPaintOpportunity({
+    visible: true,
+    requestFrame(callback) {
+      order.push('frame-requested');
+      queueMicrotask(() => {
+        order.push('frame-fired');
+        callback();
+      });
+      return 1;
+    },
+    scheduleTask(callback) {
+      order.push('task-scheduled');
+      queueMicrotask(() => {
+        order.push('task-fired');
+        callback();
+      });
+      return 1;
+    }
+  });
+  assert.equal(result, 'VISIBLE_ANIMATION_FRAME');
+  assert.deepEqual(order, ['frame-requested', 'frame-fired', 'task-scheduled', 'task-fired']);
+});
+
+test('browser source yields one paint opportunity after each ephemeral Companion delta', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'reference/browser/modules/chat-controller.js'), 'utf8');
+  assert.match(source, /async onDelta\(delta\)[\s\S]*renderCompanionStreamProgress\(channel, streamedContent\);[\s\S]*await waitForBrowserCompanionPaintOpportunity\(\);/u);
+});
 
 test('browser companion runtime binding is server-side numeric loopback only', () => {
   assert.equal(resolveBrowserCompanionRuntimeBinding({}).state, 'UNBOUND');
