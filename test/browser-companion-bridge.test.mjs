@@ -164,7 +164,7 @@ test('browser source consumes provider deltas without waiting for paint and fast
   const source = fs.readFileSync(path.join(ROOT, 'reference/browser/modules/chat-controller.js'), 'utf8');
   assert.match(source, /companionStreamReveal = createBrowserCompanionAdaptiveReveal/u);
   assert.match(source, /onDelta\(delta\) \{\s*companionStreamReveal\.push\(delta\.contentDelta\);\s*\}/u);
-  assert.doesNotMatch(source, /onDelta\(delta\)[\s\S]{0,220}await/u);
+  assert.doesNotMatch(source, /async\s+onDelta\(delta\)/u);
   assert.match(source, /await companionStreamReveal\.finish\(\);\s*clearCompanionStreamProgress\(channel\);/u);
 });
 
