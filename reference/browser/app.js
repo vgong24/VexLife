@@ -428,7 +428,7 @@ function bindPersistentVexConversationEntry(){
   return control;
 }
 
-function applyLocalization(){document.documentElement.lang=state.language;$('[data-i18n]').forEach((element)=>{element.textContent=t(element.dataset.i18n);});$('[data-i18n-placeholder]').forEach((element)=>{element.placeholder=t(element.dataset.i18nPlaceholder);});$('[data-i18n-aria-label]').forEach((element)=>{element.setAttribute('aria-label',t(element.dataset.i18nAriaLabel));});$('#languageSelect').value=state.language;bindPersistentVexConversationEntry();projectFrame();guide.renderMessages();}
+function applyLocalization(){document.documentElement.lang=state.language;$$('[data-i18n]').forEach((element)=>{element.textContent=t(element.dataset.i18n);});$$('[data-i18n-placeholder]').forEach((element)=>{element.placeholder=t(element.dataset.i18nPlaceholder);});$$('[data-i18n-aria-label]').forEach((element)=>{element.setAttribute('aria-label',t(element.dataset.i18nAriaLabel));});$('#languageSelect').value=state.language;bindPersistentVexConversationEntry();projectFrame();guide.renderMessages();}
 function toggleSurfaceMenu(open){const next=Boolean(open);$('#surfaceMenu').hidden=!next;$('#surfaceMenuButton').setAttribute('aria-expanded',String(next));}
 function closeTerrainContext(){ $('#terrainContext').hidden=true; }
 
