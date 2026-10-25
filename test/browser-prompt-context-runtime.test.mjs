@@ -491,7 +491,8 @@ test('authority verifier rejects an expired exact lease', async () => {
 
 test('post-MATERIALIZE failure retains no selection beyond the finite lease TTL', async () => {
   const home = makeHome('materialization-failure-expiry');
-  const model = await startModelServer();
+  const model = await startModelServer(({ callIndex }) =>
+    callIndex === 0 ? 'x'.repeat(800_000) : 'Current exact reply.');
   try {
     await firstTurn(home, model);
     const owner = runtime(home, { leaseTtlMs: 1_000 });
@@ -499,8 +500,11 @@ test('post-MATERIALIZE failure retains no selection beyond the finite lease TTL'
       () => bridge(home, model, owner, 'instance.vexlife.browser-prompt-context-budget-failure').performTurn({
         threadRef: 'thread.vexlife.browser-prompt-context-runtime-test',
         channelRef: 'channel.local-vex.companion',
-        content: 'x'.repeat(800_000)
-      })
+        content: 'Current request stays inside browser request admission.'
+      }),
+      (error) => error instanceof LivedCompanionError
+        && error.code === 'CONTEXT_HASH_MISMATCH'
+        && /materialized prompt exceeds the exact Context Lease input budget/u.test(error.message)
     );
     assert.equal(model.calls.length, 1);
     assert.equal(owner.activeSelectionCount(), 1);
