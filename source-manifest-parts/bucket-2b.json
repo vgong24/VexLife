@@ -11,8 +11,8 @@
     {
       "path": "pages/vexlife-onboarding.css",
       "mode": "100644",
-      "bytes": 28290,
-      "sha256": "95590d3c95effd715aaa09a93e8b0a9f38f0d641b099f7e5d55f318e6f099a67"
+      "bytes": 28312,
+      "sha256": "ae0b98c17ecdff1e4dfa221da2d78a47432061347ad79775eda02f40627d90f8"
     },
     {
       "path": "scripts/evolution-check.mjs",
