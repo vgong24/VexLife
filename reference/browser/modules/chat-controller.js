@@ -23,18 +23,168 @@ export const BROWSER_COMPANION_RECOVERY_ACTION_PATH = '/api/v1/companion/recover
 export const BROWSER_COMPANION_STREAM_API_PATH = '/api/v1/companion/turn/stream';
 export const BROWSER_COMPANION_STREAM_FRAME_SCHEMA = 'vexlife.browser-companion-turn-stream-frame/v1';
 
-export async function waitForBrowserCompanionPaintOpportunity({
+const BROWSER_COMPANION_REVEAL_FRAME_MS = 1000 / 60;
+const BROWSER_COMPANION_REVEAL_DEFAULT_RATE_PER_MS = 1 / 18;
+const BROWSER_COMPANION_REVEAL_RATE_EMA_WEIGHT = 0.35;
+const BROWSER_COMPANION_REVEAL_FINISH_FRAMES = 2;
+
+function browserCompanionRevealUnits(value, segmenter) {
+  const text = String(value ?? '');
+  if (!text) return [];
+  if (segmenter) return [...segmenter.segment(text)].map((entry) => entry.segment);
+  return Array.from(text);
+}
+
+export function createBrowserCompanionAdaptiveReveal({
+  render,
   requestFrame = globalThis.requestAnimationFrame,
-  scheduleTask = globalThis.setTimeout,
-  visible = globalThis.document?.visibilityState !== 'hidden'
+  cancelFrame = globalThis.cancelAnimationFrame,
+  now = () => globalThis.performance?.now?.() ?? Date.now(),
+  visible = () => globalThis.document?.visibilityState !== 'hidden',
+  reducedMotion = () => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
 } = {}) {
-  if (typeof scheduleTask !== 'function') throw new TypeError('Companion stream paint gate requires a task scheduler');
-  if (visible && typeof requestFrame === 'function') {
-    await new Promise((resolve) => requestFrame(() => scheduleTask(resolve, 0)));
-    return 'VISIBLE_ANIMATION_FRAME';
-  }
-  await new Promise((resolve) => scheduleTask(resolve, 0));
-  return 'TASK_YIELD';
+  if (typeof render !== 'function') throw new TypeError('Companion adaptive reveal requires one render function');
+  if (typeof now !== 'function') throw new TypeError('Companion adaptive reveal requires one clock function');
+  const segmenter = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
+    ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+    : null;
+  const received = [];
+  let revealedUnits = 0;
+  let lastRendered = null;
+  let arrivalUnitsPerMs = BROWSER_COMPANION_REVEAL_DEFAULT_RATE_PER_MS;
+  let lastArrivalAt = null;
+  let lastFrameAt = null;
+  let frameHandle = null;
+  let finishing = false;
+  let finishFramesRemaining = BROWSER_COMPANION_REVEAL_FINISH_FRAMES;
+  let finishPromise = null;
+  let resolveFinish = null;
+  let cancelled = false;
+
+  const currentVisible = () => typeof visible === 'function' ? visible() : Boolean(visible);
+  const currentReducedMotion = () => typeof reducedMotion === 'function' ? reducedMotion() : Boolean(reducedMotion);
+  const snapshot = () => Object.freeze({
+    receivedUnits: received.length,
+    revealedUnits,
+    backlogUnits: Math.max(0, received.length - revealedUnits),
+    arrivalUnitsPerMs,
+    finishing
+  });
+  const settleFinish = () => {
+    if (!finishing || revealedUnits < received.length || !resolveFinish) return;
+    const resolve = resolveFinish;
+    resolveFinish = null;
+    resolve(snapshot());
+  };
+  const renderCurrent = () => {
+    const content = received.slice(0, revealedUnits).join('');
+    if (content === lastRendered) return;
+    lastRendered = content;
+    render(content);
+  };
+  const flush = () => {
+    revealedUnits = received.length;
+    renderCurrent();
+    settleFinish();
+  };
+  const schedule = () => {
+    if (cancelled || frameHandle !== null || revealedUnits >= received.length) {
+      settleFinish();
+      return;
+    }
+    if (currentReducedMotion() || !currentVisible() || typeof requestFrame !== 'function') {
+      flush();
+      return;
+    }
+    frameHandle = requestFrame(step);
+  };
+  const step = (timestamp) => {
+    frameHandle = null;
+    if (cancelled) return;
+    const backlog = received.length - revealedUnits;
+    if (backlog <= 0) {
+      settleFinish();
+      return;
+    }
+    const frameTime = Number.isFinite(Number(timestamp)) ? Number(timestamp) : Number(now());
+    const elapsedMs = lastFrameAt === null
+      ? BROWSER_COMPANION_REVEAL_FRAME_MS
+      : Math.min(50, Math.max(8, frameTime - lastFrameAt));
+    lastFrameAt = frameTime;
+    let budget;
+    if (finishing) {
+      const frames = Math.max(1, finishFramesRemaining);
+      budget = Math.ceil(backlog / frames);
+      finishFramesRemaining -= 1;
+    } else {
+      const arrivalBudget = Math.max(1, Math.ceil(arrivalUnitsPerMs * elapsedMs * 1.15));
+      const backlogBudget = backlog >= 48
+        ? Math.ceil(backlog * 0.5)
+        : backlog >= 16
+          ? Math.ceil(backlog * 0.3)
+          : backlog >= 6
+            ? 2
+            : 1;
+      budget = Math.max(arrivalBudget, backlogBudget);
+    }
+    revealedUnits += Math.min(backlog, budget);
+    renderCurrent();
+    if (revealedUnits < received.length) schedule();
+    else settleFinish();
+  };
+
+  const push = (contentDelta) => {
+    if (cancelled) return snapshot();
+    if (typeof contentDelta !== 'string') throw new TypeError('Companion adaptive reveal delta must be a string');
+    if (!contentDelta) return snapshot();
+    const units = browserCompanionRevealUnits(contentDelta, segmenter);
+    if (!units.length) return snapshot();
+    const observedAt = Number(now());
+    if (Number.isFinite(observedAt)) {
+      if (lastArrivalAt === null) {
+        arrivalUnitsPerMs = Math.max(BROWSER_COMPANION_REVEAL_DEFAULT_RATE_PER_MS, units.length / 48);
+      } else {
+        const elapsedMs = Math.max(1, observedAt - lastArrivalAt);
+        const instantaneousRate = units.length / elapsedMs;
+        arrivalUnitsPerMs =
+          arrivalUnitsPerMs * (1 - BROWSER_COMPANION_REVEAL_RATE_EMA_WEIGHT)
+          + instantaneousRate * BROWSER_COMPANION_REVEAL_RATE_EMA_WEIGHT;
+      }
+      lastArrivalAt = observedAt;
+    }
+    received.push(...units);
+    if (currentReducedMotion() || !currentVisible()) flush();
+    else schedule();
+    return snapshot();
+  };
+
+  const finish = () => {
+    if (cancelled || revealedUnits >= received.length) {
+      finishing = true;
+      return Promise.resolve(snapshot());
+    }
+    finishing = true;
+    finishFramesRemaining = BROWSER_COMPANION_REVEAL_FINISH_FRAMES;
+    if (!finishPromise) finishPromise = new Promise((resolve) => { resolveFinish = resolve; });
+    schedule();
+    return finishPromise;
+  };
+
+  const cancel = () => {
+    if (cancelled) return;
+    cancelled = true;
+    if (frameHandle !== null && typeof cancelFrame === 'function') {
+      try { cancelFrame(frameHandle); } catch {}
+    }
+    frameHandle = null;
+    if (resolveFinish) {
+      const resolve = resolveFinish;
+      resolveFinish = null;
+      resolve(snapshot());
+    }
+  };
+
+  return Object.freeze({ push, finish, cancel, snapshot });
 }
 
 export async function readBrowserCompanionTurnStream(response, { onDelta = null } = {}) {
@@ -1152,6 +1302,7 @@ export function createChatController({ state, projects, roles, channels, message
     updateComposer();
     const sendIdempotencyKey = sourceMessage?.sendIdempotencyKey ?? `browser-send.${globalThis.crypto.randomUUID()}`;
     if (sourceMessage && !sourceMessage.sendIdempotencyKey) sourceMessage.sendIdempotencyKey = sendIdempotencyKey;
+    let companionStreamReveal = null;
     try {
       const response = await fetch(BROWSER_COMPANION_STREAM_API_PATH, {
         method: 'POST',
@@ -1171,14 +1322,15 @@ export function createChatController({ state, projects, roles, channels, message
           ...(semanticRelayAction ? { semanticRelayAction } : {})
         })
       });
-      let streamedContent = '';
+      companionStreamReveal = createBrowserCompanionAdaptiveReveal({
+        render: (visibleContent) => { renderCompanionStreamProgress(channel, visibleContent); }
+      });
       const body = await readBrowserCompanionTurnStream(response, {
-        async onDelta(delta) {
-          streamedContent += delta.contentDelta;
-          renderCompanionStreamProgress(channel, streamedContent);
-          await waitForBrowserCompanionPaintOpportunity();
+        onDelta(delta) {
+          companionStreamReveal.push(delta.contentDelta);
         }
       });
+      await companionStreamReveal.finish();
       clearCompanionStreamProgress(channel);
       if (response.ok && body?.state === 'CONFIRMATION_REQUIRED' && body?.truthClass === 'CURRENT_SEMANTIC_RELAY_ATTENTION') {
         const list = listForChannel(channel);
@@ -1252,10 +1404,12 @@ export function createChatController({ state, projects, roles, channels, message
       }
       return true;
     } catch {
+      companionStreamReveal?.cancel();
       clearCompanionStreamProgress(channel);
       restoreCompanionDraft(channel, content, sourceMessage);
       return false;
     } finally {
+      companionStreamReveal?.cancel();
       clearCompanionStreamProgress(channel);
       companionTurnPending = false;
       await refreshCompanionAvailability();

@@ -5,7 +5,8 @@ import {
   CONVERSATION_EVOLUTION_SURFACE_REF,
   createConversationEvolutionAdapter,
   projectConversationEvolutionState,
-  projectConversationEvolutionStreamProgress
+  projectConversationEvolutionStreamProgress,
+  syncConversationEvolutionStreamProgress
 } from '../reference/browser/evolution/conversation-projection.js';
 
 const source=fs.readFileSync(new URL('../reference/browser/evolution/conversation-projection.js',import.meta.url),'utf8');
@@ -90,6 +91,27 @@ test('Evolution projection mirrors canonical ephemeral Companion stream progress
   assert.equal(projectConversationEvolutionStreamProgress(feed,row.dataset.channelRef),null);
 });
 
+test('Evolution stream progress fast path patches only the mounted ephemeral body',()=>{
+  const channelRef='channel.self-development.companion';
+  const sourceBody={textContent:'The response is now smoother.'};
+  const sourceRow={
+    dataset:{companionStreamProgress:'true',channelRef,truthClass:'EPHEMERAL_LOCAL_MODEL_PROGRESS'},
+    querySelector:(selector)=>selector==='.message-body'?sourceBody:null
+  };
+  const referenceFeed={querySelectorAll:(selector)=>selector==='[data-companion-stream-progress="true"]'?[sourceRow]:[],contains:()=>true};
+  const mountedBody={textContent:'The response'};
+  const root={scrollHeight:200,clientHeight:100,scrollTop:100};
+  const mounted={
+    dataset:{channelRef},
+    querySelector:(selector)=>selector==='.conversation-evolution__message-body'?mountedBody:null,
+    closest:(selector)=>selector==='.conversation-evolution'?root:null
+  };
+  const body={querySelector:(selector)=>selector==='[data-companion-stream-progress="true"]'?mounted:selector==='.conversation-evolution'?root:null};
+  assert.equal(syncConversationEvolutionStreamProgress(body,referenceFeed,channelRef),true);
+  assert.equal(mountedBody.textContent,'The response is now smoother.');
+  assert.equal(root.scrollTop,root.scrollHeight);
+});
+
 test('Evolution active Conversation renders presentation-only stream progress alongside durable canonical messages',()=>{
   assert.match(source,/const streamProgress = projectConversationEvolutionStreamProgress\(referenceFeed, snapshot\.channelRef\)/);
   assert.match(source,/feed\.hidden = snapshot\.messages\.length === 0 && !streamProgress/);
@@ -97,6 +119,8 @@ test('Evolution active Conversation renders presentation-only stream progress al
   assert.match(source,/article\.dataset\.companionStreamProgress = 'true'/);
   assert.match(source,/article\.dataset\.effectsPerformed = 'false'/);
   assert.match(source,/root\.scrollTop = followedEnd && \(messageCountChanged \|\| progressChanged\)/);
+  assert.match(source,/const streamOnly = mutations\.every/);
+  assert.match(source,/syncConversationEvolutionStreamProgress\(body, referenceFeed, activeChannelRef\)/);
   assert.doesNotMatch(source,/snapshot\.messages\.push\(streamProgress/);
 });
 
