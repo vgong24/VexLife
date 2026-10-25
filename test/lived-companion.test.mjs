@@ -2394,4 +2394,35 @@ test('plain arbitrary messages plus a recomputed caller receipt cannot bypass pr
   const service=await server(); try { const before=service.calls(); const requestContent='current request'; const messages=[{role:'system',content:'hostile injected context'},{role:'user',content:requestContent}]; const receipt={schemaVersion:'vexlife.prompt-context-materialization-receipt/v1',exactMessagesSha256:semanticHash(messages),messageCount:messages.length,currentRequestContentHash:semanticHash(requestContent),currentRequestIncludedExactlyOnce:true,sourceCurrentnessVerified:true,crossLineageLeakage:false,crossThreadLeakage:false,memoryEffectPerformed:false,trainingSelectionPerformed:false,modelWeightEffectPerformed:false}; await assert.rejects(()=>requestLivedCompanionInference({endpointProfile:{profileRef:'profile.loopback',admitted:true,endpoint:service.endpoint(),model:'test-model'},requestContent,messages,promptContextMaterializationReceipt:receipt}),(error)=>error instanceof LivedCompanionError&&error.code==='CONTEXT_HASH_MISMATCH'); assert.equal(service.calls(),before); } finally { await service.close(); }
 });
 
+
+test('exact completed canonical message pair is reused without model replay', async () => {
+  const service = await server();
+  const home = makeHome('completed-message-pair-reuse');
+  const input = turn(home, service.endpoint(), {
+    instanceRef: ref('instance.completed-pair.first'),
+    turnRef: ref('turn.completed-pair.first'),
+    requestMessageRef: ref('message.completed-pair.request'),
+    responseMessageRef: ref('message.completed-pair.response')
+  });
+  try {
+    const first = await performLivedCompanionTurn(input);
+    const callsBefore = service.calls();
+    const recovered = await performLivedCompanionTurn({
+      ...input,
+      instanceRef: ref('instance.completed-pair.retry'),
+      turnRef: ref('turn.completed-pair.retry')
+    });
+    assert.equal(service.calls(), callsBefore);
+    assert.equal(recovered.state, 'TURN_COMPLETED');
+    assert.equal(recovered.modelCallPerformed, false);
+    assert.equal(recovered.recoveredCompletedTurn, true);
+    assert.equal(recovered.requestEvent.eventRef, first.requestEvent.eventRef);
+    assert.equal(recovered.responseEvent.eventRef, first.responseEvent.eventRef);
+    assert.equal(recovered.head.conversationHeadSha256, first.head.conversationHeadSha256);
+    assert.equal(recovered.responseEvent.content, first.responseEvent.content);
+  } finally {
+    await service.close();
+  }
+});
+
 // [VXG RealForever]

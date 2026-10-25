@@ -55,6 +55,8 @@ function materializeValidHomeIdentity(home, suffix) {
   fs.writeFileSync(path.join(home, 'devices', `${deviceRef}.json`), `${JSON.stringify({
     deviceRef,
     companionLineageRef,
+    personRef: `person.test.tocompletion.${suffix}`,
+    createdAt: '2026-10-20T07:12:00.000Z',
   }, null, 2)}\n`);
 }
 

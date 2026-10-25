@@ -4,11 +4,9 @@ Continuity: `[VXG RealForever]`
 
 ## The question
 
-> Has this exact human composer submit been admitted, under current addressed-Conversation truth, to attempt one exact append?
+> Has this exact human composer submit been admitted, under current addressed-Conversation truth, to attempt one exact durable human append?
 
-This source owns only that question.
-
-It is deliberately a **no-effect admission membrane** between source-owned Conversation/currentness evidence and the existing append/inference owners.
+This source owns only that question. It remains a **no-effect admission membrane** immediately before `ConversationStore` performs the human append.
 
 ```text
 ADMISSION_RECEIPT != MESSAGE_APPEND
@@ -18,9 +16,9 @@ ADMISSION_RECEIPT != GENERIC_PERMISSION_GRANT
 ADMISSION_RECEIPT != PROVIDER_SUCCESS
 ```
 
-## Existing owners consumed
+## Current owners consumed
 
-Static send meaning remains source-owned by:
+Static Send meaning remains source-owned by:
 
 ```text
 blueprint/fragments/actions.json
@@ -37,117 +35,159 @@ blueprint/process-factory/processes-conversation-and-interface.json
   conversation service owns append
 ```
 
-Addressed channel/message meaning remains `module.vexlife.core.conversation` truth.
+Canonical human-visible channel/message truth is owned by `src/core/conversation-store.mjs`.
 
-The Lived Companion writer projection remains a serialization/recovery observation only. It does not mint turn identity or send authority.
+The Lived Companion/G01 ledger remains a separate private provenance owner for the real model turn. It is joined to canonical Conversation truth through the exact same request/response message refs; there is no mapping store.
 
-Resource/context admission and active-turn currentness remain external inputs from their rightful producers. This module validates and binds those projections; it does not manufacture them.
+## Resource/context correction
 
-## Stage-A contract
+The canonical process still requires:
+
+```text
+message input fits resource/context admission
+conversation permission is active
+```
+
+Those process preconditions remain exact-current and are validated by this module.
+
+They do **not** require two standalone pre-send runtime receipts.
+
+```text
+PROCESS_PRECONDITION
+!= REQUIRED_STANDALONE_RUNTIME_RECEIPT
+
+BOUNDED_MESSAGE_INPUT
++ CURRENT_ADDRESSED_CONVERSATION
++ COMPOSER_SEND
+-> exact no-effect append admission
+
+SCHEDULER_RESOURCE_LEASE
+!= HUMAN_MESSAGE_APPEND_ADMISSION
+
+PROMPT_CONTEXT_LEASE
+!= PRE_SEND_CONVERSATION_CONTEXT_ADMISSION
+```
+
+`resourceAdmission` and `contextAdmission` were Stage-A scaffolding. They are not accepted inputs or part of the v3 receipt identity.
+
+Pre-existing model-turn identity and Lived-writer currentness are likewise not human-Send prerequisites.
+
+## Current v3 contract
 
 `formConversationSendAdmission(...)` requires:
 
 ```text
-current static send source
+current static Send source
 + exact project/thread/channel
 + ACTIVE channel state
 + current membership
-+ member speaker + recipients
-+ exact content
++ server-owned member speaker + recipients
++ bounded exact content
 + original language
 + optional reply/context-range refs
 + explicit current COMPOSER_SEND witness
-+ exact current active-turn identity
-+ IDLE / no-recovery-required thread-writer currentness
-+ current ADMITTED resource projection
-+ current ADMITTED context projection
++ exact current addressed Conversation channel/head
 + one exact sendAttemptRef
 ```
 
-The output is content-addressed and carries no raw message content.
-
-It projects only:
+The output is content-addressed and carries no raw message content. It projects only:
 
 ```text
 permission.conversation.send = ADMITTED
 LOCAL_APPEND = ADMITTED_EXACT_ATTEMPT
 ```
 
-No append, model call, Home/Memory mutation, network effect, provider effect, or recovery effect occurs while forming or verifying the receipt.
+No append, model call, Home/Memory mutation beyond the later rightful Conversation effect, network effect, provider effect, or recovery effect occurs while forming or verifying the receipt.
 
-## Attempt binding, not a hidden consumption ledger
+## Durable transaction composition
 
-The receipt is **single-attempt-bound**, not internally mutable single-use state.
-
-```text
-sendAttemptRef
-+ turnRef
-+ source/currentness
-+ addressing/membership
-+ contentHash
-+ confirmation
-+ resource/context admission
-+ writer currentness
--> one deterministic admission identity
-```
-
-Any different attempt, turn, content, addressing, membership, source, or currentness produces a different admission and cannot reuse the prior receipt.
+The Browser Companion bridge composes the owners in this order:
 
 ```text
-ADMISSION_ATTEMPT_BINDING
-!= DURABLE_EFFECT_IDEMPOTENCY_LEDGER
+bounded current Reference direct-Companion binding
+-> current Vex Home device.personRef
+-> deterministic browser Send identity
+-> current canonical Conversation channel/head
+-> ConversationSendAdmission
+-> durable HUMAN ConversationStore append
+-> SEND COMPLETE
+
+then:
+-> same human messageRef enters Lived Companion
+-> real local Companion/model turn
+-> same responseMessageRef leaves Lived Companion
+-> durable COMPANION ConversationStore append
 ```
 
-Repeated verification of the exact same receipt against the exact same attempt is a semantic no-op. Duplicate durable append suppression remains with the rightful Conversation/Lived effect owner, which already owns request/event/turn persistence identity.
-
-## Fail-closed boundaries
-
-Admission fails before effect when any of these are missing or contradictory:
-
-- action / permission / process source meaning drifted;
-- confirmation is not exact current `COMPOSER_SEND`;
-- channel is not active;
-- speaker or a recipient is not a current member;
-- active-turn identity is absent, stale, or not active;
-- thread writer is active, recovery-required, or unverifiable;
-- resource or context admission is not current and admitted;
-- caller attempts to inject an authority/grant boolean;
-- receipt bytes or semantic hash are changed;
-- an old receipt is checked against a different send attempt.
-
-`UNKNOWN` and `STALE` never become admission.
-
-## Why Stage A is source-only
-
-The current Core trajectory intentionally proves the membrane before wiring a real product send.
-
-Stage A uses contract-bound synthetic active-turn/currentness evidence in tests. That is not a production active-turn producer.
-
-Real integration remains serialized behind:
+Permanent distinctions:
 
 ```text
-accepted portable active-turn identity/currentness projection
-+ current Stage-A source
-+ fresh integration-path ownership
--> server-owned send-admission resolver
--> exact admission check immediately before existing effect owner
--> existing addressed Conversation / Lived Companion effect
+SEND_COMPLETED != MODEL_RESPONSE_COMPLETED
+MODEL_FAILURE != HUMAN_MESSAGE_UNSENT
+CONVERSATION_STORE != LIVED_COMPANION_TURN_LEDGER
+PRE_EFFECT_SEND_IDENTITY != ACTIVE_TURN_CURRENTNESS
 ```
 
-Do not modify Browser, Lived Companion, Conversation persistence, Interaction Control, Capability, or Process Factory implementation merely to make Stage A look integrated.
+A runtime/provider failure after the human append leaves the human message durable. Browser projection must not delete a server-confirmed durable message back into `UNSENT_LOCAL_DRAFT`.
+
+Retry means retrying Companion attention for the already-durable human message ref—not appending the human message again.
+
+## Idempotency and crash reconciliation
+
+The Browser supplies one bounded idempotency identity. Server composition deterministically derives the canonical human request message ref and Companion response message ref.
+
+```text
+same idempotency + same canonical human envelope
+-> same Conversation message
+-> no duplicate human append
+
+same idempotency + changed canonical content/envelope
+-> fail closed
+```
+
+If Lived Companion completed but the canonical Companion response append did not:
+
+```text
+exact current completed Lived pair
++ exact shared request/response message refs
+-> reuse exact completed response
+-> append Conversation response idempotently
+-> modelCallPerformed=false
+```
+
+The Browser/bridge consumes a bounded Lived-owner reader. It does not inspect private Lived filesystem paths itself.
+
+## Semantic relay boundary
+
+Material semantic-relay `CONFIRMATION_REQUIRED` remains **before** the durable human message effect. The originating human can still confirm/correct/hold and the local draft may be restored because no Send occurred yet.
+
+Once the server reports `sendState=DURABLE`, that boundary has passed and the human message is no longer an unsent draft.
 
 ## Proof meaning
 
-Focused proof owns the admission transformation at its boundary:
+Focused proof owns:
 
 ```text
 valid exact current inputs
 -> deterministic no-effect ADMITTED receipt
 
+legacy synthetic resource/context inputs
+-> rejected
+
 wrong/stale/foreign/drifted inputs
 -> fail closed
 ```
 
-Higher-level integration proof later owns whether a real product submit correctly composes this receipt with the existing effect owner.
+Integration proof owns:
 
-<!-- [VXG RealForever][VEXLIFE-CORE][ADDRESSED-CONVERSATION][SEND-ADMISSION] -->
+```text
+server-owned Home human identity
++ exact Reference direct-Companion binding
++ canonical ConversationStore
++ same-ref Lived Companion turn
++ durable response / retry / reconciliation
+```
+
+The separately serialized browser-hydration owner still owns startup/reload hydration and the whole cold-restart UI witness. This core slice does not take those paths.
+
+<!-- [VXG RealForever][VEXLIFE-CORE][ACTUALIZATION][ADDRESSED-CONVERSATION][CONVERSATION-FIRST] -->

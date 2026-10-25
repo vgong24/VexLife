@@ -318,7 +318,7 @@ test('VA-I06 public source consumes package exports without embedding private SD
 
 test('VA-I06 live browser composition adds Voice only after the completed Companion turn', () => {
   const source = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser-core.mjs'), 'utf8');
-  const turn = source.indexOf('const result = await companionBridge.performTurn(input);');
+  const turn = source.indexOf('const result = await companionBridge.performConversationTurn(input);');
   const voice = source.indexOf('await companionVoicePlayback.playCompletedTurn({');
   const response = source.indexOf('sendJson(response, 200, { ...result, voicePlayback });');
   assert.ok(turn >= 0 && voice > turn && response > voice);

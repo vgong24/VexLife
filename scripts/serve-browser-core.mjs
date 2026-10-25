@@ -1854,7 +1854,7 @@ export function createVexLifeBrowserServer({
           return;
         }
         const input = await readBoundedJson(request);
-        const result = await companionBridge.performTurn(input);
+        const result = await companionBridge.performConversationTurn(input);
         if (companionVoicePlayback && typeof companionVoicePlayback.playCompletedTurn === 'function') {
           const voicePlayback = await companionVoicePlayback.playCompletedTurn({
             completedTurn: result,

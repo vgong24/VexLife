@@ -7,7 +7,20 @@ import {
   performLivedCompanionTurn
 } from './lived-companion.mjs';
 import { composeSemanticRelay } from './conversation.mjs';
+import {
+  ConversationStoreError,
+  appendConversationMessage,
+  materializeConversationChannel,
+  readConversationChannel,
+  readConversationChannelBinding,
+  readConversationMessage
+} from './conversation-store.mjs';
+import {
+  ADDRESSED_CONVERSATION_CURRENTNESS_SCHEMA,
+  formConversationSendAdmission
+} from './conversation-send-admission.mjs';
 import { projectActiveTurnCurrentness } from './interaction-control.mjs';
+import { semanticHash } from './utils.mjs';
 
 export const BROWSER_COMPANION_API_PATH = '/api/v1/companion/turn';
 export const BROWSER_COMPANION_STATUS_PATH = '/api/v1/companion/status';
@@ -16,7 +29,7 @@ export const BROWSER_COMPANION_RECOVERY_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_COMPANION_PROFILE_REF = 'model-profile.vexlife.browser-companion.local';
 export const BROWSER_COMPANION_MAX_CONTENT_CHARS = 32 * 1024;
 
-const REQUEST_KEYS = new Set([
+const RUNTIME_REQUEST_KEYS = new Set([
   'projectRef',
   'threadRef',
   'channelRef',
@@ -25,6 +38,19 @@ const REQUEST_KEYS = new Set([
   'screenRef',
   'semanticRelayInput',
   'semanticRelayAction'
+]);
+const CONVERSATION_REQUEST_KEYS = new Set([
+  'projectRef',
+  'threadRef',
+  'channelRef',
+  'content',
+  'selectedNodeRef',
+  'screenRef',
+  'semanticRelayInput',
+  'semanticRelayAction',
+  'idempotencyKey',
+  'messageCreatedAt',
+  'originalLanguage'
 ]);
 const PORTABLE_REF_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
@@ -242,15 +268,21 @@ export function loadBrowserCompanionHomeIdentity(home) {
   );
   if (
     device.deviceRef !== homeManifest.currentDeviceRef ||
-    device.companionLineageRef !== homeManifest.currentCompanionLineageRef
+    device.companionLineageRef !== homeManifest.currentCompanionLineageRef ||
+    !safePortableRef(device.personRef) ||
+    typeof device.createdAt !== 'string' ||
+    !Number.isFinite(Date.parse(device.createdAt)) ||
+    new Date(device.createdAt).toISOString() !== device.createdAt
   ) {
-    throw new BrowserCompanionBridgeError('COMPANION_HOME_IDENTITY_INVALID', 'Vex Home and device lineage disagree', 409);
+    throw new BrowserCompanionBridgeError('COMPANION_HOME_IDENTITY_INVALID', 'Vex Home, device, person or stable device time disagree', 409);
   }
   return Object.freeze({
     home: canonical,
     homeRef: homeManifest.homeRef,
     deviceRef: homeManifest.currentDeviceRef,
-    companionLineageRef: homeManifest.currentCompanionLineageRef
+    companionLineageRef: homeManifest.currentCompanionLineageRef,
+    personRef: device.personRef,
+    deviceCreatedAt: device.createdAt
   });
 }
 
@@ -258,7 +290,7 @@ export function validateBrowserCompanionRequest(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'Companion request must be one JSON object', 400);
   }
-  const extras = Object.keys(value).filter((key) => !REQUEST_KEYS.has(key));
+  const extras = Object.keys(value).filter((key) => !RUNTIME_REQUEST_KEYS.has(key));
   if (extras.length) {
     throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'Companion request contains unadmitted fields', 400);
   }
@@ -301,6 +333,71 @@ export function validateBrowserCompanionRequest(value) {
     screenRef: value.screenRef ?? null,
     semanticRelayInput: value.semanticRelayInput ? structuredClone(value.semanticRelayInput) : null,
     semanticRelayAction
+  });
+}
+
+export function validateBrowserCompanionConversationRequest(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'Companion request must be one JSON object', 400);
+  }
+  const extras = Object.keys(value).filter((key) => !CONVERSATION_REQUEST_KEYS.has(key));
+  if (extras.length) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'Companion request contains unadmitted fields', 400);
+  }
+  if (!safePortableRef(value.threadRef)) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'threadRef must be one portable canonical ref', 400);
+  }
+  if (!nonempty(value.channelRef) || value.channelRef.length > 256) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'channelRef is invalid', 400);
+  }
+  if (!nonempty(value.content) || !value.content.trim() || value.content.length > BROWSER_COMPANION_MAX_CONTENT_CHARS) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'message content is empty or exceeds the bounded size', 400);
+  }
+  if (!safePortableRef(value.projectRef)) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'projectRef must be one portable canonical ref', 400);
+  }
+  for (const key of ['selectedNodeRef', 'screenRef']) {
+    if (value[key] !== undefined && value[key] !== null && (!nonempty(value[key]) || value[key].length > 256)) {
+      throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', `${key} is invalid`, 400);
+    }
+  }
+  if (!safePortableRef(value.idempotencyKey)) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'idempotencyKey must be one portable browser Send identity', 400);
+  }
+  if (typeof value.messageCreatedAt !== 'string' || !Number.isFinite(Date.parse(value.messageCreatedAt)) || new Date(value.messageCreatedAt).toISOString() !== value.messageCreatedAt) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'messageCreatedAt must be canonical ISO-8601 UTC', 400);
+  }
+  if (!nonempty(value.originalLanguage) || value.originalLanguage.length > 64) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'originalLanguage is invalid', 400);
+  }
+  const semanticRelayAction = value.semanticRelayAction ?? null;
+  if (semanticRelayAction !== null && !['CONFIRM', 'CORRECT'].includes(semanticRelayAction)) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'semanticRelayAction is not admitted', 400);
+  }
+  if (value.semanticRelayInput !== undefined && value.semanticRelayInput !== null) {
+    if (typeof value.semanticRelayInput !== 'object' || Array.isArray(value.semanticRelayInput)) {
+      throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'semanticRelayInput must be one reference-only object', 400);
+    }
+    for (const callerOwnedField of ['sourceMessageRef', 'confirmedByRef', 'confirmationReceiptRef']) {
+      if (Object.hasOwn(value.semanticRelayInput, callerOwnedField)) {
+        throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', `semanticRelayInput cannot supply ${callerOwnedField}`, 400);
+      }
+    }
+  } else if (semanticRelayAction !== null) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'semanticRelayAction requires semanticRelayInput', 400);
+  }
+  return Object.freeze({
+    projectRef: value.projectRef,
+    threadRef: value.threadRef,
+    channelRef: value.channelRef,
+    content: value.content,
+    selectedNodeRef: value.selectedNodeRef ?? null,
+    screenRef: value.screenRef ?? null,
+    semanticRelayInput: value.semanticRelayInput ? structuredClone(value.semanticRelayInput) : null,
+    semanticRelayAction,
+    idempotencyKey: value.idempotencyKey,
+    messageCreatedAt: value.messageCreatedAt,
+    originalLanguage: value.originalLanguage
   });
 }
 
@@ -470,8 +567,184 @@ function composeBrowserRequestSemanticRelay({ relayInput, relayAction, requestMe
   );
 }
 
+
+const DIRECT_COMPANION_BINDINGS = Object.freeze([
+  Object.freeze({
+    projectRef: 'project.vex-home-product',
+    threadRef: 'thread.vex-home.guided-fresh',
+    channelRef: 'channel.vex-home.guided-fresh.companion'
+  }),
+  Object.freeze({
+    projectRef: 'project.vex-home-product',
+    threadRef: 'thread.vex-home.product-workshop',
+    channelRef: 'channel.vex-home.product-workshop.companion'
+  }),
+  Object.freeze({
+    projectRef: 'project.self-development',
+    threadRef: 'thread.self-development.open-conversation',
+    channelRef: 'channel.self-development.companion'
+  })
+]);
+
+function requireCurrentDirectCompanionBinding(request) {
+  const binding = DIRECT_COMPANION_BINDINGS.find((candidate) =>
+    candidate.projectRef === request.projectRef
+    && candidate.threadRef === request.threadRef
+    && candidate.channelRef === request.channelRef);
+  if (!binding) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_CONVERSATION_BINDING_NOT_ADMITTED',
+      'Companion request does not match one current Reference direct-Companion binding',
+      409
+    );
+  }
+  return binding;
+}
+
+function readRepositoryJson(relativePath, label) {
+  try {
+    return JSON.parse(fs.readFileSync(new URL(relativePath, import.meta.url), 'utf8'));
+  } catch (error) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_SEND_SOURCE_UNAVAILABLE',
+      `${label} is unavailable`,
+      500,
+      error.message
+    );
+  }
+}
+
+function currentConversationSendStaticSource() {
+  const actions = readRepositoryJson('../../blueprint/fragments/actions.json', 'Conversation action source');
+  const permissions = readRepositoryJson('../../blueprint/fragments/permissions.json', 'Conversation permission source');
+  const processes = readRepositoryJson('../../blueprint/process-factory/processes-conversation-and-interface.json', 'Conversation process source');
+  const action = actions.find((item) => item.actionRef === 'action.message.send');
+  const permission = permissions.find((item) => item.permissionRef === 'permission.conversation.send');
+  const process = processes.find((item) => item.processRef === 'process.vexlife.conversation.send-addressed');
+  if (!action || !permission || !process) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_SEND_SOURCE_UNAVAILABLE',
+      'Current addressed Conversation Send source is incomplete',
+      500
+    );
+  }
+  const sourceIdentity = { action, permission, process };
+  return Object.freeze({
+    currentness: 'CURRENT',
+    sourceVersionRef: `source.vexlife.conversation-send.${semanticHash(sourceIdentity).slice(0, 32)}`,
+    sourceRefs: Object.freeze([
+      'blueprint/fragments/actions.json',
+      'blueprint/fragments/permissions.json',
+      'blueprint/process-factory/processes-conversation-and-interface.json'
+    ]),
+    action,
+    permission,
+    process
+  });
+}
+
+function canonicalMessageRefs(request) {
+  const requestFingerprint = semanticHash({
+    surface: 'reference.browser.direct-companion',
+    projectRef: request.projectRef,
+    threadRef: request.threadRef,
+    channelRef: request.channelRef,
+    idempotencyKey: request.idempotencyKey
+  });
+  const requestMessageRef = `message.vexlife.conversation.human.${requestFingerprint.slice(0, 32)}`;
+  const responseFingerprint = semanticHash({
+    requestMessageRef,
+    speakerRef: 'role.vex.companion'
+  });
+  return Object.freeze({
+    requestMessageRef,
+    responseMessageRef: `message.vexlife.conversation.companion.${responseFingerprint.slice(0, 32)}`,
+    sendAttemptRef: `send-attempt.vexlife.browser.${requestFingerprint.slice(0, 32)}`,
+    witnessRef: `witness.composer-send.${requestFingerprint.slice(0, 32)}`
+  });
+}
+
+function materializeCurrentBrowserConversation(identity, request) {
+  requireCurrentDirectCompanionBinding(request);
+  return materializeConversationChannel({
+    home: identity.home,
+    instanceRef: identity.deviceRef,
+    observedAt: request.messageCreatedAt,
+    channel: {
+      channelRef: request.channelRef,
+      threadRef: request.threadRef,
+      kind: 'DIRECT',
+      memberRefs: [identity.personRef, 'role.vex.companion'],
+      labelStringRef: 'channel.companion.name',
+      state: 'ACTIVE',
+      createdAt: identity.deviceCreatedAt
+    }
+  });
+}
+
+function addressedConversationCurrentness(identity, request, channelBinding, channelProjection) {
+  const head = channelProjection.head ?? null;
+  const projectionIdentity = {
+    channelRef: request.channelRef,
+    channelSha256: channelBinding.record.channelSha256,
+    channelRecordSha256: channelBinding.record.recordSha256,
+    headMessageRefOrNull: head?.messageRef ?? null,
+    headSequenceOrNull: head?.sequence ?? null,
+    headSha256OrNull: head?.headSha256 ?? null
+  };
+  return Object.freeze({
+    schemaVersion: ADDRESSED_CONVERSATION_CURRENTNESS_SCHEMA,
+    projectionRef: `projection.conversation.addressed-currentness.${semanticHash(projectionIdentity).slice(0, 32)}`,
+    currentness: 'CURRENT',
+    threadRef: request.threadRef,
+    channelRef: request.channelRef,
+    channelState: channelBinding.channel.state,
+    memberRefs: [...channelBinding.channel.memberRefs],
+    channelSha256: channelBinding.record.channelSha256,
+    channelRecordSha256: channelBinding.record.recordSha256,
+    headMessageRefOrNull: head?.messageRef ?? null,
+    headSequenceOrNull: head?.sequence ?? null,
+    headSha256OrNull: head?.headSha256 ?? null,
+    nextMessageSequence: head ? head.sequence + 1 : 0,
+    sourceRefs: Object.freeze([
+      'src/core/conversation-store.mjs#readConversationChannelBinding',
+      'src/core/conversation-store.mjs#readConversationChannel'
+    ])
+  });
+}
+
+function assertExistingHumanMessage(event, identity, request, messageRefs) {
+  const expectedRecipients = ['role.vex.companion'];
+  const sameRecipients = Array.isArray(event?.recipientRefs)
+    && JSON.stringify(event.recipientRefs) === JSON.stringify(expectedRecipients);
+  if (
+    event?.messageRef !== messageRefs.requestMessageRef
+    || event?.threadRef !== request.threadRef
+    || event?.channelRef !== request.channelRef
+    || event?.speakerRef !== identity.personRef
+    || !sameRecipients
+    || event?.content !== request.content
+    || event?.contentHash !== semanticHash(request.content)
+    || event?.createdAt !== request.messageCreatedAt
+  ) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_SEND_IDEMPOTENCY_CONFLICT',
+      'Browser Send identity already exists with a different canonical human message',
+      409
+    );
+  }
+  return event;
+}
+
+
 function publicFailureFor(error) {
   if (error instanceof BrowserCompanionBridgeError) return error;
+  if (error instanceof ConversationStoreError) {
+    return new BrowserCompanionBridgeError(error.code, 'Canonical Conversation effect failed closed', 409, error.message);
+  }
+  if (error instanceof TypeError) {
+    return new BrowserCompanionBridgeError('COMPANION_SEND_NOT_ADMITTED', 'Canonical Conversation Send admission failed closed', 409, error.message);
+  }
   if (!(error instanceof LivedCompanionError)) {
     return new BrowserCompanionBridgeError('COMPANION_TURN_FAILED', 'Local companion turn failed safely', 500, error?.message ?? String(error));
   }
@@ -858,7 +1131,340 @@ export function createBrowserCompanionBridge({
     }
   }
 
-  return Object.freeze({ binding, instanceRef, status, performRecovery, performTurn, activeTurnCurrentness });
+async function performConversationTurn(input) {
+    if (binding.state !== 'BOUND') {
+      throw new BrowserCompanionBridgeError(
+        binding.state === 'MISCONFIGURED' ? 'COMPANION_RUNTIME_BINDING_INVALID' : 'COMPANION_RUNTIME_UNBOUND',
+        'Local companion runtime binding is not available',
+        503
+      );
+    }
+    const request = validateBrowserCompanionConversationRequest(input);
+    requireCurrentDirectCompanionBinding(request);
+    const messageRefs = canonicalMessageRefs(request);
+    const { requestMessageRef, responseMessageRef } = messageRefs;
+    const turnRef = ref('turn.vexlife.browser-companion');
+    const relayProjection = composeBrowserRequestSemanticRelay({
+      relayInput: request.semanticRelayInput,
+      relayAction: request.semanticRelayAction,
+      requestMessageRef
+    });
+    if (relayProjection.attention) return relayProjection.attention;
+    const identity = loadBrowserCompanionHomeIdentity(home);
+    const contextSourceRefs = [
+      'source.vexlife.browser-companion',
+      ...(request.projectRef ? [request.projectRef] : []),
+      ...(request.screenRef ? [request.screenRef] : []),
+      ...(request.selectedNodeRef ? [request.selectedNodeRef] : [])
+    ];
+    let durableSend = null;
+    activeTurnObservations.set(turnRef, {
+      turnRef,
+      cancellationTargetRef: null,
+      cancellationTargetExpiresAt: null,
+      sourceRefs: ['source.vexlife.browser-companion']
+    });
+    try {
+      materializeCurrentBrowserConversation(identity, request);
+      const channelBinding = readConversationChannelBinding({ home: identity.home, channelRef: request.channelRef });
+      const beforeHuman = readConversationChannel({ home: identity.home, channelRef: request.channelRef });
+      const existingHuman = readConversationMessage({ home: identity.home, channelRef: request.channelRef, messageRef: requestMessageRef });
+      let humanAppend;
+      if (existingHuman.state === 'CURRENT') {
+        assertExistingHumanMessage(existingHuman.event, identity, request, messageRefs);
+        humanAppend = Object.freeze({ state: 'IDEMPOTENT_CURRENT', event: existingHuman.event, head: beforeHuman.head });
+      } else {
+        const currentness = addressedConversationCurrentness(identity, request, channelBinding, beforeHuman);
+        const sendAdmission = formConversationSendAdmission({
+          sendAttemptRef: messageRefs.sendAttemptRef,
+          staticSource: currentConversationSendStaticSource(),
+          conversation: {
+            projectRef: request.projectRef,
+            threadRef: request.threadRef,
+            channelRef: request.channelRef,
+            channelState: channelBinding.channel.state,
+            memberRefs: [...channelBinding.channel.memberRefs],
+            speakerRef: identity.personRef,
+            recipientRefs: ['role.vex.companion'],
+            content: request.content,
+            originalLanguage: request.originalLanguage,
+            replyToMessageRefOrNull: null,
+            contextRangeRefs: []
+          },
+          confirmationWitness: {
+            witnessRef: messageRefs.witnessRef,
+            confirmation: 'COMPOSER_SEND',
+            currentness: 'CURRENT',
+            sendAttemptRef: messageRefs.sendAttemptRef,
+            channelRef: request.channelRef,
+            contentHash: semanticHash(request.content),
+            sourceRef: 'source.browser.composer-submit'
+          },
+          addressedConversationCurrentness: currentness
+        });
+        humanAppend = appendConversationMessage({
+          home: identity.home,
+          instanceRef,
+          observedAt: request.messageCreatedAt,
+          message: {
+            messageRef: requestMessageRef,
+            spaceRef: null,
+            threadRef: request.threadRef,
+            channelRef: request.channelRef,
+            speakerRef: identity.personRef,
+            recipientRefs: ['role.vex.companion'],
+            witnessRefs: [sendAdmission.admissionRef],
+            membershipSnapshotRef: null,
+            membershipGeneration: null,
+            sequence: sendAdmission.nextMessageSequence,
+            content: request.content,
+            contentHash: sendAdmission.contentHash,
+            createdAt: request.messageCreatedAt
+          }
+        });
+      }
+      if (!humanAppend.head) throw new BrowserCompanionBridgeError('COMPANION_SEND_STATE_INVALID', 'Durable human Conversation append has no current head', 409);
+      durableSend = Object.freeze({ state: 'DURABLE', requestMessageRef, humanMessageSequence: humanAppend.event.sequence, canonicalConversationHeadSha256: humanAppend.head.headSha256 });
+      const completed = await performLivedCompanionTurn({
+        ...identity,
+        instanceRef,
+        threadRef: request.threadRef,
+        channelRef: request.channelRef,
+        turnRef,
+        requestMessageRef,
+        responseMessageRef,
+        speakerRef: identity.personRef,
+        recipientRefs: ['role.vex.companion'],
+        content: request.content,
+        requestSemanticRelay: relayProjection.relay,
+        endpointProfile: {
+          profileRef: binding.profileRef,
+          admitted: true,
+          endpoint: binding.endpoint,
+          model: binding.model
+        },
+        responseResolver: capabilityRuntime || promptContextResolver
+          ? async (resolverInput) => {
+              const livedInference = resolverInput?.inference;
+              const captureInferenceEvidence = resolverInput?.captureInferenceEvidence;
+              if (typeof livedInference !== 'function' || typeof captureInferenceEvidence !== 'function') {
+                throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'browser resolver requires one Lived-owned current-turn inference/evidence boundary');
+              }
+              const { inference: _inference, captureInferenceEvidence: _capture, ...resolverPublicInput } = resolverInput;
+              const runtimeContext = {
+                ...(resolverInput.context ?? {}),
+                projectRef: request.projectRef,
+                screenRef: request.screenRef,
+                selectedNodeRef: request.selectedNodeRef,
+                sourceRefs: contextSourceRefs
+              };
+              const evidenceTokens = [];
+              const evidenceTokenByResponse = new WeakMap();
+              const invokeLivedInference = async (input) => {
+                const value = await livedInference(input);
+                const token = captureInferenceEvidence(value);
+                if (!token) throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'browser resolver could not bind Lived-owned current-turn runtime evidence');
+                evidenceTokens.push(Object.freeze({ token, content: value.content, model: value.model }));
+                if (value && typeof value === 'object') evidenceTokenByResponse.set(value, token);
+                return value;
+              };
+              const bindVisibleResponseEvidence = (visibleResponse, { acceptedSynthesisLast = false } = {}) => {
+                if (evidenceTokens.length === 0) return null;
+                if (!visibleResponse || typeof visibleResponse.content !== 'string' || typeof visibleResponse.model !== 'string') {
+                  throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'browser resolver with runtime evidence must select a visible {content,model} response');
+                }
+                if (typeof visibleResponse === 'object') {
+                  const exactToken = evidenceTokenByResponse.get(visibleResponse) ?? null;
+                  if (exactToken) return exactToken;
+                }
+                if (acceptedSynthesisLast) {
+                  const selected = evidenceTokens.at(-1);
+                  if (!selected || selected.content !== visibleResponse.content || selected.model !== visibleResponse.model) {
+                    throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'accepted capability runtime synthesis evidence does not bind the selected visible response');
+                  }
+                  return selected.token;
+                }
+                const matches = evidenceTokens.filter((entry) =>
+                  entry.content === visibleResponse.content && entry.model === visibleResponse.model);
+                if (matches.length !== 1) {
+                  throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', `arbitrary browser resolver visible response matched ${matches.length} current-turn runtime evidence tokens`);
+                }
+                return matches[0].token;
+              };
+              let materializationConsumed = false;
+              let consumedMaterializationReceipt = null;
+              let contextualInference = invokeLivedInference;
+              if (promptContextResolver) {
+                const canonicalCapabilityController =
+                  capabilityRuntime?.schemaVersion === 'vexlife.capability-assimilation-runtime-controller/v1';
+                const formCurrentMaterialization = async () => {
+                  const selected = await promptContextResolver({
+                    ...resolverPublicInput,
+                    taskIntent: request.content,
+                    context: runtimeContext
+                  });
+                  if (selected === null || selected === undefined) return null;
+                  const materialization = materializeLivedCompanionPromptContext({
+                    ...identity,
+                    threadRef: request.threadRef,
+                    currentRequestEventRef: resolverInput.context?.currentRequestEventRef,
+                    currentRequestEventHash: resolverInput.context?.currentRequestEventHash,
+                    currentRequestSequence: resolverInput.context?.currentRequestSequence,
+                    priorConversationHeadSha256: resolverInput.context?.priorConversationHeadSha256 ?? null,
+                    currentRequestContent: resolverInput.requestContent,
+                    contextLease: selected.contextLease,
+                    continuityProjection: selected.continuityProjection,
+                    selectedConversationEventRefs: selected.selectedConversationEventRefs ?? [],
+                    memoryContext: selected.memoryContext ?? null,
+                    authorityVerifier: promptContextAuthorityVerifier
+                  });
+                  const currentObservation = activeTurnObservations.get(turnRef);
+                  if (currentObservation) {
+                    activeTurnObservations.set(turnRef, {
+                      ...currentObservation,
+                      cancellationTargetRef: selected.contextLease.cancellationTokenRef,
+                      cancellationTargetExpiresAt: selected.contextLease.expiresAt,
+                      sourceRefs: [...new Set([...currentObservation.sourceRefs, selected.contextLease.leaseRef])].sort()
+                    });
+                  }
+                  return materialization;
+                };
+                contextualInference = async (input) => {
+                  const contextualizeThisInference =
+                    canonicalCapabilityController ||
+                    input?.requestContent === resolverInput.requestContent;
+                  if (!contextualizeThisInference) return invokeLivedInference(input);
+                  const phaseMaterialization = await formCurrentMaterialization();
+                  if (phaseMaterialization === null) return invokeLivedInference(input);
+                  const contextualResponse = canonicalCapabilityController
+                    ? await invokeLivedInference({
+                        ...input,
+                        requestContent: resolverInput.requestContent,
+                        promptContextMaterialization: phaseMaterialization,
+                        supplementalRequestContent: input.requestContent
+                      })
+                    : await invokeLivedInference({
+                        ...input,
+                        promptContextMaterialization: phaseMaterialization
+                      });
+                  consumedMaterializationReceipt = contextualResponse.promptContextMaterializationReceipt ?? null;
+                  materializationConsumed = consumedMaterializationReceipt !== null;
+                  return contextualResponse;
+                };
+              }
+              if (capabilityRuntime) {
+                const resolved = await capabilityRuntime.resolveTurn({ ...resolverPublicInput, taskIntent: request.content, inference: contextualInference, context: runtimeContext });
+                const acceptedSynthesisLast = resolved?.runtimeProjection?.schemaVersion === 'vexlife.capability-assimilation-runtime/v1';
+                if (acceptedSynthesisLast) {
+                  const expectedInferenceCount = resolved.runtimeProjection.inferenceCount;
+                  if (!Number.isSafeInteger(expectedInferenceCount) || expectedInferenceCount !== evidenceTokens.length) {
+                    throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'capability runtime inference count does not match Lived-owned runtime evidence');
+                  }
+                }
+                const visibleResponse = resolved?.response ?? resolved;
+                const evidenceToken = bindVisibleResponseEvidence(visibleResponse, { acceptedSynthesisLast });
+                const receipt = materializationConsumed ? consumedMaterializationReceipt : null;
+                const forwarded = resolved && typeof resolved === 'object' && !Array.isArray(resolved) ? { ...resolved } : { response: resolved };
+                delete forwarded.actualHttpCall;
+                return {
+                  ...forwarded,
+                  contextSourceRefs: [...new Set([...(resolved?.contextSourceRefs ?? []), ...(receipt?.includedSourceRefs ?? [])])].sort(),
+                  promptContextMaterializationReceipt: receipt,
+                  modelRuntimeEvidenceToken: evidenceToken
+                };
+              }
+              const response = await contextualInference(resolverPublicInput);
+              const evidenceToken = bindVisibleResponseEvidence(response);
+              const receipt = materializationConsumed ? consumedMaterializationReceipt : null;
+              return {
+                response,
+                contextSourceRefs: receipt?.includedSourceRefs ?? [],
+                promptContextMaterializationReceipt: receipt,
+                modelRuntimeEvidenceToken: evidenceToken
+              };
+            }
+          : null,
+        contextSourceRefs,
+        timeoutMs: 120000
+      });
+      const responseAppend = appendConversationMessage({
+        home: identity.home,
+        instanceRef,
+        observedAt: completed.responseEvent.formedAt,
+        message: {
+          messageRef: responseMessageRef,
+          spaceRef: null,
+          threadRef: request.threadRef,
+          channelRef: request.channelRef,
+          speakerRef: 'role.vex.companion',
+          recipientRefs: [identity.personRef],
+          witnessRefs: [completed.responseEvent.eventRef],
+          membershipSnapshotRef: null,
+          membershipGeneration: null,
+          sequence: humanAppend.event.sequence + 1,
+          content: completed.responseEvent.content,
+          contentHash: semanticHash(completed.responseEvent.content),
+          createdAt: completed.responseEvent.formedAt
+        }
+      });
+      const modelConnectionComposition = modelConnectionComposer && completed.modelTurnWitness
+        ? modelConnectionComposer.composeTurn({
+            modelTurnWitness: completed.modelTurnWitness,
+            capabilityRuntime: completed.runtimeProjection,
+            currentContext: {
+              homeRef: identity.homeRef,
+              deviceRef: identity.deviceRef,
+              companionLineageRef: identity.companionLineageRef,
+              projectRef: request.projectRef ?? null,
+              threadRef: request.threadRef,
+              channelRef: request.channelRef,
+              screenRef: request.screenRef ?? null,
+              selectedNodeRef: request.selectedNodeRef ?? null
+            }
+          })
+        : null;
+      return Object.freeze({
+        schemaVersion: 'vexlife.browser-companion-turn/v1',
+        state: 'TURN_COMPLETED',
+        truthClass: 'CURRENT_LOCAL_MODEL',
+        content: completed.responseEvent.content,
+        modelNameOrBoundedTestProfileRef: completed.responseEvent.modelNameOrBoundedTestProfileRef,
+        turnRef: completed.head.turnRef,
+        requestMessageRef: completed.requestEvent.messageRef,
+        responseMessageRef: completed.responseEvent.messageRef,
+        requestEventRef: completed.requestEvent.eventRef,
+        requestEventSha256: completed.requestEvent.eventHash,
+        responseEventRef: completed.responseEvent.eventRef,
+        responseEventSha256: completed.responseEvent.eventHash,
+        requestSemanticRelay: completed.requestEvent.semanticRelay ?? null,
+        responseSemanticRelay: completed.responseEvent.semanticRelay ?? null,
+        conversationHeadSha256: completed.head.conversationHeadSha256,
+        canonicalConversationHeadSha256: responseAppend.head.headSha256,
+        humanConversationHeadSha256: durableSend.canonicalConversationHeadSha256,
+        humanMessageSequence: humanAppend.event.sequence,
+        companionMessageSequence: responseAppend.event.sequence,
+        messageAppendPerformed: true,
+        modelCallPerformed: completed.modelCallPerformed !== false,
+        recoveredCompletedTurn: completed.recoveredCompletedTurn === true,
+        writerLeaseReleased: completed.writerLeaseReleased === true,
+        actualHttpCall: completed.actualHttpCall === true,
+        loopbackOnly: completed.loopbackOnly === true,
+        capabilityRuntime: completed.runtimeProjection ?? null,
+        promptContextMaterialization: completed.promptContextMaterializationReceipt ?? null,
+        modelTurnWitness: completed.modelTurnWitness ?? null,
+        modelConnectionProjection: modelConnectionComposition?.modelConnectionProjection ?? null,
+        selfCapabilityFrame: modelConnectionComposition?.selfCapabilityFrame ?? null
+      });
+    } catch (error) {
+      const typed = publicFailureFor(error);
+      if (durableSend) typed.durableSend = durableSend;
+      throw typed;
+    } finally {
+      activeTurnObservations.delete(turnRef);
+    }
+  }
+
+  return Object.freeze({ binding, instanceRef, status, performRecovery, performTurn, performConversationTurn, activeTurnCurrentness });
 }
 
 export function browserCompanionRecoveryFailurePayload(error) {
@@ -883,12 +1489,19 @@ export function browserCompanionRecoveryFailurePayload(error) {
 
 export function browserCompanionFailurePayload(error) {
   const typed = publicFailureFor(error);
+  const durableSend = typed.durableSend ?? null;
   return Object.freeze({
     schemaVersion: 'vexlife.browser-companion-turn/v1',
     state: 'FAILED',
     truthClass: 'CURRENT_LOCAL_RUNTIME_FAILURE',
     failureCode: typed.code,
-    message: typed.message
+    message: typed.message,
+    sendState: durableSend ? 'DURABLE' : 'NOT_CONFIRMED_DURABLE',
+    requestMessageRef: durableSend?.requestMessageRef ?? null,
+    canonicalConversationHeadSha256: durableSend?.canonicalConversationHeadSha256 ?? null,
+    humanMessageSequence: durableSend?.humanMessageSequence ?? null,
+    messageAppendPerformed: durableSend !== null,
+    companionResponseState: durableSend ? 'PENDING' : 'NOT_REACHED'
   });
 }
 

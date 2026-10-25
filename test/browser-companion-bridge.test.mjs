@@ -10,9 +10,11 @@ import {
   BrowserCompanionBridgeError,
   createBrowserCompanionBridge,
   resolveBrowserCompanionRuntimeBinding,
+  validateBrowserCompanionConversationRequest,
   validateBrowserCompanionRequest
 } from '../src/core/browser-companion-bridge.mjs';
 import { initializeLivedCompanionHome } from '../src/core/lived-companion.mjs';
+import { readConversationChannel, readConversationMessage } from '../src/core/conversation-store.mjs';
 import { createContextLease } from '../src/core/context-lease.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
 import crypto from 'node:crypto';
@@ -55,6 +57,20 @@ function makeHome() {
   return { root, home };
 }
 
+let browserSendSequence = 0;
+function browserTurn(bridge, input) {
+  browserSendSequence += 1;
+  return bridge.performConversationTurn({
+    ...input,
+    projectRef: input.projectRef ?? 'project.self-development',
+    threadRef: input.threadRef ?? 'thread.self-development.open-conversation',
+    channelRef: input.channelRef ?? 'channel.self-development.companion',
+    idempotencyKey: input.idempotencyKey ?? `browser-send.test-${String(browserSendSequence).padStart(6, '0')}`,
+    messageCreatedAt: input.messageCreatedAt ?? new Date(Date.UTC(2026, 9, 19, 7, 0, browserSendSequence)).toISOString(),
+    originalLanguage: input.originalLanguage ?? 'en'
+  });
+}
+
 test('browser companion runtime binding is server-side numeric loopback only', () => {
   assert.equal(resolveBrowserCompanionRuntimeBinding({}).state, 'UNBOUND');
   assert.equal(resolveBrowserCompanionRuntimeBinding({ endpoint: 'http://127.0.0.1:18080', model: 'Qwen3.5-4B-Q4_K_M' }).state, 'BOUND');
@@ -65,22 +81,70 @@ test('browser companion runtime binding is server-side numeric loopback only', (
 
 test('browser request cannot inject endpoint, Home, runtime or authorization authority', () => {
   const admitted = {
-    projectRef: 'project.local-vex',
-    threadRef: 'thread.local-vex.foundation',
-    channelRef: 'channel.local-vex.companion',
+    projectRef: 'project.self-development',
+    threadRef: 'thread.self-development.open-conversation',
+    channelRef: 'channel.self-development.companion',
     content: 'Hello Vex',
+    idempotencyKey: 'browser-send.test-request-validation-001',
+    messageCreatedAt: '2026-10-19T07:00:00.000Z',
+    originalLanguage: 'en',
     screenRef: 'screen.vexlife.chat',
     selectedNodeRef: 'element.channel.companion'
   };
-  assert.equal(validateBrowserCompanionRequest(admitted).content, 'Hello Vex');
-  assert.equal(validateBrowserCompanionRequest({ ...admitted, semanticRelayInput: semanticRelayInput() }).semanticRelayInput.relayRef, 'relay.browser-companion-test');
+  assert.equal(validateBrowserCompanionConversationRequest(admitted).content, 'Hello Vex');
+  assert.equal(validateBrowserCompanionConversationRequest({ ...admitted, semanticRelayInput: semanticRelayInput() }).semanticRelayInput.relayRef, 'relay.browser-companion-test');
   for (const extra of ['endpoint', 'home', 'runtimeExecutable', 'authorization']) {
     assert.throws(
-      () => validateBrowserCompanionRequest({ ...admitted, [extra]: 'forbidden' }),
+      () => validateBrowserCompanionConversationRequest({ ...admitted, [extra]: 'forbidden' }),
       (error) => error instanceof BrowserCompanionBridgeError && error.code === 'COMPANION_REQUEST_NOT_ADMITTED'
     );
   }
 });
+
+test('generic runtime turn remains separate from durable Conversation Send while the product route stays strict', async () => {
+  const generic = {
+    threadRef: 'thread.vexlife.browser-runtime-compatibility',
+    channelRef: 'channel.local-vex.runtime-compatibility',
+    content: 'Exercise the reusable lower-level runtime seam.'
+  };
+  const admitted = validateBrowserCompanionRequest(generic);
+  assert.equal(admitted.projectRef, null);
+  assert.equal(admitted.threadRef, generic.threadRef);
+  assert.throws(
+    () => validateBrowserCompanionRequest({ ...generic, idempotencyKey: 'browser-send.must-not-enter-runtime' }),
+    (error) => error instanceof BrowserCompanionBridgeError && error.code === 'COMPANION_REQUEST_NOT_ADMITTED'
+  );
+
+  const { root, home } = makeHome();
+  const model = await startModelServer();
+  try {
+    const bridge = createBrowserCompanionBridge({
+      home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.browser-runtime-compatibility'
+    });
+    const result = await bridge.performTurn(generic);
+    assert.equal(result.state, 'TURN_COMPLETED');
+    assert.match(result.requestEventRef, /^event\.vexlife\.request\./u);
+    assert.match(result.responseMessageRef, /^message\.vexlife\.browser-companion\.response\./u);
+    assert.equal(Object.hasOwn(result, 'sendState'), false);
+    assert.equal(model.calls.length, 1);
+
+    await assert.rejects(
+      () => bridge.performConversationTurn(generic),
+      (error) => error instanceof BrowserCompanionBridgeError && error.code === 'COMPANION_REQUEST_NOT_ADMITTED'
+    );
+  } finally {
+    await model.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+
+  const serverCore = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser-core.mjs'), 'utf8');
+  assert.match(serverCore, /companionBridge\.performConversationTurn\(input\)/u);
+  assert.doesNotMatch(serverCore, /const result = await companionBridge\.performTurn\(input\)/u);
+});
+
 
 test('unbound browser companion fails closed without synthetic output', async () => {
   const { root, home } = makeHome();
@@ -88,9 +152,9 @@ test('unbound browser companion fails closed without synthetic output', async ()
     const bridge = createBrowserCompanionBridge({ home });
     assert.equal(bridge.status().state, 'UNBOUND');
     await assert.rejects(
-      () => bridge.performTurn({
-        threadRef: 'thread.local-vex.foundation',
-        channelRef: 'channel.local-vex.companion',
+      () => browserTurn(bridge, {
+        threadRef: 'thread.self-development.open-conversation',
+        channelRef: 'channel.self-development.companion',
         content: 'This must not fabricate a reply.'
       }),
       (error) => error instanceof BrowserCompanionBridgeError && error.code === 'COMPANION_RUNTIME_UNBOUND'
@@ -111,10 +175,10 @@ test('browser companion delegates the visible turn to G01 and persists its exact
       instanceRef: 'instance.vexlife.browser-companion-test'
     });
     assert.equal(bridge.status().state, 'BOUND');
-    const result = await bridge.performTurn({
-      projectRef: 'project.local-vex',
-      threadRef: 'thread.local-vex.foundation',
-      channelRef: 'channel.local-vex.companion',
+    const result = await browserTurn(bridge, {
+      projectRef: 'project.self-development',
+      threadRef: 'thread.self-development.open-conversation',
+      channelRef: 'channel.self-development.companion',
       content: 'Show me one real local reply.',
       screenRef: 'screen.vexlife.chat',
       selectedNodeRef: 'element.channel.companion'
@@ -138,12 +202,12 @@ test('browser companion delegates the visible turn to G01 and persists its exact
       home,
       'conversations',
       'companion-lineage.vexlife.browser-companion-test',
-      'thread.local-vex.foundation',
+      'thread.self-development.open-conversation',
       'head.json'
     );
     const head = JSON.parse(fs.readFileSync(headPath, 'utf8'));
     assert.equal(head.conversationHeadSha256, result.conversationHeadSha256);
-    assert.equal(head.threadRef, 'thread.local-vex.foundation');
+    assert.equal(head.threadRef, 'thread.self-development.open-conversation');
   } finally {
     await model.close();
     fs.rmSync(root, { recursive: true, force: true });
@@ -290,9 +354,9 @@ test('material browser semantic relay holds before model or durable message effe
   const model = await startModelServer();
   try {
     const bridge = createBrowserCompanionBridge({ home, endpoint: model.endpoint, model: 'Qwen3.5-4B-Q4_K_M', instanceRef: 'instance.vexlife.browser-companion-relay-test' });
-    const attention = await bridge.performTurn({
-      threadRef: 'thread.local-vex.foundation',
-      channelRef: 'channel.local-vex.companion',
+    const attention = await browserTurn(bridge, {
+      threadRef: 'thread.self-development.open-conversation',
+      channelRef: 'channel.self-development.companion',
       content: 'Do not send until I confirm the meaning.',
       semanticRelayInput: semanticRelayInput()
     });
@@ -301,7 +365,7 @@ test('material browser semantic relay holds before model or durable message effe
     assert.equal(attention.rawTextIncluded, false);
     assert.deepEqual(attention.requiredActions, ['CONFIRM', 'CORRECT', 'HOLD']);
     assert.equal(model.calls.length, 0);
-    const headPath = path.join(home, 'conversations', 'companion-lineage.vexlife.browser-companion-test', 'thread.local-vex.foundation', 'head.json');
+    const headPath = path.join(home, 'conversations', 'companion-lineage.vexlife.browser-companion-test', 'thread.self-development.open-conversation', 'head.json');
     assert.equal(fs.existsSync(headPath), false);
   } finally {
     await model.close();
@@ -314,9 +378,9 @@ test('originating-human CONFIRM persists the exact reference-only relay and stil
   const model = await startModelServer();
   try {
     const bridge = createBrowserCompanionBridge({ home, endpoint: model.endpoint, model: 'Qwen3.5-4B-Q4_K_M', instanceRef: 'instance.vexlife.browser-companion-relay-confirm-test' });
-    const result = await bridge.performTurn({
-      threadRef: 'thread.local-vex.foundation',
-      channelRef: 'channel.local-vex.companion',
+    const result = await browserTurn(bridge, {
+      threadRef: 'thread.self-development.open-conversation',
+      channelRef: 'channel.self-development.companion',
       content: 'Confirmed source content remains canonical.',
       semanticRelayInput: semanticRelayInput(),
       semanticRelayAction: 'CONFIRM'
@@ -332,7 +396,7 @@ test('originating-human CONFIRM persists the exact reference-only relay and stil
     assert.equal(result.responseSemanticRelay, null);
     assert.equal(model.calls.length, 1);
     assert.equal(model.calls[0].body.messages[0].content, 'Confirmed source content remains canonical.');
-    const eventsRoot = path.join(home, 'conversations', 'companion-lineage.vexlife.browser-companion-test', 'thread.local-vex.foundation', 'events');
+    const eventsRoot = path.join(home, 'conversations', 'companion-lineage.vexlife.browser-companion-test', 'thread.self-development.open-conversation', 'events');
     const events = fs.readdirSync(eventsRoot).sort().map((name) => JSON.parse(fs.readFileSync(path.join(eventsRoot, name), 'utf8')));
     assert.equal(events[0].content, 'Confirmed source content remains canonical.');
     assert.equal(events[0].semanticRelay.relayRef, 'relay.browser-companion-test');
@@ -349,9 +413,9 @@ test('browser semantic relay rejects raw-text metadata before endpoint or durabl
   try {
     const bridge = createBrowserCompanionBridge({ home, endpoint: model.endpoint, model: 'Qwen3.5-4B-Q4_K_M', instanceRef: 'instance.vexlife.browser-companion-relay-invalid-test' });
     await assert.rejects(
-      () => bridge.performTurn({
-        threadRef: 'thread.local-vex.foundation',
-        channelRef: 'channel.local-vex.companion',
+      () => browserTurn(bridge, {
+        threadRef: 'thread.self-development.open-conversation',
+        channelRef: 'channel.self-development.companion',
         content: 'This source stays outside relay metadata.',
         semanticRelayInput: semanticRelayInput({ rawText: 'forbidden duplicate' })
       }),
@@ -370,9 +434,9 @@ test('originating-human CORRECT mints a distinct server-side interpretation proj
   try {
     const bridge = createBrowserCompanionBridge({ home, endpoint: model.endpoint, model: 'Qwen3.5-4B-Q4_K_M', instanceRef: 'instance.vexlife.browser-companion-relay-correct-test' });
     const priorProjectionRef = 'projection.interpretation.browser-companion-test';
-    const result = await bridge.performTurn({
-      threadRef: 'thread.local-vex.foundation',
-      channelRef: 'channel.local-vex.companion',
+    const result = await browserTurn(bridge, {
+      threadRef: 'thread.self-development.open-conversation',
+      channelRef: 'channel.self-development.companion',
       content: 'Corrected source content remains canonical.',
       semanticRelayInput: semanticRelayInput({ interpretationProjectionRef: priorProjectionRef }),
       semanticRelayAction: 'CORRECT'
@@ -385,7 +449,7 @@ test('originating-human CORRECT mints a distinct server-side interpretation proj
     assert.equal(result.requestSemanticRelay.confirmedByRef, 'person.local-user');
     assert.equal(model.calls.length, 1);
     assert.equal(model.calls[0].body.messages[0].content, 'Corrected source content remains canonical.');
-    const eventsRoot = path.join(home, 'conversations', 'companion-lineage.vexlife.browser-companion-test', 'thread.local-vex.foundation', 'events');
+    const eventsRoot = path.join(home, 'conversations', 'companion-lineage.vexlife.browser-companion-test', 'thread.self-development.open-conversation', 'events');
     const events = fs.readdirSync(eventsRoot).sort().map((name) => JSON.parse(fs.readFileSync(path.join(eventsRoot, name), 'utf8')));
     assert.equal(events[0].content, 'Corrected source content remains canonical.');
     assert.equal(events[0].semanticRelay.interpretationState, 'CORRECTED');
@@ -466,15 +530,15 @@ function browserPromptAuthority(home, lineageRef, threadRef, lease, continuityPr
 
 
 test('browser prompt-context resolver materializes selected lived events into the actual loopback messages request', async () => {
-  const {root,home}=makeHome(); const model=await startModelServer(); const threadRef='thread.local-vex.prompt-context';
+  const {root,home}=makeHome(); const model=await startModelServer(); const threadRef='thread.self-development.open-conversation';
   try {
     const firstBridge=createBrowserCompanionBridge({home,endpoint:model.endpoint,model:'Qwen3.5-4B-Q4_K_M',instanceRef:'instance.vexlife.browser-prompt-first'});
-    await firstBridge.performTurn({threadRef,channelRef:'channel.local-vex.companion',content:'Remember cobalt lantern.'});
+    await browserTurn(firstBridge, {threadRef,channelRef:'channel.self-development.companion',content:'Remember cobalt lantern.'});
     const eventsRoot=path.join(home,'conversations','companion-lineage.vexlife.browser-companion-test',threadRef,'events');
     const priorEvents=fs.readdirSync(eventsRoot).sort().map(name=>JSON.parse(fs.readFileSync(path.join(eventsRoot,name),'utf8')));
     const selectedRefs=priorEvents.map(event=>event.eventRef); const lease=browserPromptContextLease(selectedRefs); const continuityProjection=browserPromptContinuity('companion-lineage.vexlife.browser-companion-test',threadRef,lease);
     const bridge=createBrowserCompanionBridge({home,endpoint:model.endpoint,model:'Qwen3.5-4B-Q4_K_M',instanceRef:'instance.vexlife.browser-prompt-second',promptContextResolver:async()=>({contextLease:lease,continuityProjection,selectedConversationEventRefs:selectedRefs}),promptContextAuthorityVerifier:async(query)=>browserPromptAuthority(home,'companion-lineage.vexlife.browser-companion-test',threadRef,lease,continuityProjection,query)});
-    const result=await bridge.performTurn({threadRef,channelRef:'channel.local-vex.companion',content:'What phrase did I ask you to remember?'});
+    const result=await browserTurn(bridge, {threadRef,channelRef:'channel.self-development.companion',content:'What phrase did I ask you to remember?'});
     assert.deepEqual(model.calls.at(-1).body.messages,[{role:'user',content:'Remember cobalt lantern.'},{role:'assistant',content:'Real local bridge reply.'},{role:'user',content:'What phrase did I ask you to remember?'}]);
     assert.equal(result.promptContextMaterialization.currentRequestIncludedExactlyOnce,true);
     assert.equal(result.promptContextMaterialization.exactMessagesSha256,semanticHash(model.calls.at(-1).body.messages));
@@ -484,15 +548,15 @@ test('browser prompt-context resolver materializes selected lived events into th
 });
 
 test('browser context wrapper leaves differently-shaped Home School internal inference prompts separately governed', async () => {
-  const {root,home}=makeHome(); const model=await startModelServer(); const threadRef='thread.local-vex.prompt-context-governed';
+  const {root,home}=makeHome(); const model=await startModelServer(); const threadRef='thread.self-development.open-conversation';
   try {
     const firstBridge=createBrowserCompanionBridge({home,endpoint:model.endpoint,model:'Qwen3.5-4B-Q4_K_M',instanceRef:'instance.vexlife.browser-prompt-governed-first'});
-    await firstBridge.performTurn({threadRef,channelRef:'channel.local-vex.companion',content:'Prior exact context.'});
+    await browserTurn(firstBridge, {threadRef,channelRef:'channel.self-development.companion',content:'Prior exact context.'});
     const eventsRoot=path.join(home,'conversations','companion-lineage.vexlife.browser-companion-test',threadRef,'events');
     const selectedRefs=fs.readdirSync(eventsRoot).sort().map(name=>JSON.parse(fs.readFileSync(path.join(eventsRoot,name),'utf8')).eventRef); const lease=browserPromptContextLease(selectedRefs); const continuityProjection=browserPromptContinuity('companion-lineage.vexlife.browser-companion-test',threadRef,lease);
     const capabilityRuntime={resolveTurn:async({inference,endpointProfile,taskIntent,inMemoryAuthorization,timeoutMs})=>{await inference({endpointProfile,requestContent:'HOME_SCHOOL_INTERNAL_PROMPT',inMemoryAuthorization,timeoutMs});const response=await inference({endpointProfile,requestContent:taskIntent,inMemoryAuthorization,timeoutMs});return {response,actualHttpCall:true,contextSourceRefs:[],runtimeProjection:{schemaVersion:'test.home-school-separated/v1'}};}};
     const bridge=createBrowserCompanionBridge({home,endpoint:model.endpoint,model:'Qwen3.5-4B-Q4_K_M',instanceRef:'instance.vexlife.browser-prompt-governed-second',capabilityRuntime,promptContextResolver:async()=>({contextLease:lease,continuityProjection,selectedConversationEventRefs:selectedRefs}),promptContextAuthorityVerifier:async(query)=>browserPromptAuthority(home,'companion-lineage.vexlife.browser-companion-test',threadRef,lease,continuityProjection,query)});
-    const before=model.calls.length; await bridge.performTurn({threadRef,channelRef:'channel.local-vex.companion',content:'Current exact human request.'}); const calls=model.calls.slice(before);
+    const before=model.calls.length; await browserTurn(bridge, {threadRef,channelRef:'channel.self-development.companion',content:'Current exact human request.'}); const calls=model.calls.slice(before);
     assert.deepEqual(calls[0].body.messages,[{role:'user',content:'HOME_SCHOOL_INTERNAL_PROMPT'}]);
     assert.deepEqual(calls[1].body.messages,[{role:'user',content:'Prior exact context.'},{role:'assistant',content:'Real local bridge reply.'},{role:'user',content:'Current exact human request.'}]);
   } finally {await model.close();fs.rmSync(root,{recursive:true,force:true});}
@@ -567,17 +631,17 @@ test('browser bridge carries one server-owned same-turn model-connection project
       capabilityRuntime,
       modelConnectionComposer
     });
-    const result = await bridge.performTurn({
-      projectRef: 'project.local-vex',
-      threadRef: 'thread.local-vex.model-connection-carry',
-      channelRef: 'channel.local-vex.companion',
+    const result = await browserTurn(bridge, {
+      projectRef: 'project.self-development',
+      threadRef: 'thread.self-development.open-conversation',
+      channelRef: 'channel.self-development.companion',
       content: 'Carry the current projection.',
       screenRef: 'screen.vexlife.chat',
       selectedNodeRef: 'element.channel.companion'
     });
     assert.equal(compositionInput.modelTurnWitness.witnessRef, result.modelTurnWitness.witnessRef);
     assert.equal(compositionInput.capabilityRuntime.mode, 'ADOPTED_READ_ONLY');
-    assert.equal(compositionInput.currentContext.projectRef, 'project.local-vex');
+    assert.equal(compositionInput.currentContext.projectRef, 'project.self-development');
     assert.equal(compositionInput.currentContext.screenRef, 'screen.vexlife.chat');
     assert.equal(result.modelConnectionProjection.modelTurnWitnessRef, result.modelTurnWitness.witnessRef);
     assert.equal(result.selfCapabilityFrame.modelConnectionProjectionRef, result.modelConnectionProjection.projectionRef);
@@ -608,9 +672,9 @@ test('browser active-turn projection is UNKNOWN until a current Context Lease su
       instanceRef: 'instance.vexlife.browser-active-turn-unknown',
       capabilityRuntime
     });
-    const result = await bridge.performTurn({
-      threadRef: 'thread.local-vex.active-turn-unknown',
-      channelRef: 'channel.local-vex.companion',
+    const result = await browserTurn(bridge, {
+      threadRef: 'thread.self-development.open-conversation',
+      channelRef: 'channel.self-development.companion',
       content: 'Observe the active turn without inventing cancellation identity.'
     });
     assert.equal(observedProjection.state, 'UNKNOWN');
@@ -631,7 +695,7 @@ test('browser active-turn projection is UNKNOWN until a current Context Lease su
 test('browser active-turn projection becomes CURRENT only after validated Context Lease cancellation binding', async () => {
   const { root, home } = makeHome();
   const model = await startModelServer();
-  const threadRef = 'thread.local-vex.active-turn-current';
+  const threadRef = 'thread.self-development.open-conversation';
   const lease = browserPromptContextLease([]);
   const continuityProjection = browserPromptContinuity('companion-lineage.vexlife.browser-companion-test', threadRef, lease);
   let observedProjection = null;
@@ -665,9 +729,9 @@ test('browser active-turn projection becomes CURRENT only after validated Contex
         query
       )
     });
-    const result = await bridge.performTurn({
+    const result = await browserTurn(bridge, {
       threadRef,
-      channelRef: 'channel.local-vex.companion',
+      channelRef: 'channel.self-development.companion',
       content: 'Bind this active turn only to the current Context Lease.'
     });
     assert.equal(observedProjection.state, 'CURRENT');
@@ -688,5 +752,112 @@ test('browser active-turn projection becomes CURRENT only after validated Contex
   }
 });
 
+
+
+test('Conversation-first browser send is durable before model failure and retries Companion attention without duplicating the human message', async () => {
+  const { root, home } = makeHome();
+  const failing = http.createServer((request, response) => {
+    request.resume();
+    response.statusCode = 500;
+    response.end('{}');
+  });
+  await new Promise((resolve, reject) => {
+    failing.once('error', reject);
+    failing.listen(0, '127.0.0.1', resolve);
+  });
+  const failingEndpoint = `http://127.0.0.1:${failing.address().port}`;
+  const send = {
+    projectRef: 'project.self-development',
+    threadRef: 'thread.self-development.open-conversation',
+    channelRef: 'channel.self-development.companion',
+    content: 'Keep this human message even if the model fails.',
+    idempotencyKey: 'browser-send.test-durable-failure-001',
+    messageCreatedAt: '2026-10-19T07:00:00.000Z',
+    originalLanguage: 'en'
+  };
+  try {
+    const first = createBrowserCompanionBridge({
+      home,
+      endpoint: failingEndpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.browser-durable-failure'
+    });
+    let firstError = null;
+    await assert.rejects(
+      () => first.performConversationTurn(send),
+      (error) => {
+        firstError = error;
+        return error instanceof BrowserCompanionBridgeError && error.durableSend?.state === 'DURABLE';
+      }
+    );
+    assert.match(firstError.durableSend.requestMessageRef, /^message\.vexlife\.conversation\.human\./u);
+    const durableHuman = readConversationMessage({
+      home,
+      channelRef: send.channelRef,
+      messageRef: firstError.durableSend.requestMessageRef
+    });
+    assert.equal(durableHuman.state, 'CURRENT');
+    assert.equal(durableHuman.event.content, send.content);
+    assert.equal(durableHuman.event.speakerRef, 'person.proof-user');
+
+    await new Promise((resolve) => failing.close(resolve));
+    const model = await startModelServer();
+    try {
+      const retry = createBrowserCompanionBridge({
+        home,
+        endpoint: model.endpoint,
+        model: 'Qwen3.5-4B-Q4_K_M',
+        instanceRef: 'instance.vexlife.browser-durable-retry'
+      });
+      const completed = await retry.performConversationTurn(send);
+      assert.equal(completed.state, 'TURN_COMPLETED');
+      assert.equal(completed.requestMessageRef, firstError.durableSend.requestMessageRef);
+      assert.equal(model.calls.length, 1);
+      const channel = readConversationChannel({ home, channelRef: send.channelRef });
+      assert.equal(channel.messages.filter((message) => message.messageRef === completed.requestMessageRef).length, 1);
+      assert.equal(channel.messages.filter((message) => message.messageRef === completed.responseMessageRef).length, 1);
+    } finally {
+      await model.close();
+    }
+  } finally {
+    if (failing.listening) await new Promise((resolve) => failing.close(resolve));
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('exact browser retry reuses the completed Lived pair and Conversation response without a second model call', async () => {
+  const { root, home } = makeHome();
+  const model = await startModelServer();
+  const send = {
+    projectRef: 'project.self-development',
+    threadRef: 'thread.self-development.open-conversation',
+    channelRef: 'channel.self-development.companion',
+    content: 'One exact browser retry.',
+    idempotencyKey: 'browser-send.test-completed-retry-001',
+    messageCreatedAt: '2026-10-19T07:00:01.000Z',
+    originalLanguage: 'en'
+  };
+  try {
+    const bridge = createBrowserCompanionBridge({
+      home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.browser-completed-retry'
+    });
+    const first = await bridge.performConversationTurn(send);
+    const second = await bridge.performConversationTurn(send);
+    assert.equal(model.calls.length, 1);
+    assert.equal(second.requestMessageRef, first.requestMessageRef);
+    assert.equal(second.responseMessageRef, first.responseMessageRef);
+    assert.equal(second.modelCallPerformed, false);
+    assert.equal(second.recoveredCompletedTurn, true);
+    const channel = readConversationChannel({ home, channelRef: send.channelRef });
+    assert.equal(channel.messages.filter((message) => message.messageRef === first.requestMessageRef).length, 1);
+    assert.equal(channel.messages.filter((message) => message.messageRef === first.responseMessageRef).length, 1);
+  } finally {
+    await model.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
 
 // [VXG RealForever]
