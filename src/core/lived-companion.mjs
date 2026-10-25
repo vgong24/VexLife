@@ -1840,6 +1840,7 @@ export async function requestLivedCompanionInference({
   promptContextMaterializationReceipt = undefined,
   familyPromptContextMaterializationReceipt = undefined,
   supplementalRequestContent = null,
+  responseDeltaObserver = null,
   inMemoryAuthorization = null,
   timeoutMs = 5000
 }) {
@@ -1849,6 +1850,9 @@ export async function requestLivedCompanionInference({
   }
   if (promptContextMaterialization !== null && familyPromptContextMaterialization !== null) {
     promptContextFailure('direct Companion and Family prompt materializations are mutually exclusive');
+  }
+  if (responseDeltaObserver !== null && typeof responseDeltaObserver !== 'function') {
+    fail('ENDPOINT_PROFILE_NOT_ADMITTED', 'responseDeltaObserver must be null or one server-owned function');
   }
   try {
     validateLivedCompanionEndpointProfile(endpointProfile);
@@ -1882,6 +1886,7 @@ export async function requestLivedCompanionInference({
     connection = await invokeLivedCompanionEndpoint({
       endpointProfile,
       messages: outboundMessages,
+      responseDeltaObserver,
       inMemoryAuthorization,
       timeoutMs
     });

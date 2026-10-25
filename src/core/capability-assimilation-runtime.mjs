@@ -1161,12 +1161,14 @@ export function createCapabilityAssimilationRuntime({
     taskIntent,
     inference,
     endpointProfile,
+    responseDeltaObserver = null,
     inMemoryAuthorization = null,
     timeoutMs = 5000,
     context = {}
   }) {
     if (typeof taskIntent !== 'string' || !taskIntent.trim()) throw new Error('taskIntent must be non-empty');
     if (typeof inference !== 'function') throw new Error('capability runtime requires one admitted inference function');
+    if (responseDeltaObserver !== null && typeof responseDeltaObserver !== 'function') throw new Error('capability runtime responseDeltaObserver must be null or one function');
     assertNoCallerSchedulerEvidence(context);
     const progress = [progressEvent('TASK_RECEIVED', { taskRef: context.taskRef ?? null })];
     const modelSequenceReceipts = [];
@@ -1176,7 +1178,13 @@ export function createCapabilityAssimilationRuntime({
       const direct = await gatedInference({
         phaseRef: `model-phase.${context.taskRef ?? semanticHash(taskIntent).slice(0, 16)}.direct`,
         inference,
-        input: { endpointProfile, requestContent: taskIntent, inMemoryAuthorization, timeoutMs },
+        input: {
+          endpointProfile,
+          requestContent: taskIntent,
+          inMemoryAuthorization,
+          timeoutMs,
+          ...(responseDeltaObserver ? { responseDeltaObserver } : {})
+        },
         label: 'direct'
       });
       modelSequenceReceipts.push(direct.receipt);
@@ -1270,7 +1278,8 @@ export function createCapabilityAssimilationRuntime({
           endpointProfile,
           requestContent: synthesisPrompt(taskIntent, [], []),
           inMemoryAuthorization,
-          timeoutMs
+          timeoutMs,
+          ...(responseDeltaObserver ? { responseDeltaObserver } : {})
         },
         label: 'synthesis-no-read'
       });
@@ -1637,7 +1646,8 @@ export function createCapabilityAssimilationRuntime({
         endpointProfile,
         requestContent: synthesisPrompt(taskIntent, observations, held),
         inMemoryAuthorization,
-        timeoutMs
+        timeoutMs,
+        ...(responseDeltaObserver ? { responseDeltaObserver } : {})
       },
       label: 'synthesis'
     });

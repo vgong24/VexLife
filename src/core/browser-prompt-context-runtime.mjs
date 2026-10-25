@@ -1,4 +1,5 @@
 import { createContextLease } from './context-lease.mjs';
+import { LIVED_COMPANION_OUTPUT_TOKEN_LIMIT } from './lived-companion-connection.mjs';
 import { assertCurrentLease } from './scheduler-runtime-trust.mjs';
 import { semanticHash } from './utils.mjs';
 import { projectLivingJournalMemory } from './living-journal-memory-projection.mjs';
@@ -35,7 +36,7 @@ const EFFECTS = Object.freeze({
 const MEMORY_MAX_PAGES = 100;
 const MEMORY_TOKEN_CAP = 100_000;
 const CONTEXT_INPUT_TOKEN_BUDGET = 192_000;
-const CONTEXT_RESERVED_OUTPUT_TOKENS = 16_000;
+const CONTEXT_RESERVED_OUTPUT_TOKENS = LIVED_COMPANION_OUTPUT_TOKEN_LIMIT;
 const CONTEXT_HARD_TOKEN_LIMIT = 208_000;
 const MEMORY_PACKET_SCHEMA = 'vexlife.prompt-context-memory-packet/v1';
 const MEMORY_TRUTH_CLASS = 'CURRENT_ATTRIBUTED_MEMORY_CONTEXT';
