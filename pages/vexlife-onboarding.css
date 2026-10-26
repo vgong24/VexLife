@@ -231,6 +231,7 @@ code {
 
 .family-world {
   display: block;
+  text-align: center;
   padding: 0.34rem 0.08rem;
   color: var(--ink-soft);
   font-family: var(--sans);
