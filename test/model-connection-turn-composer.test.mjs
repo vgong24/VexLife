@@ -165,4 +165,76 @@ test('current source/model contradiction fails closed without surfacing raw comp
   assert.equal(result.modelConnectionProjection, null);
 });
 
+function hereticWitness({ endpoint = 'http://127.0.0.1:8765', model = 'default_model' } = {}) {
+  const endpointProfile = {
+    profileRef: 'model-profile.vexlife.browser-companion.heretic',
+    admitted: true,
+    endpoint,
+    model
+  };
+  const normalized = normalizeModelRuntimeResponse({
+    endpointProfile,
+    observedAt: '2026-10-26T02:40:46.657Z',
+    responseBody: {
+      model,
+      choices: [{
+        index: 0,
+        finish_reason: 'stop',
+        message: { role: 'assistant', content: 'grep expedition or oral history' }
+      }],
+      usage: { prompt_tokens: 3, completion_tokens: 5, total_tokens: 8 }
+    }
+  });
+  const invocationEvidence = formModelRuntimeInvocationEvidence({
+    endpointProfileRef: endpointProfile.profileRef,
+    sanitizedEndpointOrigin: endpointProfile.endpoint,
+    requestBodySha256: 'd'.repeat(64),
+    runtimeObservation: normalized.runtimeObservation,
+    httpStatus: 200,
+    actualHttpCall: true,
+    formedAt: '2026-10-26T02:40:46.658Z'
+  });
+  return formModelTurnWitness({
+    turnRef: 'turn.vexlife.interface-refinement.heretic-model-connection',
+    requestMessageRef: 'message.vexlife.interface-refinement.heretic-model-connection.request',
+    responseMessageRef: 'message.vexlife.interface-refinement.heretic-model-connection.response',
+    runtimeObservation: normalized.runtimeObservation,
+    invocationEvidence,
+    currentnessRefs: ['artifact.vexlife.interface-refinement.home-tool.a005.return.sha256.10377b2574b36bdf82bcc1eda7be52fd51a7934eeddc958ca85ced6b9edfdd87'],
+    formedAt: '2026-10-26T02:40:46.659Z'
+  });
+}
+
+test('adopted Heretic CODE read forms a source-bound model projection and bounded self-frame', () => {
+  const composer = createModelConnectionTurnComposer({
+    sourceBundle: loadModelConnectionTurnSources(),
+    clock: () => '2026-10-26T02:40:46.660Z'
+  });
+  const result = composer.composeTurn({
+    modelTurnWitness: hereticWitness(),
+    capabilityRuntime: adoptedRuntime([
+      dispatch('capability.vexlife.code.read', 1)
+    ]),
+    currentContext: {
+      homeRef: 'vex-home.interface-refinement.proof',
+      deviceRef: 'device.macos-victor',
+      companionLineageRef: 'companion-lineage.self-development',
+      projectRef: 'project.self-development',
+      threadRef: 'thread.self-development.open-conversation',
+      channelRef: 'channel.self-development.companion',
+      screenRef: 'screen.vexlife.chat',
+      selectedNodeRef: 'element.channel.companion'
+    }
+  });
+  assert.equal(result.state, 'CURRENT_SOURCE_BOUND_REUSABLE_PROJECTION');
+  assert.deepEqual(result.actuallyUsedRefs, ['capability.vexlife.code.read']);
+  assert.equal(result.modelConnectionProjection.modelBundleRef, 'model-bundle.vexlife.heretic.qwen3.8-27b.mlx4.329658ee8f27.001');
+  assert.equal(result.modelConnectionProjection.operationalProfileRef, null);
+  assert.equal(result.modelConnectionProjection.effectAuthorityGranted, false);
+  assert.equal(result.selfCapabilityFrame.modelBundleRef, result.modelConnectionProjection.modelBundleRef);
+  assert.equal(result.selfCapabilityFrame.operationalProfileRef, null);
+  assert.equal(result.selfCapabilityFrame.actuallyUsedRefs.includes('capability.vexlife.code.read'), true);
+  assert.equal(result.selfCapabilityFrame.effectAuthorityGranted, false);
+});
+
 // [VXG RealForever]

@@ -146,4 +146,76 @@ test('small token budget fails closed rather than dropping the canonical root ke
   );
 });
 
+function hereticWitness({ endpoint = 'http://127.0.0.1:8765', model = 'default_model' } = {}) {
+  const endpointProfile = {
+    profileRef: 'model-profile.vexlife.browser-companion.heretic',
+    admitted: true,
+    endpoint,
+    model
+  };
+  const normalized = normalizeModelRuntimeResponse({
+    endpointProfile,
+    observedAt: '2026-10-26T02:40:46.657Z',
+    responseBody: {
+      model,
+      choices: [{
+        index: 0,
+        finish_reason: 'stop',
+        message: { role: 'assistant', content: 'grep expedition or oral history' }
+      }],
+      usage: { prompt_tokens: 3, completion_tokens: 5, total_tokens: 8 }
+    }
+  });
+  const invocationEvidence = formModelRuntimeInvocationEvidence({
+    endpointProfileRef: endpointProfile.profileRef,
+    sanitizedEndpointOrigin: endpointProfile.endpoint,
+    requestBodySha256: 'd'.repeat(64),
+    runtimeObservation: normalized.runtimeObservation,
+    httpStatus: 200,
+    actualHttpCall: true,
+    formedAt: '2026-10-26T02:40:46.658Z'
+  });
+  return formModelTurnWitness({
+    turnRef: 'turn.vexlife.interface-refinement.heretic-model-connection',
+    requestMessageRef: 'message.vexlife.interface-refinement.heretic-model-connection.request',
+    responseMessageRef: 'message.vexlife.interface-refinement.heretic-model-connection.response',
+    runtimeObservation: normalized.runtimeObservation,
+    invocationEvidence,
+    currentnessRefs: ['artifact.vexlife.interface-refinement.home-tool.a005.return.sha256.10377b2574b36bdf82bcc1eda7be52fd51a7934eeddc958ca85ced6b9edfdd87'],
+    formedAt: '2026-10-26T02:40:46.659Z'
+  });
+}
+
+test('Heretic model connection projects a bounded self-capability frame without a legacy operational-profile alias', () => {
+  const modelConnectionProjection = compileModelConnection({
+    capabilityRegistry: readJson('blueprint/capability-registry.json'),
+    capabilityInput: {
+      roleRef: 'role.vex.companion',
+      platformRef: 'platform.browser'
+    },
+    runtimeCapabilityRegistry: readJson('blueprint/model-runtime-capabilities.json'),
+    modelConnectionBindingRegistry: readJson('blueprint/model-connection-binding-registry.json'),
+    modelBundleRegistry: readJson('blueprint/model-bundle-registry.json'),
+    operationalProfileRegistry: readJson('blueprint/vex-operational-profiles.json'),
+    modelTurnWitness: hereticWitness(),
+    actuallyUsedRefs: ['capability.vexlife.code.read']
+  });
+  const frame = formVexSelfCapabilityFrame({
+    modelConnectionProjection,
+    currentContext: {
+      projectRef: 'project.self-development',
+      threadRef: 'thread.self-development.open-conversation',
+      channelRef: 'channel.self-development.companion',
+      screenRef: 'screen.vexlife.chat'
+    },
+    tokenBudget: 2400,
+    formedAt: '2026-10-26T02:40:46.660Z'
+  });
+  assert.equal(frame.modelBundleRef, 'model-bundle.vexlife.heretic.qwen3.8-27b.mlx4.329658ee8f27.001');
+  assert.equal(frame.operationalProfileRef, null);
+  assert.equal(frame.availableCapabilityRefs.includes('capability.vexlife.code.read'), true);
+  assert.equal(frame.actuallyUsedRefs.includes('capability.vexlife.code.read'), true);
+  assert.equal(frame.effectAuthorityGranted, false);
+});
+
 // [VXG RealForever]
