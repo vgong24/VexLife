@@ -1,0 +1,193 @@
+{
+  "schemaVersion": "vexlife.pages-deployment-artifact/v1",
+  "repository": "vgong24/VexLife",
+  "sourceBinding": {
+    "repository": "vgong24/VexLife",
+    "commitSha": "31c9198101f4c8a0170cb76b57547ae1d737b05f",
+    "treeSha": "3f147418b2885721787ed482d67aecf13ae32cee",
+    "sourceAcceptanceState": "ACCEPTED_CURRENT"
+  },
+  "liveDeploymentState": "DEPLOYED",
+  "basePath": "/VexLife",
+  "fieldRoutePath": "/learn/architecture/",
+  "leafRoutePaths": [
+    "/learn/architecture/atlas/",
+    "/learn/architecture/blueprint/",
+    "/learn/architecture/capability-registry/",
+    "/learn/architecture/feature-registry/",
+    "/learn/architecture/registry-compiler/"
+  ],
+  "fileCountExcludingReceipt": 34,
+  "files": [
+    {
+      "path": "blueprint/navigation-continuity-registry.json",
+      "bytes": 10034,
+      "sha256": "bd83a969ac4f279e314aae221df184c217ce6052b5883da8eb91d3c70c49ecae"
+    },
+    {
+      "path": "blueprint/public-learning-browser-registry.json",
+      "bytes": 3987,
+      "sha256": "5adf4ceec5812f63373aec3a93d6a13221e4fa4541c32ae6b6680929e7bf8fb9"
+    },
+    {
+      "path": "blueprint/public-learning-browser/strings/en.json",
+      "bytes": 2095,
+      "sha256": "eab19c485415aa9a987c4a2fc658494e7cf8c5e811acc8873b46b8bef9544522"
+    },
+    {
+      "path": "blueprint/public-learning-browser/strings/ja.json",
+      "bytes": 2299,
+      "sha256": "504a35e16478cd879170b8ef8e6da149ae8c68a070a30aa66b0d1aa41d6c1d46"
+    },
+    {
+      "path": "blueprint/public-learning-browser/strings/zh.json",
+      "bytes": 2068,
+      "sha256": "9c50323491d04b1de08c375999b05836653f1ff78a4d46542355cb77642db5e7"
+    },
+    {
+      "path": "generated/public-learning/projection.json",
+      "bytes": 45670,
+      "sha256": "0528cde022193faf3fd1486fecad81ca11d9e684ca7706de68fd5e620a60ab94"
+    },
+    {
+      "path": "index.html",
+      "bytes": 32964,
+      "sha256": "0f9f0a7e723fbf079a5e95281378dc7faf0ce328df9113a8a315fc9a5001f7ab"
+    },
+    {
+      "path": "learn/architecture/atlas/index.html",
+      "bytes": 6663,
+      "sha256": "c0fcf49812611ab4ce1c0e763fe2ded920d3a37cc76cfe2fea225a28a1546fea"
+    },
+    {
+      "path": "learn/architecture/blueprint/index.html",
+      "bytes": 6663,
+      "sha256": "c0fcf49812611ab4ce1c0e763fe2ded920d3a37cc76cfe2fea225a28a1546fea"
+    },
+    {
+      "path": "learn/architecture/capability-registry/index.html",
+      "bytes": 6663,
+      "sha256": "c0fcf49812611ab4ce1c0e763fe2ded920d3a37cc76cfe2fea225a28a1546fea"
+    },
+    {
+      "path": "learn/architecture/feature-registry/index.html",
+      "bytes": 6663,
+      "sha256": "c0fcf49812611ab4ce1c0e763fe2ded920d3a37cc76cfe2fea225a28a1546fea"
+    },
+    {
+      "path": "learn/architecture/index.html",
+      "bytes": 6663,
+      "sha256": "c0fcf49812611ab4ce1c0e763fe2ded920d3a37cc76cfe2fea225a28a1546fea"
+    },
+    {
+      "path": "learn/architecture/registry-compiler/index.html",
+      "bytes": 6663,
+      "sha256": "c0fcf49812611ab4ce1c0e763fe2ded920d3a37cc76cfe2fea225a28a1546fea"
+    },
+    {
+      "path": "reference/browser/app.css",
+      "bytes": 37411,
+      "sha256": "9a8ccd099bbd459ae379d42fb17e28a56c0390c2b2a89357a4491ad9d4f0a981"
+    },
+    {
+      "path": "reference/browser/modules/dom.js",
+      "bytes": 1472,
+      "sha256": "311d8363a87ddfc49afb21689963dfe460726a3b425374255ba4132345a9c5a4"
+    },
+    {
+      "path": "reference/browser/modules/navigation-controller.js",
+      "bytes": 10783,
+      "sha256": "8210843d340f3d670dfcd72ee1949dc624831c8a29e2811eb54d6f85af9c5ef5"
+    },
+    {
+      "path": "reference/browser/modules/public-learning-controller-activated.js",
+      "bytes": 5398,
+      "sha256": "b3979a74942768b6e9f359632b4fe5a54c8d3a2f7c0aecb1b008cc67ca022442"
+    },
+    {
+      "path": "reference/browser/modules/public-learning-controller.js",
+      "bytes": 24396,
+      "sha256": "58a1882247c3fbbdc5e590b65a192afb1aba72743f57f1a669231b0313faa897"
+    },
+    {
+      "path": "reference/browser/modules/public-learning-navigation-bridge.js",
+      "bytes": 1909,
+      "sha256": "fd9e11d0399af26af0939f84df7110f92191212a69931b68d0f2a493ac03975e"
+    },
+    {
+      "path": "reference/browser/modules/public-learning-navigation-continuity.js",
+      "bytes": 15632,
+      "sha256": "ba62e8b033f4d0d78098667244aae4da5bcc499d8447e888ede64763a20fd516"
+    },
+    {
+      "path": "reference/browser/modules/public-learning-navigation-request.js",
+      "bytes": 2321,
+      "sha256": "14d18669976714d3277f12968ea1e40abbd524f9d36c73fc4169ebb9e5a2f70c"
+    },
+    {
+      "path": "reference/browser/modules/public-learning-terrain-controller.js",
+      "bytes": 872,
+      "sha256": "167711fb943ba7ea284ad07a75352f74f10b8a0b37b936f2b20410acc5a72507"
+    },
+    {
+      "path": "reference/browser/modules/terrain-controller.js",
+      "bytes": 52116,
+      "sha256": "d44a9ac2c62e8bc1d71c5d192021acd923035405427a5b3b915c74511bc0aa24"
+    },
+    {
+      "path": "reference/browser/public-learning/app.css",
+      "bytes": 6950,
+      "sha256": "3fdfc3490b41515c4eff31f31251e7a4efbab74b8aa1077612ba51e92620c4da"
+    },
+    {
+      "path": "reference/browser/public-learning/app.js",
+      "bytes": 1933,
+      "sha256": "f0dd6cf6aa35d0ba6c345624ac0d2d27a38d1222848fadc5f1a7f26aa5e4361d"
+    },
+    {
+      "path": "reference/browser/public-learning/index.html",
+      "bytes": 6663,
+      "sha256": "c0fcf49812611ab4ce1c0e763fe2ded920d3a37cc76cfe2fea225a28a1546fea"
+    },
+    {
+      "path": "src/core/navigation-continuity.mjs",
+      "bytes": 62310,
+      "sha256": "eac14e02219c4ce120c1d13766b348522483c145a9b4393b910e07ae055e993b"
+    },
+    {
+      "path": "src/core/utils.mjs",
+      "bytes": 6674,
+      "sha256": "213c92f9c3bde26dd50a93e82124a5c66269a1bd7ae3042c688a56c4a5b25156"
+    },
+    {
+      "path": "strings/vexlife-onboarding.en.json",
+      "bytes": 17739,
+      "sha256": "e08a4046be99c4f4e3ca1b9f72c28d0b875e9d606b2324a0f50d520bd068bf75"
+    },
+    {
+      "path": "strings/vexlife-onboarding.ja.json",
+      "bytes": 21961,
+      "sha256": "77ee7fdc3739f5077fd61d7a9be92669187765b778fa28a16e63ebd7a45a4fa3"
+    },
+    {
+      "path": "strings/vexlife-onboarding.zh.json",
+      "bytes": 16907,
+      "sha256": "063ac495ab73a53770781b9f317347f688357cb04c04ab1cc4df5ab44b93cd3d"
+    },
+    {
+      "path": "vexlife-onboarding.css",
+      "bytes": 28312,
+      "sha256": "ae0b98c17ecdff1e4dfa221da2d78a47432061347ad79775eda02f40627d90f8"
+    },
+    {
+      "path": "vexlife-onboarding.html",
+      "bytes": 32964,
+      "sha256": "0f9f0a7e723fbf079a5e95281378dc7faf0ce328df9113a8a315fc9a5001f7ab"
+    },
+    {
+      "path": "vexlife-onboarding.js",
+      "bytes": 11481,
+      "sha256": "11d87fae65b7b1795679b768a4b0cba93174f353285a393937e377e036b88e12"
+    }
+  ]
+}

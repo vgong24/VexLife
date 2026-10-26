@@ -1,0 +1,838 @@
+{
+  "canonicalRegistry": {
+    "byKind": {
+      "ACTION": 93,
+      "BLUEPRINT": 1,
+      "BUILD_HEALTH_REGISTRY": 1,
+      "CANONICAL_CLOCK": 1,
+      "CAPABILITY": 24,
+      "CAPABILITY_REGISTRY": 1,
+      "COMMAND_BINDING": 6,
+      "COMPONENT": 8,
+      "COMPONENT_SLOT": 21,
+      "CONCEPT": 138,
+      "DEMO_CONTRACT": 1,
+      "DREAM_CANDIDATE_TYPE": 10,
+      "ELEMENT": 110,
+      "EVOLUTION_ACCEPTANCE_POLICY": 6,
+      "EVOLUTION_AUTHORITY_SOURCE": 1,
+      "EVOLUTION_BEHAVIOR_ORIGIN": 14,
+      "EVOLUTION_CLOCK_SOURCE": 1,
+      "EVOLUTION_CONTRACT": 14,
+      "EVOLUTION_LINKED_DESTINATION": 4,
+      "EVOLUTION_PRIMARY_DESTINATION": 11,
+      "EVOLUTION_PROJECTION": 10,
+      "EVOLUTION_REGISTRY": 1,
+      "EVOLUTION_SCOPE": 12,
+      "EVOLUTION_SOURCE": 1,
+      "EVOLUTION_SYSTEM": 1,
+      "EXPERIENCE_AVAILABILITY_STATE": 4,
+      "EXPERIENCE_EXPOSURE_CLASS": 7,
+      "EXPERIENCE_FOUNDATION": 1,
+      "EXPERIENCE_PATTERN": 6,
+      "EXPERIENCE_PROFILE": 5,
+      "EXPERIENCE_REGISTRY": 1,
+      "EXPERIENCE_REVISION_PROJECTION": 1,
+      "EXPERIENCE_SOURCE_MAP_PROJECTION": 1,
+      "FEATURE": 28,
+      "FEATURE_REGISTRY": 1,
+      "FOUNDATION": 12,
+      "GESTURE": 8,
+      "HEALTH_CHECK": 21,
+      "HOME_BRIDGE": 1,
+      "IMPLEMENTATION_PLAN": 1,
+      "INTENT_ATTRIBUTED_PROJECTION_CONTRACT": 4,
+      "INTENT_LIFECYCLE_STATE": 21,
+      "INTENT_PROCESS_RESOLUTION": 2,
+      "INTENT_PROJECTION": 5,
+      "INTENT_RECEIPT_CONTRACT": 1,
+      "INTENT_RECEIPT_STATE": 3,
+      "INTENT_REGISTRY": 1,
+      "INTENT_SCHEDULER_ARGUMENT_SCHEMA": 2,
+      "INTENT_SCHEDULER_MOCK_EFFECT": 2,
+      "INTENT_SCHEDULER_MOCK_EXECUTOR": 2,
+      "INTENT_SCHEDULER_MOCK_TOOL": 2,
+      "INTENT_SCHEDULER_MOCK_TOOL_CONTRACT": 2,
+      "INTENT_SCHEDULER_POLICY": 8,
+      "INTENT_SCHEDULER_PRIORITY_CLASS": 5,
+      "INTENT_SCHEDULER_PROJECTION": 4,
+      "INTENT_SCHEDULER_REGISTRY": 1,
+      "INTENT_SCHEDULER_REQUIRED_FIELD_CONTRACT": 11,
+      "INTENT_SCHEDULER_RESULT_SCHEMA": 2,
+      "INTENT_SCHEDULER_RUNTIME_AUTHORITY": 4,
+      "INTENT_SCHEDULER_RUNTIME_SOURCE": 4,
+      "INTENT_SCHEDULER_RUNTIME_TRUST_CONTRACT": 1,
+      "INTENT_SCHEDULER_SIMULATION_CONTRACT": 1,
+      "INTENT_SCHEDULER_WORKER": 11,
+      "INTERACTION": 110,
+      "INTERACTION_FORM": 8,
+      "MILESTONE": 9,
+      "MODULE": 204,
+      "MOTION_PRESENTATION": 2,
+      "NAVIGATION_ANIMATION": 3,
+      "NAVIGATION_CONTINUITY_CONTRACT": 6,
+      "NAVIGATION_CONTINUITY_DESCRIPTOR_COLLECTION": 9,
+      "NAVIGATION_CONTINUITY_REGISTRY": 1,
+      "NAVIGATION_CONTINUITY_SOURCE": 1,
+      "NAVIGATION_NODE": 28,
+      "NAVIGATION_OUTCOME": 8,
+      "NAVIGATION_PACING": 4,
+      "NAVIGATION_PATH": 18,
+      "PERCEPTION_DWELL": 4,
+      "PERMISSION": 17,
+      "PLATFORM": 5,
+      "PROCESS": 45,
+      "PRODUCT": 1,
+      "REGION": 18,
+      "REVIEW_LENS": 17,
+      "REVIEW_LENS_REGISTRY": 1,
+      "ROLE": 6,
+      "ROUTE": 10,
+      "SCREEN": 10,
+      "SEMANTIC_SETTLEMENT": 1,
+      "SEQUENCE_ADVANCE": 2,
+      "SOURCE_CONTRACT": 2,
+      "STATE_DOMAIN": 36,
+      "STRING": 484,
+      "SYSTEM": 2,
+      "TEMPLATE": 25,
+      "TERRAIN": 10,
+      "TEST": 307,
+      "TRACE_VISIBILITY": 3,
+      "TRANSITION_CLASS": 2,
+      "TRANSPORT": 4,
+      "VESSEL": 4,
+      "WORKED_EXAMPLE": 5,
+      "WORK_UNIT": 30
+    },
+    "entryCount": 2150,
+    "registryRef": "registry.vexlife.compiled-identities.001",
+    "schemaVersion": "vexlife.registry-projection/v0",
+    "semanticHash": "bcbca33da13cddca6f78f11e906cc247e780ad863d94a7399728230acc64f5ae"
+  },
+  "effects": {
+    "Home": false,
+    "Memory": false,
+    "PagesDeployment": false,
+    "modelRuntime": false,
+    "network": false,
+    "personalData": false,
+    "publication": false,
+    "releaseCreation": false,
+    "repositoryMutation": false
+  },
+  "leaves": [
+    {
+      "canonicalRef": "module.vexlife.core.atlas",
+      "leafRef": "public-leaf.vexlife.atlas.001",
+      "nodeClass": "LEAF_PRESENTATION",
+      "relatedRefs": [
+        "module.vexlife.core.registry",
+        "registry.vexlife.features.001",
+        "registry.vexlife.capabilities.001"
+      ],
+      "routePath": "/learn/architecture/atlas/",
+      "sectionRefs": {
+        "boundaries": "public.leaf.atlas.boundaries",
+        "how": "public.leaf.atlas.how",
+        "related": "public.leaf.atlas.related",
+        "what": "public.leaf.atlas.what",
+        "when": "public.leaf.atlas.when",
+        "why": "public.leaf.atlas.why"
+      },
+      "sourcePaths": [
+        "src/core/atlas.mjs",
+        "docs/CAPABILITY-AND-TOOL-ATLAS.md",
+        "test/core.test.mjs",
+        "test/registry.test.mjs"
+      ],
+      "summaryRef": "public.node.atlas.brief",
+      "titleRef": "public.node.atlas.title"
+    },
+    {
+      "canonicalRef": "blueprint.vexlife.universal.001",
+      "leafRef": "public-leaf.vexlife.blueprint.001",
+      "nodeClass": "LEAF_PRESENTATION",
+      "relatedRefs": [
+        "module.vexlife.core.registry"
+      ],
+      "routePath": "/learn/architecture/blueprint/",
+      "sectionRefs": {
+        "boundaries": "public.leaf.blueprint.boundaries",
+        "how": "public.leaf.blueprint.how",
+        "related": "public.leaf.blueprint.related",
+        "what": "public.leaf.blueprint.what",
+        "when": "public.leaf.blueprint.when",
+        "why": "public.leaf.blueprint.why"
+      },
+      "sourcePaths": [
+        "blueprint/vexlife.blueprint.json",
+        "docs/FOUNDATION-README.md"
+      ],
+      "summaryRef": "public.node.blueprint.brief",
+      "titleRef": "public.node.blueprint.title"
+    },
+    {
+      "canonicalRef": "registry.vexlife.capabilities.001",
+      "leafRef": "public-leaf.vexlife.capability-registry.001",
+      "nodeClass": "LEAF_PRESENTATION",
+      "relatedRefs": [
+        "module.vexlife.core.registry",
+        "module.vexlife.core.atlas",
+        "registry.vexlife.features.001"
+      ],
+      "routePath": "/learn/architecture/capability-registry/",
+      "sectionRefs": {
+        "boundaries": "public.leaf.capability.boundaries",
+        "how": "public.leaf.capability.how",
+        "related": "public.leaf.capability.related",
+        "what": "public.leaf.capability.what",
+        "when": "public.leaf.capability.when",
+        "why": "public.leaf.capability.why"
+      },
+      "sourcePaths": [
+        "blueprint/capability-registry.json",
+        "docs/CAPABILITY-AND-TOOL-ATLAS.md"
+      ],
+      "summaryRef": "public.node.capability-registry.brief",
+      "titleRef": "public.node.capability-registry.title"
+    },
+    {
+      "canonicalRef": "registry.vexlife.features.001",
+      "leafRef": "public-leaf.vexlife.feature-registry.001",
+      "nodeClass": "LEAF_PRESENTATION",
+      "relatedRefs": [
+        "module.vexlife.core.registry",
+        "module.vexlife.core.atlas",
+        "registry.vexlife.capabilities.001"
+      ],
+      "routePath": "/learn/architecture/feature-registry/",
+      "sectionRefs": {
+        "boundaries": "public.leaf.feature.boundaries",
+        "how": "public.leaf.feature.how",
+        "related": "public.leaf.feature.related",
+        "what": "public.leaf.feature.what",
+        "when": "public.leaf.feature.when",
+        "why": "public.leaf.feature.why"
+      },
+      "sourcePaths": [
+        "blueprint/feature-registry.json",
+        "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+      ],
+      "summaryRef": "public.node.feature-registry.brief",
+      "titleRef": "public.node.feature-registry.title"
+    },
+    {
+      "canonicalRef": "module.vexlife.core.registry",
+      "leafRef": "public-leaf.vexlife.registry-compiler.001",
+      "nodeClass": "LEAF_PRESENTATION",
+      "relatedRefs": [
+        "blueprint.vexlife.universal.001",
+        "module.vexlife.core.atlas",
+        "registry.vexlife.features.001",
+        "registry.vexlife.capabilities.001"
+      ],
+      "routePath": "/learn/architecture/registry-compiler/",
+      "sectionRefs": {
+        "boundaries": "public.leaf.registry.boundaries",
+        "how": "public.leaf.registry.how",
+        "related": "public.leaf.registry.related",
+        "what": "public.leaf.registry.what",
+        "when": "public.leaf.registry.when",
+        "why": "public.leaf.registry.why"
+      },
+      "sourcePaths": [
+        "src/core/registry.mjs",
+        "docs/REGISTRIES-AND-PROCESS-FACTORY.md",
+        "test/registry.test.mjs"
+      ],
+      "summaryRef": "public.node.registry-compiler.brief",
+      "titleRef": "public.node.registry-compiler.title"
+    }
+  ],
+  "nodes": [
+    {
+      "brief": "The composed source of stable VexLife product meaning and registered interface relationships.",
+      "briefRef": "public.node.blueprint.brief",
+      "canonicalBrief": "product.vexlife",
+      "canonicalKind": "BLUEPRINT",
+      "edges": [
+        {
+          "to": "public-group.vexlife.architecture.001",
+          "type": "PUBLIC_GROUP_MEMBER_OF"
+        },
+        {
+          "to": "module.vexlife.core.registry",
+          "type": "PUBLIC_RELATED"
+        }
+      ],
+      "kind": "BLUEPRINT",
+      "leafRef": "public-leaf.vexlife.blueprint.001",
+      "nodeClass": "CANONICAL_NODE",
+      "parentRef": null,
+      "ref": "blueprint.vexlife.universal.001",
+      "relationshipSummary": {
+        "additionalPublicRelationshipCount": 0,
+        "projectionRuleRef": "rule.vexlife.public-learning.explicit-admission.001",
+        "shownRelationshipCount": 2
+      },
+      "routePath": "/learn/architecture/blueprint/",
+      "sourcePaths": [
+        "blueprint/vexlife.blueprint.json",
+        "docs/FOUNDATION-README.md"
+      ],
+      "states": {
+        "capabilityStage": null,
+        "currentnessState": "CURRENT_SOURCE_BINDING",
+        "dataClass": "PUBLIC_SAFE",
+        "implementationState": null,
+        "liveDeploymentState": "DEPLOYED",
+        "publicAvailabilityState": "PUBLIC_STATIC",
+        "registrationState": "REGISTERED",
+        "sourceAcceptanceState": "ACCEPTED_CURRENT"
+      },
+      "titleRef": "public.node.blueprint.title"
+    },
+    {
+      "brief": "Traverses a bounded neighborhood of registered identities without inventing new relationships.",
+      "briefRef": "public.node.atlas.brief",
+      "canonicalBrief": "Bounded token-aware identity and relationship traversal with coverage receipts.",
+      "canonicalKind": "MODULE",
+      "edges": [
+        {
+          "to": "public-group.vexlife.architecture.atlas.001",
+          "type": "PUBLIC_GROUP_MEMBER_OF"
+        },
+        {
+          "to": "module.vexlife.core.registry",
+          "type": "PUBLIC_RELATED"
+        },
+        {
+          "to": "registry.vexlife.capabilities.001",
+          "type": "PUBLIC_RELATED"
+        },
+        {
+          "to": "registry.vexlife.features.001",
+          "type": "PUBLIC_RELATED"
+        }
+      ],
+      "kind": "MODULE",
+      "leafRef": "public-leaf.vexlife.atlas.001",
+      "nodeClass": "CANONICAL_NODE",
+      "parentRef": null,
+      "ref": "module.vexlife.core.atlas",
+      "relationshipSummary": {
+        "additionalPublicRelationshipCount": 0,
+        "projectionRuleRef": "rule.vexlife.public-learning.explicit-admission.001",
+        "shownRelationshipCount": 4
+      },
+      "routePath": "/learn/architecture/atlas/",
+      "sourcePaths": [
+        "src/core/atlas.mjs",
+        "docs/CAPABILITY-AND-TOOL-ATLAS.md",
+        "test/core.test.mjs",
+        "test/registry.test.mjs"
+      ],
+      "states": {
+        "capabilityStage": null,
+        "currentnessState": "CURRENT_SOURCE_BINDING",
+        "dataClass": "PUBLIC_SAFE",
+        "implementationState": null,
+        "liveDeploymentState": "DEPLOYED",
+        "publicAvailabilityState": "PUBLIC_STATIC",
+        "registrationState": "REGISTERED",
+        "sourceAcceptanceState": "ACCEPTED_CURRENT"
+      },
+      "titleRef": "public.node.atlas.title"
+    },
+    {
+      "brief": "Compiles canonical sources into one stable identity and relationship registry.",
+      "briefRef": "public.node.registry-compiler.brief",
+      "canonicalBrief": "Compile identity, interface, string, navigation, process, Intent Orchestration, Intent Scheduler and module registries from canonical sources.",
+      "canonicalKind": "MODULE",
+      "edges": [
+        {
+          "to": "public-group.vexlife.architecture.registries.001",
+          "type": "PUBLIC_GROUP_MEMBER_OF"
+        },
+        {
+          "to": "blueprint.vexlife.universal.001",
+          "type": "PUBLIC_RELATED"
+        },
+        {
+          "to": "module.vexlife.core.atlas",
+          "type": "PUBLIC_RELATED"
+        },
+        {
+          "to": "registry.vexlife.capabilities.001",
+          "type": "PUBLIC_RELATED"
+        },
+        {
+          "to": "registry.vexlife.features.001",
+          "type": "PUBLIC_RELATED"
+        }
+      ],
+      "kind": "MODULE",
+      "leafRef": "public-leaf.vexlife.registry-compiler.001",
+      "nodeClass": "CANONICAL_NODE",
+      "parentRef": null,
+      "ref": "module.vexlife.core.registry",
+      "relationshipSummary": {
+        "additionalPublicRelationshipCount": 0,
+        "projectionRuleRef": "rule.vexlife.public-learning.explicit-admission.001",
+        "shownRelationshipCount": 5
+      },
+      "routePath": "/learn/architecture/registry-compiler/",
+      "sourcePaths": [
+        "src/core/registry.mjs",
+        "docs/REGISTRIES-AND-PROCESS-FACTORY.md",
+        "test/registry.test.mjs"
+      ],
+      "states": {
+        "capabilityStage": null,
+        "currentnessState": "CURRENT_SOURCE_BINDING",
+        "dataClass": "PUBLIC_SAFE",
+        "implementationState": null,
+        "liveDeploymentState": "DEPLOYED",
+        "publicAvailabilityState": "PUBLIC_STATIC",
+        "registrationState": "REGISTERED",
+        "sourceAcceptanceState": "ACCEPTED_CURRENT"
+      },
+      "titleRef": "public.node.registry-compiler.title"
+    },
+    {
+      "brief": "The stable identities and relationships that keep VexLife understandable as it grows.",
+      "briefRef": "public.group.architecture.brief",
+      "edges": [
+        {
+          "to": "public-group.vexlife.architecture.atlas.001",
+          "type": "PUBLIC_GROUP"
+        },
+        {
+          "to": "public-group.vexlife.architecture.registries.001",
+          "type": "PUBLIC_GROUP"
+        },
+        {
+          "to": "blueprint.vexlife.universal.001",
+          "type": "PUBLIC_MEMBER"
+        }
+      ],
+      "kind": "PUBLIC_PROJECTION_GROUP",
+      "nodeClass": "PUBLIC_GROUPING_NODE",
+      "parentRef": null,
+      "purposeRef": "public.group.architecture.purpose",
+      "ref": "public-group.vexlife.architecture.001",
+      "relationshipSummary": {
+        "additionalPublicRelationshipCount": 0,
+        "projectionRuleRef": "rule.vexlife.public-learning.explicit-admission.001",
+        "shownRelationshipCount": 3
+      },
+      "states": {
+        "capabilityStage": null,
+        "currentnessState": "CURRENT_SOURCE_BINDING",
+        "dataClass": "PUBLIC_SAFE",
+        "implementationState": null,
+        "liveDeploymentState": "DEPLOYED",
+        "publicAvailabilityState": "PUBLIC_STATIC",
+        "registrationState": "REGISTERED",
+        "sourceAcceptanceState": "ACCEPTED_CURRENT"
+      },
+      "titleRef": "public.group.architecture.title"
+    },
+    {
+      "brief": "A bounded way to traverse registered identities and typed relationships.",
+      "briefRef": "public.group.atlas.brief",
+      "edges": [
+        {
+          "to": "module.vexlife.core.atlas",
+          "type": "PUBLIC_MEMBER"
+        },
+        {
+          "to": "public-group.vexlife.architecture.001",
+          "type": "PUBLIC_PARENT"
+        }
+      ],
+      "kind": "PUBLIC_PROJECTION_GROUP",
+      "nodeClass": "PUBLIC_GROUPING_NODE",
+      "parentRef": "public-group.vexlife.architecture.001",
+      "purposeRef": "public.group.atlas.purpose",
+      "ref": "public-group.vexlife.architecture.atlas.001",
+      "relationshipSummary": {
+        "additionalPublicRelationshipCount": 0,
+        "projectionRuleRef": "rule.vexlife.public-learning.explicit-admission.001",
+        "shownRelationshipCount": 2
+      },
+      "states": {
+        "capabilityStage": null,
+        "currentnessState": "CURRENT_SOURCE_BINDING",
+        "dataClass": "PUBLIC_SAFE",
+        "implementationState": null,
+        "liveDeploymentState": "DEPLOYED",
+        "publicAvailabilityState": "PUBLIC_STATIC",
+        "registrationState": "REGISTERED",
+        "sourceAcceptanceState": "ACCEPTED_CURRENT"
+      },
+      "titleRef": "public.group.atlas.title"
+    },
+    {
+      "brief": "Stable catalogs that say what exists, who owns it, and how identities relate.",
+      "briefRef": "public.group.registries.brief",
+      "edges": [
+        {
+          "to": "module.vexlife.core.registry",
+          "type": "PUBLIC_MEMBER"
+        },
+        {
+          "to": "registry.vexlife.capabilities.001",
+          "type": "PUBLIC_MEMBER"
+        },
+        {
+          "to": "registry.vexlife.features.001",
+          "type": "PUBLIC_MEMBER"
+        },
+        {
+          "to": "public-group.vexlife.architecture.001",
+          "type": "PUBLIC_PARENT"
+        }
+      ],
+      "kind": "PUBLIC_PROJECTION_GROUP",
+      "nodeClass": "PUBLIC_GROUPING_NODE",
+      "parentRef": "public-group.vexlife.architecture.001",
+      "purposeRef": "public.group.registries.purpose",
+      "ref": "public-group.vexlife.architecture.registries.001",
+      "relationshipSummary": {
+        "additionalPublicRelationshipCount": 0,
+        "projectionRuleRef": "rule.vexlife.public-learning.explicit-admission.001",
+        "shownRelationshipCount": 4
+      },
+      "states": {
+        "capabilityStage": null,
+        "currentnessState": "CURRENT_SOURCE_BINDING",
+        "dataClass": "PUBLIC_SAFE",
+        "implementationState": null,
+        "liveDeploymentState": "DEPLOYED",
+        "publicAvailabilityState": "PUBLIC_STATIC",
+        "registrationState": "REGISTERED",
+        "sourceAcceptanceState": "ACCEPTED_CURRENT"
+      },
+      "titleRef": "public.group.registries.title"
+    },
+    {
+      "brief": "Separates seeing and understanding a capability from permission and execution.",
+      "briefRef": "public.node.capability-registry.brief",
+      "canonicalBrief": "Role/platform/project/permission/resource capability source",
+      "canonicalKind": "CAPABILITY_REGISTRY",
+      "edges": [
+        {
+          "to": "public-group.vexlife.architecture.registries.001",
+          "type": "PUBLIC_GROUP_MEMBER_OF"
+        },
+        {
+          "to": "module.vexlife.core.atlas",
+          "type": "PUBLIC_RELATED"
+        },
+        {
+          "to": "module.vexlife.core.registry",
+          "type": "PUBLIC_RELATED"
+        },
+        {
+          "to": "registry.vexlife.features.001",
+          "type": "PUBLIC_RELATED"
+        }
+      ],
+      "kind": "CAPABILITY_REGISTRY",
+      "leafRef": "public-leaf.vexlife.capability-registry.001",
+      "nodeClass": "CANONICAL_NODE",
+      "parentRef": null,
+      "ref": "registry.vexlife.capabilities.001",
+      "relationshipSummary": {
+        "additionalPublicRelationshipCount": 0,
+        "projectionRuleRef": "rule.vexlife.public-learning.explicit-admission.001",
+        "shownRelationshipCount": 4
+      },
+      "routePath": "/learn/architecture/capability-registry/",
+      "sourcePaths": [
+        "blueprint/capability-registry.json",
+        "docs/CAPABILITY-AND-TOOL-ATLAS.md"
+      ],
+      "states": {
+        "capabilityStage": null,
+        "currentnessState": "CURRENT_SOURCE_BINDING",
+        "dataClass": "PUBLIC_SAFE",
+        "implementationState": null,
+        "liveDeploymentState": "DEPLOYED",
+        "publicAvailabilityState": "PUBLIC_STATIC",
+        "registrationState": "REGISTERED",
+        "sourceAcceptanceState": "ACCEPTED_CURRENT"
+      },
+      "titleRef": "public.node.capability-registry.title"
+    },
+    {
+      "brief": "Binds each registered feature to its human introduction, state, actions, permissions, modules, tests, platforms, and review lenses.",
+      "briefRef": "public.node.feature-registry.brief",
+      "canonicalBrief": "Register product capabilities once and bind their interface, state, process, permission, localization, platform, proof and visibility relationships.",
+      "canonicalKind": "FEATURE_REGISTRY",
+      "edges": [
+        {
+          "to": "public-group.vexlife.architecture.registries.001",
+          "type": "PUBLIC_GROUP_MEMBER_OF"
+        },
+        {
+          "to": "module.vexlife.core.atlas",
+          "type": "PUBLIC_RELATED"
+        },
+        {
+          "to": "module.vexlife.core.registry",
+          "type": "PUBLIC_RELATED"
+        },
+        {
+          "to": "registry.vexlife.capabilities.001",
+          "type": "PUBLIC_RELATED"
+        }
+      ],
+      "kind": "FEATURE_REGISTRY",
+      "leafRef": "public-leaf.vexlife.feature-registry.001",
+      "nodeClass": "CANONICAL_NODE",
+      "parentRef": null,
+      "ref": "registry.vexlife.features.001",
+      "relationshipSummary": {
+        "additionalPublicRelationshipCount": 0,
+        "projectionRuleRef": "rule.vexlife.public-learning.explicit-admission.001",
+        "shownRelationshipCount": 4
+      },
+      "routePath": "/learn/architecture/feature-registry/",
+      "sourcePaths": [
+        "blueprint/feature-registry.json",
+        "docs/BUILD-HEALTH-AND-FEATURE-REGISTRATION.md"
+      ],
+      "states": {
+        "capabilityStage": null,
+        "currentnessState": "CURRENT_SOURCE_BINDING",
+        "dataClass": "PUBLIC_SAFE",
+        "implementationState": null,
+        "liveDeploymentState": "DEPLOYED",
+        "publicAvailabilityState": "PUBLIC_STATIC",
+        "registrationState": "REGISTERED",
+        "sourceAcceptanceState": "ACCEPTED_CURRENT"
+      },
+      "titleRef": "public.node.feature-registry.title"
+    },
+    {
+      "brief": "Provide a deterministic public-safe learning projection over accepted VexLife identities without becoming a canonical product-state owner.",
+      "edges": [
+        {
+          "to": "public-group.vexlife.architecture.001",
+          "type": "PUBLIC_GROUP"
+        }
+      ],
+      "kind": "PUBLIC_PROJECTION_REGISTRY",
+      "nodeClass": "PUBLIC_PROJECTION_REGISTRY",
+      "parentRef": null,
+      "ref": "registry.vexlife.public-learning.001",
+      "states": {
+        "capabilityStage": null,
+        "currentnessState": "CURRENT_SOURCE_BINDING",
+        "dataClass": "PUBLIC_SAFE",
+        "implementationState": null,
+        "liveDeploymentState": "DEPLOYED",
+        "publicAvailabilityState": "PUBLIC_STATIC",
+        "registrationState": "REGISTERED",
+        "sourceAcceptanceState": "ACCEPTED_CURRENT"
+      }
+    }
+  ],
+  "projectionRef": "projection.vexlife.public-learning.architecture-atlas.001",
+  "prototype": {
+    "entryRef": "public-group.vexlife.architecture.001",
+    "finalHomeHierarchy": false,
+    "prototypeRef": "prototype.vexlife.public-learning.architecture-atlas.001",
+    "purposeRef": "public.prototype.architecture-atlas.purpose"
+  },
+  "registryRef": "registry.vexlife.public-learning.001",
+  "schemaVersion": "vexlife.public-learning-projection/v1",
+  "sourceBinding": {
+    "commitSha": "31c9198101f4c8a0170cb76b57547ae1d737b05f",
+    "repository": "vgong24/VexLife",
+    "sourceAcceptanceState": "ACCEPTED_CURRENT",
+    "treeSha": "3f147418b2885721787ed482d67aecf13ae32cee"
+  },
+  "sourcePolicy": {
+    "acceptedState": "ACCEPTED_CURRENT",
+    "browserRuntimeRepositoryScan": false,
+    "candidateProofState": "CANDIDATE_PROOF_ONLY",
+    "historicalUnmergedInput": false,
+    "inputProductRootClass": "EXACT_SOURCE_BINDING",
+    "openPrInput": false,
+    "wallClockAsProductTruth": false,
+    "worktreeInput": false
+  },
+  "stateDimensions": [
+    "registrationState",
+    "implementationState",
+    "capabilityStage",
+    "publicAvailabilityState",
+    "sourceAcceptanceState",
+    "liveDeploymentState",
+    "currentnessState",
+    "dataClass"
+  ],
+  "strings": {
+    "en": {
+      "public.group.architecture.brief": "The stable identities and relationships that keep VexLife understandable as it grows.",
+      "public.group.architecture.purpose": "Explore the architecture without loading private Home data or requiring an AI model.",
+      "public.group.architecture.title": "How VexLife is structured",
+      "public.group.atlas.brief": "A bounded way to traverse registered identities and typed relationships.",
+      "public.group.atlas.purpose": "Start from one identity, inspect its neighborhood, then follow only relationships that are actually registered.",
+      "public.group.atlas.title": "Atlas",
+      "public.group.registries.brief": "Stable catalogs that say what exists, who owns it, and how identities relate.",
+      "public.group.registries.purpose": "See how VexLife prevents features, capabilities, modules, and interface meaning from becoming disconnected copies.",
+      "public.group.registries.title": "Registries",
+      "public.leaf.atlas.boundaries": "The Atlas does not invent relationships, execute capabilities, or bypass public/private admission. A result is knowledge, not authority.",
+      "public.leaf.atlas.how": "A query starts from stable refs or an intent, follows allowed outgoing and reverse edge types, and stops at explicit depth, result, and token budgets.",
+      "public.leaf.atlas.related": "The Registry Compiler supplies stable relationships; Feature and Capability registries make feature and action boundaries discoverable.",
+      "public.leaf.atlas.what": "The Atlas is a bounded traversal over registered identities and typed edges.",
+      "public.leaf.atlas.when": "Use it when you know one concept and want to understand what it relates to, where its proof lives, or which capability or owner is adjacent.",
+      "public.leaf.atlas.why": "It gives a person or Vex a way to learn nearby responsibilities without loading the entire architecture into one view.",
+      "public.leaf.blueprint.boundaries": "The Blueprint describes canonical meaning. It does not grant runtime authority, private Home access, or public deployment by itself.",
+      "public.leaf.blueprint.how": "Small source-managed fragments are composed into one validated record, then other registries and platform projections consume those stable references.",
+      "public.leaf.blueprint.related": "Related architecture includes the Registry Compiler, Feature Registry, Capability Registry, and Atlas.",
+      "public.leaf.blueprint.what": "The Universal Blueprint is the composed definition of VexLife product identity, screens, state domains, actions, Terrain, platforms, components, and registry references.",
+      "public.leaf.blueprint.when": "Use it when you need to understand the canonical product meaning behind a screen, action, state, or Terrain identity.",
+      "public.leaf.blueprint.why": "It gives browser and native projections one semantic source instead of letting every interface redefine the product.",
+      "public.leaf.capability.boundaries": "Seeing a capability never grants execution. Static Pages can explain capability truth without becoming an effect surface.",
+      "public.leaf.capability.how": "Each capability carries a stable ref, purpose, default stage, permission, effect class, visible roles, platforms, and resource class.",
+      "public.leaf.capability.related": "Capability state is useful beside Feature registration, Atlas traversal, actions, permissions, roles, and platform qualification.",
+      "public.leaf.capability.what": "The Capability Registry defines what kinds of actions can be discovered, explained, requested, admitted, executed, and completed.",
+      "public.leaf.capability.when": "Use it when deciding what Vex or a person can understand now, request later, or execute only inside a qualified local environment.",
+      "public.leaf.capability.why": "It keeps “I can see this exists” separate from “I am allowed and able to execute it.”",
+      "public.leaf.feature.boundaries": "Registered does not mean released, executable, or available on a static public page. Effect authority stays with the referenced owners.",
+      "public.leaf.feature.how": "Feature records reference existing stable owners instead of copying their behavior. Validators reject missing or inconsistent relationships.",
+      "public.leaf.feature.related": "Feature records connect naturally to capabilities, modules, states, actions, tests, platforms, and review lenses.",
+      "public.leaf.feature.what": "The Feature Registry records each product feature once and binds it to the identities needed to explain and prove it.",
+      "public.leaf.feature.when": "Use it when asking whether a feature is registered, what introduces it to a person, what proves it, or what remains held.",
+      "public.leaf.feature.why": "A feature should not become a loose UI card. Registration keeps its human introduction, state, actions, permissions, modules, tests, platforms, and review lenses connected.",
+      "public.leaf.registry.boundaries": "Compiling relationships does not create new product state, authority, or availability. It reflects registered sources.",
+      "public.leaf.registry.how": "Each source contributes stable refs and typed edges. The compiler validates duplicates and builds a registry that can be queried or projected without changing the underlying owners.",
+      "public.leaf.registry.related": "The Atlas traverses the compiled identities; Feature and Capability registries contribute important relationship families.",
+      "public.leaf.registry.what": "The Registry Compiler turns canonical blueprint, module, process, feature, capability, and other registered sources into stable typed identities.",
+      "public.leaf.registry.when": "Use it when tracing ownership, impact, source, actions, permissions, proof, or neighboring identities.",
+      "public.leaf.registry.why": "It lets VexLife ask “what is this, who owns it, and what does it connect to?” without relying on file names or duplicated prose.",
+      "public.node.atlas.brief": "Traverses a bounded neighborhood of registered identities without inventing new relationships.",
+      "public.node.atlas.title": "Capability & Tool Atlas",
+      "public.node.blueprint.brief": "The composed source of stable VexLife product meaning and registered interface relationships.",
+      "public.node.blueprint.title": "Universal Blueprint",
+      "public.node.capability-registry.brief": "Separates seeing and understanding a capability from permission and execution.",
+      "public.node.capability-registry.title": "Capability Registry",
+      "public.node.feature-registry.brief": "Binds each registered feature to its human introduction, state, actions, permissions, modules, tests, platforms, and review lenses.",
+      "public.node.feature-registry.title": "Feature Registry",
+      "public.node.registry-compiler.brief": "Compiles canonical sources into one stable identity and relationship registry.",
+      "public.node.registry-compiler.title": "Registry Compiler",
+      "public.prototype.architecture-atlas.purpose": "Test one public learning path from registered architecture to a bounded Atlas neighborhood and complete reading leaves."
+    },
+    "ja": {
+      "public.group.architecture.brief": "VexLife が成長しても理解可能であり続けるための、安定した ID と関係。",
+      "public.group.architecture.purpose": "個人の Home データや AI モデルを読み込まずに、アーキテクチャを探索します。",
+      "public.group.architecture.title": "VexLife の仕組み",
+      "public.group.atlas.brief": "登録済み ID と型付き関係を限定的にたどる仕組み。",
+      "public.group.atlas.purpose": "ひとつの ID から始め、その近傍を確認し、実際に登録されている関係だけをたどります。",
+      "public.group.atlas.title": "Atlas",
+      "public.group.registries.brief": "何が存在し、誰が所有し、どのように関係するかを示す安定した台帳。",
+      "public.group.registries.purpose": "機能、能力、モジュール、インターフェースの意味が別々のコピーにならない仕組みを確認します。",
+      "public.group.registries.title": "レジストリ",
+      "public.leaf.atlas.boundaries": "Atlas は関係を発明せず、能力を実行せず、公開／非公開の入場境界を回避しません。結果は知識であり権限ではありません。",
+      "public.leaf.atlas.how": "安定 ref または意図から開始し、許可された外向き・逆向きエッジをたどり、深さ・結果数・トークン予算で停止します。",
+      "public.leaf.atlas.related": "Registry Compiler が安定関係を提供し、Feature/Capability Registry が機能とアクションの境界を発見可能にします。",
+      "public.leaf.atlas.what": "Atlas は登録済み ID と型付きエッジを限定的にたどる仕組みです。",
+      "public.leaf.atlas.when": "ひとつの概念から、関連先、証拠、隣接する能力や所有者を知りたいときに使います。",
+      "public.leaf.atlas.why": "ひとつの画面に全アーキテクチャを詰め込まず、人や Vex が近くの責任範囲を学べるようにします。",
+      "public.leaf.blueprint.boundaries": "Blueprint は正規の意味を記述します。それだけで実行権限、個人 Home へのアクセス、公開配備は与えません。",
+      "public.leaf.blueprint.how": "小さなソース管理フラグメントをひとつの検証済みレコードに構成し、他のレジストリやプラットフォーム投影が安定参照を利用します。",
+      "public.leaf.blueprint.related": "関連する仕組みには Registry Compiler、Feature Registry、Capability Registry、Atlas があります。",
+      "public.leaf.blueprint.what": "Universal Blueprint は、VexLife の製品 ID、画面、状態領域、アクション、Terrain、プラットフォーム、コンポーネント、レジストリ参照を構成した定義です。",
+      "public.leaf.blueprint.when": "画面、アクション、状態、Terrain ID の背後にある正規の製品意味を確認するときに使います。",
+      "public.leaf.blueprint.why": "ブラウザーやネイティブ投影が、それぞれ製品を再定義せず、ひとつの意味ソースを共有するためです。",
+      "public.leaf.capability.boundaries": "能力が見えても実行権限は与えられません。静的 Pages は能力の真実を説明できますが、効果面にはなりません。",
+      "public.leaf.capability.how": "各能力は安定 ref、目的、既定段階、権限、効果クラス、可視ロール、プラットフォーム、資源クラスを持ちます。",
+      "public.leaf.capability.related": "Capability の段階は Feature 登録、Atlas、アクション、権限、ロール、プラットフォーム資格と関連します。",
+      "public.leaf.capability.what": "Capability Registry は、行動が発見・説明・要求・入場・実行・完了のどこにあるかを定義します。",
+      "public.leaf.capability.when": "今理解できること、後で要求できること、資格のあるローカル環境だけで実行できることを判断するときに使います。",
+      "public.leaf.capability.why": "「存在が見える」と「許可され実行できる」を分離するためです。",
+      "public.leaf.feature.boundaries": "登録済みは、公開済み・実行可能・静的ページで利用可能という意味ではありません。効果権限は参照先の所有者に残ります。",
+      "public.leaf.feature.how": "機能レコードは既存の安定した所有者を参照し、動作をコピーしません。検証は欠落や不整合を拒否します。",
+      "public.leaf.feature.related": "Feature は能力、モジュール、状態、アクション、テスト、プラットフォーム、レビュー観点につながります。",
+      "public.leaf.feature.what": "Feature Registry は各製品機能を一度だけ登録し、説明と証明に必要な ID に結びます。",
+      "public.leaf.feature.when": "機能が登録済みか、どう紹介されるか、何が証明するか、何が保留かを確認するときに使います。",
+      "public.leaf.feature.why": "機能を孤立した UI カードにしないためです。人への紹介、状態、アクション、権限、モジュール、テスト、プラットフォーム、レビュー観点をつなぎ続けます。",
+      "public.leaf.registry.boundaries": "関係のコンパイルは、新しい製品状態・権限・利用可能性を作りません。登録済みソースを反映するだけです。",
+      "public.leaf.registry.how": "各ソースが安定 ref と型付きエッジを提供します。コンパイラは重複を検証し、元の所有者を変更せずに問い合わせ・投影できるレジストリを作ります。",
+      "public.leaf.registry.related": "Atlas がコンパイル済み ID をたどり、Feature/Capability Registry が重要な関係を提供します。",
+      "public.leaf.registry.what": "Registry Compiler は Blueprint、モジュール、プロセス、機能、能力などの正規ソースを、安定した型付き ID にまとめます。",
+      "public.leaf.registry.when": "所有、影響、ソース、アクション、権限、証拠、隣接 ID を追跡するときに使います。",
+      "public.leaf.registry.why": "ファイル名や重複した説明文に頼らず、「これは何か、誰が所有し、何とつながるか」を追えるようにします。",
+      "public.node.atlas.brief": "新しい関係を作らず、登録済み ID の限定された近傍をたどります。",
+      "public.node.atlas.title": "Capability & Tool Atlas",
+      "public.node.blueprint.brief": "VexLife の製品意味と登録済みインターフェース関係を構成する安定したソース。",
+      "public.node.blueprint.title": "Universal Blueprint",
+      "public.node.capability-registry.brief": "能力が見える／理解できることと、権限・実行を分離します。",
+      "public.node.capability-registry.title": "Capability Registry",
+      "public.node.feature-registry.brief": "各機能を、人への紹介、状態、アクション、権限、モジュール、テスト、プラットフォーム、レビュー観点に結びます。",
+      "public.node.feature-registry.title": "Feature Registry",
+      "public.node.registry-compiler.brief": "正規ソースをひとつの安定した ID・関係レジストリへコンパイルします。",
+      "public.node.registry-compiler.title": "Registry Compiler",
+      "public.prototype.architecture-atlas.purpose": "登録済みアーキテクチャから限定された Atlas の近傍と完全な読み物ページへ進む、ひとつの公開学習経路を検証します。"
+    },
+    "zh": {
+      "public.group.architecture.brief": "让 VexLife 在持续成长时仍可理解的稳定身份与关系。",
+      "public.group.architecture.purpose": "不加载私人 Home 数据，也不需要 AI 模型，就能探索架构。",
+      "public.group.architecture.title": "VexLife 如何组织",
+      "public.group.atlas.brief": "在已注册身份与有类型的关系之间进行有边界的遍历。",
+      "public.group.atlas.purpose": "从一个身份开始，查看它的邻域，只沿着真实注册的关系继续。",
+      "public.group.atlas.title": "Atlas",
+      "public.group.registries.brief": "说明“有什么、由谁负责、彼此如何关联”的稳定目录。",
+      "public.group.registries.purpose": "了解 VexLife 如何防止功能、能力、模块和界面含义变成彼此脱节的副本。",
+      "public.group.registries.title": "注册表",
+      "public.leaf.atlas.boundaries": "Atlas 不会发明关系、执行能力或绕过公开/私人准入。查询结果是知识，不是权限。",
+      "public.leaf.atlas.how": "查询从稳定 ref 或意图开始，沿允许的正向与反向边移动，并在明确的深度、结果数和 token 预算处停止。",
+      "public.leaf.atlas.related": "Registry Compiler 提供稳定关系；Feature 和 Capability Registry 让功能与动作边界可被发现。",
+      "public.leaf.atlas.what": "Atlas 是对已注册身份和有类型边的受限遍历。",
+      "public.leaf.atlas.when": "当你知道一个概念，想继续了解它关联什么、证据在哪里、附近有哪些能力或所有者时使用。",
+      "public.leaf.atlas.why": "让人或 Vex 学习附近的职责，而不必把整个架构一次塞进一个界面。",
+      "public.leaf.blueprint.boundaries": "Blueprint 描述规范含义；它本身不会授予运行权限、私人 Home 访问权或公开部署权。",
+      "public.leaf.blueprint.how": "多个小型、受源码管理的片段被组合成一份经过验证的记录，其他注册表和平台投影再消费这些稳定引用。",
+      "public.leaf.blueprint.related": "相关架构包括 Registry Compiler、Feature Registry、Capability Registry 和 Atlas。",
+      "public.leaf.blueprint.what": "Universal Blueprint 是对 VexLife 产品身份、屏幕、状态域、动作、Terrain、平台、组件和注册表引用的组合定义。",
+      "public.leaf.blueprint.when": "当你想理解某个屏幕、动作、状态或 Terrain 身份背后的规范产品含义时使用。",
+      "public.leaf.blueprint.why": "让浏览器和原生投影共享同一份语义来源，而不是各自重新定义产品。",
+      "public.leaf.capability.boundaries": "看见能力永远不会自动授予执行权。静态 Pages 可以解释能力事实，但不会变成效果执行面。",
+      "public.leaf.capability.how": "每项能力都有稳定 ref、目的、默认阶段、权限、效果类别、可见角色、平台与资源类别。",
+      "public.leaf.capability.related": "Capability 阶段与 Feature 注册、Atlas 遍历、动作、权限、角色和平台资格相关。",
+      "public.leaf.capability.what": "Capability Registry 定义动作处于“可发现、可解释、可请求、已准入、可执行、已完成”的哪个阶段。",
+      "public.leaf.capability.when": "当你判断现在能理解什么、以后能请求什么、哪些只能在合格的本地环境中执行时使用。",
+      "public.leaf.capability.why": "把“我能看到它存在”与“我被允许并且能够执行它”明确分开。",
+      "public.leaf.feature.boundaries": "已注册不等于已发布、可执行或在静态公开页面可用；效果权限仍属于被引用的所有者。",
+      "public.leaf.feature.how": "功能记录引用既有稳定所有者，而不是复制它们的行为；验证器拒绝缺失或不一致的关系。",
+      "public.leaf.feature.related": "Feature 自然连接到能力、模块、状态、动作、测试、平台与评审视角。",
+      "public.leaf.feature.what": "Feature Registry 只登记一次每个产品功能，并把它连接到解释与证明所需的身份。",
+      "public.leaf.feature.when": "当你要确认功能是否已注册、如何向人介绍、由什么证明、哪些仍被暂缓时使用。",
+      "public.leaf.feature.why": "功能不应只是一个松散的 UI 卡片。注册让人类介绍、状态、动作、权限、模块、测试、平台和评审视角保持关联。",
+      "public.leaf.registry.boundaries": "编译关系不会创建新的产品状态、权限或可用性；它只反映已注册来源。",
+      "public.leaf.registry.how": "每个来源提供稳定 ref 与有类型的边；编译器检查重复，并生成可查询、可投影但不改变原所有者的注册表。",
+      "public.leaf.registry.related": "Atlas 遍历编译后的身份；Feature 和 Capability Registry 提供重要的关系族。",
+      "public.leaf.registry.what": "Registry Compiler 把 Blueprint、模块、流程、功能、能力等规范来源编译成稳定、有类型的身份。",
+      "public.leaf.registry.when": "当你需要追踪所有权、影响范围、源码、动作、权限、证据或相邻身份时使用。",
+      "public.leaf.registry.why": "让 VexLife 不依赖文件名或重复说明文字，也能回答“这是什么、谁负责、和什么相连”。",
+      "public.node.atlas.brief": "在已注册身份的受限邻域中遍历，不凭空创造关系。",
+      "public.node.atlas.title": "Capability & Tool Atlas",
+      "public.node.blueprint.brief": "组合 VexLife 产品含义与已注册界面关系的稳定来源。",
+      "public.node.blueprint.title": "Universal Blueprint",
+      "public.node.capability-registry.brief": "把“看见并理解一种能力”与“获得权限并执行”分开。",
+      "public.node.capability-registry.title": "Capability Registry",
+      "public.node.feature-registry.brief": "把每个功能与人类介绍、状态、动作、权限、模块、测试、平台和评审视角绑定。",
+      "public.node.feature-registry.title": "Feature Registry",
+      "public.node.registry-compiler.brief": "把规范来源编译成统一、稳定的身份与关系注册表。",
+      "public.node.registry-compiler.title": "Registry Compiler",
+      "public.prototype.architecture-atlas.purpose": "验证一条公开学习路径：从已注册架构进入受限的 Atlas 关系邻域，再进入完整阅读页面。"
+    }
+  },
+  "projectionHash": "5e7328947aaeb7fbf80f6cdc26102f73c9296a2fb31a7fff9867e2a41ba2b7ef"
+}
