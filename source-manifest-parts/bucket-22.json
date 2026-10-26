@@ -11,8 +11,8 @@
     {
       "path": "src/core/continuity-rollover.mjs",
       "mode": "100644",
-      "bytes": 21927,
-      "sha256": "0537e6eea9234fbefc3a6326b41c3b3a1e5f0f036692e2b8c519b9c1fe410ee9"
+      "bytes": 22009,
+      "sha256": "c5b719ccb7338183ef932814147df08f75b6d3880fe1c9552e4e51dac22743c8"
     },
     {
       "path": "test/browser-companion-recovery-http-route.test.mjs",
