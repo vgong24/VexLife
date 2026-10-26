@@ -322,7 +322,7 @@ test('prior checkpoint must be current and stay within the same continuity scope
     resourceContextPressure: pressure('ROLLOVER_REQUIRED'),
     continuityStream: continuity({ suffix: 'b' }),
     priorWorkingCheckpoint: stale
-  }), /must be CURRENT/u);
+  }), /semantic identity is invalid/u);
 });
 
 
