@@ -37,6 +37,7 @@ import {
 } from '../src/core/model-connection-turn-composer.mjs';
 import { createBrowserPromptContextRuntime } from '../src/core/browser-prompt-context-runtime.mjs';
 import { createResourceContextPressureTracker } from '../src/core/resource-context-pressure.mjs';
+import { formContinuityRolloverPlan } from '../src/core/continuity-rollover.mjs';
 import {
   BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH,
   BROWSER_LIVING_JOURNAL_MEMORY_API_PATH,
@@ -1729,20 +1730,35 @@ export function createVexLifeBrowserServer({
     throw new TypeError('Resource/context pressure tracker must expose project(input)');
   }
   const attachResourceContextPressure = async (result, input) => {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) return result;
+    const { promptContextContinuityProjection = null, ...publicResult } = result;
     if (
-      result?.state !== 'TURN_COMPLETED' ||
-      result.recoveredCompletedTurn === true ||
-      !result.promptContextMaterialization
-    ) return result;
+      publicResult.state !== 'TURN_COMPLETED' ||
+      publicResult.recoveredCompletedTurn === true ||
+      !publicResult.promptContextMaterialization
+    ) return publicResult;
+    if (!promptContextContinuityProjection) {
+      throw new TypeError('Current prompt materialization requires its exact continuity projection for rollover planning');
+    }
+    if (
+      publicResult.promptContextMaterialization.continuityProjectionRef !== promptContextContinuityProjection.adapterProjectionRef ||
+      publicResult.promptContextMaterialization.continuityProjectionFingerprint !== promptContextContinuityProjection.semanticFingerprint
+    ) {
+      throw new TypeError('Current prompt materialization does not bind the carried continuity projection');
+    }
     let companionAvailability = null;
     try { companionAvailability = await resolveCompanionAvailability(); }
     catch { companionAvailability = null; }
     const pressure = resourceContextPressureTracker.project({
       scopeRef: JSON.stringify([input.projectRef, input.threadRef, input.channelRef]),
-      promptContextMaterialization: result.promptContextMaterialization,
+      promptContextMaterialization: publicResult.promptContextMaterialization,
       companionAvailability
     });
-    return { ...result, resourceContextPressure: pressure };
+    const continuityRolloverPlan = formContinuityRolloverPlan({
+      resourceContextPressure: pressure,
+      continuityStream: promptContextContinuityProjection
+    });
+    return { ...publicResult, resourceContextPressure: pressure, continuityRolloverPlan };
   };
   if (typeof serverFamilyConversationCapabilityFactory !== 'function') {
     throw new TypeError('serverFamilyConversationCapabilityFactory must be a function');

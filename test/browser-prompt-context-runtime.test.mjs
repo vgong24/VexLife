@@ -743,8 +743,12 @@ test('canonical module registries bind prompt-context runtime to serve-browser e
   const runtimeEntry = promptRuntime.find(
     (entry) => entry.moduleRef === 'module.vexlife.core.browser-prompt-context-runtime'
   );
+  const rolloverEntry = promptRuntime.find(
+    (entry) => entry.moduleRef === 'module.vexlife.core.continuity-rollover'
+  );
   assert.ok(server);
   assert.ok(runtimeEntry);
+  assert.ok(rolloverEntry);
   assert.equal(
     server.reads.filter((entry) => entry === 'module.vexlife.core.browser-prompt-context-runtime').length,
     1
@@ -757,6 +761,12 @@ test('canonical module registries bind prompt-context runtime to serve-browser e
     runtimeEntry.loadedBy.filter((entry) => entry === 'module.vexlife.script.serve-browser').length,
     1
   );
+  assert.equal(
+    rolloverEntry.loadedBy.filter((entry) => entry === 'module.vexlife.script.serve-browser').length,
+    1
+  );
+  assert.ok(rolloverEntry.tests.includes('test/continuity-rollover.test.mjs'));
+  assert.ok(rolloverEntry.tests.includes('test/browser-companion-bridge.test.mjs'));
 });
 
 // [VXG RealForever]

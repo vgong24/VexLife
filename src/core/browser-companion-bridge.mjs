@@ -1165,6 +1165,7 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
       ...(request.selectedNodeRef ? [request.selectedNodeRef] : [])
     ];
     let durableSend = null;
+    let promptContextContinuityProjection = null;
     activeTurnObservations.set(turnRef, {
       turnRef,
       cancellationTargetRef: null,
@@ -1311,7 +1312,7 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
                     context: runtimeContext
                   });
                   if (selected === null || selected === undefined) return null;
-                  const materialization = materializeLivedCompanionPromptContext({
+                  const materialization = await materializeLivedCompanionPromptContext({
                     ...identity,
                     threadRef: request.threadRef,
                     currentRequestEventRef: resolverInput.context?.currentRequestEventRef,
@@ -1334,7 +1335,10 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
                       sourceRefs: [...new Set([...currentObservation.sourceRefs, selected.contextLease.leaseRef])].sort()
                     });
                   }
-                  return materialization;
+                  return Object.freeze({
+                    materialization,
+                    continuityProjection: structuredClone(selected.continuityProjection)
+                  });
                 };
                 contextualInference = async (input) => {
                   const contextualizeThisInference =
@@ -1347,15 +1351,24 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
                     ? await invokeLivedInference({
                         ...input,
                         requestContent: resolverInput.requestContent,
-                        promptContextMaterialization: phaseMaterialization,
+                        promptContextMaterialization: phaseMaterialization.materialization,
                         supplementalRequestContent: input.requestContent
                       })
                     : await invokeLivedInference({
                         ...input,
-                        promptContextMaterialization: phaseMaterialization
+                        promptContextMaterialization: phaseMaterialization.materialization
                       });
                   consumedMaterializationReceipt = contextualResponse.promptContextMaterializationReceipt ?? null;
                   materializationConsumed = consumedMaterializationReceipt !== null;
+                  if (consumedMaterializationReceipt !== null) {
+                    if (
+                      consumedMaterializationReceipt.continuityProjectionRef !== phaseMaterialization.continuityProjection.adapterProjectionRef ||
+                      consumedMaterializationReceipt.continuityProjectionFingerprint !== phaseMaterialization.continuityProjection.semanticFingerprint
+                    ) {
+                      throw new LivedCompanionError('ENDPOINT_RESPONSE_INVALID', 'consumed prompt receipt does not bind its exact continuity projection');
+                    }
+                    promptContextContinuityProjection = phaseMaterialization.continuityProjection;
+                  }
                   return contextualResponse;
                 };
               }
@@ -1403,6 +1416,24 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
         contextSourceRefs,
         timeoutMs: 120000
       });
+      const promptContextMaterialization = completed.promptContextMaterializationReceipt ?? null;
+      if ((promptContextMaterialization === null) !== (promptContextContinuityProjection === null)) {
+        throw new BrowserCompanionBridgeError(
+          'COMPANION_PROMPT_CONTEXT_CONTINUITY_INVALID',
+          'Completed prompt context and its continuity projection must be present or absent together',
+          500
+        );
+      }
+      if (promptContextMaterialization && (
+        promptContextMaterialization.continuityProjectionRef !== promptContextContinuityProjection.adapterProjectionRef ||
+        promptContextMaterialization.continuityProjectionFingerprint !== promptContextContinuityProjection.semanticFingerprint
+      )) {
+        throw new BrowserCompanionBridgeError(
+          'COMPANION_PROMPT_CONTEXT_CONTINUITY_INVALID',
+          'Completed prompt receipt does not bind the exact carried continuity projection',
+          500
+        );
+      }
       const responseAppend = appendConversationMessage({
         home: identity.home,
         instanceRef,
@@ -1439,7 +1470,7 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
             }
           })
         : null;
-      return Object.freeze({
+      const publicTurn = {
         schemaVersion: 'vexlife.browser-companion-turn/v1',
         state: 'TURN_COMPLETED',
         truthClass: 'CURRENT_LOCAL_MODEL',
@@ -1470,7 +1501,16 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
         modelTurnWitness: completed.modelTurnWitness ?? null,
         modelConnectionProjection: modelConnectionComposition?.modelConnectionProjection ?? null,
         selfCapabilityFrame: modelConnectionComposition?.selfCapabilityFrame ?? null
+      };
+      Object.defineProperty(publicTurn, 'promptContextContinuityProjection', {
+        value: promptContextContinuityProjection
+          ? structuredClone(promptContextContinuityProjection)
+          : null,
+        enumerable: false,
+        configurable: false,
+        writable: false
       });
+      return Object.freeze(publicTurn);
     } catch (error) {
       const typed = publicFailureFor(error);
       if (durableSend) typed.durableSend = durableSend;
