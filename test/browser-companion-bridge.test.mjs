@@ -645,6 +645,11 @@ test('browser prompt-context resolver materializes selected lived events into th
     assert.equal(result.promptContextMaterialization.exactMessagesSha256,semanticHash(model.calls.at(-1).body.messages));
     assert.equal(result.promptContextMaterialization.providerBoundaryCurrentnessVerified,true);
     assert.equal(result.promptContextMaterialization.providerBoundarySourceBindingsVerified,true);
+    assert.deepEqual(result.promptContextContinuityProjection, continuityProjection);
+    assert.equal(Object.prototype.propertyIsEnumerable.call(result, 'promptContextContinuityProjection'), false);
+    assert.equal(JSON.stringify(result).includes('promptContextContinuityProjection'), false);
+    assert.equal(result.promptContextMaterialization.continuityProjectionRef, result.promptContextContinuityProjection.adapterProjectionRef);
+    assert.equal(result.promptContextMaterialization.continuityProjectionFingerprint, result.promptContextContinuityProjection.semanticFingerprint);
   } finally {await model.close();fs.rmSync(root,{recursive:true,force:true});}
 });
 
@@ -961,19 +966,26 @@ test('exact browser retry reuses the completed Lived pair and Conversation respo
   }
 });
 
-test('browser server composes bounded pressure only after source-owned Companion availability is resolved', () => {
+test('browser server composes V3 pressure into the accepted effect-free V4 rollover plan without exposing the internal continuity projection', () => {
   const serverCore = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser-core.mjs'), 'utf8');
   assert.match(serverCore, /createResourceContextPressureTracker/u);
+  assert.match(serverCore, /formContinuityRolloverPlan/u);
   assert.match(serverCore, /resourceContextPressureTrackerFactory = createResourceContextPressureTracker/u);
+  assert.match(serverCore, /promptContextContinuityProjection = null/u);
+  assert.match(serverCore, /\.\.\.publicResult/u);
+  assert.match(serverCore, /continuityProjectionRef !== promptContextContinuityProjection\.adapterProjectionRef/u);
+  assert.match(serverCore, /continuityProjectionFingerprint !== promptContextContinuityProjection\.semanticFingerprint/u);
   assert.match(serverCore, /let companionAvailability = null;/u);
   assert.match(serverCore, /companionAvailability = await resolveCompanionAvailability\(\)/u);
-  assert.match(serverCore, /catch \{ companionAvailability = null; \}/u);
   assert.match(serverCore, /resourceContextPressureTracker\.project\(/u);
-  assert.match(serverCore, /promptContextMaterialization: result\.promptContextMaterialization/u);
-  assert.match(serverCore, /companionAvailability/u);
+  assert.match(serverCore, /promptContextMaterialization: publicResult\.promptContextMaterialization/u);
+  assert.match(serverCore, /formContinuityRolloverPlan\(\{/u);
   assert.match(serverCore, /resourceContextPressure: pressure/u);
+  assert.match(serverCore, /continuityStream: promptContextContinuityProjection/u);
+  assert.match(serverCore, /continuityRolloverPlan/u);
   assert.match(serverCore, /result = await attachResourceContextPressure\(result, input\)/u);
-  assert.doesNotMatch(serverCore, /resourceContextPressure[\s\S]{0,160}process\.kill/u);
+  assert.doesNotMatch(serverCore, /return \{ \.\.\.result, resourceContextPressure/u);
+  assert.doesNotMatch(serverCore, /continuityRolloverPlan[\s\S]{0,180}(?:process\.kill|memoryPromot|successorContextAuthorization)/u);
 });
 
 // [VXG RealForever]

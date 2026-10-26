@@ -46,5 +46,29 @@
       "scripts/serve-browser-core.mjs",
       "test/browser-prompt-context-runtime.test.mjs"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.continuity-rollover",
+    "path": "src/core/continuity-rollover.mjs",
+    "role": "Effect-free Browser continuity-rollover planner over current resource/context pressure plus exact read-only Continuity Stream projection truth.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "module.vexlife.core.resource-context-pressure",
+      "src/core/continuity-stream-adapter.mjs",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
+    "tests": [
+      "test/continuity-rollover.test.mjs",
+      "test/browser-companion-bridge.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/browser-companion-bridge.mjs",
+      "scripts/serve-browser-core.mjs",
+      "test/browser-companion-bridge.test.mjs"
+    ]
   }
 ]
