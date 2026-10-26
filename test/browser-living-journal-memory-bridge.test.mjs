@@ -60,6 +60,18 @@ test('Browser Living Journal Memory bridge exposes one bounded API contract and 
   assert.equal(BROWSER_LIVING_JOURNAL_MEMORY_API_PATH, '/api/v1/living-journal/memory');
   assert.equal(BROWSER_LIVING_JOURNAL_MEMORY_MAX_PAGES, 24);
   assert.deepEqual(validateBrowserLivingJournalMemoryIdentity(identity), identity);
+
+  const canonicalServerIdentity = Object.freeze({
+    ...identity,
+    personRef: 'person.vexlife.owner',
+    deviceCreatedAt: '2026-09-28T00:00:00.000Z'
+  });
+  const serverIdentityBridge = createBrowserLivingJournalMemoryBridge({ identity: canonicalServerIdentity });
+  const heldFromCanonicalServerIdentity = serverIdentityBridge.read({ threadRef: fixture.ids.threadRef });
+  assert.equal(heldFromCanonicalServerIdentity.state, 'HELD');
+  assert.equal(heldFromCanonicalServerIdentity.truthClass, 'MEMORY_REFERENCE_HELD');
+  assert.equal(JSON.stringify(heldFromCanonicalServerIdentity).includes('person.vexlife.owner'), false);
+  assert.equal(JSON.stringify(heldFromCanonicalServerIdentity).includes('2026-09-28T00:00:00.000Z'), false);
   assert.deepEqual(
     validateBrowserLivingJournalMemoryRequest({ threadRef: fixture.ids.threadRef }),
     { threadRef: fixture.ids.threadRef, maxPages: 24 }
