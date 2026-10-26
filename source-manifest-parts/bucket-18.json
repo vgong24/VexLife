@@ -11,8 +11,8 @@
     {
       "path": "test/vex-assembly-capability-domains.test.mjs",
       "mode": "100644",
-      "bytes": 19671,
-      "sha256": "80ad32bb4cb1fb36d5601888a32d431ce14806ced45bd56f97d99035395d3e4d"
+      "bytes": 20075,
+      "sha256": "b988f473062106ac6c3f22819b9dac52a7281f60cc07ca644f96f0787e00ebd7"
     }
   ]
 }

@@ -22,7 +22,9 @@ export const VEX_ASSEMBLY_ONLINE_HELD_STATE = 'HELD_NO_SAFE_ONLINE_PROVIDER';
 
 const DOMAIN_SOURCE_REF = 'source.vexlife.vex-assembly-capability-domains';
 const REGISTRY_SOURCE_REF = 'source.blueprint.capability-registry';
-const REGISTRY_SOURCE_VERSION_REF = 'capability-registry.v4';
+const CAPABILITY_REGISTRY_SCHEMA = 'vexlife.capability-registry/v0';
+const CAPABILITY_REGISTRY_REF = 'registry.vexlife.capabilities.001';
+const CAPABILITY_REGISTRY_PATH = 'blueprint/capability-registry.json';
 const SOURCE_MANIFEST_SCHEMA = 'vexlife.source-manifest/v3';
 const SOURCE_MANIFEST_REF = 'source-manifest.vexlife.universal-blueprint.001';
 const SOURCE_MANIFEST_SOURCE_KIND = 'GIT_INDEX_CANONICAL_BLOBS';
@@ -48,16 +50,19 @@ function canonicalRefs(values) {
   return [...new Set(values.filter((value) => typeof value === 'string' && value))].sort();
 }
 
-function currentness() {
+function currentness(sourceVersionRef) {
+  if (typeof sourceVersionRef !== 'string' || !/^capability-registry\.v[1-9][0-9]*$/u.test(sourceVersionRef)) {
+    throw new Error('capability observation requires one current source-managed registry version');
+  }
   return Object.freeze({
     state: 'CURRENT',
     sourceRef: REGISTRY_SOURCE_REF,
-    sourceVersionRef: REGISTRY_SOURCE_VERSION_REF,
+    sourceVersionRef,
     compatibility: 'COMPATIBLE',
   });
 }
 
-function observation(capabilityRef, payload, sourceRefs = []) {
+function observation(capabilityRef, payload, sourceVersionRef, sourceRefs = []) {
   return Object.freeze({
     summaryRef: `summary.${capabilityRef}.${semanticHash(payload).slice(0, 20)}`,
     capabilityRef,
@@ -66,7 +71,7 @@ function observation(capabilityRef, payload, sourceRefs = []) {
       DOMAIN_SOURCE_REF,
       ...sourceRefs,
     ])),
-    currentness: currentness(),
+    currentness: currentness(sourceVersionRef),
     payload: Object.freeze(structuredClone(payload)),
   });
 }
@@ -127,6 +132,20 @@ function regularFile(canonicalRoot, relativePath, label) {
 
 function readJsonRegular(canonicalRoot, relativePath, label) {
   return JSON.parse(fs.readFileSync(regularFile(canonicalRoot, relativePath, label), 'utf8'));
+}
+
+function readCapabilityRegistrySourceVersion(sourceRoot) {
+  const canonicalRoot = canonicalDirectory(sourceRoot, 'capability registry source root');
+  const registry = readJsonRegular(canonicalRoot, CAPABILITY_REGISTRY_PATH, 'capability registry');
+  if (
+    registry.schemaVersion !== CAPABILITY_REGISTRY_SCHEMA
+    || registry.registryRef !== CAPABILITY_REGISTRY_REF
+    || !Number.isSafeInteger(registry.registryVersion)
+    || registry.registryVersion < 1
+  ) {
+    throw new Error('CAPABILITY_REGISTRY_SOURCE_VERSION_INVALID');
+  }
+  return `capability-registry.v${registry.registryVersion}`;
 }
 
 function readManifestDescriptor(sourceRoot) {
@@ -355,7 +374,7 @@ function readWhitelistedHomeSummary(home) {
   };
 }
 
-function createLocalExecutor(sourceRoot) {
+function createLocalExecutor(sourceRoot, sourceVersionRef) {
   return async (argumentsValue) => {
     exactArgumentKeys(argumentsValue, new Set(), VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.LOCAL);
     let payload;
@@ -385,11 +404,11 @@ function createLocalExecutor(sourceRoot) {
         effects: noEffects(),
       };
     }
-    return observation(VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.LOCAL, payload, [SOURCE_MANIFEST_REF]);
+    return observation(VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.LOCAL, payload, sourceVersionRef, [SOURCE_MANIFEST_REF]);
   };
 }
 
-function createOnlineExecutor() {
+function createOnlineExecutor(sourceVersionRef) {
   return async (argumentsValue) => {
     exactArgumentKeys(argumentsValue, new Set(), VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.ONLINE);
     return observation(VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.ONLINE, {
@@ -399,11 +418,11 @@ function createOnlineExecutor() {
       networkPerformed: false,
       credentialsUsed: false,
       effects: noEffects(),
-    });
+    }, sourceVersionRef);
   };
 }
 
-function createVexHomeExecutor(home) {
+function createVexHomeExecutor(home, sourceVersionRef) {
   return async (argumentsValue) => {
     exactArgumentKeys(argumentsValue, new Set(), VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.VEXHOME);
     let payload;
@@ -421,7 +440,7 @@ function createVexHomeExecutor(home) {
         effects: noEffects(),
       };
     }
-    return observation(VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.VEXHOME, payload, [
+    return observation(VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.VEXHOME, payload, sourceVersionRef, [
       'source.vexlife.browser-companion-home-identity',
       'source.vexlife.model-configuration',
       'source.vexlife.recovery-initialization-receipt',
@@ -429,11 +448,11 @@ function createVexHomeExecutor(home) {
   };
 }
 
-function createCodeExecutor(sourceRoot) {
+function createCodeExecutor(sourceRoot, sourceVersionRef) {
   return async (argumentsValue) => {
     const args = exactArgumentKeys(argumentsValue, new Set(['path']), VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.CODE);
     const payload = readSourceManifestBackedCode({ sourceRoot, relativePath: args.path });
-    return observation(VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.CODE, payload, [
+    return observation(VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.CODE, payload, sourceVersionRef, [
       SOURCE_MANIFEST_REF,
       payload.sourceIdentity ? `source.vexlife.code.${payload.sourceIdentity.sha256.slice(0, 24)}` : null,
     ]);
@@ -451,11 +470,12 @@ export function bindVexAssemblyCapabilityDomainContext(context = {}) {
 }
 
 export function createVexAssemblyCapabilityDomainSupport({ sourceRoot, home } = {}) {
+  const sourceVersionRef = readCapabilityRegistrySourceVersion(sourceRoot);
   const executors = Object.freeze({
-    [VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.LOCAL]: createLocalExecutor(sourceRoot),
-    [VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.ONLINE]: createOnlineExecutor(),
-    [VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.VEXHOME]: createVexHomeExecutor(home),
-    [VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.CODE]: createCodeExecutor(sourceRoot),
+    [VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.LOCAL]: createLocalExecutor(sourceRoot, sourceVersionRef),
+    [VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.ONLINE]: createOnlineExecutor(sourceVersionRef),
+    [VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.VEXHOME]: createVexHomeExecutor(home, sourceVersionRef),
+    [VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.CODE]: createCodeExecutor(sourceRoot, sourceVersionRef),
   });
   return Object.freeze({
     schemaVersion: 'vexlife.vex-assembly-capability-domain-support/v1',
