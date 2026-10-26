@@ -321,14 +321,16 @@ test('VA-I06 live browser composition adds Voice only after each completed Compa
   const streamRoute = source.indexOf('if (url.pathname === BROWSER_COMPANION_STREAM_API_PATH)');
   const jsonRoute = source.indexOf('if (url.pathname === BROWSER_COMPANION_API_PATH)', streamRoute + 1);
   const streamTurn = source.indexOf('let result = await companionBridge.performConversationTurn(input, {', streamRoute);
-  const streamVoice = source.indexOf('await companionVoicePlayback.playCompletedTurn({', streamTurn);
+  const streamPressure = source.indexOf('result = await attachResourceContextPressure(result, input);', streamTurn);
+  const streamVoice = source.indexOf('await companionVoicePlayback.playCompletedTurn({', streamPressure);
   const streamFinal = source.indexOf("writeCompanionStreamFrame(response, 'FINAL', frameSequence, result);", streamVoice);
-  assert.ok(streamRoute >= 0 && streamTurn > streamRoute && streamVoice > streamTurn && streamFinal > streamVoice && jsonRoute > streamFinal);
+  assert.ok(streamRoute >= 0 && streamTurn > streamRoute && streamPressure > streamTurn && streamVoice > streamPressure && streamFinal > streamVoice && jsonRoute > streamFinal);
 
-  const turn = source.indexOf('const result = await companionBridge.performConversationTurn(input);', jsonRoute);
-  const voice = source.indexOf('await companionVoicePlayback.playCompletedTurn({', turn);
+  const turn = source.indexOf('let result = await companionBridge.performConversationTurn(input);', jsonRoute);
+  const pressure = source.indexOf('result = await attachResourceContextPressure(result, input);', turn);
+  const voice = source.indexOf('await companionVoicePlayback.playCompletedTurn({', pressure);
   const response = source.indexOf('sendJson(response, 200, { ...result, voicePlayback });', voice);
-  assert.ok(jsonRoute >= 0 && turn > jsonRoute && voice > turn && response > voice);
+  assert.ok(jsonRoute >= 0 && turn > jsonRoute && pressure > turn && voice > pressure && response > voice);
   assert.match(source, /createVexLifeBrowserServer\(\{ companionVoicePlayback: companionVoice \}\)/);
 });
 

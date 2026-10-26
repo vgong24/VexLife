@@ -1648,6 +1648,10 @@ export async function materializeLivedCompanionPromptContext({
     providerHeadMetadataReadCount: 0,
     contextLeaseRef: canonicalLease.leaseRef,
     contextLeaseFingerprint: canonicalLease.semanticFingerprint,
+    contextLeaseFormedAt: canonicalLease.formedAt,
+    contextLeaseExpiresAt: canonicalLease.expiresAt,
+    contextLeaseCurrentness: canonicalLease.currentness,
+    contextLeaseLifecycle: canonicalLease.lifecycle,
     continuityProjectionRef: continuityProjection.adapterProjectionRef,
     continuityProjectionFingerprint: continuityProjection.semanticFingerprint,
     lineageRef: admitted.companionLineageRef,
@@ -1661,6 +1665,11 @@ export async function materializeLivedCompanionPromptContext({
     memoryContextFingerprintOrNull: canonicalMemoryContext?.semanticFingerprint ?? null,
     memoryContextIncluded: canonicalMemoryContext?.included === true,
     memorySourceRefs: canonicalMemoryContext ? [...canonicalMemoryContext.sourceRefs] : [],
+    memoryTokenCap: canonicalMemoryContext?.memoryTokenCap ?? 0,
+    memoryEstimatedSystemMessageTokens: canonicalMemoryContext?.estimatedSystemMessageTokens ?? 0,
+    memoryTokenBoundedOutPageCount: canonicalMemoryContext?.tokenBoundedOutPageRefs?.length ?? 0,
+    memoryBoundedOutStatementCount: canonicalMemoryContext?.boundedOutStatementRefs?.length ?? 0,
+    memoryHeldOrDeferredStatementCount: canonicalMemoryContext?.heldOrDeferredStatementRefs?.length ?? 0,
     includedSourceRefs: [
       ...(canonicalMemoryContext?.sourceRefs ?? []),
       ...selectedRefs,
@@ -1739,10 +1748,19 @@ async function canonicalTrustedPromptMaterialization(materialization, requestCon
       receipt.providerBoundarySourceBindingsVerified !== false || receipt.providerExactEventFileReadCount !== 0 ||
       receipt.providerHeadMetadataReadCount !== 0 || receipt.memoryEffectPerformed !== false ||
       receipt.trainingSelectionPerformed !== false || receipt.modelWeightEffectPerformed !== false ||
+      receipt.contextLeaseFormedAt !== state.canonicalLease.formedAt ||
+      receipt.contextLeaseExpiresAt !== state.canonicalLease.expiresAt ||
+      receipt.contextLeaseCurrentness !== state.canonicalLease.currentness ||
+      receipt.contextLeaseLifecycle !== state.canonicalLease.lifecycle ||
       receipt.memoryContextRefOrNull !== (state.memoryContext?.memoryContextRef ?? null) ||
       receipt.memoryContextFingerprintOrNull !== (state.memoryContext?.semanticFingerprint ?? null) ||
       receipt.memoryContextIncluded !== (state.memoryContext?.included === true) ||
-      JSON.stringify(receipt.memorySourceRefs ?? []) !== JSON.stringify(state.memoryContext ? [...state.memoryContext.sourceRefs] : [])) {
+      JSON.stringify(receipt.memorySourceRefs ?? []) !== JSON.stringify(state.memoryContext ? [...state.memoryContext.sourceRefs] : []) ||
+      receipt.memoryTokenCap !== (state.memoryContext?.memoryTokenCap ?? 0) ||
+      receipt.memoryEstimatedSystemMessageTokens !== (state.memoryContext?.estimatedSystemMessageTokens ?? 0) ||
+      receipt.memoryTokenBoundedOutPageCount !== (state.memoryContext?.tokenBoundedOutPageRefs?.length ?? 0) ||
+      receipt.memoryBoundedOutStatementCount !== (state.memoryContext?.boundedOutStatementRefs?.length ?? 0) ||
+      receipt.memoryHeldOrDeferredStatementCount !== (state.memoryContext?.heldOrDeferredStatementRefs?.length ?? 0)) {
     promptContextFailure('trusted prompt materialization receipt integrity is invalid');
   }
   const query = canonicalPromptContextAuthorityQuery({

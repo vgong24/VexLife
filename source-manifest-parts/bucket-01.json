@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "01",
+  "files": [
+    {
+      "path": "test/resource-context-pressure.test.mjs",
+      "mode": "100644",
+      "bytes": 8370,
+      "sha256": "7b8041c75ff093b7d005e94a3c6c5c7e7e3dc31614f7c136ed030fe6cb1a0da6"
+    }
+  ]
+}
