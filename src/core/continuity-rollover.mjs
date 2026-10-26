@@ -196,7 +196,9 @@ function canonicalPressure(value) {
 
 function checkpointCore(pressure, continuity, priorCheckpoint) {
   if (priorCheckpoint !== null) {
-    verifyWorkingContinuityCheckpoint(priorCheckpoint);
+    if (!verifyWorkingContinuityCheckpoint(priorCheckpoint)) {
+      fail('prior working checkpoint semantic identity is invalid');
+    }
     if (priorCheckpoint.lineageRef !== continuity.lineageRef || priorCheckpoint.threadRef !== continuity.threadRef) {
       fail('prior working checkpoint belongs to another lineage or thread');
     }
