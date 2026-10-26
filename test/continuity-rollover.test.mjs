@@ -325,4 +325,26 @@ test('prior checkpoint must be current and stay within the same continuity scope
   }), /must be CURRENT/u);
 });
 
+
+test('prior checkpoint verifier failure cannot be laundered into a successor plan', () => {
+  const first = formContinuityRolloverPlan({
+    resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED'),
+    continuityStream: continuity()
+  }).checkpoint;
+  const forged = structuredClone(first);
+  forged.effectAuthorityGranted = true;
+  const core = structuredClone(forged);
+  delete core.checkpointRef;
+  delete core.semanticFingerprint;
+  forged.semanticFingerprint = semanticHash(core);
+  forged.checkpointRef =
+    `checkpoint.vexlife.working-continuity.${forged.semanticFingerprint.slice(0, 32)}`;
+  assert.equal(verifyWorkingContinuityCheckpoint(forged), false);
+  assert.throws(() => formContinuityRolloverPlan({
+    resourceContextPressure: pressure('ROLLOVER_REQUIRED'),
+    continuityStream: continuity({ suffix: 'b' }),
+    priorWorkingCheckpoint: forged
+  }), /semantic identity is invalid/u);
+});
+
 // [VXG RealForever]
