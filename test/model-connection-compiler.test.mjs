@@ -243,4 +243,67 @@ test('R3 self-frame priority reads projected state rather than removed dispositi
   assert.doesNotMatch(priority, /entry\.disposition/u);
 });
 
+function hereticWitness({ endpoint = 'http://127.0.0.1:8765', model = 'default_model' } = {}) {
+  const endpointProfile = {
+    profileRef: 'model-profile.vexlife.browser-companion.heretic',
+    admitted: true,
+    endpoint,
+    model
+  };
+  const normalized = normalizeModelRuntimeResponse({
+    endpointProfile,
+    observedAt: '2026-10-26T02:40:46.657Z',
+    responseBody: {
+      model,
+      choices: [{
+        index: 0,
+        finish_reason: 'stop',
+        message: { role: 'assistant', content: 'grep expedition or oral history' }
+      }],
+      usage: { prompt_tokens: 3, completion_tokens: 5, total_tokens: 8 }
+    }
+  });
+  const invocationEvidence = formModelRuntimeInvocationEvidence({
+    endpointProfileRef: endpointProfile.profileRef,
+    sanitizedEndpointOrigin: endpointProfile.endpoint,
+    requestBodySha256: 'd'.repeat(64),
+    runtimeObservation: normalized.runtimeObservation,
+    httpStatus: 200,
+    actualHttpCall: true,
+    formedAt: '2026-10-26T02:40:46.658Z'
+  });
+  return formModelTurnWitness({
+    turnRef: 'turn.vexlife.interface-refinement.heretic-model-connection',
+    requestMessageRef: 'message.vexlife.interface-refinement.heretic-model-connection.request',
+    responseMessageRef: 'message.vexlife.interface-refinement.heretic-model-connection.response',
+    runtimeObservation: normalized.runtimeObservation,
+    invocationEvidence,
+    currentnessRefs: ['artifact.vexlife.interface-refinement.home-tool.a005.return.sha256.10377b2574b36bdf82bcc1eda7be52fd51a7934eeddc958ca85ced6b9edfdd87'],
+    formedAt: '2026-10-26T02:40:46.659Z'
+  });
+}
+
+test('closed Heretic witness selects the current Heretic MLX source profile without a legacy operational-profile alias', () => {
+  const projection = compile({ modelTurnWitness: hereticWitness() });
+  assert.equal(projection.modelBundleRef, 'model-bundle.vexlife.heretic.qwen3.8-27b.mlx4.329658ee8f27.001');
+  assert.equal(projection.generationRef, 'generation.devex.heretic27b4.preexisting-certified-foundation.normalized.20261001A');
+  assert.equal(projection.runtimeCapabilityProfileRef, 'profile.model-runtime-capability.vexlife.heretic.qwen3.8-27b.mlx4.macos-victor.001');
+  assert.equal(projection.operationalProfileRef, null);
+  assert.equal(projection.runtimeRevisionRef, null);
+  assert.equal(projection.sourceRefs.includes('source.vexlife.heretic-runtime-link'), true);
+  assert.deepEqual(projection.runtimeCapability.heldCellEntries.map((entry) => entry.cellRef), ['C11', 'C12']);
+  assert.equal(projection.effectAuthorityGranted, false);
+});
+
+test('Heretic source selection fails closed on endpoint or model identity drift', () => {
+  assert.throws(
+    () => compile({ modelTurnWitness: hereticWitness({ endpoint: 'http://127.0.0.1:8766' }) }),
+    /closed external ModelTurnWitness/
+  );
+  assert.throws(
+    () => compile({ modelTurnWitness: hereticWitness({ model: 'different_model' }) }),
+    /closed external ModelTurnWitness/
+  );
+});
+
 // [VXG RealForever]

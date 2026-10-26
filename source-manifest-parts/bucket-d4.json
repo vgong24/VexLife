@@ -29,8 +29,8 @@
     {
       "path": "src/core/model-connection-compiler.mjs",
       "mode": "100644",
-      "bytes": 17215,
-      "sha256": "cd0012fe81e892e1c47df482b146967a0a33ec4821e56f03114ba6acefc84bbd"
+      "bytes": 21802,
+      "sha256": "60b38254e17c7f435368e9f4e2fb01c51f0d299db46c60db1998344d048fc565"
     },
     {
       "path": "test/presentation-graph.test.mjs",

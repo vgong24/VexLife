@@ -1,4 +1,12 @@
 import { compileCapabilityFrame } from './capability.mjs';
+import {
+  HERETIC_PRODUCT_ENDPOINT,
+  HERETIC_REQUEST_MODEL,
+  HERETIC_RUNTIME_ADAPTER_REF,
+  HERETIC_RUNTIME_CLASS,
+  HERETIC_RUNTIME_IDENTITY,
+  HERETIC_TRANSPORT_CLASS
+} from './heretic-runtime-link.mjs';
 import { verifyModelTurnWitness } from './model-turn-witness.mjs';
 import { semanticHash } from './utils.mjs';
 
@@ -58,17 +66,32 @@ function freezeDeep(value) {
   return value;
 }
 function assertRuntimeProfile(profile) {
-  if (!object(profile) || !nonempty(profile.runtimeCapabilityProfileRef) ||
+  const hereticBinding = profile?.sourceBinding?.class === 'HERETIC_PERSISTENT_RUNTIME';
+  const commonInvalid = !object(profile) || !nonempty(profile.runtimeCapabilityProfileRef) ||
       !nonempty(profile.generationRef) || !nonempty(profile.modelBundleRef) ||
-      !nonempty(profile.operationalProfileRef) || !nonempty(profile.runtimeRevisionRef) ||
-      !HEX64.test(profile.runtimeExecutableSha256 ?? '') ||
-      !nonempty(profile.modelArtifactRef) ||
-      !(profile.projectorArtifactRef === null || nonempty(profile.projectorArtifactRef)) ||
       profile.endpointClass !== 'NUMERIC_LOOPBACK_HTTP' ||
       !HEX64.test(profile.chatTemplateSha256 ?? '') ||
       profile.currentness?.state !== 'CURRENT' ||
       !uniqueStrings(profile.evidenceRefs) ||
-      !Array.isArray(profile.cells) || profile.cells.length === 0) {
+      !Array.isArray(profile.cells) || profile.cells.length === 0;
+  const legacyInvalid = !hereticBinding && (
+      !nonempty(profile.operationalProfileRef) || !nonempty(profile.runtimeRevisionRef) ||
+      !HEX64.test(profile.runtimeExecutableSha256 ?? '') ||
+      !nonempty(profile.modelArtifactRef) ||
+      !(profile.projectorArtifactRef === null || nonempty(profile.projectorArtifactRef)));
+  const binding = profile?.sourceBinding;
+  const hereticInvalid = hereticBinding && (
+      !object(binding) || !nonempty(binding.sourceRef) ||
+      binding.runtimeAdapterRef !== HERETIC_RUNTIME_ADAPTER_REF ||
+      binding.runtimeClass !== HERETIC_RUNTIME_CLASS ||
+      binding.transportClass !== HERETIC_TRANSPORT_CLASS ||
+      binding.endpointOrigin !== HERETIC_PRODUCT_ENDPOINT ||
+      binding.requestModel !== HERETIC_REQUEST_MODEL ||
+      binding.modelRef !== HERETIC_RUNTIME_IDENTITY.modelRef ||
+      binding.modelProfileRef !== HERETIC_RUNTIME_IDENTITY.modelProfileRef ||
+      binding.artifactRef !== HERETIC_RUNTIME_IDENTITY.artifactRef ||
+      binding.contentSetSha256 !== HERETIC_RUNTIME_IDENTITY.artifactContentSetSha256);
+  if (commonInvalid || legacyInvalid || hereticInvalid) {
     throw new TypeError('runtime capability profile is incomplete or not current');
   }
   const cellRefs = profile.cells.map((cell) => cell?.cellRef);
@@ -85,6 +108,8 @@ function assertRuntimeProfile(profile) {
 export function validateModelRuntimeCapabilityRegistry(registry) {
   if (!object(registry) || registry.schemaVersion !== MODEL_RUNTIME_CAPABILITY_REGISTRY_SCHEMA ||
       !nonempty(registry.registryRef) || !nonempty(registry.activeRuntimeCapabilityProfileRef) ||
+      (registry.runtimeProfileSelection !== undefined &&
+       registry.runtimeProfileSelection !== 'EXACT_MODEL_TURN_WITNESS') ||
       !Array.isArray(registry.profiles) || registry.profiles.length === 0) return false;
   try {
     const refs = registry.profiles.map((profile) => profile?.runtimeCapabilityProfileRef);
@@ -118,12 +143,20 @@ export function validateModelConnectionBindingRegistry(registry) {
     return false;
   }
 }
-function activeModelBundle(registry, expectedRef) {
-  const ref = expectedRef ?? registry?.activeModelBundleRef;
+function modelBundle(registry, ref) {
   const bundle = (registry?.bundles ?? []).find((item) => item.modelBundleRef === ref);
-  if (!bundle || bundle.state !== 'RELEASE_QUALIFIED' || !nonempty(bundle.generationRef) ||
-      !nonempty(bundle.requestModel) || !nonempty(bundle.baseModelArtifactRef)) {
+  if (!bundle || bundle.state !== 'RELEASE_QUALIFIED' || !nonempty(bundle.generationRef)) {
     throw new TypeError('one release-qualified model bundle is required');
+  }
+  const v2 = bundle.bundleSchemaVersion === 'vexlife.model-bundle/v2';
+  if (v2) {
+    if (!nonempty(bundle.modelProfileRef) || !nonempty(bundle.artifactSetRef) ||
+        !HEX64.test(bundle.contentSetSha256 ?? '') ||
+        !uniqueStrings(bundle.runtimeRealizationRefs)) {
+      throw new TypeError('release-qualified model bundle v2 is incomplete');
+    }
+  } else if (!nonempty(bundle.requestModel) || !nonempty(bundle.baseModelArtifactRef)) {
+    throw new TypeError('release-qualified legacy model bundle is incomplete');
   }
   return bundle;
 }
@@ -138,14 +171,7 @@ function operationalProfile(registry, ref, modelBundleRef) {
   }
   return profile;
 }
-function activeRuntimeProfile(registry) {
-  if (!validateModelRuntimeCapabilityRegistry(registry)) {
-    throw new TypeError('model runtime capability registry is invalid');
-  }
-  return registry.profiles.find((item) =>
-    item.runtimeCapabilityProfileRef === registry.activeRuntimeCapabilityProfileRef);
-}
-function sourceBindRuntimeProfile({ runtimeProfile, bundle, opProfile, witness }) {
+function sourceBindLegacyRuntimeProfile({ runtimeProfile, bundle, opProfile, witness }) {
   if (runtimeProfile.modelBundleRef !== bundle.modelBundleRef ||
       runtimeProfile.generationRef !== bundle.generationRef ||
       runtimeProfile.operationalProfileRef !== opProfile.profileRef ||
@@ -156,10 +182,6 @@ function sourceBindRuntimeProfile({ runtimeProfile, bundle, opProfile, witness }
       !(bundle.compatibleOperationalProfileRefs ?? []).includes(opProfile.profileRef)) {
     throw new TypeError('runtime capability profile does not bind current model/operational source truth');
   }
-  if (witness.invocationEvidence.sanitizedEndpointOrigin !== opProfile.endpoint.origin ||
-      witness.runtimeObservation.modelProvenance.compatibilityModel !== bundle.requestModel) {
-    throw new TypeError('ModelTurnWitness does not bind the selected current model connection');
-  }
   for (const [label, observed, expected] of [
     ['model bundle', witness.runtimeObservation.modelBundleRef, bundle.modelBundleRef],
     ['operational profile', witness.runtimeObservation.operationalProfileRef, opProfile.profileRef],
@@ -169,6 +191,82 @@ function sourceBindRuntimeProfile({ runtimeProfile, bundle, opProfile, witness }
       throw new TypeError(`ModelTurnWitness ${label} disagrees with current source`);
     }
   }
+}
+function sourceBindHereticRuntimeProfile({ runtimeProfile, bundle, witness }) {
+  const binding = runtimeProfile.sourceBinding;
+  if (runtimeProfile.modelBundleRef !== bundle.modelBundleRef ||
+      runtimeProfile.generationRef !== bundle.generationRef ||
+      bundle.bundleSchemaVersion !== 'vexlife.model-bundle/v2' ||
+      bundle.modelProfileRef !== HERETIC_RUNTIME_IDENTITY.modelProfileRef ||
+      bundle.artifactSetRef !== HERETIC_RUNTIME_IDENTITY.artifactRef ||
+      bundle.contentSetSha256 !== HERETIC_RUNTIME_IDENTITY.artifactContentSetSha256 ||
+      !(bundle.runtimeRealizationRefs ?? []).includes(HERETIC_RUNTIME_ADAPTER_REF) ||
+      binding.runtimeAdapterRef !== HERETIC_RUNTIME_ADAPTER_REF ||
+      binding.runtimeClass !== HERETIC_RUNTIME_CLASS ||
+      binding.transportClass !== HERETIC_TRANSPORT_CLASS ||
+      binding.modelRef !== HERETIC_RUNTIME_IDENTITY.modelRef ||
+      binding.modelProfileRef !== HERETIC_RUNTIME_IDENTITY.modelProfileRef ||
+      binding.artifactRef !== HERETIC_RUNTIME_IDENTITY.artifactRef ||
+      binding.contentSetSha256 !== HERETIC_RUNTIME_IDENTITY.artifactContentSetSha256) {
+    throw new TypeError('Heretic runtime capability profile does not bind accepted Heretic source truth');
+  }
+  for (const [label, observed, expected] of [
+    ['model bundle', witness.runtimeObservation.modelBundleRef, bundle.modelBundleRef],
+    ['operational profile', witness.runtimeObservation.operationalProfileRef, null],
+    ['runtime revision', witness.runtimeObservation.runtimeRevisionRef, null]
+  ]) {
+    if (observed !== null && observed !== expected) {
+      throw new TypeError(`ModelTurnWitness ${label} disagrees with current Heretic source`);
+    }
+  }
+}
+function selectRuntimeConnection({
+  runtimeCapabilityRegistry,
+  modelBundleRegistry,
+  operationalProfileRegistry,
+  witness
+}) {
+  if (!validateModelRuntimeCapabilityRegistry(runtimeCapabilityRegistry)) {
+    throw new TypeError('model runtime capability registry is invalid');
+  }
+  const candidates = [];
+  for (const runtimeProfile of runtimeCapabilityRegistry.profiles.filter((item) =>
+    item.currentness?.state === 'CURRENT')) {
+    const bundle = modelBundle(modelBundleRegistry, runtimeProfile.modelBundleRef);
+    if (runtimeProfile.sourceBinding?.class === 'HERETIC_PERSISTENT_RUNTIME') {
+      if (witness.invocationEvidence.sanitizedEndpointOrigin !== runtimeProfile.sourceBinding.endpointOrigin ||
+          witness.runtimeObservation.modelProvenance.compatibilityModel !== runtimeProfile.sourceBinding.requestModel) {
+        continue;
+      }
+      candidates.push({
+        runtimeProfile,
+        bundle,
+        opProfile: null,
+        bind: () => sourceBindHereticRuntimeProfile({ runtimeProfile, bundle, witness })
+      });
+      continue;
+    }
+    const opProfile = operationalProfile(
+      operationalProfileRegistry,
+      runtimeProfile.operationalProfileRef,
+      bundle.modelBundleRef
+    );
+    if (witness.invocationEvidence.sanitizedEndpointOrigin !== opProfile.endpoint.origin ||
+        witness.runtimeObservation.modelProvenance.compatibilityModel !== bundle.requestModel) {
+      continue;
+    }
+    candidates.push({
+      runtimeProfile,
+      bundle,
+      opProfile,
+      bind: () => sourceBindLegacyRuntimeProfile({ runtimeProfile, bundle, opProfile, witness })
+    });
+  }
+  if (candidates.length !== 1) {
+    throw new TypeError('closed external ModelTurnWitness must bind exactly one current model connection');
+  }
+  candidates[0].bind();
+  return candidates[0];
 }
 function runtimeCellProjection(profile) {
   const cells = [...profile.cells]
@@ -243,10 +341,16 @@ export function compileModelConnection({
     throw new TypeError('model-connection bindings do not target the runtime capability registry');
   }
 
-  const runtimeProfile = activeRuntimeProfile(runtimeCapabilityRegistry);
-  const bundle = activeModelBundle(modelBundleRegistry, runtimeProfile.modelBundleRef);
-  const opProfile = operationalProfile(operationalProfileRegistry, runtimeProfile.operationalProfileRef, bundle.modelBundleRef);
-  sourceBindRuntimeProfile({ runtimeProfile, bundle, opProfile, witness: modelTurnWitness });
+  const {
+    runtimeProfile,
+    bundle,
+    opProfile
+  } = selectRuntimeConnection({
+    runtimeCapabilityRegistry,
+    modelBundleRegistry,
+    operationalProfileRegistry,
+    witness: modelTurnWitness
+  });
 
   const capabilityFrame = compileCapabilityFrame(capabilityRegistry, capabilityInput);
   const bindingBySubject = currentBindingMap(modelConnectionBindingRegistry);
@@ -293,12 +397,13 @@ export function compileModelConnection({
     runtimeCapabilityRegistry.registryRef,
     modelConnectionBindingRegistry.registryRef,
     modelBundleRegistry.registryRef,
-    operationalProfileRegistry.registryRef,
+    ...(opProfile ? [operationalProfileRegistry.registryRef] : []),
+    ...(nonempty(runtimeProfile.sourceBinding?.sourceRef) ? [runtimeProfile.sourceBinding.sourceRef] : []),
     ...runtimeProfile.evidenceRefs
   ]);
   const currentnessRefs = sortedUnique([...new Set([
     ...(modelTurnWitness.currentnessRefs ?? []),
-    ...(nonempty(operationalProfileRegistry.currentnessRef) ? [operationalProfileRegistry.currentnessRef] : []),
+    ...(opProfile && nonempty(operationalProfileRegistry.currentnessRef) ? [operationalProfileRegistry.currentnessRef] : []),
     runtimeProfile.currentness.acceptedMainRef
   ])]);
 
@@ -312,8 +417,8 @@ export function compileModelConnection({
     runtimeCapabilityProfileRef: runtimeProfile.runtimeCapabilityProfileRef,
     generationRef: bundle.generationRef,
     modelBundleRef: bundle.modelBundleRef,
-    operationalProfileRef: opProfile.profileRef,
-    runtimeRevisionRef: runtimeProfile.runtimeRevisionRef,
+    operationalProfileRef: opProfile?.profileRef ?? null,
+    runtimeRevisionRef: runtimeProfile.runtimeRevisionRef ?? null,
     modelTurnWitnessRef: modelTurnWitness.witnessRef,
     capabilityEntries,
     runtimeCapability: {
