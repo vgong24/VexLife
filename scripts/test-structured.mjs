@@ -23,7 +23,11 @@ const isolatedTestFiles = new Set([
   // This suite contains live loopback and atomic-writer timing assertions.
   // Keep its internal concurrency intact, but do not let unrelated test-file
   // scheduling consume the endpoint timeout window it is explicitly proving.
-  'lived-companion.test.mjs'
+  'lived-companion.test.mjs',
+  // This suite drives a real browser child process against an exact global time budget.
+  // Keep the 5s request budget and 5s enforcement envelope intact, but isolate it from
+  // unrelated test-file scheduling so host load cannot impersonate a product regression.
+  'experience-review-seeded-exploration.test.mjs'
 ]);
 const regularNames = fs.readdirSync(testRoot)
   .filter((name) => name.endsWith('.test.mjs'))

@@ -21,6 +21,12 @@
       "sha256": "3547f742d238e92d3e30ce1a0f97124e004a02636023b2827ea62f62ebabba13"
     },
     {
+      "path": "src/core/resource-context-pressure.mjs",
+      "mode": "100644",
+      "bytes": 19125,
+      "sha256": "7b0af7375dc30b3b2bda5c0f6d1082414e0c2361b13692d2c2116b2d1e03e9d9"
+    },
+    {
       "path": "test/browser-android-remote-vessel.test.mjs",
       "mode": "100644",
       "bytes": 2346,

@@ -36,6 +36,7 @@ import {
   loadModelConnectionTurnSources
 } from '../src/core/model-connection-turn-composer.mjs';
 import { createBrowserPromptContextRuntime } from '../src/core/browser-prompt-context-runtime.mjs';
+import { createResourceContextPressureTracker } from '../src/core/resource-context-pressure.mjs';
 import {
   BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH,
   BROWSER_LIVING_JOURNAL_MEMORY_API_PATH,
@@ -1693,6 +1694,7 @@ export function createVexLifeBrowserServer({
   resolveCompanionBinding = null,
   resolveCompanionRuntimeObservation = null,
   companionAvailabilityCompiler = compileCompanionAvailability,
+  resourceContextPressureTrackerFactory = createResourceContextPressureTracker,
   createLivingJournalMemoryBridge = (identity) => createBrowserLivingJournalMemoryBridge({ identity }),
   familyConversationHome = home,
   resolveFamilyConversationAuthority = null,
@@ -1719,6 +1721,29 @@ export function createVexLifeBrowserServer({
     resolveCompanionRuntimeObservation,
     availabilityCompiler: companionAvailabilityCompiler
   });
+  if (typeof resourceContextPressureTrackerFactory !== 'function') {
+    throw new TypeError('Resource/context pressure tracker factory must be one function');
+  }
+  const resourceContextPressureTracker = resourceContextPressureTrackerFactory();
+  if (!resourceContextPressureTracker || typeof resourceContextPressureTracker.project !== 'function') {
+    throw new TypeError('Resource/context pressure tracker must expose project(input)');
+  }
+  const attachResourceContextPressure = async (result, input) => {
+    if (
+      result?.state !== 'TURN_COMPLETED' ||
+      result.recoveredCompletedTurn === true ||
+      !result.promptContextMaterialization
+    ) return result;
+    let companionAvailability = null;
+    try { companionAvailability = await resolveCompanionAvailability(); }
+    catch { companionAvailability = null; }
+    const pressure = resourceContextPressureTracker.project({
+      scopeRef: JSON.stringify([input.projectRef, input.threadRef, input.channelRef]),
+      promptContextMaterialization: result.promptContextMaterialization,
+      companionAvailability
+    });
+    return { ...result, resourceContextPressure: pressure };
+  };
   if (typeof serverFamilyConversationCapabilityFactory !== 'function') {
     throw new TypeError('serverFamilyConversationCapabilityFactory must be a function');
   }
@@ -1879,6 +1904,7 @@ export function createVexLifeBrowserServer({
               writeCompanionStreamFrame(response, 'DELTA', frameSequence, delta);
             }
           });
+          result = await attachResourceContextPressure(result, input);
           if (companionVoicePlayback && typeof companionVoicePlayback.playCompletedTurn === 'function' && result?.state === 'TURN_COMPLETED') {
             const voicePlayback = await companionVoicePlayback.playCompletedTurn({ completedTurn: result, threadRef: input.threadRef, homeIdentity: resolveHomeIdentity() });
             result = { ...result, voicePlayback };
@@ -1900,7 +1926,8 @@ export function createVexLifeBrowserServer({
           return;
         }
         const input = await readBoundedJson(request);
-        const result = await companionBridge.performConversationTurn(input);
+        let result = await companionBridge.performConversationTurn(input);
+        result = await attachResourceContextPressure(result, input);
         if (companionVoicePlayback && typeof companionVoicePlayback.playCompletedTurn === 'function') {
           const voicePlayback = await companionVoicePlayback.playCompletedTurn({
             completedTurn: result,

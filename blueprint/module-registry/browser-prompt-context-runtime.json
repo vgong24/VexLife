@@ -22,5 +22,29 @@
       "src/core/browser-companion-bridge.mjs",
       "src/core/lived-companion.mjs"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.resource-context-pressure",
+    "path": "src/core/resource-context-pressure.mjs",
+    "role": "System-owned read-only resource/context pressure projector over current prompt-materialization, Context Lease, Memory bounding and Companion runtime-observation truth.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "module.vexlife.core.lived-companion",
+      "module.vexlife.core.context-lease",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
+    "tests": [
+      "test/resource-context-pressure.test.mjs",
+      "test/browser-companion-bridge.test.mjs"
+    ],
+    "changeMap": [
+      "src/core/lived-companion.mjs",
+      "scripts/serve-browser-core.mjs",
+      "test/browser-prompt-context-runtime.test.mjs"
+    ]
   }
 ]

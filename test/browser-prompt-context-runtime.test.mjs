@@ -252,6 +252,15 @@ test('ordinary provider request receives one attributed bounded current Memory s
     assert.equal(result.promptContextMaterialization.contextLeaseInputTokenEstimate, 192_000);
     assert.equal(result.promptContextMaterialization.reservedOutputTokens, 16_000);
     assert.equal(result.promptContextMaterialization.hardTokenLimit, 208_000);
+    assert.equal(result.promptContextMaterialization.contextLeaseCurrentness, 'CURRENT');
+    assert.equal(result.promptContextMaterialization.contextLeaseLifecycle, 'ACTIVE');
+    assert.ok(Date.parse(result.promptContextMaterialization.contextLeaseExpiresAt) >
+      Date.parse(result.promptContextMaterialization.contextLeaseFormedAt));
+    assert.ok(result.promptContextMaterialization.memoryTokenCap > 0);
+    assert.ok(result.promptContextMaterialization.memoryEstimatedSystemMessageTokens > 0);
+    assert.ok(Number.isSafeInteger(result.promptContextMaterialization.memoryTokenBoundedOutPageCount));
+    assert.ok(Number.isSafeInteger(result.promptContextMaterialization.memoryBoundedOutStatementCount));
+    assert.ok(Number.isSafeInteger(result.promptContextMaterialization.memoryHeldOrDeferredStatementCount));
     assert.equal(result.promptContextMaterialization.providerBoundaryCurrentnessVerified, true);
     assert.equal(result.promptContextMaterialization.providerBoundarySourceBindingsVerified, true);
   } finally {

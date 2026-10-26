@@ -961,4 +961,19 @@ test('exact browser retry reuses the completed Lived pair and Conversation respo
   }
 });
 
+test('browser server composes bounded pressure only after source-owned Companion availability is resolved', () => {
+  const serverCore = fs.readFileSync(path.join(ROOT, 'scripts/serve-browser-core.mjs'), 'utf8');
+  assert.match(serverCore, /createResourceContextPressureTracker/u);
+  assert.match(serverCore, /resourceContextPressureTrackerFactory = createResourceContextPressureTracker/u);
+  assert.match(serverCore, /let companionAvailability = null;/u);
+  assert.match(serverCore, /companionAvailability = await resolveCompanionAvailability\(\)/u);
+  assert.match(serverCore, /catch \{ companionAvailability = null; \}/u);
+  assert.match(serverCore, /resourceContextPressureTracker\.project\(/u);
+  assert.match(serverCore, /promptContextMaterialization: result\.promptContextMaterialization/u);
+  assert.match(serverCore, /companionAvailability/u);
+  assert.match(serverCore, /resourceContextPressure: pressure/u);
+  assert.match(serverCore, /result = await attachResourceContextPressure\(result, input\)/u);
+  assert.doesNotMatch(serverCore, /resourceContextPressure[\s\S]{0,160}process\.kill/u);
+});
+
 // [VXG RealForever]
