@@ -74,6 +74,12 @@ function canonicalPromptReceipt(value) {
   if (value.schemaVersion !== 'vexlife.prompt-context-materialization-receipt/v2') {
     fail('promptContextMaterialization schema is unsupported');
   }
+  const { receiptRef, semanticFingerprint, ...receiptCore } = value;
+  if (!/^[0-9a-f]{64}$/u.test(semanticFingerprint ?? '') ||
+      semanticHash(receiptCore) !== semanticFingerprint ||
+      receiptRef !== `receipt.vexlife.prompt-context-materialization.${semanticFingerprint.slice(0, 32)}`) {
+    fail('promptContextMaterialization semantic identity is invalid');
+  }
   for (const field of [
     'receiptRef',
     'contextLeaseRef',
@@ -142,41 +148,102 @@ function canonicalPromptReceipt(value) {
   });
 }
 
-function runtimeBinding(value) {
+function companionAvailabilityBinding(value, promptLineageRef) {
   if (value === null || value === undefined) {
     return Object.freeze({
       valid: false,
-      observationRef: null,
-      adapterRef: null,
-      currentness: null,
+      reasonCode: 'COMPANION_AVAILABILITY_UNAVAILABLE',
+      projectionRef: null,
+      sourceRefs: Object.freeze([]),
+      companionLineageRef: null,
+      runtimeAdapterRef: null,
+      runtimeObservationRef: null,
+      availabilityState: null,
+      recoveryClass: null,
+      availabilityReasonCode: null,
       runtimeOwnershipState: null,
       runtimeState: null,
-      qualificationState: null,
-      safeReentryState: null
+      qualificationState: null
     });
   }
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
-      value.schemaVersion !== 'vexlife.companion-runtime-adapter-observation/v1') {
+      value.schemaVersion !== 'vexlife.companion-availability/v1' ||
+      value.truthClass !== 'SOURCE_BOUND_COMPANION_AVAILABILITY') {
     return Object.freeze({
       valid: false,
-      observationRef: null,
-      adapterRef: null,
-      currentness: null,
+      reasonCode: 'COMPANION_AVAILABILITY_INVALID',
+      projectionRef: null,
+      sourceRefs: Object.freeze([]),
+      companionLineageRef: null,
+      runtimeAdapterRef: null,
+      runtimeObservationRef: null,
+      availabilityState: null,
+      recoveryClass: null,
+      availabilityReasonCode: null,
       runtimeOwnershipState: null,
       runtimeState: null,
-      qualificationState: null,
-      safeReentryState: null
+      qualificationState: null
+    });
+  }
+  const { projectionRef, projectionSha256, ...core } = value;
+  if (!/^[0-9a-f]{64}$/u.test(projectionSha256 ?? '') ||
+      semanticHash(core) !== projectionSha256 ||
+      projectionRef !== `projection.vexlife.companion-availability.${projectionSha256.slice(0, 32)}` ||
+      value.effectAuthorityGranted !== false ||
+      value.rendererAuthorityGranted !== false ||
+      value.modelIdentityAuthorityGranted !== false ||
+      value.processAuthorityGranted !== false ||
+      value.conversationAuthorityGranted !== false ||
+      !Array.isArray(value.sourceRefs) ||
+      value.sourceRefs.some((ref) => typeof ref !== 'string' || ref.length === 0) ||
+      new Set(value.sourceRefs).size !== value.sourceRefs.length) {
+    return Object.freeze({
+      valid: false,
+      reasonCode: 'COMPANION_AVAILABILITY_INVALID',
+      projectionRef: null,
+      sourceRefs: Object.freeze([]),
+      companionLineageRef: null,
+      runtimeAdapterRef: null,
+      runtimeObservationRef: null,
+      availabilityState: null,
+      recoveryClass: null,
+      availabilityReasonCode: null,
+      runtimeOwnershipState: null,
+      runtimeState: null,
+      qualificationState: null
+    });
+  }
+  if (value.companionLineageRef !== promptLineageRef) {
+    return Object.freeze({
+      valid: false,
+      reasonCode: 'COMPANION_IDENTITY_MISMATCH',
+      projectionRef,
+      sourceRefs: Object.freeze([...value.sourceRefs]),
+      companionLineageRef: value.companionLineageRef ?? null,
+      runtimeAdapterRef: value.runtimeAdapterRef ?? null,
+      runtimeObservationRef: value.runtimeObservationRef ?? null,
+      availabilityState: value.availabilityState ?? null,
+      recoveryClass: value.recoveryClass ?? null,
+      availabilityReasonCode: value.reasonCode ?? null,
+      runtimeOwnershipState: value.runtimeOwnershipState ?? null,
+      runtimeState: value.runtimeState ?? null,
+      qualificationState: value.qualificationState ?? null
     });
   }
   return Object.freeze({
-    valid: typeof value.observationRef === 'string' && value.observationRef.length > 0,
-    observationRef: typeof value.observationRef === 'string' ? value.observationRef : null,
-    adapterRef: typeof value.adapterRef === 'string' ? value.adapterRef : null,
-    currentness: typeof value.currentness === 'string' ? value.currentness : null,
-    runtimeOwnershipState: typeof value.runtimeOwnershipState === 'string' ? value.runtimeOwnershipState : null,
-    runtimeState: typeof value.runtimeState === 'string' ? value.runtimeState : null,
-    qualificationState: typeof value.qualificationState === 'string' ? value.qualificationState : null,
-    safeReentryState: typeof value.safeReentryState === 'string' ? value.safeReentryState : null
+    valid: true,
+    reasonCode: null,
+    projectionRef,
+    sourceRefs: Object.freeze([...value.sourceRefs]),
+    companionLineageRef: value.companionLineageRef,
+    runtimeAdapterRef: value.runtimeAdapterRef,
+    runtimeObservationRef: value.runtimeObservationRef,
+    availabilityState: value.availabilityState,
+    recoveryClass: value.recoveryClass,
+    availabilityReasonCode: value.reasonCode,
+    runtimeOwnershipState: value.runtimeOwnershipState,
+    runtimeState: value.runtimeState,
+    qualificationState: value.qualificationState
   });
 }
 
@@ -227,11 +294,11 @@ function applyHysteresis(baseState, headroom, reserve, previous) {
 
 export function projectResourceContextPressure({
   promptContextMaterialization,
-  runtimeObservation = null,
+  companionAvailability = null,
   previousProjection = null
 } = {}) {
   const prompt = canonicalPromptReceipt(promptContextMaterialization);
-  const runtime = runtimeBinding(runtimeObservation);
+  const runtime = companionAvailabilityBinding(companionAvailability, prompt.lineageRef);
   const reasons = [];
   const inputHeadroomTokens = prompt.inputBudget - prompt.used;
   const leaseAgeMs = prompt.observedMs - prompt.formedMs;
@@ -243,9 +310,9 @@ export function projectResourceContextPressure({
   if (prompt.leaseLifecycle !== 'ACTIVE') reasons.push('CONTEXT_LEASE_NOT_ACTIVE');
   if (leaseRemainingMs <= 0) reasons.push('CONTEXT_LEASE_EXPIRED');
 
-  if (!runtime.valid) reasons.push('RUNTIME_OBSERVATION_UNAVAILABLE');
+  if (!runtime.valid) reasons.push(runtime.reasonCode);
   else {
-    if (runtime.currentness !== 'CURRENT') reasons.push('RUNTIME_OBSERVATION_NOT_CURRENT');
+    if (runtime.availabilityState !== 'READY') reasons.push('COMPANION_AVAILABILITY_NOT_READY');
     if (runtime.runtimeOwnershipState !== 'EXACT_OWNED') reasons.push('RUNTIME_OWNERSHIP_NOT_EXACT');
     if (runtime.runtimeState !== 'HEALTHY') reasons.push('RUNTIME_NOT_HEALTHY');
     if (runtime.qualificationState !== 'CURRENT') reasons.push('RUNTIME_QUALIFICATION_NOT_CURRENT');
@@ -284,7 +351,8 @@ export function projectResourceContextPressure({
     prompt.leaseRef,
     prompt.continuityProjectionRef,
     prompt.memoryContextRefOrNull,
-    runtime.observationRef
+    runtime.projectionRef,
+    ...runtime.sourceRefs
   ].filter(Boolean).sort();
 
   const core = {
@@ -323,14 +391,16 @@ export function projectResourceContextPressure({
       remainingMs: Math.max(0, leaseRemainingMs)
     },
     runtime: {
-      observationAvailable: runtime.valid,
-      observationRefOrNull: runtime.observationRef,
-      adapterRefOrNull: runtime.adapterRef,
-      currentnessOrNull: runtime.currentness,
+      availabilityCurrent: runtime.valid,
+      availabilityProjectionRefOrNull: runtime.projectionRef,
+      availabilityStateOrNull: runtime.availabilityState,
+      recoveryClassOrNull: runtime.recoveryClass,
+      availabilityReasonCodeOrNull: runtime.availabilityReasonCode,
+      runtimeObservationRefOrNull: runtime.runtimeObservationRef,
+      adapterRefOrNull: runtime.runtimeAdapterRef,
       runtimeOwnershipStateOrNull: runtime.runtimeOwnershipState,
       runtimeStateOrNull: runtime.runtimeState,
-      qualificationStateOrNull: runtime.qualificationState,
-      safeReentryStateOrNull: runtime.safeReentryState
+      qualificationStateOrNull: runtime.qualificationState
     },
     prior: {
       pressureRefOrNull: previous?.pressureRef ?? null,
@@ -390,12 +460,12 @@ export function createResourceContextPressureTracker({
     fail('resource-context pressure tracker maxEntries must be between 1 and 1024');
   }
   const current = new Map();
-  const project = ({ scopeRef, promptContextMaterialization, runtimeObservation = null } = {}) => {
+  const project = ({ scopeRef, promptContextMaterialization, companionAvailability = null } = {}) => {
     nonempty(scopeRef, 'scopeRef');
     const previousProjection = current.get(scopeRef) ?? null;
     const projection = projectResourceContextPressure({
       promptContextMaterialization,
-      runtimeObservation,
+      companionAvailability,
       previousProjection
     });
     current.delete(scopeRef);

@@ -1732,16 +1732,15 @@ export function createVexLifeBrowserServer({
     if (
       result?.state !== 'TURN_COMPLETED' ||
       result.recoveredCompletedTurn === true ||
-      !result.promptContextMaterialization ||
-      typeof resolveCompanionRuntimeObservation !== 'function'
+      !result.promptContextMaterialization
     ) return result;
-    let runtimeObservation = null;
-    try { runtimeObservation = await resolveCompanionRuntimeObservation(); }
-    catch { runtimeObservation = null; }
+    let companionAvailability = null;
+    try { companionAvailability = await resolveCompanionAvailability(); }
+    catch { companionAvailability = null; }
     const pressure = resourceContextPressureTracker.project({
       scopeRef: JSON.stringify([input.projectRef, input.threadRef, input.channelRef]),
       promptContextMaterialization: result.promptContextMaterialization,
-      runtimeObservation
+      companionAvailability
     });
     return { ...result, resourceContextPressure: pressure };
   };
