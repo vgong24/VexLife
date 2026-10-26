@@ -5,8 +5,8 @@
     {
       "path": "src/core/browser-living-journal-memory-bridge.mjs",
       "mode": "100644",
-      "bytes": 14603,
-      "sha256": "c176de896359ace5fb4f6368745ac44b1642eb4d387390e313205fc79edc971a"
+      "bytes": 14749,
+      "sha256": "041a98f88ae866c8409b5bd42dd218f528df94cdbc9f55bed57f12fa1d08b5e5"
     },
     {
       "path": "src/core/context-lease.mjs",

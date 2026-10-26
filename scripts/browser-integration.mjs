@@ -664,7 +664,9 @@ if (playwright) {
   }, null, 2)}\n`);
   fs.writeFileSync(path.join(integrationHome, 'devices', `${integrationDeviceRef}.json`), `${JSON.stringify({
     deviceRef: integrationDeviceRef,
-    companionLineageRef: integrationLineageRef
+    companionLineageRef: integrationLineageRef,
+    personRef: 'person.vexlife.owner',
+    createdAt: '2026-09-28T00:00:00.000Z'
   }, null, 2)}\n`);
   seedFcf03ProgressFixture(integrationHome);
 

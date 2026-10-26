@@ -147,7 +147,7 @@ export const guideVexSuite = Object.freeze({
     await delay(20);
     checks.push('VREG-01/VREG-02 non-default expanded geometry minimizes to one compact outer vessel with body/composer absent');
     checks.push('VREG-03/VREG-04 compact projection preserves expanded preference and exact summon/restore recovery');
-    checks.push('VREG-07 minimize is keyboard/focus safe; existing Q3 proof preserves viewport/reduced-motion/close semantics');
+    checks.push('VREG-07 minimize is keyboard/focus safe; existing Q3 proof preserves viewport/reduced-motion/persistent-Conversation-entry semantics');
 
     document.querySelector('#guideMinimize').click();
     await delay(20);
@@ -162,14 +162,25 @@ export const guideVexSuite = Object.freeze({
     checks.push('VREG-H01/VREG-H02 regression witness restores its pre-witness expanded geometry and hands unchanged minimized state back to Q3');
 
     app.guide.setAttentionSource('element.terrain.reset');
-    assert(app.state.guideMinimized===true && app.guide.currentPresenceState()==='ATTENTIVE', 'Q3-05 attention overrode explicit minimize');
-    document.querySelector('#guideClose').click();
+    assert(app.state.guideMinimized===true && !vex.hidden && app.guide.currentPresenceState()==='ATTENTIVE', 'Q3-05 attention overrode explicit minimize');
+    const persistentConversationEntry = document.querySelector('#guideClose');
+    assert(
+      persistentConversationEntry?.dataset.vexConversationEntry==='true'
+      && persistentConversationEntry.textContent==='↗'
+      && persistentConversationEntry.getAttribute('aria-controls')==='evolutionActiveSurfaceHost',
+      'Q3-05 accepted V1 persistent Vex Conversation entry is not projected on the vessel'
+    );
     app.guide.setAttentionSource('element.terrain.reset');
-    assert(vex.hidden && app.guide.currentPresenceState()===null, 'Q3-05 attention reopened explicitly dismissed Vex');
+    assert(
+      app.state.guideMinimized===true
+      && !vex.hidden
+      && app.guide.currentPresenceState()==='ATTENTIVE',
+      'Q3-05 automatic attention escaped explicit minimize after persistent Conversation-entry currentization'
+    );
     app.guide.summon();
     await delay(20);
-    assert(!vex.hidden && !app.state.guideMinimized && app.guide.currentPresenceState()==='SUMMONED', 'Q3-05 later explicit summon did not reverse prior dismiss');
-    checks.push('Q3-05 explicit minimize/dismiss outranks automatic attention until a later explicit human summon');
+    assert(!vex.hidden && !app.state.guideMinimized && app.guide.currentPresenceState()==='SUMMONED', 'Q3-05 later explicit summon did not restore the persistent Vex vessel');
+    checks.push('Q3-05 explicit minimize outranks automatic attention; persistent Vex Conversation entry replaces obsolete dismiss semantics; later explicit summon expands the same vessel');
 
     app.guide.avoidDeclaredControls();
     const preferred = app.guide.persistPreferredGeometry();

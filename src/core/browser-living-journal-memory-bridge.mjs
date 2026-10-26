@@ -265,7 +265,12 @@ function publicFailureFor(error) {
 }
 
 export function createBrowserLivingJournalMemoryBridge({ identity }) {
-  const serverIdentity = validateBrowserLivingJournalMemoryIdentity(identity);
+  const serverIdentity = validateBrowserLivingJournalMemoryIdentity({
+    home: identity?.home,
+    homeRef: identity?.homeRef,
+    deviceRef: identity?.deviceRef,
+    companionLineageRef: identity?.companionLineageRef
+  });
 
   function read(input) {
     const request = validateBrowserLivingJournalMemoryRequest(input);
