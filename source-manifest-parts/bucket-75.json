@@ -27,6 +27,12 @@
       "sha256": "acabc315d4c926d4eb97b4a3561c391c524e98a11fd04871e89d47266f1533ba"
     },
     {
+      "path": "test/continuity-rollover.test.mjs",
+      "mode": "100644",
+      "bytes": 15059,
+      "sha256": "6419c6888a16f319b35a9631a68f8a1af53110cc90c9a99dc27cd5cbd97bb193"
+    },
+    {
       "path": "test/heretic-runtime-link.test.mjs",
       "mode": "100644",
       "bytes": 10129,
