@@ -38,6 +38,7 @@ import {
 import { createBrowserPromptContextRuntime } from '../src/core/browser-prompt-context-runtime.mjs';
 import { createResourceContextPressureTracker } from '../src/core/resource-context-pressure.mjs';
 import { formContinuityRolloverPlan } from '../src/core/continuity-rollover.mjs';
+import { createBrowserWorkingContinuityOwner } from '../src/core/browser-working-continuity-owner.mjs';
 import {
   BROWSER_LIVING_JOURNAL_ARCHIVE_API_PATH,
   BROWSER_LIVING_JOURNAL_MEMORY_API_PATH,
@@ -1696,6 +1697,12 @@ export function createVexLifeBrowserServer({
   resolveCompanionRuntimeObservation = null,
   companionAvailabilityCompiler = compileCompanionAvailability,
   resourceContextPressureTrackerFactory = createResourceContextPressureTracker,
+  workingContinuityOwnerFactory = (identity) => createBrowserWorkingContinuityOwner({
+    home: identity.home,
+    homeRef: identity.homeRef,
+    deviceRef: identity.deviceRef,
+    companionLineageRef: identity.companionLineageRef
+  }),
   createLivingJournalMemoryBridge = (identity) => createBrowserLivingJournalMemoryBridge({ identity }),
   familyConversationHome = home,
   resolveFamilyConversationAuthority = null,
@@ -1729,6 +1736,42 @@ export function createVexLifeBrowserServer({
   if (!resourceContextPressureTracker || typeof resourceContextPressureTracker.project !== 'function') {
     throw new TypeError('Resource/context pressure tracker must expose project(input)');
   }
+  if (typeof workingContinuityOwnerFactory !== 'function') {
+    throw new TypeError('Working continuity owner factory must be one function');
+  }
+  let workingContinuityBinding = null;
+  const currentWorkingContinuityOwner = () => {
+    const identity = resolveHomeIdentity();
+    if (!identity || typeof identity.home !== 'string' || !identity.homeRef || !identity.deviceRef || !identity.companionLineageRef) {
+      throw new TypeError('Working continuity owner requires one exact current Vex Home identity');
+    }
+    if (workingContinuityBinding === null) {
+      const owner = workingContinuityOwnerFactory(identity);
+      if (!owner || typeof owner.readCurrent !== 'function' || typeof owner.commitPlan !== 'function') {
+        throw new TypeError('Working continuity owner must expose readCurrent and commitPlan');
+      }
+      workingContinuityBinding = Object.freeze({
+        identity: Object.freeze({
+          home: identity.home,
+          homeRef: identity.homeRef,
+          deviceRef: identity.deviceRef,
+          companionLineageRef: identity.companionLineageRef
+        }),
+        owner
+      });
+      return owner;
+    }
+    const bound = workingContinuityBinding.identity;
+    if (
+      identity.home !== bound.home ||
+      identity.homeRef !== bound.homeRef ||
+      identity.deviceRef !== bound.deviceRef ||
+      identity.companionLineageRef !== bound.companionLineageRef
+    ) {
+      throw new TypeError('Working continuity Vex Home identity changed after owner binding');
+    }
+    return workingContinuityBinding.owner;
+  };
   const attachResourceContextPressure = async (result, input) => {
     if (!result || typeof result !== 'object' || Array.isArray(result)) return result;
     const { promptContextContinuityProjection = null, ...publicResult } = result;
@@ -1754,11 +1797,27 @@ export function createVexLifeBrowserServer({
       promptContextMaterialization: publicResult.promptContextMaterialization,
       companionAvailability
     });
+    const workingContinuityOwner = currentWorkingContinuityOwner();
+    const currentWorkingContinuity = workingContinuityOwner.readCurrent({ threadRef: input.threadRef });
+    if (!currentWorkingContinuity || !['ABSENT', 'CURRENT'].includes(currentWorkingContinuity.state)) {
+      throw new TypeError('Working continuity owner returned an unsupported currentness state');
+    }
     const continuityRolloverPlan = formContinuityRolloverPlan({
       resourceContextPressure: pressure,
-      continuityStream: promptContextContinuityProjection
+      continuityStream: promptContextContinuityProjection,
+      priorWorkingCheckpoint: currentWorkingContinuity.state === 'CURRENT'
+        ? currentWorkingContinuity.checkpoint
+        : null
     });
-    return { ...publicResult, resourceContextPressure: pressure, continuityRolloverPlan };
+    const workingContinuityCommit = ['CHECKPOINT_READY', 'ROLLOVER_READY'].includes(continuityRolloverPlan.state)
+      ? workingContinuityOwner.commitPlan({ plan: continuityRolloverPlan })
+      : null;
+    return {
+      ...publicResult,
+      resourceContextPressure: pressure,
+      continuityRolloverPlan,
+      workingContinuityCommit
+    };
   };
   if (typeof serverFamilyConversationCapabilityFactory !== 'function') {
     throw new TypeError('serverFamilyConversationCapabilityFactory must be a function');

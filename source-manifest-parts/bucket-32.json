@@ -15,6 +15,12 @@
       "sha256": "9978d9c1354ae3ede8c44056ddc62aa283fa7a804fa4e0c960ba8030e3b0385a"
     },
     {
+      "path": "src/core/browser-working-continuity-owner.mjs",
+      "mode": "100644",
+      "bytes": 21777,
+      "sha256": "6cb6d48f2dfb7e62976da74b82b3319c91ad9bf359ca75f1f927a7dea76e76f9"
+    },
+    {
       "path": "src/core/heretic-persistent-runtime-owner.mjs",
       "mode": "100644",
       "bytes": 29730,

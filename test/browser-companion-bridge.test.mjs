@@ -1056,8 +1056,16 @@ test('browser server composes V3 pressure into the accepted effect-free V4 rollo
   assert.match(serverCore, /resourceContextPressure: pressure/u);
   assert.match(serverCore, /continuityStream: promptContextContinuityProjection/u);
   assert.match(serverCore, /continuityRolloverPlan/u);
+  assert.match(serverCore, /createBrowserWorkingContinuityOwner/u);
+  assert.match(serverCore, /workingContinuityOwnerFactory/u);
+  assert.match(serverCore, /currentWorkingContinuityOwner/u);
+  assert.match(serverCore, /readCurrent\(\{ threadRef: input\.threadRef \}\)/u);
+  assert.match(serverCore, /priorWorkingCheckpoint: currentWorkingContinuity\.state === 'CURRENT'/u);
+  assert.match(serverCore, /commitPlan\(\{ plan: continuityRolloverPlan \}\)/u);
+  assert.match(serverCore, /workingContinuityCommit/u);
   assert.match(serverCore, /result = await attachResourceContextPressure\(result, input\)/u);
   assert.doesNotMatch(serverCore, /return \{ \.\.\.result, resourceContextPressure/u);
+  assert.doesNotMatch(serverCore, /workingContinuityCommit[\s\S]{0,220}successorContextAuthorization/u);
   assert.doesNotMatch(serverCore, /continuityRolloverPlan[\s\S]{0,180}(?:process\.kill|memoryPromot|successorContextAuthorization)/u);
 });
 
