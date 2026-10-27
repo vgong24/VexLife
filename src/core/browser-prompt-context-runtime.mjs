@@ -1,6 +1,7 @@
 import { createContextLease } from './context-lease.mjs';
 import { LIVED_COMPANION_OUTPUT_TOKEN_LIMIT } from './lived-companion-connection.mjs';
 import { assertCurrentLease } from './scheduler-runtime-trust.mjs';
+import { HOST_RESOURCE_LEASE_OBSERVATION_SCHEMA } from './host-resource-stewardship.mjs';
 import { semanticHash } from './utils.mjs';
 import { projectLivingJournalMemory } from './living-journal-memory-projection.mjs';
 import { createBrowserWorkingContinuityOwner } from './browser-working-continuity-owner.mjs';
@@ -8,6 +9,9 @@ import {
   LivedCompanionError,
   readCurrentLivedCompanionCompletedTurn
 } from './lived-companion.mjs';
+
+export const BROWSER_PROMPT_CONTEXT_RUNTIME_AUTHORITY_REF =
+  'authority.vexlife.browser-prompt-context-runtime';
 
 const EFFECTS = Object.freeze({
   homeMutated: false,
@@ -459,12 +463,66 @@ function stateKey(context) {
   return safeRef(context.currentRequestEventRef, 'currentRequestEventRef');
 }
 
+export function projectBrowserPromptHostResourceLeaseObservation({
+  resourceRef,
+  activeLeases = [],
+  observedAt,
+  authorityRef = BROWSER_PROMPT_CONTEXT_RUNTIME_AUTHORITY_REF
+} = {}) {
+  safeRef(resourceRef, 'host-resource lease resourceRef');
+  safeRef(authorityRef, 'host-resource lease authorityRef');
+  canonicalTimestamp(observedAt, 'host-resource lease observedAt');
+  if (!Array.isArray(activeLeases)) fail('host-resource activeLeases must be one array');
+  const currentLeases = [];
+  for (const lease of activeLeases) {
+    try {
+      assertCurrentLease(lease, {
+        label: 'browser prompt host-resource',
+        observedAt,
+        schedulerGeneration: lease?.schedulerGeneration,
+        runtimeSnapshotFingerprint: lease?.runtimeSnapshotFingerprint
+      });
+      currentLeases.push(lease);
+    } catch {
+      // Expired or stale in-memory selections are not active lease authority.
+    }
+  }
+  const leaseRefs = [...new Set(currentLeases.map((lease) => safeRef(lease.leaseRef, 'host-resource active leaseRef')))].sort();
+  const evidenceRef = `evidence.vexlife.browser-prompt-context.host-resource-lease.${semanticHash({
+    authorityRef,
+    resourceRef,
+    observedAt,
+    leaseRefs
+  }).slice(0, 32)}`;
+  const state = leaseRefs.length ? 'ACTIVE' : 'NONE';
+  const leaseRefOrNull = leaseRefs.length === 0
+    ? null
+    : leaseRefs.length === 1
+      ? leaseRefs[0]
+      : `lease-set.vexlife.browser-prompt-context.${semanticHash(leaseRefs).slice(0, 32)}`;
+  const core = {
+    schemaVersion: HOST_RESOURCE_LEASE_OBSERVATION_SCHEMA,
+    truthClass: 'SOURCE_BOUND_HOST_RESOURCE_LEASE_OBSERVATION',
+    resourceRef,
+    state,
+    currentness: 'CURRENT',
+    leaseRefOrNull,
+    sourceRefs: [authorityRef, evidenceRef, ...leaseRefs].sort()
+  };
+  const semanticFingerprint = semanticHash(core);
+  return Object.freeze({
+    ...core,
+    leaseObservationRef: `observation.vexlife.host-resource-lease.${semanticFingerprint.slice(0, 32)}`,
+    semanticFingerprint
+  });
+}
+
 export function createBrowserPromptContextRuntime({
   home,
   homeRef = null,
   deviceRef = null,
   companionLineageRef,
-  authorityRef = 'authority.vexlife.browser-prompt-context-runtime',
+  authorityRef = BROWSER_PROMPT_CONTEXT_RUNTIME_AUTHORITY_REF,
   leaseTtlMs = 60_000,
   now = () => new Date().toISOString(),
   workingContinuityOwner = null
@@ -760,10 +818,33 @@ export function createBrowserPromptContextRuntime({
     }
   };
 
+  const hostResourceLeaseObservation = ({ resourceRef, observedAt = now() } = {}) => {
+    canonicalTimestamp(observedAt, 'host-resource lease owner observedAt');
+    for (const [key, formed] of [...active.entries()]) {
+      try {
+        assertCurrentLease(formed.lease, {
+          label: 'browser prompt host-resource',
+          observedAt,
+          schedulerGeneration: formed.lease.schedulerGeneration,
+          runtimeSnapshotFingerprint: formed.lease.runtimeSnapshotFingerprint
+        });
+      } catch {
+        releaseSelection(key, formed);
+      }
+    }
+    return projectBrowserPromptHostResourceLeaseObservation({
+      resourceRef,
+      activeLeases: [...active.values()].map((formed) => formed.lease),
+      observedAt,
+      authorityRef
+    });
+  };
+
   return Object.freeze({
     authorityRef,
     promptContextResolver,
     promptContextAuthorityVerifier,
+    hostResourceLeaseObservation,
     activeSelectionCount: () => active.size
   });
 }

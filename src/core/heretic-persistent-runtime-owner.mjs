@@ -4,6 +4,7 @@ import net from 'node:net';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { semanticHash } from './utils.mjs';
 
 export const HERETIC_PERSISTENT_RUNTIME_BINDING_SCHEMA =
   'vexlife.heretic-persistent-runtime-owner-binding/v1';
@@ -15,6 +16,11 @@ export const HERETIC_PERSISTENT_RUNTIME_QUALIFIED =
   'PERSISTENT_MLX_RUNTIME_QUALIFIED';
 export const HERETIC_RUNTIME_OWNER_MODULE_PATH =
   'src/core/heretic-persistent-runtime-owner.mjs';
+export const HERETIC_HOST_RESOURCE_REF = 'resource.vexlife.heretic.persistent-runtime';
+export const HERETIC_HOST_RESOURCE_CLASS = 'HERETIC_PERSISTENT_MLX_RUNTIME';
+export const HERETIC_PERSISTENT_RUNTIME_OWNER_REF = 'owner.vexlife.heretic-persistent-runtime.001';
+export const HERETIC_PERSISTENT_RUNTIME_STOP_ACTION_REF =
+  'action.vexlife.heretic-persistent-runtime.stop-exact-owned-runtime';
 
 const OWNER_FILE = fileURLToPath(import.meta.url);
 const REF_RE = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/u;
@@ -395,6 +401,150 @@ function defaultDeps(overrides = {}) {
     nowMs: overrides.nowMs ?? (() => Date.now()),
     cancellationRequested: overrides.cancellationRequested ?? (() => false),
   };
+}
+
+function hostResourceObservation({
+  ownershipState,
+  lifecycleState,
+  lifecycleEvidenceRefOrNull = null,
+  ownershipProof = null,
+  sourceRefs
+}) {
+  const core = {
+    schemaVersion: 'vexlife.host-resource-observation/v1',
+    truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+    resourceRef: HERETIC_HOST_RESOURCE_REF,
+    resourceClass: HERETIC_HOST_RESOURCE_CLASS,
+    ownershipState,
+    lifecycleState,
+    lifecycleEvidenceRefOrNull,
+    currentness: 'CURRENT',
+    ownershipProof,
+    sourceRefs: [...new Set(sourceRefs)].sort()
+  };
+  const semanticFingerprint = semanticHash(core);
+  return Object.freeze({
+    ...core,
+    resourceObservationRef: `observation.vexlife.host-resource.${semanticFingerprint.slice(0, 32)}`,
+    semanticFingerprint
+  });
+}
+
+function bindingFromRuntimeReceipt(receipt, receiptPath) {
+  const port = Number(new URL(receipt.endpoint).port);
+  return {
+    schemaVersion: HERETIC_PERSISTENT_RUNTIME_BINDING_SCHEMA,
+    authorityRef: receipt.authorityRef,
+    modelRef: receipt.modelRef,
+    modelProfileRef: receipt.modelProfileRef,
+    artifactRef: receipt.artifactRef,
+    artifactCustodyEvidenceRef: receipt.artifactCustodyEvidenceRef,
+    artifactContentSetSha256: receipt.artifactContentSetSha256,
+    runtimeAdapterRef: receipt.runtimeAdapterRef,
+    runtimeClass: receipt.runtimeClass,
+    hostExecutionProfileRef: receipt.hostExecutionProfileRef,
+    pythonVersion: receipt.pythonVersion,
+    mlxLmVersion: receipt.mlxLmVersion,
+    trainerSourceCommit: receipt.trainerSourceCommit,
+    modelPath: receipt.modelPath,
+    pythonPath: receipt.pythonPath,
+    pythonEnvironmentRoot: receipt.pythonEnvironmentRoot,
+    port,
+    receiptPath,
+    sourceIdentity: receipt.sourceIdentity
+  };
+}
+
+export function observeHereticPersistentRuntimeResource({ receiptPath, hooks = {} } = {}) {
+  const absoluteReceipt = absolute(receiptPath, 'receiptPath');
+  const deps = defaultDeps(hooks);
+  const currentSource = currentHereticRuntimeOwnerSourceIdentity();
+  const ownerSourceRef = `source.vexlife.heretic-persistent-runtime-owner.${currentSource.moduleSha256}`;
+  const receipt = deps.readReceipt(absoluteReceipt);
+  if (!receipt) {
+    return hostResourceObservation({
+      ownershipState: 'UNOWNED',
+      lifecycleState: 'UNKNOWN',
+      sourceRefs: [ownerSourceRef]
+    });
+  }
+  const receiptRef = typeof receipt.receiptRef === 'string' && REF_RE.test(receipt.receiptRef)
+    ? receipt.receiptRef
+    : null;
+  if (!receiptRef) {
+    return hostResourceObservation({
+      ownershipState: 'UNKNOWN',
+      lifecycleState: 'UNKNOWN',
+      sourceRefs: [ownerSourceRef]
+    });
+  }
+
+  let binding;
+  let args;
+  try {
+    binding = validateHereticPersistentRuntimeBinding(
+      bindingFromRuntimeReceipt(receipt, absoluteReceipt),
+      { requireCurrentSource: false }
+    );
+    args = hereticPersistentRuntimeServerArgs(binding, { requireCurrentSource: false });
+  } catch {
+    return hostResourceObservation({
+      ownershipState: 'UNKNOWN',
+      lifecycleState: 'UNKNOWN',
+      sourceRefs: [ownerSourceRef, receiptRef]
+    });
+  }
+  if (!receiptBinds(binding, receipt, args, { allowStarting: true, requireSourceSha: false })) {
+    return hostResourceObservation({
+      ownershipState: 'AMBIGUOUS',
+      lifecycleState: 'UNKNOWN',
+      sourceRefs: [ownerSourceRef, receiptRef]
+    });
+  }
+
+  const pid = Number(receipt.runtime?.pid);
+  if (!Number.isInteger(pid) || pid <= 0 || !deps.processAlive(pid)) {
+    const evidence = `evidence.vexlife.heretic.not-live.${semanticHash({ receiptRef, pid: Number.isInteger(pid) ? pid : null }).slice(0, 32)}`;
+    return hostResourceObservation({
+      ownershipState: 'UNOWNED',
+      lifecycleState: 'ABANDONED',
+      lifecycleEvidenceRefOrNull: evidence,
+      sourceRefs: [ownerSourceRef, receiptRef]
+    });
+  }
+
+  const identity = deps.processIdentity({ pid, args });
+  if (!identity?.exactOwnedDetachedGroup || identity.pgid !== receipt.runtime?.processGroupId) {
+    return hostResourceObservation({
+      ownershipState: 'AMBIGUOUS',
+      lifecycleState: 'UNKNOWN',
+      sourceRefs: [ownerSourceRef, receiptRef]
+    });
+  }
+
+  const sourceCurrent = receipt.sourceIdentity.moduleSha256 === currentSource.moduleSha256;
+  const lifecycleState = sourceCurrent || receipt.state === HERETIC_PERSISTENT_RUNTIME_STARTING
+    ? 'CURRENT'
+    : 'STALE';
+  const lifecycleEvidenceRefOrNull = lifecycleState === 'STALE'
+    ? `evidence.vexlife.heretic.source-stale.${semanticHash({ prior: receipt.sourceIdentity.moduleSha256, current: currentSource.moduleSha256 }).slice(0, 32)}`
+    : null;
+  const executableIdentityRef = `executable.vexlife.heretic.python.${sha256(Buffer.from(receipt.pythonPath)).slice(0, 32)}`;
+  return hostResourceObservation({
+    ownershipState: 'EXACT_VEX_OWNED',
+    lifecycleState,
+    lifecycleEvidenceRefOrNull,
+    ownershipProof: {
+      currentness: 'CURRENT',
+      ownerReceiptRef: receiptRef,
+      runtimeIdentityRef: `runtime.vexlife.heretic.process.${pid}`,
+      executableIdentityRef,
+      processGroupIdentityRef: `process-group.vexlife.heretic.${identity.pgid}`,
+      pidMatchOnly: false,
+      exactOwnedProcessInstance: true
+    },
+    sourceRefs: [ownerSourceRef, receiptRef]
+  });
 }
 
 export async function startOrReuseHereticPersistentRuntime({ binding: input, hooks = {} }) {
