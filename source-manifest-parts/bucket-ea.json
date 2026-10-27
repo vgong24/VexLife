@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "vexlife.source-manifest-part/v1",
+  "bucketId": "ea",
+  "files": [
+    {
+      "path": "src/core/host-resource-stewardship.mjs",
+      "mode": "100644",
+      "bytes": 12629,
+      "sha256": "142e25b7f5deed8f9831721786d1328133b4650337b8d64daabece9a3def16a5"
+    }
+  ]
+}
