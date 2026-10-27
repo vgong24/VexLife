@@ -8,6 +8,7 @@ import {
   BrowserWorkingContinuityOwnerError,
   createBrowserWorkingContinuityOwner
 } from '../src/core/browser-working-continuity-owner.mjs';
+import { createContextLease } from '../src/core/context-lease.mjs';
 import {
   CONTINUITY_STREAM_ADAPTER_ALL_FALSE_EFFECTS,
   CONTINUITY_STREAM_ADAPTER_SCHEMA
@@ -434,6 +435,168 @@ test('active writer recovery is refused and lock-release failure cannot be repor
     assert.equal(fs.existsSync(lockPath), true);
     assert.equal(effectOwner.readCurrent({ threadRef: THREAD }).state, 'CURRENT');
     fs.unlinkSync(lockPath);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('ROLLOVER_COMMITTED admits one exact successor request and records one semantic Context Lease without mutating checkpoint head', () => {
+  const fixture = makeHome();
+  try {
+    const effectOwner = owner(fixture.home, clock(
+      '2026-10-26T21:00:00.000Z',
+      '2026-10-26T21:00:00.100Z',
+      '2026-10-26T21:00:01.000Z',
+      '2026-10-26T21:00:01.100Z',
+      '2026-10-26T21:00:02.000Z',
+      '2026-10-26T21:00:02.100Z'
+    ));
+    const firstPlan = formContinuityRolloverPlan({
+      resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED', 'a'),
+      continuityStream: continuity('a')
+    });
+    const first = effectOwner.commitPlan({ plan: firstPlan });
+    const rolloverPlan = formContinuityRolloverPlan({
+      resourceContextPressure: pressure('ROLLOVER_REQUIRED', 'b'),
+      continuityStream: continuity('b'),
+      priorWorkingCheckpoint: first.checkpoint
+    });
+    const rollover = effectOwner.commitPlan({ plan: rolloverPlan });
+    const headBefore = effectOwner.readCurrent({ threadRef: THREAD }).head;
+    const currentRequestEventBinding = Object.freeze({
+      eventRef: 'event.vexlife.successor.request.001',
+      eventHash: '7'.repeat(64),
+      sequence: 7
+    });
+    const claimed = effectOwner.claimSuccessorContext({
+      threadRef: THREAD,
+      priorConversationHeadSha256: '8'.repeat(64),
+      priorRequestEventRef: rollover.checkpoint.workingSet.cursorEventRef,
+      currentRequestEventBinding
+    });
+    assert.equal(claimed.state, 'CLAIMED');
+    assert.equal(claimed.successorClaim.effects.successorContextLeaseIssued, false);
+    assert.equal(claimed.successorClaim.checkpointRef, rollover.checkpoint.checkpointRef);
+
+    const selectedSourceRefs = [
+      rollover.checkpoint.checkpointRef,
+      rollover.commitReceipt.commitReceiptRef,
+      claimed.successorClaim.successorClaimRef
+    ].sort();
+    const lease = createContextLease({
+      leaseRef: 'lease.vexlife.browser-prompt-context.successor-test',
+      workerRef: 'worker.vexlife.browser-prompt-context-runtime',
+      workNodeRef: 'work-node.vexlife.browser-prompt-context.successor-test',
+      graphFingerprint: semanticHash({ class: 'graph', selectedSourceRefs }),
+      trustSnapshotFingerprint: semanticHash({ class: 'trust', selectedSourceRefs }),
+      runtimeSnapshotFingerprint: semanticHash({ class: 'runtime', selectedSourceRefs }),
+      schedulerGeneration: currentRequestEventBinding.sequence,
+      resourceLeaseFingerprint: semanticHash({ class: 'resource', selectedSourceRefs }),
+      capabilityLeaseFingerprint: semanticHash({ class: 'capability', selectedSourceRefs }),
+      effectLeaseFingerprint: semanticHash({ class: 'effect', selectedSourceRefs }),
+      cancellationTokenRef: 'cancellation.vexlife.browser-prompt-context.successor-test',
+      foundationKernelRef: 'foundation.vexlife.browser-prompt-context-runtime',
+      roleFrameRef: 'role-frame.vexlife.browser-prompt-context-runtime',
+      intentFrameRef: 'intent-frame.vexlife.browser-prompt-context.successor-test',
+      selectedAtlasRefs: [],
+      selectedSourceRefs,
+      applicableCultureRefs: [],
+      applicableLessonRefs: [],
+      applicableReleaseRefs: [],
+      inputTokenEstimate: 192000,
+      reservedOutputTokens: 16000,
+      hardTokenLimit: 208000,
+      formedAt: '2026-10-26T21:00:03.000Z',
+      expiresAt: '2026-10-26T21:01:03.000Z',
+      observedAt: '2026-10-26T21:00:03.000Z',
+      currentness: 'CURRENT',
+      lifecycle: 'ACTIVE',
+      checkpointReturnRef: rollover.checkpoint.checkpointRef
+    }).lease;
+    const recorded = effectOwner.recordSuccessorContextLease({
+      threadRef: THREAD,
+      successorClaimRef: claimed.successorClaim.successorClaimRef,
+      successorClaimFingerprint: claimed.successorClaim.semanticFingerprint,
+      contextLease: lease
+    });
+    assert.equal(recorded.state, 'RECORDED');
+    assert.equal(recorded.issuanceReceipt.effects.successorContextLeaseIssued, true);
+    assert.equal(recorded.issuanceReceipt.effects.checkpointMutated, false);
+    assert.equal(recorded.issuanceReceipt.effects.currentHeadMutated, false);
+    assert.equal(recorded.issuanceReceipt.contextLeaseFingerprint, lease.semanticFingerprint);
+    const successor = effectOwner.readSuccessorContext({ threadRef: THREAD });
+    assert.equal(successor.state, 'ISSUED');
+    assert.equal(successor.successorClaim.successorClaimRef, claimed.successorClaim.successorClaimRef);
+    assert.equal(successor.issuanceReceipt.successorReceiptRef, recorded.issuanceReceipt.successorReceiptRef);
+    assert.deepEqual(effectOwner.readCurrent({ threadRef: THREAD }).head, headBefore);
+
+    const retriedClaim = effectOwner.claimSuccessorContext({
+      threadRef: THREAD,
+      priorConversationHeadSha256: '8'.repeat(64),
+      priorRequestEventRef: rollover.checkpoint.workingSet.cursorEventRef,
+      currentRequestEventBinding
+    });
+    assert.equal(retriedClaim.state, 'IDEMPOTENT_CURRENT');
+    const retriedReceipt = effectOwner.recordSuccessorContextLease({
+      threadRef: THREAD,
+      successorClaimRef: claimed.successorClaim.successorClaimRef,
+      successorClaimFingerprint: claimed.successorClaim.semanticFingerprint,
+      contextLease: lease
+    });
+    assert.equal(retriedReceipt.state, 'IDEMPOTENT_CURRENT');
+    assert.equal(retriedReceipt.issuanceReceipt.successorReceiptRef, recorded.issuanceReceipt.successorReceiptRef);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('successor claim refuses a different request and checkpoint-only commits do not mint successor authority', () => {
+  const fixture = makeHome();
+  try {
+    const effectOwner = owner(fixture.home, clock(
+      '2026-10-26T21:10:00.000Z',
+      '2026-10-26T21:10:00.100Z',
+      '2026-10-26T21:10:01.000Z',
+      '2026-10-26T21:10:01.100Z'
+    ));
+    const checkpointPlan = formContinuityRolloverPlan({
+      resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED', 'a'),
+      continuityStream: continuity('a')
+    });
+    const checkpoint = effectOwner.commitPlan({ plan: checkpointPlan });
+    assert.equal(effectOwner.readSuccessorContext({ threadRef: THREAD }).state, 'NOT_REQUIRED');
+    assert.throws(
+      () => effectOwner.claimSuccessorContext({
+        threadRef: THREAD,
+        priorConversationHeadSha256: '8'.repeat(64),
+        priorRequestEventRef: checkpoint.checkpoint.workingSet.cursorEventRef,
+        currentRequestEventBinding: { eventRef: 'event.vexlife.successor.not-required', eventHash: '7'.repeat(64), sequence: 3 }
+      }),
+      (error) => error instanceof BrowserWorkingContinuityOwnerError && error.code === 'WORKING_CONTINUITY_SUCCESSOR_NOT_REQUIRED'
+    );
+
+    const rolloverPlan = formContinuityRolloverPlan({
+      resourceContextPressure: pressure('ROLLOVER_REQUIRED', 'b'),
+      continuityStream: continuity('b'),
+      priorWorkingCheckpoint: checkpoint.checkpoint
+    });
+    const rollover = effectOwner.commitPlan({ plan: rolloverPlan });
+    const binding = { eventRef: 'event.vexlife.successor.bound', eventHash: '6'.repeat(64), sequence: 7 };
+    effectOwner.claimSuccessorContext({
+      threadRef: THREAD,
+      priorConversationHeadSha256: '5'.repeat(64),
+      priorRequestEventRef: rollover.checkpoint.workingSet.cursorEventRef,
+      currentRequestEventBinding: binding
+    });
+    assert.throws(
+      () => effectOwner.claimSuccessorContext({
+        threadRef: THREAD,
+        priorConversationHeadSha256: '5'.repeat(64),
+        priorRequestEventRef: rollover.checkpoint.workingSet.cursorEventRef,
+        currentRequestEventBinding: { eventRef: 'event.vexlife.successor.other', eventHash: '4'.repeat(64), sequence: 7 }
+      }),
+      (error) => error instanceof BrowserWorkingContinuityOwnerError && error.code === 'WORKING_CONTINUITY_SUCCESSOR_ALREADY_CLAIMED'
+    );
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }

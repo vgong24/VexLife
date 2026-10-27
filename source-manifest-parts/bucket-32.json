@@ -17,8 +17,8 @@
     {
       "path": "src/core/browser-working-continuity-owner.mjs",
       "mode": "100644",
-      "bytes": 27263,
-      "sha256": "3536bdf9b5cdc5a0952ef13b9430a431ca64498c4490df1440c79497a923be32"
+      "bytes": 46485,
+      "sha256": "636e7e4a72ac5af9ce93efa305f81c740de42369bb321d349ca3e9a346f323d4"
     },
     {
       "path": "src/core/heretic-persistent-runtime-owner.mjs",

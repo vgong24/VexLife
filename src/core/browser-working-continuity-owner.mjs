@@ -7,6 +7,7 @@ import {
   verifyWorkingContinuityCheckpoint,
   verifyWorkingContinuityCheckpointSupersessionPlan
 } from './continuity-rollover.mjs';
+import { createContextLease } from './context-lease.mjs';
 import { semanticHash } from './utils.mjs';
 
 export const BROWSER_WORKING_CONTINUITY_OWNER_SCHEMA =
@@ -15,6 +16,10 @@ export const BROWSER_WORKING_CONTINUITY_COMMIT_RECEIPT_SCHEMA =
   'vexlife.browser-working-continuity-commit-receipt/v1';
 export const BROWSER_WORKING_CONTINUITY_HEAD_SCHEMA =
   'vexlife.browser-working-continuity-head/v1';
+export const BROWSER_WORKING_CONTINUITY_SUCCESSOR_CLAIM_SCHEMA =
+  'vexlife.browser-working-continuity-successor-claim/v1';
+export const BROWSER_WORKING_CONTINUITY_SUCCESSOR_RECEIPT_SCHEMA =
+  'vexlife.browser-working-continuity-successor-receipt/v1';
 export const BROWSER_WORKING_CONTINUITY_OWNER_REF =
   'owner.vexlife.browser-working-continuity.001';
 
@@ -64,6 +69,17 @@ function timestamp(value, label) {
   return value;
 }
 
+function canonicalRequestBinding(value, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    fail('WORKING_CONTINUITY_INPUT_INVALID', `${label} must be one request binding`);
+  }
+  const eventRef = ref(value.eventRef, `${label}.eventRef`);
+  if (!SHA256.test(value.eventHash ?? '') || !Number.isSafeInteger(value.sequence) || value.sequence < 0) {
+    fail('WORKING_CONTINUITY_INPUT_INVALID', `${label} event hash or sequence is invalid`);
+  }
+  return Object.freeze({ eventRef, eventHash: value.eventHash, sequence: value.sequence });
+}
+
 function stableJson(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
@@ -79,6 +95,8 @@ function ownerPaths(home, lineageRef, threadRef) {
     root,
     checkpoints: path.join(root, 'checkpoints'),
     receipts: path.join(root, 'receipts'),
+    successorClaims: path.join(root, 'successor-context-claims'),
+    successorReceipts: path.join(root, 'successor-context-receipts'),
     head: path.join(root, 'head.json'),
     lock: path.join(home, 'runtime', 'working-continuity-writer-locks', `${key}.lock`)
   });
@@ -182,6 +200,14 @@ function receiptFile(paths, receipt) {
   return path.join(paths.receipts, `${receipt.semanticFingerprint}.json`);
 }
 
+function successorClaimFile(paths, checkpointFingerprint) {
+  return path.join(paths.successorClaims, `${checkpointFingerprint}.json`);
+}
+
+function successorReceiptFile(paths, checkpointFingerprint) {
+  return path.join(paths.successorReceipts, `${checkpointFingerprint}.json`);
+}
+
 function validateStoredCheckpoint(value) {
   if (!verifyWorkingContinuityCheckpoint(value)) {
     fail('WORKING_CONTINUITY_CHECKPOINT_CORRUPT', 'stored working checkpoint is not canonical');
@@ -272,6 +298,104 @@ function validateHead(value) {
   return value;
 }
 
+function validateSuccessorClaim(value) {
+  validateAddressed(value, {
+    schemaVersion: BROWSER_WORKING_CONTINUITY_SUCCESSOR_CLAIM_SCHEMA,
+    refField: 'successorClaimRef',
+    refPrefix: 'claim.vexlife.browser-working-continuity-successor',
+    label: 'working continuity successor claim',
+    code: 'WORKING_CONTINUITY_SUCCESSOR_CORRUPT'
+  });
+  for (const [field, observed] of [
+    ['homeRef', value.homeRef],
+    ['deviceRef', value.deviceRef],
+    ['companionLineageRef', value.companionLineageRef],
+    ['threadRef', value.threadRef],
+    ['checkpointRef', value.checkpointRef],
+    ['commitReceiptRef', value.commitReceiptRef],
+    ['priorRequestEventRef', value.priorRequestEventRef]
+  ]) ref(observed, `working continuity successor claim ${field}`);
+  for (const [field, observed] of [
+    ['checkpointFingerprint', value.checkpointFingerprint],
+    ['commitReceiptFingerprint', value.commitReceiptFingerprint],
+    ['priorConversationHeadSha256', value.priorConversationHeadSha256]
+  ]) {
+    if (!SHA256.test(observed ?? '')) fail('WORKING_CONTINUITY_SUCCESSOR_CORRUPT', `working continuity successor claim ${field} is invalid`);
+  }
+  const currentRequestEventBinding = canonicalRequestBinding(
+    value.currentRequestEventBinding,
+    'working continuity successor claim currentRequestEventBinding'
+  );
+  if (
+    value.truthClass !== 'NON_SEMANTIC_WORKING_CONTINUITY_SUCCESSOR_CLAIM' ||
+    value.effectOwnerRef !== BROWSER_WORKING_CONTINUITY_OWNER_REF ||
+    value.effects?.homeMutated !== true ||
+    value.effects?.checkpointMutated !== false ||
+    value.effects?.currentHeadMutated !== false ||
+    value.effects?.successorContextLeaseIssued !== false ||
+    value.effects?.semanticAcceptanceCreated !== false ||
+    value.effects?.memoryPromotionPerformed !== false ||
+    value.effects?.providerCalled !== false ||
+    value.effects?.modelCalled !== false ||
+    value.effects?.trainingRan !== false ||
+    value.effects?.modelWeightsChanged !== false
+  ) fail('WORKING_CONTINUITY_SUCCESSOR_CORRUPT', 'working continuity successor claim crossed its effect boundary');
+  timestamp(value.claimedAt, 'working continuity successor claim claimedAt');
+  return Object.freeze({ ...structuredClone(value), currentRequestEventBinding });
+}
+
+function validateSuccessorReceipt(value) {
+  validateAddressed(value, {
+    schemaVersion: BROWSER_WORKING_CONTINUITY_SUCCESSOR_RECEIPT_SCHEMA,
+    refField: 'successorReceiptRef',
+    refPrefix: 'receipt.vexlife.browser-working-continuity-successor',
+    label: 'working continuity successor receipt',
+    code: 'WORKING_CONTINUITY_SUCCESSOR_CORRUPT'
+  });
+  for (const [field, observed] of [
+    ['homeRef', value.homeRef],
+    ['deviceRef', value.deviceRef],
+    ['companionLineageRef', value.companionLineageRef],
+    ['threadRef', value.threadRef],
+    ['checkpointRef', value.checkpointRef],
+    ['commitReceiptRef', value.commitReceiptRef],
+    ['successorClaimRef', value.successorClaimRef],
+    ['contextLeaseRef', value.contextLeaseRef],
+    ['checkpointReturnRef', value.checkpointReturnRef],
+    ['workNodeRef', value.workNodeRef]
+  ]) ref(observed, `working continuity successor receipt ${field}`);
+  for (const [field, observed] of [
+    ['checkpointFingerprint', value.checkpointFingerprint],
+    ['commitReceiptFingerprint', value.commitReceiptFingerprint],
+    ['successorClaimFingerprint', value.successorClaimFingerprint],
+    ['contextLeaseFingerprint', value.contextLeaseFingerprint]
+  ]) {
+    if (!SHA256.test(observed ?? '')) fail('WORKING_CONTINUITY_SUCCESSOR_CORRUPT', `working continuity successor receipt ${field} is invalid`);
+  }
+  if (!Number.isSafeInteger(value.schedulerGeneration) || value.schedulerGeneration < 0 ||
+      !Array.isArray(value.selectedSourceRefs) ||
+      value.selectedSourceRefs.some((item) => typeof item !== 'string' || !item) ||
+      JSON.stringify([...new Set(value.selectedSourceRefs)].sort()) !== JSON.stringify(value.selectedSourceRefs)) {
+    fail('WORKING_CONTINUITY_SUCCESSOR_CORRUPT', 'working continuity successor receipt source/generation binding is invalid');
+  }
+  if (
+    value.truthClass !== 'NON_SEMANTIC_WORKING_CONTINUITY_SUCCESSOR_CONTEXT_RECEIPT' ||
+    value.effectOwnerRef !== BROWSER_WORKING_CONTINUITY_OWNER_REF ||
+    value.effects?.homeMutated !== true ||
+    value.effects?.checkpointMutated !== false ||
+    value.effects?.currentHeadMutated !== false ||
+    value.effects?.successorContextLeaseIssued !== true ||
+    value.effects?.semanticAcceptanceCreated !== false ||
+    value.effects?.memoryPromotionPerformed !== false ||
+    value.effects?.providerCalled !== false ||
+    value.effects?.modelCalled !== false ||
+    value.effects?.trainingRan !== false ||
+    value.effects?.modelWeightsChanged !== false
+  ) fail('WORKING_CONTINUITY_SUCCESSOR_CORRUPT', 'working continuity successor receipt crossed its effect boundary');
+  timestamp(value.recordedAt, 'working continuity successor receipt recordedAt');
+  return value;
+}
+
 function readCurrentAt(paths, identity, threadRef) {
   if (!fs.existsSync(paths.head)) {
     return Object.freeze({
@@ -344,6 +468,58 @@ function readCurrentAt(paths, identity, threadRef) {
     head: Object.freeze(structuredClone(head)),
     effects: Object.freeze({ homeMutated: false, memoryMutated: false, modelCalled: false })
   });
+}
+
+function readSuccessorContextAt(paths, identity, threadRef, current = null) {
+  const bound = current ?? readCurrentAt(paths, identity, threadRef);
+  const base = {
+    schemaVersion: 'vexlife.browser-working-continuity-successor-state/v1',
+    companionLineageRef: identity.companionLineageRef,
+    threadRef,
+    effects: Object.freeze({ homeMutated: false, memoryMutated: false, modelCalled: false })
+  };
+  if (bound.state !== 'CURRENT') return Object.freeze({ ...base, state: 'ABSENT', successorClaim: null, issuanceReceipt: null });
+  if (
+    bound.commitReceipt.disposition !== 'ROLLOVER_COMMITTED' ||
+    bound.commitReceipt.successorContextRequired !== true ||
+    bound.commitReceipt.effects?.successorContextLeaseIssued !== false ||
+    bound.checkpoint.pressureState !== 'ROLLOVER_REQUIRED'
+  ) return Object.freeze({ ...base, state: 'NOT_REQUIRED', successorClaim: null, issuanceReceipt: null });
+
+  const claimPath = successorClaimFile(paths, bound.checkpoint.semanticFingerprint);
+  if (!fs.existsSync(claimPath)) return Object.freeze({ ...base, state: 'READY', successorClaim: null, issuanceReceipt: null });
+  const claim = validateSuccessorClaim(readJsonRegular(
+    claimPath,
+    'WORKING_CONTINUITY_SUCCESSOR_CORRUPT',
+    'working continuity successor claim'
+  ));
+  if (
+    claim.homeRef !== identity.homeRef || claim.deviceRef !== identity.deviceRef ||
+    claim.companionLineageRef !== identity.companionLineageRef || claim.threadRef !== threadRef ||
+    claim.checkpointRef !== bound.checkpoint.checkpointRef ||
+    claim.checkpointFingerprint !== bound.checkpoint.semanticFingerprint ||
+    claim.commitReceiptRef !== bound.commitReceipt.commitReceiptRef ||
+    claim.commitReceiptFingerprint !== bound.commitReceipt.semanticFingerprint
+  ) fail('WORKING_CONTINUITY_SUCCESSOR_CORRUPT', 'working continuity successor claim does not bind the exact current rollover');
+
+  const receiptPath = successorReceiptFile(paths, bound.checkpoint.semanticFingerprint);
+  if (!fs.existsSync(receiptPath)) return Object.freeze({ ...base, state: 'CLAIMED', successorClaim: claim, issuanceReceipt: null });
+  const issuanceReceipt = validateSuccessorReceipt(readJsonRegular(
+    receiptPath,
+    'WORKING_CONTINUITY_SUCCESSOR_CORRUPT',
+    'working continuity successor receipt'
+  ));
+  if (
+    issuanceReceipt.homeRef !== identity.homeRef || issuanceReceipt.deviceRef !== identity.deviceRef ||
+    issuanceReceipt.companionLineageRef !== identity.companionLineageRef || issuanceReceipt.threadRef !== threadRef ||
+    issuanceReceipt.checkpointRef !== bound.checkpoint.checkpointRef ||
+    issuanceReceipt.checkpointFingerprint !== bound.checkpoint.semanticFingerprint ||
+    issuanceReceipt.commitReceiptRef !== bound.commitReceipt.commitReceiptRef ||
+    issuanceReceipt.commitReceiptFingerprint !== bound.commitReceipt.semanticFingerprint ||
+    issuanceReceipt.successorClaimRef !== claim.successorClaimRef ||
+    issuanceReceipt.successorClaimFingerprint !== claim.semanticFingerprint
+  ) fail('WORKING_CONTINUITY_SUCCESSOR_CORRUPT', 'working continuity successor receipt does not bind the exact current claim');
+  return Object.freeze({ ...base, state: 'ISSUED', successorClaim: claim, issuanceReceipt });
 }
 
 function processState(pid) {
@@ -521,6 +697,163 @@ function recoverAbandonedWriter(paths, identity, threadRef, expectedAbandonedIns
   });
 }
 
+function claimSuccessorContextAt(paths, identity, threadRef, input, now) {
+  const current = readCurrentAt(paths, identity, threadRef);
+  const successor = readSuccessorContextAt(paths, identity, threadRef, current);
+  if (!['READY', 'CLAIMED', 'ISSUED'].includes(successor.state)) {
+    fail('WORKING_CONTINUITY_SUCCESSOR_NOT_REQUIRED', 'current working continuity does not require a successor Context Lease');
+  }
+  const currentRequestEventBinding = canonicalRequestBinding(
+    input?.currentRequestEventBinding,
+    'successor currentRequestEventBinding'
+  );
+  const priorRequestEventRef = ref(input?.priorRequestEventRef, 'successor priorRequestEventRef');
+  if (!SHA256.test(input?.priorConversationHeadSha256 ?? '')) {
+    fail('WORKING_CONTINUITY_INPUT_INVALID', 'successor priorConversationHeadSha256 is invalid');
+  }
+  if (current.checkpoint.workingSet?.cursorEventRef !== priorRequestEventRef) {
+    fail('WORKING_CONTINUITY_SUCCESSOR_PRIOR_MISMATCH', 'successor claim does not immediately follow the checkpointed request');
+  }
+  if (successor.successorClaim) {
+    const claim = successor.successorClaim;
+    if (
+      claim.priorConversationHeadSha256 !== input.priorConversationHeadSha256 ||
+      claim.priorRequestEventRef !== priorRequestEventRef ||
+      JSON.stringify(claim.currentRequestEventBinding) !== JSON.stringify(currentRequestEventBinding)
+    ) fail('WORKING_CONTINUITY_SUCCESSOR_ALREADY_CLAIMED', 'working rollover is already claimed by another request');
+    return Object.freeze({
+      state: 'IDEMPOTENT_CURRENT',
+      successorClaim: claim,
+      issuanceReceipt: successor.issuanceReceipt
+    });
+  }
+  const core = {
+    schemaVersion: BROWSER_WORKING_CONTINUITY_SUCCESSOR_CLAIM_SCHEMA,
+    truthClass: 'NON_SEMANTIC_WORKING_CONTINUITY_SUCCESSOR_CLAIM',
+    effectOwnerRef: BROWSER_WORKING_CONTINUITY_OWNER_REF,
+    homeRef: identity.homeRef,
+    deviceRef: identity.deviceRef,
+    companionLineageRef: identity.companionLineageRef,
+    threadRef,
+    checkpointRef: current.checkpoint.checkpointRef,
+    checkpointFingerprint: current.checkpoint.semanticFingerprint,
+    commitReceiptRef: current.commitReceipt.commitReceiptRef,
+    commitReceiptFingerprint: current.commitReceipt.semanticFingerprint,
+    priorConversationHeadSha256: input.priorConversationHeadSha256,
+    priorRequestEventRef,
+    currentRequestEventBinding,
+    claimedAt: timestamp(now(), 'working continuity successor claim time'),
+    effects: {
+      homeMutated: true,
+      checkpointMutated: false,
+      currentHeadMutated: false,
+      successorContextLeaseIssued: false,
+      semanticAcceptanceCreated: false,
+      memoryPromotionPerformed: false,
+      providerCalled: false,
+      modelCalled: false,
+      trainingRan: false,
+      modelWeightsChanged: false
+    }
+  };
+  const claim = addressed(core, 'successorClaimRef', 'claim.vexlife.browser-working-continuity-successor');
+  writeExclusiveExact(successorClaimFile(paths, current.checkpoint.semanticFingerprint), claim, {
+    validator: validateSuccessorClaim,
+    code: 'WORKING_CONTINUITY_SUCCESSOR_CORRUPT',
+    label: 'working continuity successor claim'
+  });
+  const rebound = readSuccessorContextAt(paths, identity, threadRef, current);
+  if (rebound.state !== 'CLAIMED' || rebound.successorClaim.successorClaimRef !== claim.successorClaimRef) {
+    fail('WORKING_CONTINUITY_SUCCESSOR_NOT_CURRENT', 'successor claim did not become the exact current claim');
+  }
+  return Object.freeze({ state: 'CLAIMED', successorClaim: rebound.successorClaim, issuanceReceipt: null });
+}
+
+function recordSuccessorContextLeaseAt(paths, identity, threadRef, input, now) {
+  const current = readCurrentAt(paths, identity, threadRef);
+  const successor = readSuccessorContextAt(paths, identity, threadRef, current);
+  if (!['CLAIMED', 'ISSUED'].includes(successor.state) || !successor.successorClaim) {
+    fail('WORKING_CONTINUITY_SUCCESSOR_NOT_CLAIMED', 'successor Context Lease requires one exact current rollover claim');
+  }
+  if (
+    input?.successorClaimRef !== successor.successorClaim.successorClaimRef ||
+    input?.successorClaimFingerprint !== successor.successorClaim.semanticFingerprint
+  ) fail('WORKING_CONTINUITY_SUCCESSOR_CLAIM_MISMATCH', 'successor Context Lease does not bind the exact current claim');
+  let contextLease;
+  try { contextLease = createContextLease(input?.contextLease).lease; }
+  catch (error) { fail('WORKING_CONTINUITY_SUCCESSOR_LEASE_INVALID', 'successor Context Lease is not canonical', { cause: error.message }); }
+  const requiredSources = [
+    current.checkpoint.checkpointRef,
+    current.commitReceipt.commitReceiptRef,
+    successor.successorClaim.successorClaimRef
+  ];
+  if (
+    contextLease.checkpointReturnRef !== current.checkpoint.checkpointRef ||
+    contextLease.schedulerGeneration !== successor.successorClaim.currentRequestEventBinding.sequence ||
+    requiredSources.some((sourceRef) => !contextLease.selectedSourceRefs.includes(sourceRef))
+  ) fail('WORKING_CONTINUITY_SUCCESSOR_LEASE_INVALID', 'successor Context Lease does not bind the exact checkpoint/claim source set');
+  if (successor.issuanceReceipt) {
+    if (
+      successor.issuanceReceipt.contextLeaseRef !== contextLease.leaseRef ||
+      successor.issuanceReceipt.contextLeaseFingerprint !== contextLease.semanticFingerprint
+    ) fail('WORKING_CONTINUITY_SUCCESSOR_ALREADY_ISSUED', 'working rollover already names a different successor Context Lease');
+    return Object.freeze({
+      state: 'IDEMPOTENT_CURRENT',
+      successorClaim: successor.successorClaim,
+      issuanceReceipt: successor.issuanceReceipt
+    });
+  }
+  const core = {
+    schemaVersion: BROWSER_WORKING_CONTINUITY_SUCCESSOR_RECEIPT_SCHEMA,
+    truthClass: 'NON_SEMANTIC_WORKING_CONTINUITY_SUCCESSOR_CONTEXT_RECEIPT',
+    effectOwnerRef: BROWSER_WORKING_CONTINUITY_OWNER_REF,
+    homeRef: identity.homeRef,
+    deviceRef: identity.deviceRef,
+    companionLineageRef: identity.companionLineageRef,
+    threadRef,
+    checkpointRef: current.checkpoint.checkpointRef,
+    checkpointFingerprint: current.checkpoint.semanticFingerprint,
+    commitReceiptRef: current.commitReceipt.commitReceiptRef,
+    commitReceiptFingerprint: current.commitReceipt.semanticFingerprint,
+    successorClaimRef: successor.successorClaim.successorClaimRef,
+    successorClaimFingerprint: successor.successorClaim.semanticFingerprint,
+    contextLeaseRef: contextLease.leaseRef,
+    contextLeaseFingerprint: contextLease.semanticFingerprint,
+    checkpointReturnRef: contextLease.checkpointReturnRef,
+    schedulerGeneration: contextLease.schedulerGeneration,
+    workNodeRef: contextLease.workNodeRef,
+    selectedSourceRefs: [...new Set(contextLease.selectedSourceRefs)].sort(),
+    recordedAt: timestamp(now(), 'working continuity successor receipt time'),
+    effects: {
+      homeMutated: true,
+      checkpointMutated: false,
+      currentHeadMutated: false,
+      successorContextLeaseIssued: true,
+      semanticAcceptanceCreated: false,
+      memoryPromotionPerformed: false,
+      providerCalled: false,
+      modelCalled: false,
+      trainingRan: false,
+      modelWeightsChanged: false
+    }
+  };
+  const issuanceReceipt = addressed(core, 'successorReceiptRef', 'receipt.vexlife.browser-working-continuity-successor');
+  writeExclusiveExact(successorReceiptFile(paths, current.checkpoint.semanticFingerprint), issuanceReceipt, {
+    validator: validateSuccessorReceipt,
+    code: 'WORKING_CONTINUITY_SUCCESSOR_CORRUPT',
+    label: 'working continuity successor receipt'
+  });
+  const rebound = readSuccessorContextAt(paths, identity, threadRef, current);
+  if (rebound.state !== 'ISSUED' || rebound.issuanceReceipt.successorReceiptRef !== issuanceReceipt.successorReceiptRef) {
+    fail('WORKING_CONTINUITY_SUCCESSOR_NOT_CURRENT', 'successor Context Lease receipt did not become current');
+  }
+  return Object.freeze({
+    state: 'RECORDED',
+    successorClaim: rebound.successorClaim,
+    issuanceReceipt: rebound.issuanceReceipt
+  });
+}
+
 function validatePlanForOwner(plan, identity, threadRef, current) {
   if (!verifyContinuityRolloverPlan(plan) || !COMMITTABLE_PLAN_STATES.has(plan.state) || !plan.checkpoint) {
     fail('WORKING_CONTINUITY_PLAN_NOT_COMMITTABLE', 'working continuity owner requires one canonical CHECKPOINT_READY or ROLLOVER_READY plan');
@@ -637,6 +970,52 @@ export function createBrowserWorkingContinuityOwner({
     readCurrent({ threadRef } = {}) {
       const safeThreadRef = ref(threadRef, 'threadRef');
       return readCurrentAt(pathsForThread(safeThreadRef), identity, safeThreadRef);
+    },
+    readSuccessorContext({ threadRef } = {}) {
+      const safeThreadRef = ref(threadRef, 'threadRef');
+      return readSuccessorContextAt(pathsForThread(safeThreadRef), identity, safeThreadRef);
+    },
+    claimSuccessorContext({
+      threadRef,
+      priorConversationHeadSha256,
+      priorRequestEventRef,
+      currentRequestEventBinding
+    } = {}) {
+      const safeThreadRef = ref(threadRef, 'threadRef');
+      const paths = pathsForThread(safeThreadRef);
+      const lock = acquireWriter(paths, identity, safeThreadRef, now);
+      try {
+        return claimSuccessorContextAt(paths, identity, safeThreadRef, {
+          priorConversationHeadSha256,
+          priorRequestEventRef,
+          currentRequestEventBinding
+        }, now);
+      } finally {
+        if (!releaseWriter(paths, lock, identity, safeThreadRef)) {
+          fail('WORKING_CONTINUITY_WRITER_CONFLICT', 'working continuity writer lock could not be released safely');
+        }
+      }
+    },
+    recordSuccessorContextLease({
+      threadRef,
+      successorClaimRef,
+      successorClaimFingerprint,
+      contextLease
+    } = {}) {
+      const safeThreadRef = ref(threadRef, 'threadRef');
+      const paths = pathsForThread(safeThreadRef);
+      const lock = acquireWriter(paths, identity, safeThreadRef, now);
+      try {
+        return recordSuccessorContextLeaseAt(paths, identity, safeThreadRef, {
+          successorClaimRef,
+          successorClaimFingerprint,
+          contextLease
+        }, now);
+      } finally {
+        if (!releaseWriter(paths, lock, identity, safeThreadRef)) {
+          fail('WORKING_CONTINUITY_WRITER_CONFLICT', 'working continuity writer lock could not be released safely');
+        }
+      }
     },
     recoverAbandonedWriter({ threadRef, expectedAbandonedInstanceRef = null } = {}) {
       const safeThreadRef = ref(threadRef, 'threadRef');
