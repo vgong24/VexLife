@@ -3,6 +3,7 @@ import { LIVED_COMPANION_OUTPUT_TOKEN_LIMIT } from './lived-companion-connection
 import { assertCurrentLease } from './scheduler-runtime-trust.mjs';
 import { semanticHash } from './utils.mjs';
 import { projectLivingJournalMemory } from './living-journal-memory-projection.mjs';
+import { createBrowserWorkingContinuityOwner } from './browser-working-continuity-owner.mjs';
 import {
   LivedCompanionError,
   readCurrentLivedCompanionCompletedTurn
@@ -211,7 +212,8 @@ function selectionCore(prior, current, memoryContext, currentRequestInputTokenEs
     fail('prior completed-turn input token estimate is invalid');
   }
   return Object.freeze({
-    schemaVersion: 'vexlife.browser-prompt-context-runtime-selection/v2',
+    schemaVersion: 'vexlife.browser-prompt-context-runtime-selection/v3',
+    contextMode: 'IMMEDIATE_PRIOR_COMPLETED_TURN',
     homeRef: prior.homeRef,
     deviceRef: prior.deviceRef,
     lineageRef: prior.companionLineageRef,
@@ -225,6 +227,14 @@ function selectionCore(prior, current, memoryContext, currentRequestInputTokenEs
     memoryContextFingerprint: memoryContext.semanticFingerprint,
     memorySourceRefs: memoryContext.sourceRefs,
     memoryIncluded: memoryContext.included,
+    workingCheckpointRefOrNull: null,
+    workingCheckpointFingerprintOrNull: null,
+    workingCommitReceiptRefOrNull: null,
+    workingCommitReceiptFingerprintOrNull: null,
+    successorClaimRefOrNull: null,
+    successorClaimFingerprintOrNull: null,
+    workingSetOrNull: null,
+    workingSourceRefs: Object.freeze([]),
     selectedEventBindings: Object.freeze([
       Object.freeze({
         eventRef: prior.requestEventBinding.eventRef,
@@ -245,6 +255,67 @@ function selectionCore(prior, current, memoryContext, currentRequestInputTokenEs
   });
 }
 
+function rolloverSelectionCore(prior, current, memoryContext, currentRequestInputTokenEstimate, working, claim) {
+  if (!Number.isSafeInteger(currentRequestInputTokenEstimate) || currentRequestInputTokenEstimate <= 0) {
+    fail('current request input token estimate is invalid');
+  }
+  if (!working?.checkpoint || !working?.commitReceipt || !claim) {
+    fail('working rollover selection requires exact checkpoint, commit receipt and successor claim');
+  }
+  const workingSourceRefs = [...new Set([
+    working.checkpoint.checkpointRef,
+    working.commitReceipt.commitReceiptRef,
+    claim.successorClaimRef,
+    ...(working.checkpoint.sourceRefs ?? [])
+  ])].sort();
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-prompt-context-runtime-selection/v3',
+    contextMode: 'WORKING_CHECKPOINT_SUCCESSOR',
+    homeRef: prior.homeRef,
+    deviceRef: prior.deviceRef,
+    lineageRef: prior.companionLineageRef,
+    threadRef: prior.threadRef,
+    priorConversationHeadSha256: prior.conversationHeadSha256,
+    priorHeadSequence: prior.headSequence,
+    priorInputTokenEstimate: 0,
+    currentRequestInputTokenEstimate,
+    currentRequestEventBinding: current,
+    memoryContextRef: memoryContext.memoryContextRef,
+    memoryContextFingerprint: memoryContext.semanticFingerprint,
+    memorySourceRefs: memoryContext.sourceRefs,
+    memoryIncluded: memoryContext.included,
+    workingCheckpointRefOrNull: working.checkpoint.checkpointRef,
+    workingCheckpointFingerprintOrNull: working.checkpoint.semanticFingerprint,
+    workingCommitReceiptRefOrNull: working.commitReceipt.commitReceiptRef,
+    workingCommitReceiptFingerprintOrNull: working.commitReceipt.semanticFingerprint,
+    successorClaimRefOrNull: claim.successorClaimRef,
+    successorClaimFingerprintOrNull: claim.semanticFingerprint,
+    workingSetOrNull: Object.freeze(structuredClone(working.checkpoint.workingSet)),
+    workingSourceRefs: Object.freeze(workingSourceRefs),
+    selectedEventBindings: Object.freeze([]),
+    wholeHistoryEventEnumerationPerformed: false,
+    memorySelectionPerformed: memoryContext.included,
+    trainingSelectionPerformed: false
+  });
+}
+
+function selectionSourceRefs(selection) {
+  return [...new Set([
+    ...selection.selectedEventBindings.map((binding) => binding.eventRef),
+    ...selection.memorySourceRefs,
+    ...(selection.workingSourceRefs ?? [])
+  ])].sort();
+}
+
+function workingRolloverEligible(working, prior) {
+  return working?.state === 'CURRENT' &&
+    working.commitReceipt?.disposition === 'ROLLOVER_COMMITTED' &&
+    working.commitReceipt?.successorContextRequired === true &&
+    working.commitReceipt?.effects?.successorContextLeaseIssued === false &&
+    working.checkpoint?.pressureState === 'ROLLOVER_REQUIRED' &&
+    working.checkpoint?.workingSet?.cursorEventRef === prior.requestEventBinding.eventRef;
+}
+
 function selectionFingerprint(selection) {
   return semanticHash(selection);
 }
@@ -255,16 +326,17 @@ function leaseInput(selection, observedAt, ttlMs) {
   const expiresAt = new Date(observedMs + ttlMs).toISOString();
   const currentHash = selection.currentRequestEventBinding.eventHash;
   const headHash = selection.priorConversationHeadSha256;
+  const selectedSourceRefs = selectionSourceRefs(selection);
   const policy = {
-    schemaVersion: 'vexlife.browser-prompt-context-runtime-policy/v1',
+    schemaVersion: 'vexlife.browser-prompt-context-runtime-policy/v2',
+    contextMode: selection.contextMode,
     selectionFingerprint: selectionHash,
     priorConversationHeadSha256: headHash,
     currentRequestEventHash: currentHash,
     currentRequestSequence: selection.currentRequestEventBinding.sequence,
-    selectedSourceRefs: [
-      ...selection.selectedEventBindings.map((binding) => binding.eventRef),
-      ...selection.memorySourceRefs
-    ].sort(),
+    selectedSourceRefs,
+    workingCheckpointRefOrNull: selection.workingCheckpointRefOrNull,
+    successorClaimRefOrNull: selection.successorClaimRefOrNull,
     memoryContextRef: selection.memoryContextRef,
     memoryContextFingerprint: selection.memoryContextFingerprint,
     effects: EFFECTS
@@ -278,18 +350,21 @@ function leaseInput(selection, observedAt, ttlMs) {
     trustSnapshotFingerprint: semanticHash({ ...policy, class: 'TRUST' }),
     runtimeSnapshotFingerprint,
     schedulerGeneration: selection.currentRequestEventBinding.sequence,
-    resourceLeaseFingerprint: semanticHash({ ...policy, class: 'RESOURCE_LEASE', reads: 4 }),
-    capabilityLeaseFingerprint: semanticHash({ ...policy, class: 'CAPABILITY_LEASE', capability: 'IMMEDIATE_PRIOR_PLUS_CURRENT_MEMORY' }),
+    resourceLeaseFingerprint: semanticHash({ ...policy, class: 'RESOURCE_LEASE', reads: selectedSourceRefs.length + 1 }),
+    capabilityLeaseFingerprint: semanticHash({
+      ...policy,
+      class: 'CAPABILITY_LEASE',
+      capability: selection.contextMode === 'WORKING_CHECKPOINT_SUCCESSOR'
+        ? 'WORKING_CHECKPOINT_PLUS_CURRENT_MEMORY'
+        : 'IMMEDIATE_PRIOR_PLUS_CURRENT_MEMORY'
+    }),
     effectLeaseFingerprint: semanticHash({ ...policy, class: 'EFFECT_LEASE', effects: EFFECTS }),
     cancellationTokenRef: `cancellation.vexlife.browser-prompt-context.${currentHash.slice(0, 32)}`,
     foundationKernelRef: 'foundation.vexlife.browser-prompt-context-runtime',
     roleFrameRef: 'role-frame.vexlife.browser-prompt-context-runtime',
     intentFrameRef: `intent-frame.vexlife.browser-prompt-context.${currentHash.slice(0, 32)}`,
     selectedAtlasRefs: [],
-    selectedSourceRefs: [
-      ...selection.selectedEventBindings.map((binding) => binding.eventRef),
-      ...selection.memorySourceRefs
-    ].sort(),
+    selectedSourceRefs,
     applicableCultureRefs: [],
     applicableLessonRefs: [],
     applicableReleaseRefs: [],
@@ -301,18 +376,30 @@ function leaseInput(selection, observedAt, ttlMs) {
     observedAt,
     currentness: 'CURRENT',
     lifecycle: 'ACTIVE',
-    checkpointReturnRef: `checkpoint.vexlife.browser-prompt-context.${headHash.slice(0, 32)}`
+    checkpointReturnRef: selection.contextMode === 'WORKING_CHECKPOINT_SUCCESSOR'
+      ? selection.workingCheckpointRefOrNull
+      : `checkpoint.vexlife.browser-prompt-context.${headHash.slice(0, 32)}`
   };
 }
 
-function continuityProjection(selection, lease) {
+function continuityProjection(selection, lease, successorContextReceipt = null) {
+  const workingSet = selection.contextMode === 'WORKING_CHECKPOINT_SUCCESSOR'
+    ? selection.workingSetOrNull
+    : null;
+  const rolloverSourceRefs = [
+    ...(selection.workingSourceRefs ?? []),
+    ...(successorContextReceipt ? [successorContextReceipt.successorReceiptRef] : [])
+  ];
+  const memoryStatementRefs = selection.memoryIncluded
+    ? selection.memorySourceRefs.filter((ref) => ref.startsWith('statement.'))
+    : [];
   const core = {
     schemaVersion: 'vexlife.continuity-stream-adapter-projection/v1',
     currentness: 'CURRENT',
     currentnessReasonRefs: [
       `head.vexlife.${selection.priorConversationHeadSha256.slice(0, 32)}`
     ],
-    portableFrame: { sourceRefs: [] },
+    portableFrame: { sourceRefs: [...rolloverSourceRefs] },
     owners: {
       context: {
         leaseRef: lease.leaseRef,
@@ -331,19 +418,23 @@ function continuityProjection(selection, lease) {
       cursorEventRef: selection.currentRequestEventBinding.eventRef,
       frameRef: `frame.vexlife.browser-prompt-context.${selection.currentRequestEventBinding.eventHash.slice(0, 32)}`,
       frameFingerprint: `sha256:${semanticHash(selection)}`,
-      activeWorkNodeRefs: [],
-      currentIntentReceiptRefs: [],
-      openLoopRefs: [],
-      currentStatementRefs: selection.memoryIncluded
-        ? selection.memorySourceRefs.filter((ref) => ref.startsWith('statement.'))
-        : [],
-      currentContinuityRecordRefs: [],
+      activeWorkNodeRefs: workingSet ? [...workingSet.activeWorkNodeRefs] : [],
+      currentIntentReceiptRefs: workingSet ? [...workingSet.currentIntentReceiptRefs] : [],
+      openLoopRefs: workingSet ? [...workingSet.openLoopRefs] : [],
+      currentStatementRefs: [...new Set([
+        ...(workingSet?.currentStatementRefs ?? []),
+        ...memoryStatementRefs
+      ])].sort(),
+      currentContinuityRecordRefs: workingSet ? [...workingSet.currentContinuityRecordRefs] : [],
       currentDailyStratumRefOrNull: selection.memoryIncluded
-        ? selection.memorySourceRefs.find((ref) => ref.startsWith('daily-stratum.')) ?? null
-        : null,
-      recoveryPhaseOrNull: null
+        ? selection.memorySourceRefs.find((ref) => ref.startsWith('daily-stratum.')) ?? workingSet?.currentDailyStratumRefOrNull ?? null
+        : workingSet?.currentDailyStratumRefOrNull ?? null,
+      recoveryPhaseOrNull: workingSet?.recoveryPhaseOrNull ?? null
     },
-    sourceRefs: [...selection.memorySourceRefs],
+    sourceRefs: [...new Set([
+      ...selection.memorySourceRefs,
+      ...rolloverSourceRefs
+    ])].sort(),
     effects: { ...EFFECTS },
     projectionTruth: {
       readOnly: true,
@@ -376,7 +467,8 @@ export function createBrowserPromptContextRuntime({
   companionLineageRef,
   authorityRef = 'authority.vexlife.browser-prompt-context-runtime',
   leaseTtlMs = 60_000,
-  now = () => new Date().toISOString()
+  now = () => new Date().toISOString(),
+  workingContinuityOwner = null
 }) {
   safeRef(companionLineageRef, 'companionLineageRef');
   safeRef(authorityRef, 'authorityRef');
@@ -384,6 +476,22 @@ export function createBrowserPromptContextRuntime({
     fail('leaseTtlMs must be between 1000 and 600000 milliseconds');
   }
   if (typeof now !== 'function') fail('now must be one source-managed clock function');
+  const rolloverOwner = workingContinuityOwner ?? (homeRef && deviceRef
+    ? createBrowserWorkingContinuityOwner({
+        home,
+        homeRef,
+        deviceRef,
+        companionLineageRef,
+        instanceRef: 'instance.vexlife.browser-prompt-context-rollover',
+        now
+      })
+    : null);
+  if (rolloverOwner !== null && (
+    typeof rolloverOwner.readCurrent !== 'function' ||
+    typeof rolloverOwner.claimSuccessorContext !== 'function' ||
+    typeof rolloverOwner.recordSuccessorContextLease !== 'function' ||
+    typeof rolloverOwner.readSuccessorContext !== 'function'
+  )) fail('workingContinuityOwner must expose the exact V4.2b successor-context owner surface');
   const active = new Map();
 
   const releaseSelection = (key, expected = null) => {
@@ -394,7 +502,7 @@ export function createBrowserPromptContextRuntime({
     return true;
   };
 
-  const retainSelection = (key, selection, lease, projection) => {
+  const retainSelection = (key, selection, lease, projection, successorContextReceipt = null) => {
     releaseSelection(key);
     let formed = null;
     const expiryTimer = setTimeout(() => {
@@ -406,6 +514,7 @@ export function createBrowserPromptContextRuntime({
       selectionFingerprint: selectionFingerprint(selection),
       lease,
       projection,
+      successorContextReceipt,
       expiryTimer
     });
     active.set(key, formed);
@@ -442,7 +551,25 @@ export function createBrowserPromptContextRuntime({
       fail('current request does not immediately follow the selected completed turn');
     }
     const currentRequestInputTokenEstimate = estimatedMessageTokens(taskIntent);
-    const priorInputTokenEstimate = prior.requestInputTokenEstimate + prior.responseInputTokenEstimate;
+    let rolloverBinding = null;
+    if (rolloverOwner) {
+      const working = rolloverOwner.readCurrent({ threadRef });
+      if (workingRolloverEligible(working, prior)) {
+        const claimResult = rolloverOwner.claimSuccessorContext({
+          threadRef,
+          priorConversationHeadSha256: prior.conversationHeadSha256,
+          priorRequestEventRef: prior.requestEventBinding.eventRef,
+          currentRequestEventBinding: current
+        });
+        rolloverBinding = Object.freeze({
+          working,
+          successorClaim: claimResult.successorClaim
+        });
+      }
+    }
+    const priorInputTokenEstimate = rolloverBinding
+      ? 0
+      : prior.requestInputTokenEstimate + prior.responseInputTokenEstimate;
     const remainingInputTokens = Math.max(
       0,
       CONTEXT_INPUT_TOKEN_BUDGET - priorInputTokenEstimate - currentRequestInputTokenEstimate
@@ -455,20 +582,52 @@ export function createBrowserPromptContextRuntime({
       threadRef,
       memoryTokenCap: Math.max(1, Math.min(MEMORY_TOKEN_CAP, remainingInputTokens))
     });
-    const selection = selectionCore(prior, current, memoryContext, currentRequestInputTokenEstimate);
+    const selection = rolloverBinding
+      ? rolloverSelectionCore(
+          prior,
+          current,
+          memoryContext,
+          currentRequestInputTokenEstimate,
+          rolloverBinding.working,
+          rolloverBinding.successorClaim
+        )
+      : selectionCore(prior, current, memoryContext, currentRequestInputTokenEstimate);
     const observedAt = now();
     canonicalTimestamp(observedAt, 'resolver observedAt');
     const lease = createContextLease(leaseInput(selection, observedAt, leaseTtlMs)).lease;
-    const projection = continuityProjection(selection, lease);
+    let successorContextReceipt = null;
+    if (rolloverBinding) {
+      const recorded = rolloverOwner.recordSuccessorContextLease({
+        threadRef,
+        successorClaimRef: rolloverBinding.successorClaim.successorClaimRef,
+        successorClaimFingerprint: rolloverBinding.successorClaim.semanticFingerprint,
+        contextLease: lease
+      });
+      successorContextReceipt = recorded.issuanceReceipt;
+      if (
+        successorContextReceipt.contextLeaseRef !== lease.leaseRef ||
+        successorContextReceipt.contextLeaseFingerprint !== lease.semanticFingerprint
+      ) fail('working rollover issuance receipt does not bind the exact successor Context Lease');
+    }
+    const projection = continuityProjection(selection, lease, successorContextReceipt);
     const key = stateKey(context);
-    retainSelection(key, selection, lease, projection);
+    retainSelection(key, selection, lease, projection, successorContextReceipt);
     return Object.freeze({
       contextLease: lease,
       continuityProjection: projection,
       selectedConversationEventRefs: Object.freeze(
         selection.selectedEventBindings.map((binding) => binding.eventRef)
       ),
-      memoryContext
+      memoryContext,
+      workingContinuitySuccessor: successorContextReceipt
+        ? Object.freeze({
+            checkpointRef: selection.workingCheckpointRefOrNull,
+            successorClaimRef: selection.successorClaimRefOrNull,
+            successorReceiptRef: successorContextReceipt.successorReceiptRef,
+            contextLeaseRef: lease.leaseRef,
+            contextLeaseFingerprint: lease.semanticFingerprint
+          })
+        : null
     });
   };
 
@@ -508,10 +667,29 @@ export function createBrowserPromptContextRuntime({
         threadRef: query.threadRef,
         expectedConversationHeadSha256: query.priorConversationHeadSha256
       });
+      const rolloverMode = formed.selection.contextMode === 'WORKING_CHECKPOINT_SUCCESSOR';
+      let working = null;
+      let successorState = null;
+      if (rolloverMode) {
+        if (!rolloverOwner) fail('working rollover owner is unavailable during authority revalidation');
+        working = rolloverOwner.readCurrent({ threadRef: query.threadRef });
+        if (!workingRolloverEligible(working, prior)) fail('working rollover checkpoint is no longer the immediate current predecessor');
+        successorState = rolloverOwner.readSuccessorContext({ threadRef: query.threadRef });
+        if (
+          successorState.state !== 'ISSUED' ||
+          !successorState.successorClaim ||
+          !successorState.issuanceReceipt ||
+          JSON.stringify(successorState.successorClaim.currentRequestEventBinding) !== JSON.stringify(current) ||
+          successorState.issuanceReceipt.successorReceiptRef !== formed.successorContextReceipt?.successorReceiptRef
+        ) fail('working rollover successor claim/receipt is no longer exact-current');
+      }
+      const reboundPriorInputTokenEstimate = rolloverMode
+        ? 0
+        : prior.requestInputTokenEstimate + prior.responseInputTokenEstimate;
       const reboundRemainingInputTokens = Math.max(
         0,
         CONTEXT_INPUT_TOKEN_BUDGET -
-          (prior.requestInputTokenEstimate + prior.responseInputTokenEstimate) -
+          reboundPriorInputTokenEstimate -
           formed.selection.currentRequestInputTokenEstimate
       );
       const reboundMemoryContext = memoryContextFor({
@@ -522,14 +700,23 @@ export function createBrowserPromptContextRuntime({
         threadRef: query.threadRef,
         memoryTokenCap: Math.max(1, Math.min(MEMORY_TOKEN_CAP, reboundRemainingInputTokens))
       });
-      const reboundSelection = selectionCore(
-        prior,
-        current,
-        reboundMemoryContext,
-        formed.selection.currentRequestInputTokenEstimate
-      );
+      const reboundSelection = rolloverMode
+        ? rolloverSelectionCore(
+            prior,
+            current,
+            reboundMemoryContext,
+            formed.selection.currentRequestInputTokenEstimate,
+            working,
+            successorState.successorClaim
+          )
+        : selectionCore(
+            prior,
+            current,
+            reboundMemoryContext,
+            formed.selection.currentRequestInputTokenEstimate
+          );
       if (selectionFingerprint(reboundSelection) !== formed.selectionFingerprint) {
-        fail('prompt-context prior-turn selection is no longer current');
+        fail('prompt-context prior-turn/working-checkpoint selection is no longer current');
       }
       const observedAt = now();
       canonicalTimestamp(observedAt, 'authority observedAt');
