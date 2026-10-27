@@ -294,6 +294,15 @@ test('canonical verifier rejects invented pressure state even when re-addressed'
   assert.equal(verifyHostResourceStewardshipDecision(forged), false);
 });
 
+test('canonical verifier rejects unreachable non-current valid-pressure decision', () => {
+  const current = decide(resource({ lifecycleState: 'CURRENT' }), lease(), { resourceContextPressure: severePressure() });
+  const forged = readdressDecision(current, {
+    pressureCurrent: false,
+    reasonCodes: ['PRESSURE_NOT_CURRENT', 'RESOURCE_CURRENT'].sort()
+  });
+  assert.equal(verifyHostResourceStewardshipDecision(forged), false);
+});
+
 test('canonical verifier rejects extra invented reason code even when sorted and re-addressed', () => {
   const current = decide(resource({ lifecycleState: 'CURRENT' }), lease());
   const forged = readdressDecision(current, {

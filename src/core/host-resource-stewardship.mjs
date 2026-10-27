@@ -40,7 +40,7 @@ const LEASE_KEYS = new Set(['schemaVersion','truthClass','leaseObservationRef','
 const DECISION_KEYS = new Set(['schemaVersion','truthClass','stewardshipOwnerRef','resourceRef','resourceClass','ownershipState','resourceLifecycleState','resourceCurrentness','leaseState','leaseCurrentness','pressureStateOrNull','pressureCurrent','disposition','reasonCodes','cleanupEligibility','rightfulCleanupOwnerRefOrNull','rightfulCleanupActionRefOrNull','humanProposalRequired','automaticCleanupAuthorized','executionAuthorityGranted','sourceRefs','effects','decisionRef','semanticFingerprint']);
 const DISPOSITIONS = new Set(['KEEP','HELD','HUMAN_PROPOSAL_REQUIRED','AUTO_CLEANUP_ELIGIBLE']);
 const CLEANUP_ELIGIBILITY = new Set(['NOT_ELIGIBLE','ELIGIBLE_FOR_RIGHTFUL_OWNER_DELEGATION']);
-const PRESSURE_REASON_CODES = new Set(['PRESSURE_NOT_SUPPLIED','PRESSURE_INVALID','PRESSURE_NOT_CURRENT']);
+const PRESSURE_REASON_CODES = new Set(['PRESSURE_NOT_SUPPLIED','PRESSURE_INVALID']);
 const EFFECTS = Object.freeze({
   hostMutated: false,
   processSignalled: false,
@@ -164,10 +164,10 @@ function pressureBinding(value) {
   }
   return Object.freeze({
     state: value.state,
-    current: value.currentness === 'CURRENT',
+    current: true,
     valid: true,
     sourceRefs: Object.freeze([value.pressureRef, ...(value.sourceRefs ?? [])].filter(Boolean).sort()),
-    reasonCode: value.currentness === 'CURRENT' ? null : 'PRESSURE_NOT_CURRENT'
+    reasonCode: null
   });
 }
 
@@ -342,13 +342,10 @@ export function verifyHostResourceStewardshipDecision(value) {
       if (value.pressureCurrent !== false || pressureReasons.length !== 1 ||
           !['PRESSURE_NOT_SUPPLIED', 'PRESSURE_INVALID'].includes(pressureReasons[0])) return false;
       expectedPressureReason = pressureReasons[0];
-    } else if (!RESOURCE_CONTEXT_PRESSURE_STATES.includes(value.pressureStateOrNull)) {
+    } else if (!RESOURCE_CONTEXT_PRESSURE_STATES.includes(value.pressureStateOrNull) ||
+               value.pressureCurrent !== true ||
+               pressureReasons.length !== 0) {
       return false;
-    } else if (value.pressureCurrent) {
-      if (pressureReasons.length !== 0) return false;
-    } else {
-      if (pressureReasons.length !== 1 || pressureReasons[0] !== 'PRESSURE_NOT_CURRENT') return false;
-      expectedPressureReason = 'PRESSURE_NOT_CURRENT';
     }
 
     const expectedReasonCodes = [...new Set([expectedReasonCode, expectedPressureReason].filter(Boolean))].sort();
