@@ -347,4 +347,67 @@ test('prior checkpoint verifier failure cannot be laundered into a successor pla
   }), /semantic identity is invalid/u);
 });
 
+
+function readdressContinuityForAdjacentCheckpointTest(value) {
+  const core = structuredClone(value);
+  delete core.adapterProjectionRef;
+  delete core.semanticFingerprint;
+  const semanticFingerprint = semanticHash(core);
+  return Object.freeze({
+    ...core,
+    adapterProjectionRef: `projection.vexlife.continuity-stream-adapter.${semanticFingerprint.slice(0, 32)}`,
+    semanticFingerprint
+  });
+}
+
+function adjacentCheckpointContinuity(priorCheckpoint, { schedulerDelta = 2, includePriorCursor = true } = {}) {
+  const value = structuredClone(continuity({ suffix: 'b' }));
+  value.owners.context.schedulerGeneration = priorCheckpoint.contextLease.schedulerGeneration + schedulerDelta;
+  if (includePriorCursor) {
+    value.owners.context.selectedSourceRefs = [...new Set([
+      ...value.owners.context.selectedSourceRefs,
+      priorCheckpoint.workingSet.cursorEventRef
+    ])].sort();
+  }
+  return readdressContinuityForAdjacentCheckpointTest(value);
+}
+
+test('a second adjacent CHECKPOINT_RECOMMENDED becomes rollover-ready while preserving checkpoint pressure truth', () => {
+  const first = formContinuityRolloverPlan({
+    resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED'),
+    continuityStream: continuity({ suffix: 'a' })
+  }).checkpoint;
+  const plan = formContinuityRolloverPlan({
+    resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED'),
+    continuityStream: adjacentCheckpointContinuity(first),
+    priorWorkingCheckpoint: first
+  });
+  assert.equal(plan.state, 'ROLLOVER_READY');
+  assert.equal(plan.checkpoint.pressureState, 'CHECKPOINT_RECOMMENDED');
+  assert.ok(plan.reasonCodes.includes('ADJACENT_CHECKPOINT_PRESSURE_ESCALATED_TO_ROLLOVER'));
+  assert.equal(plan.nextSafeAction, 'DELEGATE_CHECKPOINT_THEN_SCHEDULER_ISSUED_SUCCESSOR_CONTEXT');
+  assert.equal(verifyContinuityRolloverPlan(plan), true);
+});
+
+test('repeated CHECKPOINT_RECOMMENDED stays checkpoint-ready when prior continuity is not adjacent', () => {
+  const first = formContinuityRolloverPlan({
+    resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED'),
+    continuityStream: continuity({ suffix: 'a' })
+  }).checkpoint;
+  for (const next of [
+    adjacentCheckpointContinuity(first, { schedulerDelta: 1 }),
+    adjacentCheckpointContinuity(first, { includePriorCursor: false })
+  ]) {
+    const plan = formContinuityRolloverPlan({
+      resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED'),
+      continuityStream: next,
+      priorWorkingCheckpoint: first
+    });
+    assert.equal(plan.state, 'CHECKPOINT_READY');
+    assert.equal(plan.checkpoint.pressureState, 'CHECKPOINT_RECOMMENDED');
+    assert.equal(plan.reasonCodes.includes('ADJACENT_CHECKPOINT_PRESSURE_ESCALATED_TO_ROLLOVER'), false);
+    assert.equal(verifyContinuityRolloverPlan(plan), true);
+  }
+});
+
 // [VXG RealForever]

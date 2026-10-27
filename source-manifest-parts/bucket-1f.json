@@ -23,8 +23,8 @@
     {
       "path": "test/browser-working-continuity-owner.test.mjs",
       "mode": "100644",
-      "bytes": 25791,
-      "sha256": "c66036592c1a66078efb722c2b14c5848f1d8d33af03c0367fe5f7e0e1ece2a6"
+      "bytes": 28072,
+      "sha256": "0e6c8cb6b12dfee494335151a51eaf3a57b8f88289fe8780d6d7ebc3ae97cd12"
     },
     {
       "path": "test/foundation-health.test.mjs",

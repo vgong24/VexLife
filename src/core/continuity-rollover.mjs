@@ -521,18 +521,29 @@ export function formContinuityRolloverPlan({
   }
 
   const checkpoint = formCheckpoint(pressure, continuity, priorWorkingCheckpoint);
+  const adjacentCheckpointPressure =
+    pressure.state === 'CHECKPOINT_RECOMMENDED' &&
+    priorWorkingCheckpoint !== null &&
+    priorWorkingCheckpoint.pressureState === 'CHECKPOINT_RECOMMENDED' &&
+    continuity.selectedSourceRefs.includes(priorWorkingCheckpoint.workingSet.cursorEventRef) &&
+    continuity.schedulerGeneration === priorWorkingCheckpoint.contextLease.schedulerGeneration + 2;
+  const rolloverReady = pressure.state === 'ROLLOVER_REQUIRED' || adjacentCheckpointPressure;
   const supersessionPlan = formSupersessionPlan(priorWorkingCheckpoint, checkpoint);
   return finalizedPlan({
-    state: pressure.state === 'ROLLOVER_REQUIRED' ? 'ROLLOVER_READY' : 'CHECKPOINT_READY',
+    state: rolloverReady ? 'ROLLOVER_READY' : 'CHECKPOINT_READY',
     reasonCodes: [
       pressure.state,
-      priorWorkingCheckpoint ? 'PRIOR_WORKING_CHECKPOINT_SUPERSESSION_REQUIRED' : 'FIRST_WORKING_CHECKPOINT'
+      adjacentCheckpointPressure
+        ? 'ADJACENT_CHECKPOINT_PRESSURE_ESCALATED_TO_ROLLOVER'
+        : priorWorkingCheckpoint
+          ? 'PRIOR_WORKING_CHECKPOINT_SUPERSESSION_REQUIRED'
+          : 'FIRST_WORKING_CHECKPOINT'
     ],
     pressure,
     continuity,
     checkpoint,
     supersessionPlan,
-    nextSafeAction: pressure.state === 'ROLLOVER_REQUIRED'
+    nextSafeAction: rolloverReady
       ? 'DELEGATE_CHECKPOINT_THEN_SCHEDULER_ISSUED_SUCCESSOR_CONTEXT'
       : 'DELEGATE_WORKING_CHECKPOINT_TO_RIGHTFUL_CHECKPOINT_OWNER'
   });

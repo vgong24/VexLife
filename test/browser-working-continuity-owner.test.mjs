@@ -602,4 +602,55 @@ test('successor claim refuses a different request and checkpoint-only commits do
   }
 });
 
+
+function continuityWithPriorCheckpointCursor(priorCheckpoint, suffix = 'b') {
+  const value = structuredClone(continuity(suffix));
+  value.owners.context.schedulerGeneration = priorCheckpoint.contextLease.schedulerGeneration + 2;
+  value.owners.context.selectedSourceRefs = [...new Set([
+    ...value.owners.context.selectedSourceRefs,
+    priorCheckpoint.workingSet.cursorEventRef
+  ])].sort();
+  const core = structuredClone(value);
+  delete core.adapterProjectionRef;
+  delete core.semanticFingerprint;
+  const semanticFingerprint = semanticHash(core);
+  return Object.freeze({
+    ...core,
+    adapterProjectionRef: `projection.vexlife.continuity-stream-adapter.${semanticFingerprint.slice(0, 32)}`,
+    semanticFingerprint
+  });
+}
+
+test('adjacent repeated checkpoint pressure commits rollover authority without rewriting checkpoint pressure state', () => {
+  const fixture = makeHome();
+  try {
+    const effectOwner = owner(fixture.home, clock(
+      '2026-10-26T23:00:00.000Z',
+      '2026-10-26T23:00:00.100Z',
+      '2026-10-26T23:01:00.000Z',
+      '2026-10-26T23:01:00.100Z'
+    ));
+    const firstPlan = formContinuityRolloverPlan({
+      resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED', 'a'),
+      continuityStream: continuity('a')
+    });
+    const first = effectOwner.commitPlan({ plan: firstPlan });
+    assert.equal(first.commitReceipt.disposition, 'CHECKPOINT_COMMITTED');
+    const rolloverPlan = formContinuityRolloverPlan({
+      resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED', 'b'),
+      continuityStream: continuityWithPriorCheckpointCursor(first.checkpoint, 'b'),
+      priorWorkingCheckpoint: first.checkpoint
+    });
+    assert.equal(rolloverPlan.state, 'ROLLOVER_READY');
+    assert.equal(rolloverPlan.checkpoint.pressureState, 'CHECKPOINT_RECOMMENDED');
+    const rollover = effectOwner.commitPlan({ plan: rolloverPlan });
+    assert.equal(rollover.commitReceipt.disposition, 'ROLLOVER_COMMITTED');
+    assert.equal(rollover.commitReceipt.successorContextRequired, true);
+    assert.equal(rollover.checkpoint.pressureState, 'CHECKPOINT_RECOMMENDED');
+    assert.equal(effectOwner.readSuccessorContext({ threadRef: THREAD }).state, 'READY');
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 // [VXG RealForever]

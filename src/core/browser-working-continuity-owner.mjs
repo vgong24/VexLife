@@ -251,6 +251,7 @@ function validateCommitReceipt(value) {
     value.truthClass !== 'NON_SEMANTIC_WORKING_CONTINUITY_COMMIT' ||
     value.effectOwnerRef !== BROWSER_WORKING_CONTINUITY_OWNER_REF ||
     !['CHECKPOINT_COMMITTED', 'ROLLOVER_COMMITTED'].includes(value.disposition) ||
+    value.successorContextRequired !== (value.disposition === 'ROLLOVER_COMMITTED') ||
     value.effects?.checkpointPersisted !== true ||
     typeof value.effects?.priorCheckpointSuperseded !== 'boolean' ||
     value.effects?.successorContextLeaseIssued !== false ||
@@ -482,8 +483,7 @@ function readSuccessorContextAt(paths, identity, threadRef, current = null) {
   if (
     bound.commitReceipt.disposition !== 'ROLLOVER_COMMITTED' ||
     bound.commitReceipt.successorContextRequired !== true ||
-    bound.commitReceipt.effects?.successorContextLeaseIssued !== false ||
-    bound.checkpoint.pressureState !== 'ROLLOVER_REQUIRED'
+    bound.commitReceipt.effects?.successorContextLeaseIssued !== false
   ) return Object.freeze({ ...base, state: 'NOT_REQUIRED', successorClaim: null, issuanceReceipt: null });
 
   const claimPath = successorClaimFile(paths, bound.checkpoint.semanticFingerprint);
