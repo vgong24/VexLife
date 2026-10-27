@@ -88,6 +88,7 @@ function receiptFor({ decision, resourceObservation, leaseObservation, dispositi
     preEffectDecisionFingerprint: decision.semanticFingerprint,
     stopDispositionOrNull: stop?.disposition ?? null,
     stopPidOrNull: Number.isInteger(stop?.pid) ? stop.pid : null,
+    stopResultFingerprintOrNull: stop ? semanticHash(stop) : null,
     postEffectResourceObservationRefOrNull: postResourceObservation?.resourceObservationRef ?? null,
     disposition,
     processTerminationPerformed,
@@ -106,6 +107,109 @@ function requireLeaseOwner(owner) {
     );
   }
   return owner;
+}
+
+
+function eligibleDecision(decision) {
+  return decision.disposition === 'AUTO_CLEANUP_ELIGIBLE' &&
+    decision.cleanupEligibility === 'ELIGIBLE_FOR_RIGHTFUL_OWNER_DELEGATION' &&
+    decision.rightfulCleanupOwnerRefOrNull === HERETIC_PERSISTENT_RUNTIME_OWNER_REF &&
+    decision.rightfulCleanupActionRefOrNull === HERETIC_PERSISTENT_RUNTIME_STOP_ACTION_REF &&
+    decision.executionAuthorityGranted === false &&
+    decision.automaticCleanupAuthorized === false;
+}
+
+function deriveDelegationReceiptFromEvidence({
+  resourceObservation,
+  leaseObservation,
+  resourceContextPressure = null,
+  stopResult = null,
+  postResourceObservation = null
+} = {}) {
+  const resource = validateHostResourceObservation(resourceObservation);
+  const lease = validateHostResourceLeaseObservation(leaseObservation);
+  if (resource.resourceRef !== HERETIC_HOST_RESOURCE_REF ||
+      resource.resourceClass !== HERETIC_HOST_RESOURCE_CLASS ||
+      lease.resourceRef !== HERETIC_HOST_RESOURCE_REF) {
+    fail('HERETIC_STEWARDSHIP_RESOURCE_MISMATCH', 'delegation evidence is not the exact Heretic persistent runtime');
+  }
+
+  const decision = projectHostResourceStewardship({
+    resourceObservation: resource,
+    leaseObservation: lease,
+    resourceContextPressure,
+    rightfulCleanupOwnerRef: HERETIC_PERSISTENT_RUNTIME_OWNER_REF,
+    rightfulCleanupActionRef: HERETIC_PERSISTENT_RUNTIME_STOP_ACTION_REF
+  });
+  if (!verifyHostResourceStewardshipDecision(decision, {
+    resourceObservation: resource,
+    leaseObservation: lease,
+    resourceContextPressure,
+    rightfulCleanupOwnerRef: HERETIC_PERSISTENT_RUNTIME_OWNER_REF,
+    rightfulCleanupActionRef: HERETIC_PERSISTENT_RUNTIME_STOP_ACTION_REF
+  })) {
+    fail('HERETIC_STEWARDSHIP_FRESH_DECISION_INVALID', 'delegation evidence did not re-derive one canonical stewardship decision');
+  }
+
+  if (!eligibleDecision(decision)) {
+    if (stopResult !== null || postResourceObservation !== null) {
+      fail(
+        'HERETIC_STEWARDSHIP_UNEXPECTED_EFFECT_EVIDENCE',
+        'ineligible stewardship evidence cannot carry stop or post-effect evidence'
+      );
+    }
+    return receiptFor({
+      decision,
+      resourceObservation: resource,
+      leaseObservation: lease,
+      disposition: 'HELD_NO_EFFECT'
+    });
+  }
+
+  if (!stopResult || typeof stopResult !== 'object' || Array.isArray(stopResult) || !postResourceObservation) {
+    fail(
+      'HERETIC_STEWARDSHIP_EFFECT_EVIDENCE_REQUIRED',
+      'eligible delegation verification requires the rightful-owner stop result and post-effect resource observation'
+    );
+  }
+  const post = validateHostResourceObservation(postResourceObservation);
+  if (post.resourceRef !== HERETIC_HOST_RESOURCE_REF || post.resourceClass !== HERETIC_HOST_RESOURCE_CLASS) {
+    fail('HERETIC_STEWARDSHIP_POST_EFFECT_RESOURCE_MISMATCH', 'post-effect resource observation changed identity');
+  }
+
+  if (stopResult.disposition === 'STOPPED_EXACT_OWNED_MLX_RUNTIME' &&
+      stopResult.processTerminationPerformed === true) {
+    if (post.ownershipState === 'EXACT_VEX_OWNED') {
+      fail('HERETIC_STEWARDSHIP_POST_EFFECT_STILL_OWNED', 'owner reported stop but post-effect observation still sees an exact-owned live runtime');
+    }
+    return receiptFor({
+      decision,
+      resourceObservation: resource,
+      leaseObservation: lease,
+      stop: stopResult,
+      postResourceObservation: post,
+      disposition: 'DELEGATED_AND_STOPPED_EXACT_OWNED_HERETIC_RUNTIME'
+    });
+  }
+
+  if (['ALREADY_NOT_LIVE', 'NO_HERETIC_RUNTIME_RECEIPT'].includes(stopResult.disposition) &&
+      stopResult.processTerminationPerformed === false &&
+      post.ownershipState !== 'EXACT_VEX_OWNED') {
+    return receiptFor({
+      decision,
+      resourceObservation: resource,
+      leaseObservation: lease,
+      stop: stopResult,
+      postResourceObservation: post,
+      disposition: 'NO_EFFECT_RESOURCE_ALREADY_ABSENT'
+    });
+  }
+
+  fail(
+    'HERETIC_STEWARDSHIP_STOP_RESULT_UNEXPECTED',
+    'rightful Heretic owner did not return an accepted bounded stop result',
+    stopResult
+  );
 }
 
 export function createHereticStaleResourceDelegator({
@@ -154,52 +258,25 @@ export function createHereticStaleResourceDelegator({
 
   const delegate = async ({ receiptPath, resourceContextPressure = null } = {}) => {
     const fresh = inspect({ receiptPath, resourceContextPressure });
-    const eligible = fresh.decision.disposition === 'AUTO_CLEANUP_ELIGIBLE' &&
-      fresh.decision.cleanupEligibility === 'ELIGIBLE_FOR_RIGHTFUL_OWNER_DELEGATION' &&
-      fresh.decision.rightfulCleanupOwnerRefOrNull === HERETIC_PERSISTENT_RUNTIME_OWNER_REF &&
-      fresh.decision.rightfulCleanupActionRefOrNull === HERETIC_PERSISTENT_RUNTIME_STOP_ACTION_REF &&
-      fresh.decision.executionAuthorityGranted === false &&
-      fresh.decision.automaticCleanupAuthorized === false;
-    if (!eligible) {
-      return receiptFor({
-        ...fresh,
-        disposition: 'HELD_NO_EFFECT'
+    if (!eligibleDecision(fresh.decision)) {
+      return deriveDelegationReceiptFromEvidence({
+        resourceObservation: fresh.resourceObservation,
+        leaseObservation: fresh.leaseObservation,
+        resourceContextPressure
       });
     }
 
-    const stop = await stopRuntime({ receiptPath });
+    const stopResult = await stopRuntime({ receiptPath });
     const postResourceObservation = validateHostResourceObservation(
       observeResource({ receiptPath, observedAt: now() })
     );
-    if (postResourceObservation.resourceRef !== HERETIC_HOST_RESOURCE_REF ||
-        postResourceObservation.resourceClass !== HERETIC_HOST_RESOURCE_CLASS) {
-      fail('HERETIC_STEWARDSHIP_POST_EFFECT_RESOURCE_MISMATCH', 'post-effect resource observation changed identity');
-    }
-
-    if (stop?.disposition === 'STOPPED_EXACT_OWNED_MLX_RUNTIME' && stop.processTerminationPerformed === true) {
-      if (postResourceObservation.ownershipState === 'EXACT_VEX_OWNED') {
-        fail('HERETIC_STEWARDSHIP_POST_EFFECT_STILL_OWNED', 'owner reported stop but fresh post-effect observation still sees an exact-owned live runtime');
-      }
-      return receiptFor({
-        ...fresh,
-        stop,
-        postResourceObservation,
-        disposition: 'DELEGATED_AND_STOPPED_EXACT_OWNED_HERETIC_RUNTIME'
-      });
-    }
-
-    if (['ALREADY_NOT_LIVE', 'NO_HERETIC_RUNTIME_RECEIPT'].includes(stop?.disposition) &&
-        stop.processTerminationPerformed === false &&
-        postResourceObservation.ownershipState !== 'EXACT_VEX_OWNED') {
-      return receiptFor({
-        ...fresh,
-        stop,
-        postResourceObservation,
-        disposition: 'NO_EFFECT_RESOURCE_ALREADY_ABSENT'
-      });
-    }
-
-    fail('HERETIC_STEWARDSHIP_STOP_RESULT_UNEXPECTED', 'rightful Heretic owner did not return an accepted bounded stop result', stop);
+    return deriveDelegationReceiptFromEvidence({
+      resourceObservation: fresh.resourceObservation,
+      leaseObservation: fresh.leaseObservation,
+      resourceContextPressure,
+      stopResult,
+      postResourceObservation
+    });
   };
 
   return Object.freeze({
@@ -209,20 +286,27 @@ export function createHereticStaleResourceDelegator({
   });
 }
 
-export function verifyHereticStewardshipDelegationReceipt(value) {
-  if (!value || value.schemaVersion !== HERETIC_STEWARDSHIP_DELEGATION_SCHEMA ||
-      value.delegationOwnerRef !== HERETIC_STEWARDSHIP_DELEGATION_OWNER_REF ||
-      value.resourceRef !== HERETIC_HOST_RESOURCE_REF ||
-      value.resourceClass !== HERETIC_HOST_RESOURCE_CLASS ||
-      value.rightfulCleanupOwnerRef !== HERETIC_PERSISTENT_RUNTIME_OWNER_REF ||
-      value.rightfulCleanupActionRef !== HERETIC_PERSISTENT_RUNTIME_STOP_ACTION_REF ||
-      typeof value.semanticFingerprint !== 'string' || typeof value.delegationReceiptRef !== 'string') return false;
-  const core = structuredClone(value);
-  delete core.semanticFingerprint;
-  delete core.delegationReceiptRef;
-  const expected = semanticHash(core);
-  return value.semanticFingerprint === expected &&
-    value.delegationReceiptRef === `receipt.vexlife.host-resource-stewardship-heretic.${expected.slice(0, 32)}`;
+export function verifyHereticStewardshipDelegationReceipt(value, {
+  resourceObservation,
+  leaseObservation,
+  resourceContextPressure = null,
+  stopResult = null,
+  postResourceObservation = null
+} = {}) {
+  try {
+    const expected = deriveDelegationReceiptFromEvidence({
+      resourceObservation,
+      leaseObservation,
+      resourceContextPressure,
+      stopResult,
+      postResourceObservation
+    });
+    return value?.delegationReceiptRef === expected.delegationReceiptRef &&
+      value?.semanticFingerprint === expected.semanticFingerprint &&
+      semanticHash(value) === semanticHash(expected);
+  } catch {
+    return false;
+  }
 }
 
 // [VXG RealForever]

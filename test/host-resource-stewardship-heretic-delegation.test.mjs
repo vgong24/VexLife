@@ -105,15 +105,32 @@ function stopped() {
   };
 }
 
+
+function readdressDelegationReceipt(value, overrides = {}) {
+  const core = { ...structuredClone(value), ...structuredClone(overrides) };
+  delete core.delegationReceiptRef;
+  delete core.semanticFingerprint;
+  const semanticFingerprint = semanticHash(core);
+  return Object.freeze({
+    ...core,
+    delegationReceiptRef: `receipt.vexlife.host-resource-stewardship-heretic.${semanticFingerprint.slice(0, 32)}`,
+    semanticFingerprint
+  });
+}
+
 test('V5-HRD-00 stale exact-owned Heretic + current NONE lease delegates exactly once to rightful owner', async () => {
   let stops = 0;
+  const preResourceObservation = resourceObservation();
+  const preLeaseObservation = leaseObservation();
+  const postResourceObservation = resourceObservation({ ownershipState: 'UNOWNED', lifecycleState: 'ABANDONED' });
+  const stopResult = stopped();
   const delegator = createHereticStaleResourceDelegator({
-    promptContextRuntime: leaseOwner(leaseObservation()),
+    promptContextRuntime: leaseOwner(preLeaseObservation),
     observeResource: observerSequence([
-      resourceObservation(),
-      resourceObservation({ ownershipState: 'UNOWNED', lifecycleState: 'ABANDONED' })
+      preResourceObservation,
+      postResourceObservation
     ]),
-    stopRuntime: async () => { stops += 1; return stopped(); },
+    stopRuntime: async () => { stops += 1; return stopResult; },
     now: () => '2026-10-27T11:45:00.000Z'
   });
   const receipt = await delegator.delegate({ receiptPath: '/tmp/heretic-owner-receipt.json' });
@@ -123,14 +140,34 @@ test('V5-HRD-00 stale exact-owned Heretic + current NONE lease delegates exactly
   assert.equal(receipt.effects.processTerminated, true);
   assert.equal(receipt.effects.memoryMutated, false);
   assert.equal(receipt.effects.trainingRan, false);
-  assert.equal(verifyHereticStewardshipDelegationReceipt(receipt), true);
+  assert.equal(verifyHereticStewardshipDelegationReceipt(receipt, {
+    resourceObservation: preResourceObservation,
+    leaseObservation: preLeaseObservation,
+    stopResult,
+    postResourceObservation
+  }), true);
+  assert.equal(verifyHereticStewardshipDelegationReceipt(receipt), false);
+  assert.equal(verifyHereticStewardshipDelegationReceipt(receipt, {
+    resourceObservation: preResourceObservation,
+    leaseObservation: preLeaseObservation,
+    stopResult: { ...stopResult, pid: 9999 },
+    postResourceObservation
+  }), false);
+  assert.equal(verifyHereticStewardshipDelegationReceipt(receipt, {
+    resourceObservation: preResourceObservation,
+    leaseObservation: preLeaseObservation,
+    stopResult: { ...stopResult, signalSent: 'SIGKILL' },
+    postResourceObservation
+  }), false);
 });
 
 test('V5-HRD-01 active current Context Lease blocks cleanup before stop owner is called', async () => {
   let stops = 0;
+  const preResourceObservation = resourceObservation();
+  const preLeaseObservation = leaseObservation({ state: 'ACTIVE' });
   const delegator = createHereticStaleResourceDelegator({
-    promptContextRuntime: leaseOwner(leaseObservation({ state: 'ACTIVE' })),
-    observeResource: () => resourceObservation(),
+    promptContextRuntime: leaseOwner(preLeaseObservation),
+    observeResource: () => preResourceObservation,
     stopRuntime: async () => { stops += 1; return stopped(); },
     now: () => '2026-10-27T11:45:00.000Z'
   });
@@ -138,6 +175,10 @@ test('V5-HRD-01 active current Context Lease blocks cleanup before stop owner is
   assert.equal(stops, 0);
   assert.equal(receipt.disposition, 'HELD_NO_EFFECT');
   assert.equal(receipt.processTerminationPerformed, false);
+  assert.equal(verifyHereticStewardshipDelegationReceipt(receipt, {
+    resourceObservation: preResourceObservation,
+    leaseObservation: preLeaseObservation
+  }), true);
 });
 
 test('V5-HRD-02 current Heretic resource is KEEP and never reaches stop owner', async () => {
@@ -318,5 +359,82 @@ test('V5-HRD-09 delegation source never acquires a direct process-kill primitive
   assert.ok(source.includes('HERETIC_PERSISTENT_RUNTIME_OWNER_REF'));
   assert.ok(source.includes('HERETIC_PERSISTENT_RUNTIME_STOP_ACTION_REF'));
 });
+
+
+test('V5-HRD-10 source-bound verifier rejects a coherently re-addressed successful-stop receipt against active lease truth', async () => {
+  const preResourceObservation = resourceObservation();
+  const activeLeaseObservation = leaseObservation({ state: 'ACTIVE' });
+  const delegator = createHereticStaleResourceDelegator({
+    promptContextRuntime: leaseOwner(activeLeaseObservation),
+    observeResource: () => preResourceObservation,
+    stopRuntime: async () => {
+      throw new Error('stop must not be reached under an active lease');
+    },
+    now: () => '2026-10-27T11:45:00.000Z'
+  });
+  const held = await delegator.delegate({ receiptPath: '/tmp/heretic-owner-receipt.json' });
+  assert.equal(held.disposition, 'HELD_NO_EFFECT');
+
+  const postResourceObservation = resourceObservation({
+    ownershipState: 'UNOWNED',
+    lifecycleState: 'ABANDONED'
+  });
+  const forgedEffects = {
+    ...held.effects,
+    hostMutated: true,
+    processSignalled: true,
+    processTerminated: true,
+    runtimeMutated: true
+  };
+  const forgedSourceRefs = [...new Set([
+    ...held.sourceRefs,
+    postResourceObservation.resourceObservationRef,
+    ...postResourceObservation.sourceRefs
+  ])].sort();
+  const forged = readdressDelegationReceipt(held, {
+    stopDispositionOrNull: 'STOPPED_EXACT_OWNED_MLX_RUNTIME',
+    stopPidOrNull: 4242,
+    stopResultFingerprintOrNull: semanticHash(stopped()),
+    postEffectResourceObservationRefOrNull: postResourceObservation.resourceObservationRef,
+    disposition: 'DELEGATED_AND_STOPPED_EXACT_OWNED_HERETIC_RUNTIME',
+    processTerminationPerformed: true,
+    sourceRefs: forgedSourceRefs,
+    effects: forgedEffects
+  });
+
+  assert.equal(verifyHereticStewardshipDelegationReceipt(forged, {
+    resourceObservation: preResourceObservation,
+    leaseObservation: activeLeaseObservation,
+    stopResult: stopped(),
+    postResourceObservation
+  }), false);
+});
+
+test('V5-HRD-11 source-bound verifier rejects missing or wrong post-effect evidence for an effectful receipt', async () => {
+  const preResourceObservation = resourceObservation();
+  const preLeaseObservation = leaseObservation();
+  const postResourceObservation = resourceObservation({ ownershipState: 'UNOWNED', lifecycleState: 'ABANDONED' });
+  const stopResult = stopped();
+  const delegator = createHereticStaleResourceDelegator({
+    promptContextRuntime: leaseOwner(preLeaseObservation),
+    observeResource: observerSequence([preResourceObservation, postResourceObservation]),
+    stopRuntime: async () => stopResult,
+    now: () => '2026-10-27T11:45:00.000Z'
+  });
+  const receipt = await delegator.delegate({ receiptPath: '/tmp/heretic-owner-receipt.json' });
+
+  assert.equal(verifyHereticStewardshipDelegationReceipt(receipt, {
+    resourceObservation: preResourceObservation,
+    leaseObservation: preLeaseObservation,
+    stopResult
+  }), false);
+  assert.equal(verifyHereticStewardshipDelegationReceipt(receipt, {
+    resourceObservation: preResourceObservation,
+    leaseObservation: preLeaseObservation,
+    stopResult,
+    postResourceObservation: resourceObservation({ lifecycleState: 'CURRENT' })
+  }), false);
+});
+
 
 // [VXG RealForever]
