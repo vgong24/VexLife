@@ -253,6 +253,41 @@ test('stale resource observation currentness fails closed even with exact owners
   assert.equal(result.cleanupEligibility, 'NOT_ELIGIBLE');
 });
 
+function readdressDecision(value, overrides) {
+  const core = { ...structuredClone(value), ...overrides };
+  delete core.decisionRef;
+  delete core.semanticFingerprint;
+  const semanticFingerprint = semanticHash(core);
+  return Object.freeze({
+    ...core,
+    decisionRef: `decision.vexlife.host-resource-stewardship.${semanticFingerprint.slice(0, 32)}`,
+    semanticFingerprint
+  });
+}
+
+test('canonical verifier rejects a re-addressed forged cleanup-eligible decision', () => {
+  const unowned = decide(resource({ ownershipState: 'UNOWNED', lifecycleState: 'ABANDONED' }), lease());
+  const forged = readdressDecision(unowned, {
+    disposition: 'AUTO_CLEANUP_ELIGIBLE',
+    reasonCodes: ['EXACT_OWNED_STALE_NO_ACTIVE_LEASE', 'PRESSURE_NOT_SUPPLIED'],
+    cleanupEligibility: 'ELIGIBLE_FOR_RIGHTFUL_OWNER_DELEGATION',
+    rightfulCleanupOwnerRefOrNull: cleanup.rightfulCleanupOwnerRef,
+    rightfulCleanupActionRefOrNull: cleanup.rightfulCleanupActionRef,
+    humanProposalRequired: false
+  });
+  assert.equal(verifyHostResourceStewardshipDecision(forged), false);
+
+  const activeLease = decide(resource({ lifecycleState: 'STALE' }), lease({ state: 'ACTIVE' }));
+  const forgedActiveLease = readdressDecision(activeLease, {
+    disposition: 'AUTO_CLEANUP_ELIGIBLE',
+    reasonCodes: ['EXACT_OWNED_STALE_NO_ACTIVE_LEASE', 'PRESSURE_NOT_SUPPLIED'],
+    cleanupEligibility: 'ELIGIBLE_FOR_RIGHTFUL_OWNER_DELEGATION',
+    rightfulCleanupOwnerRefOrNull: cleanup.rightfulCleanupOwnerRef,
+    rightfulCleanupActionRefOrNull: cleanup.rightfulCleanupActionRef
+  });
+  assert.equal(verifyHostResourceStewardshipDecision(forgedActiveLease), false);
+});
+
 test('decisions are deterministic and content-addressed with no effects', () => {
   const input = { resourceObservation: resource({ lifecycleState: 'STALE' }), leaseObservation: lease(), ...cleanup };
   const first = projectHostResourceStewardship(input);

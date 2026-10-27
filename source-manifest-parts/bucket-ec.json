@@ -35,8 +35,8 @@
     {
       "path": "test/host-resource-stewardship.test.mjs",
       "mode": "100644",
-      "bytes": 12369,
-      "sha256": "b14dfa6b13d1cd693b8b4de508a46a1551d0f1a18eb68f9502dedc1a7d2435bf"
+      "bytes": 14013,
+      "sha256": "0c406daad5fb9b1750ab979f96a46428554a26600b7020770bc4299a4a4756ef"
     }
   ]
 }
