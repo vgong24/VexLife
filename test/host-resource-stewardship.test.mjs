@@ -288,6 +288,33 @@ test('canonical verifier rejects a re-addressed forged cleanup-eligible decision
   assert.equal(verifyHostResourceStewardshipDecision(forgedActiveLease), false);
 });
 
+test('canonical verifier rejects invented pressure state even when re-addressed', () => {
+  const current = decide(resource({ lifecycleState: 'CURRENT' }), lease(), { resourceContextPressure: severePressure() });
+  const forged = readdressDecision(current, { pressureStateOrNull: 'KILL_NOW' });
+  assert.equal(verifyHostResourceStewardshipDecision(forged), false);
+});
+
+test('canonical verifier rejects extra invented reason code even when sorted and re-addressed', () => {
+  const current = decide(resource({ lifecycleState: 'CURRENT' }), lease());
+  const forged = readdressDecision(current, {
+    reasonCodes: ['FAKE_STEWARDSHIP_REASON', ...current.reasonCodes].sort()
+  });
+  assert.equal(verifyHostResourceStewardshipDecision(forged), false);
+});
+
+test('canonical verifier rejects non-canonical sourceRefs even when re-addressed', () => {
+  const current = decide(resource({ lifecycleState: 'CURRENT' }), lease());
+  const duplicated = readdressDecision(current, {
+    sourceRefs: [...current.sourceRefs, current.sourceRefs[0]]
+  });
+  assert.equal(verifyHostResourceStewardshipDecision(duplicated), false);
+
+  const reversed = readdressDecision(current, {
+    sourceRefs: [...current.sourceRefs].reverse()
+  });
+  assert.equal(verifyHostResourceStewardshipDecision(reversed), false);
+});
+
 test('decisions are deterministic and content-addressed with no effects', () => {
   const input = { resourceObservation: resource({ lifecycleState: 'STALE' }), leaseObservation: lease(), ...cleanup };
   const first = projectHostResourceStewardship(input);

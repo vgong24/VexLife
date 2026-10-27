@@ -1,5 +1,5 @@
 import { semanticHash } from './utils.mjs';
-import { verifyResourceContextPressureProjection } from './resource-context-pressure.mjs';
+import { RESOURCE_CONTEXT_PRESSURE_STATES, verifyResourceContextPressureProjection } from './resource-context-pressure.mjs';
 
 export const HOST_RESOURCE_STEWARDSHIP_SCHEMA = 'vexlife.host-resource-stewardship-decision/v1';
 export const HOST_RESOURCE_OBSERVATION_SCHEMA = 'vexlife.host-resource-observation/v1';
@@ -298,7 +298,8 @@ export function verifyHostResourceStewardshipDecision(value) {
         !CLEANUP_ELIGIBILITY.has(value.cleanupEligibility) ||
         typeof value.humanProposalRequired !== 'boolean' ||
         typeof value.pressureCurrent !== 'boolean') return false;
-    refs(value.sourceRefs, 'decision.sourceRefs');
+    const canonicalSourceRefs = refs(value.sourceRefs, 'decision.sourceRefs');
+    if (JSON.stringify(canonicalSourceRefs) !== JSON.stringify(value.sourceRefs)) return false;
     if (!Array.isArray(value.reasonCodes) || value.reasonCodes.length === 0 ||
         value.reasonCodes.some((item) => typeof item !== 'string' || item.length === 0) ||
         new Set(value.reasonCodes).size !== value.reasonCodes.length ||
@@ -333,20 +334,25 @@ export function verifyHostResourceStewardshipDecision(value) {
 
     if (value.disposition !== expectedDisposition ||
         value.cleanupEligibility !== (expectedEligibility ? 'ELIGIBLE_FOR_RIGHTFUL_OWNER_DELEGATION' : 'NOT_ELIGIBLE') ||
-        value.humanProposalRequired !== expectedHumanProposal ||
-        !value.reasonCodes.includes(expectedReasonCode)) return false;
+        value.humanProposalRequired !== expectedHumanProposal) return false;
 
     const pressureReasons = value.reasonCodes.filter((code) => PRESSURE_REASON_CODES.has(code));
+    let expectedPressureReason = null;
     if (value.pressureStateOrNull === null) {
       if (value.pressureCurrent !== false || pressureReasons.length !== 1 ||
           !['PRESSURE_NOT_SUPPLIED', 'PRESSURE_INVALID'].includes(pressureReasons[0])) return false;
-    } else if (typeof value.pressureStateOrNull !== 'string' || value.pressureStateOrNull.length === 0) {
+      expectedPressureReason = pressureReasons[0];
+    } else if (!RESOURCE_CONTEXT_PRESSURE_STATES.includes(value.pressureStateOrNull)) {
       return false;
     } else if (value.pressureCurrent) {
       if (pressureReasons.length !== 0) return false;
-    } else if (pressureReasons.length !== 1 || pressureReasons[0] !== 'PRESSURE_NOT_CURRENT') {
-      return false;
+    } else {
+      if (pressureReasons.length !== 1 || pressureReasons[0] !== 'PRESSURE_NOT_CURRENT') return false;
+      expectedPressureReason = 'PRESSURE_NOT_CURRENT';
     }
+
+    const expectedReasonCodes = [...new Set([expectedReasonCode, expectedPressureReason].filter(Boolean))].sort();
+    if (JSON.stringify(value.reasonCodes) !== JSON.stringify(expectedReasonCodes)) return false;
 
     if (value.executionAuthorityGranted !== false || value.automaticCleanupAuthorized !== false) return false;
     if (!value.effects || typeof value.effects !== 'object' || Array.isArray(value.effects) ||
