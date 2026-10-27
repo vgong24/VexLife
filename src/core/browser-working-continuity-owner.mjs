@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
+  formContinuityRolloverPlan,
   verifyContinuityRolloverPlan,
   verifyWorkingContinuityCheckpoint,
   verifyWorkingContinuityCheckpointSupersessionPlan
@@ -890,6 +891,36 @@ function validatePlanForOwner(plan, identity, threadRef, current) {
   }
 }
 
+function validateRolloverSourceAuthority(plan, current, {
+  resourceContextPressure = null,
+  continuityStream = null
+} = {}) {
+  if (plan.state !== 'ROLLOVER_READY') return;
+  let derived;
+  try {
+    derived = formContinuityRolloverPlan({
+      resourceContextPressure,
+      continuityStream,
+      priorWorkingCheckpoint: current.state === 'CURRENT' ? current.checkpoint : null
+    });
+  } catch {
+    fail(
+      'WORKING_CONTINUITY_ROLLOVER_SOURCE_MISMATCH',
+      'rollover commit requires source-owned pressure and continuity that re-derive the exact plan'
+    );
+  }
+  if (
+    derived.state !== 'ROLLOVER_READY' ||
+    derived.planRef !== plan.planRef ||
+    derived.semanticFingerprint !== plan.semanticFingerprint
+  ) {
+    fail(
+      'WORKING_CONTINUITY_ROLLOVER_SOURCE_MISMATCH',
+      'rollover commit source truth does not re-derive the exact rollover plan'
+    );
+  }
+}
+
 function commitReceipt(plan, current, identity, committedAt) {
   const checkpoint = plan.checkpoint;
   const prior = current.state === 'CURRENT' ? current.checkpoint : null;
@@ -1026,7 +1057,7 @@ export function createBrowserWorkingContinuityOwner({
         expectedAbandonedInstanceRef
       );
     },
-    commitPlan({ plan } = {}) {
+    commitPlan({ plan, resourceContextPressure = null, continuityStream = null } = {}) {
       const safeThreadRef = ref(plan?.threadRef, 'plan.threadRef');
       const paths = pathsForThread(safeThreadRef);
       const lock = acquireWriter(paths, identity, safeThreadRef, now);
@@ -1045,6 +1076,11 @@ export function createBrowserWorkingContinuityOwner({
             head: current.head
           });
         }
+
+        validateRolloverSourceAuthority(plan, current, {
+          resourceContextPressure,
+          continuityStream
+        });
 
         const checkpoint = Object.freeze(structuredClone(plan.checkpoint));
         writeExclusiveExact(checkpointFile(paths, checkpoint), checkpoint, {

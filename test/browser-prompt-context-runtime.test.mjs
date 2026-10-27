@@ -826,7 +826,11 @@ test('committed rollover gives only the immediate next request a checkpoint-back
       companionLineageRef: home.companionLineageRef,
       instanceRef: 'instance.vexlife.browser-prompt-context-v42b-checkpoint'
     });
-    const committed = continuityOwner.commitPlan({ plan });
+    const committed = continuityOwner.commitPlan({
+      plan,
+      resourceContextPressure: pressure,
+      continuityStream: second.promptContextContinuityProjection
+    });
     assert.equal(committed.commitReceipt.disposition, 'ROLLOVER_COMMITTED');
 
     const successorRuntime = runtime(home);
@@ -896,7 +900,15 @@ test('fresh prompt runtime reuses the same rollover claim and semantic successor
       companionLineageRef: home.companionLineageRef,
       instanceRef: 'instance.vexlife.browser-prompt-context-v42b-retry-checkpoint'
     });
-    continuityOwner.commitPlan({ plan });
+    continuityOwner.commitPlan({
+      plan,
+      resourceContextPressure: Object.freeze({
+        ...core,
+        pressureRef: `projection.vexlife.resource-context-pressure.${fp.slice(0, 32)}`,
+        semanticFingerprint: fp
+      }),
+      continuityStream: second.promptContextContinuityProjection
+    });
     const current = {
       threadRef,
       currentRequestEventRef: 'event.vexlife.request.v42b-retry',
@@ -986,7 +998,11 @@ test('two adjacent checkpoint-pressure turns drive one checkpoint-backed success
     });
     assert.equal(secondPlan.state, 'ROLLOVER_READY');
     assert.equal(secondPlan.checkpoint.pressureState, 'CHECKPOINT_RECOMMENDED');
-    const rollover = continuityOwner.commitPlan({ plan: secondPlan });
+    const rollover = continuityOwner.commitPlan({
+      plan: secondPlan,
+      resourceContextPressure: v42cCheckpointPressure(third.promptContextMaterialization, 'SECOND'),
+      continuityStream: third.promptContextContinuityProjection
+    });
     assert.equal(rollover.commitReceipt.disposition, 'ROLLOVER_COMMITTED');
     assert.equal(rollover.commitReceipt.successorContextRequired, true);
 

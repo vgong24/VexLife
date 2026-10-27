@@ -286,7 +286,11 @@ test('ROLLOVER_READY atomically advances current checkpoint by exact ref/fingerp
       priorWorkingCheckpoint: first.checkpoint
     });
     assert.equal(secondPlan.state, 'ROLLOVER_READY');
-    const second = effectOwner.commitPlan({ plan: secondPlan });
+    const second = effectOwner.commitPlan({
+      plan: secondPlan,
+      resourceContextPressure: pressure('ROLLOVER_REQUIRED', 'b'),
+      continuityStream: continuity('b')
+    });
     assert.equal(second.state, 'COMMITTED');
     assert.equal(second.commitReceipt.disposition, 'ROLLOVER_COMMITTED');
     assert.equal(second.commitReceipt.effects.priorCheckpointSuperseded, true);
@@ -461,7 +465,11 @@ test('ROLLOVER_COMMITTED admits one exact successor request and records one sema
       continuityStream: continuity('b'),
       priorWorkingCheckpoint: first.checkpoint
     });
-    const rollover = effectOwner.commitPlan({ plan: rolloverPlan });
+    const rollover = effectOwner.commitPlan({
+      plan: rolloverPlan,
+      resourceContextPressure: pressure('ROLLOVER_REQUIRED', 'b'),
+      continuityStream: continuity('b')
+    });
     const headBefore = effectOwner.readCurrent({ threadRef: THREAD }).head;
     const currentRequestEventBinding = Object.freeze({
       eventRef: 'event.vexlife.successor.request.001',
@@ -580,7 +588,11 @@ test('successor claim refuses a different request and checkpoint-only commits do
       continuityStream: continuity('b'),
       priorWorkingCheckpoint: checkpoint.checkpoint
     });
-    const rollover = effectOwner.commitPlan({ plan: rolloverPlan });
+    const rollover = effectOwner.commitPlan({
+      plan: rolloverPlan,
+      resourceContextPressure: pressure('ROLLOVER_REQUIRED', 'b'),
+      continuityStream: continuity('b')
+    });
     const binding = { eventRef: 'event.vexlife.successor.bound', eventHash: '6'.repeat(64), sequence: 7 };
     effectOwner.claimSuccessorContext({
       threadRef: THREAD,
@@ -643,11 +655,68 @@ test('adjacent repeated checkpoint pressure commits rollover authority without r
     });
     assert.equal(rolloverPlan.state, 'ROLLOVER_READY');
     assert.equal(rolloverPlan.checkpoint.pressureState, 'CHECKPOINT_RECOMMENDED');
-    const rollover = effectOwner.commitPlan({ plan: rolloverPlan });
+    const rollover = effectOwner.commitPlan({
+      plan: rolloverPlan,
+      resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED', 'b'),
+      continuityStream: continuityWithPriorCheckpointCursor(first.checkpoint, 'b')
+    });
     assert.equal(rollover.commitReceipt.disposition, 'ROLLOVER_COMMITTED');
     assert.equal(rollover.commitReceipt.successorContextRequired, true);
     assert.equal(rollover.checkpoint.pressureState, 'CHECKPOINT_RECOMMENDED');
     assert.equal(effectOwner.readSuccessorContext({ threadRef: THREAD }).state, 'READY');
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+
+test('readdressed forged rollover plan cannot mint rollover authority without exact source re-derivation', () => {
+  const fixture = makeHome();
+  try {
+    const effectOwner = owner(fixture.home, clock(
+      '2026-10-27T05:30:00.000Z',
+      '2026-10-27T05:30:00.100Z',
+      '2026-10-27T05:31:00.000Z'
+    ));
+    const firstPlan = formContinuityRolloverPlan({
+      resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED', 'a'),
+      continuityStream: continuity('a')
+    });
+    const first = effectOwner.commitPlan({ plan: firstPlan });
+    const actualPressure = pressure('CHECKPOINT_RECOMMENDED', 'b');
+    const actualContinuity = continuity('b');
+    const nonAdjacentPlan = formContinuityRolloverPlan({
+      resourceContextPressure: actualPressure,
+      continuityStream: actualContinuity,
+      priorWorkingCheckpoint: first.checkpoint
+    });
+    assert.equal(nonAdjacentPlan.state, 'CHECKPOINT_READY');
+
+    const forged = structuredClone(nonAdjacentPlan);
+    forged.state = 'ROLLOVER_READY';
+    forged.reasonCodes = [
+      'ADJACENT_CHECKPOINT_PRESSURE_ESCALATED_TO_ROLLOVER',
+      'CHECKPOINT_RECOMMENDED'
+    ].sort();
+    forged.nextSafeAction = 'DELEGATE_CHECKPOINT_THEN_SCHEDULER_ISSUED_SUCCESSOR_CONTEXT';
+    delete forged.planRef;
+    delete forged.semanticFingerprint;
+    const forgedFingerprint = semanticHash(forged);
+    forged.semanticFingerprint = forgedFingerprint;
+    forged.planRef = `plan.vexlife.continuity-rollover.${forgedFingerprint.slice(0, 32)}`;
+
+    assert.throws(
+      () => effectOwner.commitPlan({
+        plan: forged,
+        resourceContextPressure: actualPressure,
+        continuityStream: actualContinuity
+      }),
+      (error) => error instanceof BrowserWorkingContinuityOwnerError &&
+        error.code === 'WORKING_CONTINUITY_ROLLOVER_SOURCE_MISMATCH'
+    );
+    const current = effectOwner.readCurrent({ threadRef: THREAD });
+    assert.equal(current.checkpoint.checkpointRef, first.checkpoint.checkpointRef);
+    assert.equal(current.commitReceipt.disposition, 'CHECKPOINT_COMMITTED');
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
