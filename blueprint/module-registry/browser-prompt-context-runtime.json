@@ -70,5 +70,29 @@
       "scripts/serve-browser-core.mjs",
       "test/browser-companion-bridge.test.mjs"
     ]
+  },
+  {
+    "moduleRef": "module.vexlife.core.browser-working-continuity-owner",
+    "path": "src/core/browser-working-continuity-owner.mjs",
+    "role": "Device-private Browser working-continuity checkpoint persistence, exact supersession and explicit abandoned-writer recovery owner over accepted effect-free V4 rollover plans, without semantic Memory promotion or successor Context issuance.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "module.vexlife.core.continuity-rollover",
+      "module.vexlife.core.utils"
+    ],
+    "writes": [
+      "selected Vex Home working-continuity checkpoints, commit receipts, atomic current heads and writer locks"
+    ],
+    "loadedBy": [
+      "module.vexlife.script.serve-browser"
+    ],
+    "tests": [
+      "test/browser-working-continuity-owner.test.mjs"
+    ],
+    "changeMap": [
+      "scripts/serve-browser-core.mjs",
+      "src/core/browser-prompt-context-runtime.mjs",
+      "src/core/continuity-rollover.mjs"
+    ]
   }
 ]

@@ -21,6 +21,12 @@
       "sha256": "d9662c60107495a9ee8964b3bb3319206186e462a905b744adefee9d032b074b"
     },
     {
+      "path": "test/browser-working-continuity-owner.test.mjs",
+      "mode": "100644",
+      "bytes": 17832,
+      "sha256": "761ec6acab528358f91a5a963ddae404588ee778d3a1adf91c42a281e86e31f9"
+    },
+    {
       "path": "test/foundation-health.test.mjs",
       "mode": "100644",
       "bytes": 15832,
