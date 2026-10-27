@@ -826,7 +826,11 @@ test('committed rollover gives only the immediate next request a checkpoint-back
       companionLineageRef: home.companionLineageRef,
       instanceRef: 'instance.vexlife.browser-prompt-context-v42b-checkpoint'
     });
-    const committed = continuityOwner.commitPlan({ plan });
+    const committed = continuityOwner.commitPlan({
+      plan,
+      resourceContextPressure: pressure,
+      continuityStream: second.promptContextContinuityProjection
+    });
     assert.equal(committed.commitReceipt.disposition, 'ROLLOVER_COMMITTED');
 
     const successorRuntime = runtime(home);
@@ -896,7 +900,15 @@ test('fresh prompt runtime reuses the same rollover claim and semantic successor
       companionLineageRef: home.companionLineageRef,
       instanceRef: 'instance.vexlife.browser-prompt-context-v42b-retry-checkpoint'
     });
-    continuityOwner.commitPlan({ plan });
+    continuityOwner.commitPlan({
+      plan,
+      resourceContextPressure: Object.freeze({
+        ...core,
+        pressureRef: `projection.vexlife.resource-context-pressure.${fp.slice(0, 32)}`,
+        semanticFingerprint: fp
+      }),
+      continuityStream: second.promptContextContinuityProjection
+    });
     const current = {
       threadRef,
       currentRequestEventRef: 'event.vexlife.request.v42b-retry',
@@ -916,6 +928,110 @@ test('fresh prompt runtime reuses the same rollover claim and semantic successor
     assert.equal(successorState.state, 'ISSUED');
     assert.equal(successorState.successorClaim.currentRequestEventBinding.eventRef, current.currentRequestEventRef);
     assert.equal(successorState.issuanceReceipt.contextLeaseFingerprint, selected1.contextLease.semanticFingerprint);
+  } finally {
+    await model.close();
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+
+function v42cCheckpointPressure(materialization, label) {
+  const base = projectResourceContextPressure({
+    promptContextMaterialization: materialization,
+    companionAvailability: null
+  });
+  const { pressureRef: _pressureRef, semanticFingerprint: _pressureFingerprint, ...core } = structuredClone(base);
+  core.state = 'CHECKPOINT_RECOMMENDED';
+  core.reasonCodes = [`TEST_V42C_CHECKPOINT_RECOMMENDED_${label}`];
+  const semanticFingerprint = semanticHash(core);
+  return Object.freeze({
+    ...core,
+    pressureRef: `projection.vexlife.resource-context-pressure.${semanticFingerprint.slice(0, 32)}`,
+    semanticFingerprint
+  });
+}
+
+test('two adjacent checkpoint-pressure turns drive one checkpoint-backed successor and later return to immediate-prior context', async () => {
+  const home = makeHome('v42c-reachability');
+  const model = await startModelServer();
+  const threadRef = 'thread.self-development.open-conversation';
+  try {
+    await v42bConversationTurn(bridge(home, model, null, 'instance.vexlife.browser-prompt-context-v42c-first'), {
+      threadRef,
+      channelRef: 'channel.self-development.companion',
+      content: 'V4.2c turn zero raw pair.'
+    });
+    const second = await v42bConversationTurn(bridge(home, model, runtime(home), 'instance.vexlife.browser-prompt-context-v42c-second'), {
+      threadRef,
+      channelRef: 'channel.self-development.companion',
+      content: 'V4.2c first checkpoint-pressure turn.'
+    });
+    const continuityOwner = createBrowserWorkingContinuityOwner({
+      home: home.home,
+      homeRef: home.homeRef,
+      deviceRef: home.deviceRef,
+      companionLineageRef: home.companionLineageRef,
+      instanceRef: 'instance.vexlife.browser-prompt-context-v42c-checkpoint'
+    });
+    const firstPlan = formContinuityRolloverPlan({
+      resourceContextPressure: v42cCheckpointPressure(second.promptContextMaterialization, 'FIRST'),
+      continuityStream: second.promptContextContinuityProjection
+    });
+    assert.equal(firstPlan.state, 'CHECKPOINT_READY');
+    const first = continuityOwner.commitPlan({ plan: firstPlan });
+    assert.equal(first.commitReceipt.disposition, 'CHECKPOINT_COMMITTED');
+
+    const third = await v42bConversationTurn(bridge(home, model, runtime(home), 'instance.vexlife.browser-prompt-context-v42c-third'), {
+      threadRef,
+      channelRef: 'channel.self-development.companion',
+      content: 'V4.2c second adjacent checkpoint-pressure turn.'
+    });
+    assert.ok(third.promptContextContinuityProjection.owners.context.selectedSourceRefs.includes(first.checkpoint.workingSet.cursorEventRef));
+    assert.equal(
+      third.promptContextContinuityProjection.owners.context.schedulerGeneration,
+      first.checkpoint.contextLease.schedulerGeneration + 2
+    );
+    const secondPlan = formContinuityRolloverPlan({
+      resourceContextPressure: v42cCheckpointPressure(third.promptContextMaterialization, 'SECOND'),
+      continuityStream: third.promptContextContinuityProjection,
+      priorWorkingCheckpoint: first.checkpoint
+    });
+    assert.equal(secondPlan.state, 'ROLLOVER_READY');
+    assert.equal(secondPlan.checkpoint.pressureState, 'CHECKPOINT_RECOMMENDED');
+    const rollover = continuityOwner.commitPlan({
+      plan: secondPlan,
+      resourceContextPressure: v42cCheckpointPressure(third.promptContextMaterialization, 'SECOND'),
+      continuityStream: third.promptContextContinuityProjection
+    });
+    assert.equal(rollover.commitReceipt.disposition, 'ROLLOVER_COMMITTED');
+    assert.equal(rollover.commitReceipt.successorContextRequired, true);
+
+    const successor = await v42bConversationTurn(bridge(home, model, runtime(home), 'instance.vexlife.browser-prompt-context-v42c-successor'), {
+      threadRef,
+      channelRef: 'channel.self-development.companion',
+      content: 'V4.2c immediate successor request.'
+    });
+    assert.deepEqual(model.calls[3].body.messages, [
+      { role: 'user', content: 'V4.2c immediate successor request.' }
+    ]);
+    assert.deepEqual(successor.promptContextMaterialization.selectedConversationEventRefs, []);
+    assert.equal(successor.promptContextContinuityProjection.owners.context.checkpointReturnRef, rollover.checkpoint.checkpointRef);
+    const successorState = continuityOwner.readSuccessorContext({ threadRef });
+    assert.equal(successorState.state, 'ISSUED');
+    assert.equal(successorState.issuanceReceipt.contextLeaseRef, successor.promptContextMaterialization.contextLeaseRef);
+
+    const later = await v42bConversationTurn(bridge(home, model, runtime(home), 'instance.vexlife.browser-prompt-context-v42c-later'), {
+      threadRef,
+      channelRef: 'channel.self-development.companion',
+      content: 'V4.2c later ordinary request.'
+    });
+    assert.deepEqual(model.calls[4].body.messages, [
+      { role: 'user', content: 'V4.2c immediate successor request.' },
+      { role: 'assistant', content: 'Current exact reply.' },
+      { role: 'user', content: 'V4.2c later ordinary request.' }
+    ]);
+    assert.equal(later.promptContextMaterialization.selectedConversationEventRefs.length, 2);
+    assert.notEqual(later.promptContextContinuityProjection.owners.context.checkpointReturnRef, rollover.checkpoint.checkpointRef);
   } finally {
     await model.close();
     fs.rmSync(home.root, { recursive: true, force: true });

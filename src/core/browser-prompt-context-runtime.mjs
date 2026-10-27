@@ -312,7 +312,6 @@ function workingRolloverEligible(working, prior) {
     working.commitReceipt?.disposition === 'ROLLOVER_COMMITTED' &&
     working.commitReceipt?.successorContextRequired === true &&
     working.commitReceipt?.effects?.successorContextLeaseIssued === false &&
-    working.checkpoint?.pressureState === 'ROLLOVER_REQUIRED' &&
     working.checkpoint?.workingSet?.cursorEventRef === prior.requestEventBinding.eventRef;
 }
 

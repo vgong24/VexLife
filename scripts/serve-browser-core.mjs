@@ -1810,7 +1810,11 @@ export function createVexLifeBrowserServer({
         : null
     });
     const workingContinuityCommit = ['CHECKPOINT_READY', 'ROLLOVER_READY'].includes(continuityRolloverPlan.state)
-      ? workingContinuityOwner.commitPlan({ plan: continuityRolloverPlan })
+      ? workingContinuityOwner.commitPlan({
+          plan: continuityRolloverPlan,
+          resourceContextPressure: pressure,
+          continuityStream: promptContextContinuityProjection
+        })
       : null;
     return {
       ...publicResult,
