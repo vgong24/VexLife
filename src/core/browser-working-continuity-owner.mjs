@@ -346,9 +346,49 @@ function readCurrentAt(paths, identity, threadRef) {
   });
 }
 
+function processState(pid) {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return 'UNVERIFIABLE';
+  if (pid === process.pid) return 'ACTIVE';
+  try {
+    process.kill(pid, 0);
+    return 'ACTIVE';
+  } catch (error) {
+    if (error?.code === 'ESRCH') return 'ABSENT';
+    if (error?.code === 'EPERM') return 'ACTIVE';
+    return 'UNVERIFIABLE';
+  }
+}
+
+function validateWriterLock(value, identity, threadRef) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      value.schemaVersion !== 'vexlife.browser-working-continuity-writer-lock/v1' ||
+      value.effectOwnerRef !== BROWSER_WORKING_CONTINUITY_OWNER_REF ||
+      value.homeRef !== identity.homeRef ||
+      value.deviceRef !== identity.deviceRef ||
+      value.companionLineageRef !== identity.companionLineageRef ||
+      value.threadRef !== threadRef ||
+      value.instanceRef === undefined ||
+      !Number.isSafeInteger(value.pid) || value.pid <= 0 ||
+      typeof value.lockToken !== 'string' || value.lockToken.length === 0) {
+    fail('WORKING_CONTINUITY_WRITER_CONFLICT', 'working continuity writer lock identity is invalid');
+  }
+  ref(value.instanceRef, 'working continuity writer instanceRef');
+  timestamp(value.formedAt, 'working continuity writer formedAt');
+  const fingerprint = value.semanticFingerprint;
+  if (typeof fingerprint !== 'string' || !SHA256.test(fingerprint)) {
+    fail('WORKING_CONTINUITY_WRITER_CONFLICT', 'working continuity writer lock fingerprint is invalid');
+  }
+  const core = structuredClone(value);
+  delete core.semanticFingerprint;
+  if (semanticHash(core) !== fingerprint) {
+    fail('WORKING_CONTINUITY_WRITER_CONFLICT', 'working continuity writer lock fingerprint does not match content');
+  }
+  return value;
+}
+
 function acquireWriter(paths, identity, threadRef, now) {
   fs.mkdirSync(path.dirname(paths.lock), { recursive: true });
-  const lock = Object.freeze({
+  const core = {
     schemaVersion: 'vexlife.browser-working-continuity-writer-lock/v1',
     effectOwnerRef: BROWSER_WORKING_CONTINUITY_OWNER_REF,
     homeRef: identity.homeRef,
@@ -359,7 +399,8 @@ function acquireWriter(paths, identity, threadRef, now) {
     pid: process.pid,
     lockToken: crypto.randomUUID(),
     formedAt: timestamp(now(), 'working continuity writer formedAt')
-  });
+  };
+  const lock = Object.freeze({ ...core, semanticFingerprint: semanticHash(core) });
   try {
     const fd = fs.openSync(paths.lock, 'wx', 0o600);
     try {
@@ -371,24 +412,113 @@ function acquireWriter(paths, identity, threadRef, now) {
     return lock;
   } catch (error) {
     if (error?.code !== 'EEXIST') throw error;
+    let existing;
+    try {
+      existing = validateWriterLock(
+        readJsonRegular(paths.lock, 'WORKING_CONTINUITY_WRITER_CONFLICT', 'working continuity writer lock'),
+        identity,
+        threadRef
+      );
+    } catch (validationError) {
+      if (validationError instanceof BrowserWorkingContinuityOwnerError) throw validationError;
+      fail('WORKING_CONTINUITY_WRITER_CONFLICT', 'working continuity writer lock is not safely classifiable');
+    }
+    const ownerState = processState(existing.pid);
     fail(
-      'WORKING_CONTINUITY_WRITER_CONFLICT',
-      'working continuity already has an active or abandoned writer lock; cleanup authority is held',
-      { lockPath: paths.lock }
+      ownerState === 'ABSENT'
+        ? 'WORKING_CONTINUITY_WRITER_RECOVERY_REQUIRED'
+        : 'WORKING_CONTINUITY_WRITER_CONFLICT',
+      ownerState === 'ABSENT'
+        ? 'abandoned working continuity writer lock requires exact recovery'
+        : 'working continuity already has an active or unverifiable writer lock',
+      {
+        lockPath: paths.lock,
+        ownerState,
+        ownerInstanceRef: existing.instanceRef,
+        ownerPid: existing.pid,
+        writerLockFingerprint: existing.semanticFingerprint
+      }
     );
   }
 }
 
-function releaseWriter(paths, lock) {
+function releaseWriter(paths, lock, identity, threadRef) {
   if (!lock || !fs.existsSync(paths.lock)) return true;
   try {
-    const current = JSON.parse(fs.readFileSync(paths.lock, 'utf8'));
-    if (current.lockToken !== lock.lockToken) return false;
+    const current = validateWriterLock(
+      readJsonRegular(paths.lock, 'WORKING_CONTINUITY_WRITER_CONFLICT', 'working continuity writer lock'),
+      identity,
+      threadRef
+    );
+    if (
+      current.lockToken !== lock.lockToken ||
+      current.semanticFingerprint !== lock.semanticFingerprint
+    ) return false;
     fs.unlinkSync(paths.lock);
     return true;
   } catch {
     return false;
   }
+}
+
+function recoverAbandonedWriter(paths, identity, threadRef, expectedAbandonedInstanceRef = null) {
+  if (!fs.existsSync(paths.lock)) {
+    return Object.freeze({
+      schemaVersion: 'vexlife.browser-working-continuity-writer-recovery/v1',
+      state: 'NO_WRITER_LOCK',
+      recovered: false,
+      companionLineageRef: identity.companionLineageRef,
+      threadRef,
+      effects: Object.freeze({
+        writerLockRemoved: false,
+        checkpointMutated: false,
+        currentHeadMutated: false,
+        memoryMutated: false,
+        modelCalled: false
+      })
+    });
+  }
+  const lock = validateWriterLock(
+    readJsonRegular(paths.lock, 'WORKING_CONTINUITY_WRITER_CONFLICT', 'working continuity writer lock'),
+    identity,
+    threadRef
+  );
+  if (
+    expectedAbandonedInstanceRef !== null &&
+    ref(expectedAbandonedInstanceRef, 'expectedAbandonedInstanceRef') !== lock.instanceRef
+  ) {
+    fail('WORKING_CONTINUITY_WRITER_CONFLICT', 'abandoned writer instance does not match exact recovery request', {
+      expectedAbandonedInstanceRef,
+      observedAbandonedInstanceRef: lock.instanceRef
+    });
+  }
+  const ownerState = processState(lock.pid);
+  if (ownerState !== 'ABSENT') {
+    fail(
+      ownerState === 'ACTIVE'
+        ? 'WORKING_CONTINUITY_WRITER_CONFLICT'
+        : 'WORKING_CONTINUITY_WRITER_RECOVERY_REQUIRED',
+      'working continuity writer lock cannot be recovered unless the recorded writer is provably absent',
+      { ownerState, ownerPid: lock.pid, ownerInstanceRef: lock.instanceRef }
+    );
+  }
+  fs.unlinkSync(paths.lock);
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-working-continuity-writer-recovery/v1',
+    state: 'ABANDONED_WRITER_RECOVERED',
+    recovered: true,
+    companionLineageRef: identity.companionLineageRef,
+    threadRef,
+    abandonedInstanceRef: lock.instanceRef,
+    writerLockFingerprint: lock.semanticFingerprint,
+    effects: Object.freeze({
+      writerLockRemoved: true,
+      checkpointMutated: false,
+      currentHeadMutated: false,
+      memoryMutated: false,
+      modelCalled: false
+    })
+  });
 }
 
 function validatePlanForOwner(plan, identity, threadRef, current) {
@@ -508,6 +638,15 @@ export function createBrowserWorkingContinuityOwner({
       const safeThreadRef = ref(threadRef, 'threadRef');
       return readCurrentAt(pathsForThread(safeThreadRef), identity, safeThreadRef);
     },
+    recoverAbandonedWriter({ threadRef, expectedAbandonedInstanceRef = null } = {}) {
+      const safeThreadRef = ref(threadRef, 'threadRef');
+      return recoverAbandonedWriter(
+        pathsForThread(safeThreadRef),
+        identity,
+        safeThreadRef,
+        expectedAbandonedInstanceRef
+      );
+    },
     commitPlan({ plan } = {}) {
       const safeThreadRef = ref(plan?.threadRef, 'plan.threadRef');
       const paths = pathsForThread(safeThreadRef);
@@ -560,7 +699,12 @@ export function createBrowserWorkingContinuityOwner({
           head: rebound.head
         });
       } finally {
-        releaseWriter(paths, lock);
+        if (!releaseWriter(paths, lock, identity, safeThreadRef)) {
+          fail(
+            'WORKING_CONTINUITY_WRITER_CONFLICT',
+            'working continuity writer lock could not be released safely'
+          );
+        }
       }
     }
   });

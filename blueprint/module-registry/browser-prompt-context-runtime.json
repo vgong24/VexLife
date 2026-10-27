@@ -74,7 +74,7 @@
   {
     "moduleRef": "module.vexlife.core.browser-working-continuity-owner",
     "path": "src/core/browser-working-continuity-owner.mjs",
-    "role": "Device-private Browser working-continuity checkpoint persistence and exact supersession owner over accepted effect-free V4 rollover plans, without semantic Memory promotion or successor Context issuance.",
+    "role": "Device-private Browser working-continuity checkpoint persistence, exact supersession and explicit abandoned-writer recovery owner over accepted effect-free V4 rollover plans, without semantic Memory promotion or successor Context issuance.",
     "platformScope": "NODE_DESKTOP_HOST",
     "reads": [
       "module.vexlife.core.continuity-rollover",

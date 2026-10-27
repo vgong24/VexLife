@@ -41,6 +41,31 @@ function clock(...values) {
   return () => values[Math.min(index++, values.length - 1)];
 }
 
+function writerLockPath(home) {
+  const key = semanticHash({ lineageRef: LINEAGE, threadRef: THREAD }).slice(0, 32);
+  return path.join(home, 'runtime', 'working-continuity-writer-locks', `${key}.lock`);
+}
+
+function writerLock({
+  pid,
+  instanceRef = 'instance.vexlife.working-continuity-abandoned',
+  formedAt = '2026-10-26T20:50:00.000Z'
+}) {
+  const core = {
+    schemaVersion: 'vexlife.browser-working-continuity-writer-lock/v1',
+    effectOwnerRef: 'owner.vexlife.browser-working-continuity.001',
+    homeRef: 'vex-home.working-continuity-test',
+    deviceRef: 'device.vexlife.working-continuity-test',
+    companionLineageRef: LINEAGE,
+    threadRef: THREAD,
+    instanceRef,
+    pid,
+    lockToken: 'lock-token.vexlife.working-continuity-test',
+    formedAt
+  };
+  return Object.freeze({ ...core, semanticFingerprint: semanticHash(core) });
+}
+
 function pressure(state = 'CHECKPOINT_RECOMMENDED', suffix = 'a') {
   const rollover = state === 'ROLLOVER_REQUIRED';
   const core = {
@@ -320,6 +345,95 @@ test('owner rejects non-ready plans and stale successor lineage without mutating
     );
     const current = effectOwner.readCurrent({ threadRef: THREAD });
     assert.equal(current.checkpoint.checkpointRef, second.checkpoint.checkpointRef);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+
+test('abandoned writer recovery is exact, process-bound and does not mutate checkpoint or Memory state', () => {
+  const fixture = makeHome();
+  try {
+    const effectOwner = owner(fixture.home, () => '2026-10-26T20:50:01.000Z');
+    const lockPath = writerLockPath(fixture.home);
+    fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+    fs.writeFileSync(lockPath, `${JSON.stringify(writerLock({ pid: 99_999_999 }), null, 2)}\n`, { mode: 0o600 });
+
+    assert.throws(
+      () => effectOwner.commitPlan({
+        plan: formContinuityRolloverPlan({
+          resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED', 'a'),
+          continuityStream: continuity('a')
+        })
+      }),
+      (error) => error instanceof BrowserWorkingContinuityOwnerError &&
+        error.code === 'WORKING_CONTINUITY_WRITER_RECOVERY_REQUIRED'
+    );
+
+    const recovery = effectOwner.recoverAbandonedWriter({
+      threadRef: THREAD,
+      expectedAbandonedInstanceRef: 'instance.vexlife.working-continuity-abandoned'
+    });
+    assert.equal(recovery.state, 'ABANDONED_WRITER_RECOVERED');
+    assert.equal(recovery.recovered, true);
+    assert.equal(recovery.effects.writerLockRemoved, true);
+    assert.equal(recovery.effects.checkpointMutated, false);
+    assert.equal(recovery.effects.currentHeadMutated, false);
+    assert.equal(recovery.effects.memoryMutated, false);
+    assert.equal(recovery.effects.modelCalled, false);
+    assert.equal(fs.existsSync(lockPath), false);
+    assert.equal(effectOwner.readCurrent({ threadRef: THREAD }).state, 'ABSENT');
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('active writer recovery is refused and lock-release failure cannot be reported as COMMITTED', () => {
+  const fixture = makeHome();
+  const lockPath = writerLockPath(fixture.home);
+  try {
+    const recoveryOwner = owner(fixture.home, () => '2026-10-26T20:51:00.000Z');
+    fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+    fs.writeFileSync(lockPath, `${JSON.stringify(writerLock({
+      pid: process.pid,
+      instanceRef: 'instance.vexlife.working-continuity-active'
+    }), null, 2)}\n`, { mode: 0o600 });
+    assert.throws(
+      () => recoveryOwner.recoverAbandonedWriter({
+        threadRef: THREAD,
+        expectedAbandonedInstanceRef: 'instance.vexlife.working-continuity-active'
+      }),
+      (error) => error instanceof BrowserWorkingContinuityOwnerError &&
+        error.code === 'WORKING_CONTINUITY_WRITER_CONFLICT'
+    );
+    fs.unlinkSync(lockPath);
+
+    const effectOwner = owner(fixture.home, clock(
+      '2026-10-26T20:52:00.000Z',
+      '2026-10-26T20:52:00.100Z'
+    ));
+    const plan = formContinuityRolloverPlan({
+      resourceContextPressure: pressure('CHECKPOINT_RECOMMENDED', 'a'),
+      continuityStream: continuity('a')
+    });
+    const originalUnlink = fs.unlinkSync;
+    fs.unlinkSync = (file) => {
+      if (file === lockPath) throw new Error('SIMULATED_LOCK_RELEASE_FAILURE');
+      return originalUnlink(file);
+    };
+    try {
+      assert.throws(
+        () => effectOwner.commitPlan({ plan }),
+        (error) => error instanceof BrowserWorkingContinuityOwnerError &&
+          error.code === 'WORKING_CONTINUITY_WRITER_CONFLICT' &&
+          /could not be released safely/u.test(error.message)
+      );
+    } finally {
+      fs.unlinkSync = originalUnlink;
+    }
+    assert.equal(fs.existsSync(lockPath), true);
+    assert.equal(effectOwner.readCurrent({ threadRef: THREAD }).state, 'CURRENT');
+    fs.unlinkSync(lockPath);
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
