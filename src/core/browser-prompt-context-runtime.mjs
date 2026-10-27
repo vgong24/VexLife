@@ -317,6 +317,10 @@ function continuityProjection(selection, lease) {
       context: {
         leaseRef: lease.leaseRef,
         semanticFingerprint: lease.semanticFingerprint,
+        checkpointReturnRef: lease.checkpointReturnRef,
+        schedulerGeneration: lease.schedulerGeneration,
+        workNodeRef: lease.workNodeRef,
+        selectedSourceRefs: [...lease.selectedSourceRefs],
         currentness: 'CURRENT',
         lifecycle: 'ACTIVE'
       }
