@@ -16,6 +16,9 @@ import {
 import { initializeLivedCompanionHome } from '../src/core/lived-companion.mjs';
 import { readConversationChannel, readConversationMessage } from '../src/core/conversation-store.mjs';
 import { createContextLease } from '../src/core/context-lease.mjs';
+import { createBrowserPromptContextRuntime } from '../src/core/browser-prompt-context-runtime.mjs';
+import { formContinuityRolloverPlan } from '../src/core/continuity-rollover.mjs';
+import { projectResourceContextPressure } from '../src/core/resource-context-pressure.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
 import crypto from 'node:crypto';
 
@@ -960,6 +963,76 @@ test('exact browser retry reuses the completed Lived pair and Conversation respo
     const channel = readConversationChannel({ home, channelRef: send.channelRef });
     assert.equal(channel.messages.filter((message) => message.messageRef === first.requestMessageRef).length, 1);
     assert.equal(channel.messages.filter((message) => message.messageRef === first.responseMessageRef).length, 1);
+  } finally {
+    await model.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('ordinary Conversation real prompt runtime projection carries exact Context Lease owner truth into the V4 planner', async () => {
+  const { root, home } = makeHome();
+  const model = await startModelServer();
+  const threadRef = 'thread.self-development.open-conversation';
+  const channelRef = 'channel.self-development.companion';
+  try {
+    const first = createBrowserCompanionBridge({
+      home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.browser-v4-real-projection-prior'
+    });
+    await browserTurn(first, {
+      threadRef,
+      channelRef,
+      content: 'Prior exact context for the real V4 projection.'
+    });
+
+    const promptOwner = createBrowserPromptContextRuntime({
+      home,
+      homeRef: 'vex-home.browser-companion-test',
+      deviceRef: 'device.vexlife.browser-companion-test',
+      companionLineageRef: 'companion-lineage.vexlife.browser-companion-test'
+    });
+    const second = createBrowserCompanionBridge({
+      home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.browser-v4-real-projection-current',
+      promptContextResolver: promptOwner.promptContextResolver,
+      promptContextAuthorityVerifier: promptOwner.promptContextAuthorityVerifier
+    });
+    const result = await browserTurn(second, {
+      threadRef,
+      channelRef,
+      content: 'Carry the real prompt runtime projection into V4 planning.'
+    });
+
+    const continuity = result.promptContextContinuityProjection;
+    assert.ok(continuity);
+    assert.equal(Object.prototype.propertyIsEnumerable.call(result, 'promptContextContinuityProjection'), false);
+    assert.equal(JSON.stringify(result).includes('promptContextContinuityProjection'), false);
+    assert.equal(continuity.owners.context.leaseRef, result.promptContextMaterialization.contextLeaseRef);
+    assert.equal(continuity.owners.context.semanticFingerprint, result.promptContextMaterialization.contextLeaseFingerprint);
+    assert.match(continuity.owners.context.checkpointReturnRef, /^checkpoint\.vexlife\.browser-prompt-context\./u);
+    assert.equal(Number.isSafeInteger(continuity.owners.context.schedulerGeneration), true);
+    assert.match(continuity.owners.context.workNodeRef, /^work-node\.vexlife\.browser-prompt-context\./u);
+    assert.deepEqual(
+      continuity.owners.context.selectedSourceRefs,
+      [...result.promptContextMaterialization.selectedConversationEventRefs, ...result.promptContextMaterialization.memorySourceRefs].sort()
+    );
+
+    const pressure = projectResourceContextPressure({
+      promptContextMaterialization: result.promptContextMaterialization,
+      companionAvailability: null
+    });
+    const plan = formContinuityRolloverPlan({
+      resourceContextPressure: pressure,
+      continuityStream: continuity
+    });
+    assert.equal(plan.state, 'HELD_RESOURCE_ATTENTION');
+    assert.equal(plan.continuityProjectionRef, continuity.adapterProjectionRef);
+    assert.equal(plan.continuityProjectionFingerprint, continuity.semanticFingerprint);
+    assert.equal(plan.effectAuthorityGranted, false);
   } finally {
     await model.close();
     fs.rmSync(root, { recursive: true, force: true });

@@ -11,8 +11,8 @@
     {
       "path": "test/browser-companion-bridge.test.mjs",
       "mode": "100644",
-      "bytes": 53156,
-      "sha256": "b927003fc1a7b241890df0b7574e4c67eab0886599716a6504a0a863e0bf787b"
+      "bytes": 56665,
+      "sha256": "ada6762bfdc4873afcee3c1eabd8d15035e3f84c32ec20f657a5c9f9d6d29b13"
     },
     {
       "path": "test/experience-review-effect-fixture.test.mjs",
