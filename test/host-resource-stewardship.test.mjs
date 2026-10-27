@@ -168,14 +168,26 @@ function decide(resourceObservation, leaseObservation, extra = {}) {
   return projectHostResourceStewardship({ resourceObservation, leaseObservation, ...cleanup, ...extra });
 }
 
+function verify(decision, resourceObservation, leaseObservation, extra = {}) {
+  return verifyHostResourceStewardshipDecision(decision, {
+    resourceObservation,
+    leaseObservation,
+    ...cleanup,
+    ...extra
+  });
+}
+
 test('exact-owned current resource stays KEEP under valid severe pressure', () => {
-  const result = decide(resource({ lifecycleState: 'CURRENT' }), lease(), { resourceContextPressure: severePressure() });
+  const resourceObservation = resource({ lifecycleState: 'CURRENT' });
+  const leaseObservation = lease();
+  const resourceContextPressure = severePressure();
+  const result = decide(resourceObservation, leaseObservation, { resourceContextPressure });
   assert.equal(result.disposition, 'KEEP');
   assert.equal(result.cleanupEligibility, 'NOT_ELIGIBLE');
   assert.equal(result.pressureStateOrNull, 'ROLLOVER_REQUIRED');
   assert.equal(result.executionAuthorityGranted, false);
   assert.equal(result.automaticCleanupAuthorized, false);
-  assert.equal(verifyHostResourceStewardshipDecision(result), true);
+  assert.equal(verify(result, resourceObservation, leaseObservation, { resourceContextPressure }), true);
 });
 
 test('exact-owned stale resource with active lease cannot auto-clean', () => {
@@ -265,9 +277,18 @@ function readdressDecision(value, overrides) {
   });
 }
 
-test('canonical verifier rejects a re-addressed forged cleanup-eligible decision', () => {
-  const unowned = decide(resource({ ownershipState: 'UNOWNED', lifecycleState: 'ABANDONED' }), lease());
-  const forged = readdressDecision(unowned, {
+test('source-bound verifier rejects coherent re-addressing of upstream ownership and lease facts', () => {
+  const resourceObservation = resource({ ownershipState: 'UNOWNED', lifecycleState: 'ABANDONED' });
+  const leaseObservation = lease();
+  const original = decide(resourceObservation, leaseObservation);
+  assert.equal(original.disposition, 'HUMAN_PROPOSAL_REQUIRED');
+
+  const forged = readdressDecision(original, {
+    ownershipState: 'EXACT_VEX_OWNED',
+    resourceLifecycleState: 'STALE',
+    resourceCurrentness: 'CURRENT',
+    leaseState: 'NONE',
+    leaseCurrentness: 'CURRENT',
     disposition: 'AUTO_CLEANUP_ELIGIBLE',
     reasonCodes: ['EXACT_OWNED_STALE_NO_ACTIVE_LEASE', 'PRESSURE_NOT_SUPPLIED'],
     cleanupEligibility: 'ELIGIBLE_FOR_RIGHTFUL_OWNER_DELEGATION',
@@ -275,63 +296,68 @@ test('canonical verifier rejects a re-addressed forged cleanup-eligible decision
     rightfulCleanupActionRefOrNull: cleanup.rightfulCleanupActionRef,
     humanProposalRequired: false
   });
-  assert.equal(verifyHostResourceStewardshipDecision(forged), false);
+  assert.equal(verify(forged, resourceObservation, leaseObservation), false);
+});
 
-  const activeLease = decide(resource({ lifecycleState: 'STALE' }), lease({ state: 'ACTIVE' }));
-  const forgedActiveLease = readdressDecision(activeLease, {
+test('source-bound verifier rejects re-addressed cleanup eligibility against an active lease', () => {
+  const resourceObservation = resource({ lifecycleState: 'STALE' });
+  const leaseObservation = lease({ state: 'ACTIVE' });
+  const original = decide(resourceObservation, leaseObservation);
+  const forged = readdressDecision(original, {
     disposition: 'AUTO_CLEANUP_ELIGIBLE',
     reasonCodes: ['EXACT_OWNED_STALE_NO_ACTIVE_LEASE', 'PRESSURE_NOT_SUPPLIED'],
     cleanupEligibility: 'ELIGIBLE_FOR_RIGHTFUL_OWNER_DELEGATION',
     rightfulCleanupOwnerRefOrNull: cleanup.rightfulCleanupOwnerRef,
     rightfulCleanupActionRefOrNull: cleanup.rightfulCleanupActionRef
   });
-  assert.equal(verifyHostResourceStewardshipDecision(forgedActiveLease), false);
+  assert.equal(verify(forged, resourceObservation, leaseObservation), false);
 });
 
-test('canonical verifier rejects invented pressure state even when re-addressed', () => {
-  const current = decide(resource({ lifecycleState: 'CURRENT' }), lease(), { resourceContextPressure: severePressure() });
-  const forged = readdressDecision(current, { pressureStateOrNull: 'KILL_NOW' });
-  assert.equal(verifyHostResourceStewardshipDecision(forged), false);
+test('source-bound verifier rejects pressure, reason and source-ref re-addressing', () => {
+  const resourceObservation = resource({ lifecycleState: 'CURRENT' });
+  const leaseObservation = lease();
+  const resourceContextPressure = severePressure();
+  const current = decide(resourceObservation, leaseObservation, { resourceContextPressure });
+
+  assert.equal(verify(
+    readdressDecision(current, { pressureStateOrNull: 'WATCH' }),
+    resourceObservation,
+    leaseObservation,
+    { resourceContextPressure }
+  ), false);
+
+  assert.equal(verify(
+    readdressDecision(current, { reasonCodes: ['FAKE_STEWARDSHIP_REASON', ...current.reasonCodes].sort() }),
+    resourceObservation,
+    leaseObservation,
+    { resourceContextPressure }
+  ), false);
+
+  assert.equal(verify(
+    readdressDecision(current, { sourceRefs: [...current.sourceRefs, current.sourceRefs[0]] }),
+    resourceObservation,
+    leaseObservation,
+    { resourceContextPressure }
+  ), false);
 });
 
-test('canonical verifier rejects unreachable non-current valid-pressure decision', () => {
-  const current = decide(resource({ lifecycleState: 'CURRENT' }), lease(), { resourceContextPressure: severePressure() });
-  const forged = readdressDecision(current, {
-    pressureCurrent: false,
-    reasonCodes: ['PRESSURE_NOT_CURRENT', 'RESOURCE_CURRENT'].sort()
-  });
-  assert.equal(verifyHostResourceStewardshipDecision(forged), false);
+test('source-bound verifier fails closed without the source observations', () => {
+  const resourceObservation = resource({ lifecycleState: 'CURRENT' });
+  const leaseObservation = lease();
+  const decision = decide(resourceObservation, leaseObservation);
+  assert.equal(verifyHostResourceStewardshipDecision(decision), false);
 });
 
-test('canonical verifier rejects extra invented reason code even when sorted and re-addressed', () => {
-  const current = decide(resource({ lifecycleState: 'CURRENT' }), lease());
-  const forged = readdressDecision(current, {
-    reasonCodes: ['FAKE_STEWARDSHIP_REASON', ...current.reasonCodes].sort()
-  });
-  assert.equal(verifyHostResourceStewardshipDecision(forged), false);
-});
-
-test('canonical verifier rejects non-canonical sourceRefs even when re-addressed', () => {
-  const current = decide(resource({ lifecycleState: 'CURRENT' }), lease());
-  const duplicated = readdressDecision(current, {
-    sourceRefs: [...current.sourceRefs, current.sourceRefs[0]]
-  });
-  assert.equal(verifyHostResourceStewardshipDecision(duplicated), false);
-
-  const reversed = readdressDecision(current, {
-    sourceRefs: [...current.sourceRefs].reverse()
-  });
-  assert.equal(verifyHostResourceStewardshipDecision(reversed), false);
-});
-
-test('decisions are deterministic and content-addressed with no effects', () => {
-  const input = { resourceObservation: resource({ lifecycleState: 'STALE' }), leaseObservation: lease(), ...cleanup };
+test('decisions are deterministic, content-addressed and source-bound with no effects', () => {
+  const resourceObservation = resource({ lifecycleState: 'STALE' });
+  const leaseObservation = lease();
+  const input = { resourceObservation, leaseObservation, ...cleanup };
   const first = projectHostResourceStewardship(input);
   const second = projectHostResourceStewardship(input);
   assert.deepEqual(first, second);
   assert.match(first.decisionRef, /^decision\.vexlife\.host-resource-stewardship\.[0-9a-f]{32}$/u);
   assert.match(first.semanticFingerprint, /^[0-9a-f]{64}$/u);
-  assert.equal(verifyHostResourceStewardshipDecision(first), true);
+  assert.equal(verify(first, resourceObservation, leaseObservation), true);
   assert.ok(Object.values(first.effects).every((value) => value === false));
 });
 

@@ -1,5 +1,5 @@
 import { semanticHash } from './utils.mjs';
-import { RESOURCE_CONTEXT_PRESSURE_STATES, verifyResourceContextPressureProjection } from './resource-context-pressure.mjs';
+import { verifyResourceContextPressureProjection } from './resource-context-pressure.mjs';
 
 export const HOST_RESOURCE_STEWARDSHIP_SCHEMA = 'vexlife.host-resource-stewardship-decision/v1';
 export const HOST_RESOURCE_OBSERVATION_SCHEMA = 'vexlife.host-resource-observation/v1';
@@ -37,10 +37,6 @@ const SHA256 = /^[0-9a-f]{64}$/u;
 const RESOURCE_KEYS = new Set(['schemaVersion','truthClass','resourceObservationRef','semanticFingerprint','resourceRef','resourceClass','ownershipState','lifecycleState','lifecycleEvidenceRefOrNull','currentness','ownershipProof','sourceRefs']);
 const OWNERSHIP_PROOF_KEYS = new Set(['currentness','ownerReceiptRef','runtimeIdentityRef','executableIdentityRef','processGroupIdentityRef','pidMatchOnly','exactOwnedProcessInstance']);
 const LEASE_KEYS = new Set(['schemaVersion','truthClass','leaseObservationRef','semanticFingerprint','resourceRef','state','currentness','leaseRefOrNull','sourceRefs']);
-const DECISION_KEYS = new Set(['schemaVersion','truthClass','stewardshipOwnerRef','resourceRef','resourceClass','ownershipState','resourceLifecycleState','resourceCurrentness','leaseState','leaseCurrentness','pressureStateOrNull','pressureCurrent','disposition','reasonCodes','cleanupEligibility','rightfulCleanupOwnerRefOrNull','rightfulCleanupActionRefOrNull','humanProposalRequired','automaticCleanupAuthorized','executionAuthorityGranted','sourceRefs','effects','decisionRef','semanticFingerprint']);
-const DISPOSITIONS = new Set(['KEEP','HELD','HUMAN_PROPOSAL_REQUIRED','AUTO_CLEANUP_ELIGIBLE']);
-const CLEANUP_ELIGIBILITY = new Set(['NOT_ELIGIBLE','ELIGIBLE_FOR_RIGHTFUL_OWNER_DELEGATION']);
-const PRESSURE_REASON_CODES = new Set(['PRESSURE_NOT_SUPPLIED','PRESSURE_INVALID']);
 const EFFECTS = Object.freeze({
   hostMutated: false,
   processSignalled: false,
@@ -282,85 +278,24 @@ export function projectHostResourceStewardship({
   });
 }
 
-export function verifyHostResourceStewardshipDecision(value) {
+export function verifyHostResourceStewardshipDecision(value, {
+  resourceObservation,
+  leaseObservation,
+  resourceContextPressure = null,
+  rightfulCleanupOwnerRef = null,
+  rightfulCleanupActionRef = null
+} = {}) {
   try {
-    exactKeys(value, DECISION_KEYS, 'decision');
-    if (value.schemaVersion !== HOST_RESOURCE_STEWARDSHIP_SCHEMA) return false;
-    if (value.truthClass !== 'NO_EFFECT_HOST_RESOURCE_STEWARDSHIP_DECISION' || value.stewardshipOwnerRef !== HOST_RESOURCE_STEWARDSHIP_OWNER_REF) return false;
-    ref(value.resourceRef, 'decision.resourceRef');
-    ref(value.resourceClass, 'decision.resourceClass');
-    if (!OWNERSHIP.has(value.ownershipState) ||
-        !LIFECYCLE.has(value.resourceLifecycleState) ||
-        !CURRENTNESS.has(value.resourceCurrentness) ||
-        !LEASE.has(value.leaseState) ||
-        !CURRENTNESS.has(value.leaseCurrentness) ||
-        !DISPOSITIONS.has(value.disposition) ||
-        !CLEANUP_ELIGIBILITY.has(value.cleanupEligibility) ||
-        typeof value.humanProposalRequired !== 'boolean' ||
-        typeof value.pressureCurrent !== 'boolean') return false;
-    const canonicalSourceRefs = refs(value.sourceRefs, 'decision.sourceRefs');
-    if (JSON.stringify(canonicalSourceRefs) !== JSON.stringify(value.sourceRefs)) return false;
-    if (!Array.isArray(value.reasonCodes) || value.reasonCodes.length === 0 ||
-        value.reasonCodes.some((item) => typeof item !== 'string' || item.length === 0) ||
-        new Set(value.reasonCodes).size !== value.reasonCodes.length ||
-        JSON.stringify([...value.reasonCodes].sort()) !== JSON.stringify(value.reasonCodes)) return false;
-
-    const [baseDisposition, baseReasonCode, baseEligible, expectedHumanProposal] = decideFromState({
-      resourceCurrentness: value.resourceCurrentness,
-      ownershipState: value.ownershipState,
-      resourceLifecycleState: value.resourceLifecycleState,
-      leaseCurrentness: value.leaseCurrentness,
-      leaseState: value.leaseState
+    const expected = projectHostResourceStewardship({
+      resourceObservation,
+      leaseObservation,
+      resourceContextPressure,
+      rightfulCleanupOwnerRef,
+      rightfulCleanupActionRef
     });
-
-    let expectedDisposition = baseDisposition;
-    let expectedEligibility = baseEligible;
-    let expectedReasonCode = baseReasonCode;
-    if (baseEligible) {
-      const ownerPresent = typeof value.rightfulCleanupOwnerRefOrNull === 'string' && value.rightfulCleanupOwnerRefOrNull.length > 0;
-      const actionPresent = typeof value.rightfulCleanupActionRefOrNull === 'string' && value.rightfulCleanupActionRefOrNull.length > 0;
-      if (ownerPresent !== actionPresent) return false;
-      if (!ownerPresent) {
-        expectedDisposition = 'HELD';
-        expectedEligibility = false;
-        expectedReasonCode = 'RIGHTFUL_CLEANUP_OWNER_REQUIRED';
-      } else {
-        ref(value.rightfulCleanupOwnerRefOrNull, 'decision.rightfulCleanupOwnerRefOrNull');
-        ref(value.rightfulCleanupActionRefOrNull, 'decision.rightfulCleanupActionRefOrNull');
-      }
-    } else if (value.rightfulCleanupOwnerRefOrNull !== null || value.rightfulCleanupActionRefOrNull !== null) {
-      return false;
-    }
-
-    if (value.disposition !== expectedDisposition ||
-        value.cleanupEligibility !== (expectedEligibility ? 'ELIGIBLE_FOR_RIGHTFUL_OWNER_DELEGATION' : 'NOT_ELIGIBLE') ||
-        value.humanProposalRequired !== expectedHumanProposal) return false;
-
-    const pressureReasons = value.reasonCodes.filter((code) => PRESSURE_REASON_CODES.has(code));
-    let expectedPressureReason = null;
-    if (value.pressureStateOrNull === null) {
-      if (value.pressureCurrent !== false || pressureReasons.length !== 1 ||
-          !['PRESSURE_NOT_SUPPLIED', 'PRESSURE_INVALID'].includes(pressureReasons[0])) return false;
-      expectedPressureReason = pressureReasons[0];
-    } else if (!RESOURCE_CONTEXT_PRESSURE_STATES.includes(value.pressureStateOrNull) ||
-               value.pressureCurrent !== true ||
-               pressureReasons.length !== 0) {
-      return false;
-    }
-
-    const expectedReasonCodes = [...new Set([expectedReasonCode, expectedPressureReason].filter(Boolean))].sort();
-    if (JSON.stringify(value.reasonCodes) !== JSON.stringify(expectedReasonCodes)) return false;
-
-    if (value.executionAuthorityGranted !== false || value.automaticCleanupAuthorized !== false) return false;
-    if (!value.effects || typeof value.effects !== 'object' || Array.isArray(value.effects) ||
-        JSON.stringify(Object.keys(value.effects).sort()) !== JSON.stringify(Object.keys(EFFECTS).sort()) ||
-        !Object.values(value.effects).every((effect) => effect === false)) return false;
-    const core = structuredClone(value);
-    delete core.decisionRef;
-    delete core.semanticFingerprint;
-    const semanticFingerprint = semanticHash(core);
-    return value.semanticFingerprint === semanticFingerprint &&
-      value.decisionRef === `decision.vexlife.host-resource-stewardship.${semanticFingerprint.slice(0, 32)}`;
+    return value?.decisionRef === expected.decisionRef &&
+      value?.semanticFingerprint === expected.semanticFingerprint &&
+      semanticHash(value) === semanticHash(expected);
   } catch {
     return false;
   }
