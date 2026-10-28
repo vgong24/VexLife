@@ -325,7 +325,7 @@ function readHereticPersistentRuntimeReceipt(runtimeReceiptPath) {
   try {
     stat = fs.lstatSync(receiptPath);
   } catch (error) {
-    throw new Error(\`Heretic runtime receipt is unavailable: \${error.message}\`);
+    throw new Error(`Heretic runtime receipt is unavailable: ${error.message}`);
   }
   if (stat.isSymbolicLink() || !stat.isFile()) {
     throw new Error('Heretic runtime receipt must be one regular non-link file');
@@ -334,7 +334,7 @@ function readHereticPersistentRuntimeReceipt(runtimeReceiptPath) {
   try {
     receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
   } catch (error) {
-    throw new Error(\`Heretic runtime receipt is not valid JSON: \${error.message}\`);
+    throw new Error(`Heretic runtime receipt is not valid JSON: ${error.message}`);
   }
   return Object.freeze({ receiptPath, receipt });
 }
