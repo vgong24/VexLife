@@ -715,6 +715,7 @@ test('VexLife Heretic launchd start still fails closed and retires the exact sub
   const pid = 9494;
   let elapsedMs = 0;
   let retired = false;
+  let live = true;
   const processSubstrate = {
     schemaVersion: 'vexlife.macos-user-launchd-process/v1',
     substrateRef: 'substrate.vexlife.macos-user-launchd-process.001',
@@ -740,17 +741,20 @@ test('VexLife Heretic launchd start still fails closed and retires the exact sub
     readReceipt: () => null,
     writeReceipt: () => { throw new Error('receipt must not be written without exact process ownership'); },
     deleteReceipt: () => {},
-    processAlive: () => true,
+    processAlive: () => live,
     processIdentity: ({ pid: value }) => ({ pid: value, pgid: value, commandMatches: false, exactOwnedDetachedGroup: false }),
-    observeProcessSubstrate: () => ({ state: 'RUNNING', pid }),
+    observeProcessSubstrate: () => ({ state: live ? 'RUNNING' : 'ABSENT', pid: live ? pid : null }),
+    retireProcessSubstrate: async (observed, { expectedPid }) => {
+      assert.equal(observed.label, processSubstrate.label);
+      assert.equal(expectedPid, pid);
+      retired = true;
+      live = false;
+      return { state: 'RETIRED_VERIFIED', exactOwnershipVerified: true, verifiedNotLive: true, processGroupId: pid, signalSent: 'LAUNCHD_BOOTOUT' };
+    },
     listMatchingProcesses: async () => [],
     portOccupied: async () => false,
     spawnRuntime: async () => ({ pid, processSubstrate }),
-    terminateRuntime: async ({ processSubstrate: observed }) => {
-      assert.equal(observed.label, processSubstrate.label);
-      retired = true;
-      return { state: 'RETIRED_VERIFIED', exactOwnershipVerified: true, verifiedNotLive: true, processGroupId: pid, signalSent: 'LAUNCHD_BOOTOUT' };
-    },
+    terminateRuntime: async () => { throw new Error('final-process terminate path must not be used before exact semantic ownership'); },
     endpointHealthy: async () => { throw new Error('readiness must not run without exact ownership'); },
     fetchImpl: async () => { throw new Error('qualification must not run without exact ownership'); },
     sleep: async (ms) => { elapsedMs += ms; },
@@ -760,12 +764,84 @@ test('VexLife Heretic launchd start still fails closed and retires the exact sub
   await assert.rejects(
     startOrReuseHereticPersistentRuntime({ binding, hooks }),
     (error) => error?.code === 'HERETIC_RUNTIME_PROCESS_OWNERSHIP_CONFLICT'
-      && error?.detail?.state === 'RETIRED_VERIFIED'
-      && error?.detail?.exactOwnershipVerified === true
-      && error?.detail?.verifiedNotLive === true
+      && error?.detail?.ownershipState === 'TIMEOUT'
+      && error?.detail?.cleanup?.state === 'RETIRED_VERIFIED'
+      && error?.detail?.cleanup?.exactOwnershipVerified === true
+      && error?.detail?.cleanup?.verifiedNotLive === true
   );
   assert.ok(elapsedMs >= 30000);
   assert.equal(retired, true);
+  assert.equal(live, false);
+});
+
+test('VexLife Heretic launchd ownership wait observes cancellation and retires provisional launchd custody before any STARTING receipt', async () => {
+  const binding = formHereticRuntimeOwnerBinding({
+    authorityRef: 'authority.test.heretic.launchd-ownership-cancel',
+    modelPath: '/tmp/model-launchd-cancel',
+    pythonEnvironmentRoot: '/tmp/env-launchd-cancel',
+    port: 8765,
+    receiptPath: '/tmp/runtime/launchd-cancel-receipt.json'
+  });
+  const pid = 9595;
+  let elapsedMs = 0;
+  let retired = false;
+  let live = true;
+  const writes = [];
+  const processSubstrate = {
+    schemaVersion: 'vexlife.macos-user-launchd-process/v1',
+    substrateRef: 'substrate.vexlife.macos-user-launchd-process.001',
+    label: 'com.vexlife.heretic.test-ownership-cancel',
+    domainTarget: 'gui/501',
+    plistPath: '/tmp/runtime/launchd/cancel.plist',
+    programPath: '/tmp/env-launchd-cancel/bin/python',
+    programArguments: ['-m', 'mlx_lm.server'],
+    workingDirectory: '/tmp/env-launchd-cancel',
+    stdoutPath: '/tmp/runtime/launchd-cancel.out.log',
+    stderrPath: '/tmp/runtime/launchd-cancel.err.log',
+    keepAlive: false,
+    pid,
+  };
+  const hooks = {
+    host: { platform: 'darwin', architecture: 'arm64' },
+    versionProbe: async () => ({
+      pythonVersion: HERETIC_PYTHON_VERSION,
+      mlxLmVersion: HERETIC_MLX_LM_VERSION,
+      prefix: '/tmp/env-launchd-cancel',
+      executable: '/tmp/env-launchd-cancel/bin/python'
+    }),
+    readReceipt: () => null,
+    writeReceipt: (_path, value) => { writes.push(value.state); },
+    deleteReceipt: () => {},
+    processAlive: () => live,
+    processIdentity: ({ pid: value }) => ({ pid: value, pgid: value, commandMatches: false, exactOwnedDetachedGroup: false }),
+    observeProcessSubstrate: () => ({ state: live ? 'RUNNING' : 'ABSENT', pid: live ? pid : null }),
+    retireProcessSubstrate: async (observed, { expectedPid }) => {
+      assert.equal(observed.label, processSubstrate.label);
+      assert.equal(expectedPid, pid);
+      retired = true;
+      live = false;
+      return { state: 'RETIRED_VERIFIED', exactOwnershipVerified: true, verifiedNotLive: true, processGroupId: pid, signalSent: 'LAUNCHD_BOOTOUT' };
+    },
+    listMatchingProcesses: async () => [],
+    portOccupied: async () => false,
+    spawnRuntime: async () => ({ pid, processSubstrate }),
+    terminateRuntime: async () => { throw new Error('final-process terminate path must not be used for provisional cancellation'); },
+    endpointHealthy: async () => { throw new Error('readiness must not run after provisional cancellation'); },
+    fetchImpl: async () => { throw new Error('qualification must not run after provisional cancellation'); },
+    sleep: async (ms) => { elapsedMs += ms; },
+    now: () => '2026-10-29T00:00:00.000Z',
+    nowMs: () => elapsedMs,
+    cancellationRequested: () => elapsedMs >= 200,
+  };
+
+  await assert.rejects(
+    startOrReuseHereticPersistentRuntime({ binding, hooks }),
+    (error) => error?.code === 'HERETIC_RUNTIME_CANCELLED'
+  );
+  assert.ok(elapsedMs >= 200 && elapsedMs < 1000);
+  assert.equal(retired, true);
+  assert.equal(live, false);
+  assert.deepEqual(writes, []);
 });
 
 // [VXG RealForever]

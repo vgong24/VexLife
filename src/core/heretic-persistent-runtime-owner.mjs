@@ -390,12 +390,72 @@ async function waitForHealthy(binding, pid, deps) {
 async function waitForExactOwnedRuntimeProcess({ pid, args, deps }) {
   const deadline = deps.nowMs() + PROCESS_OWNERSHIP_TIMEOUT_MS;
   for (;;) {
+    if (deps.cancellationRequested()) {
+      return Object.freeze({ state: 'CANCELLED', identity: null });
+    }
     const identity = deps.processIdentity({ pid, args });
-    if (identity?.exactOwnedDetachedGroup) return identity;
-    if (!deps.processAlive(pid)) return null;
-    if (deps.nowMs() >= deadline) return null;
+    if (identity?.exactOwnedDetachedGroup) {
+      return Object.freeze({ state: 'EXACT', identity });
+    }
+    if (!deps.processAlive(pid)) {
+      return Object.freeze({ state: 'PROCESS_EXITED', identity: null });
+    }
+    if (deps.nowMs() >= deadline) {
+      return Object.freeze({ state: 'TIMEOUT', identity: null });
+    }
     await deps.sleep(PROCESS_OWNERSHIP_POLL_MS);
   }
+}
+
+async function retireProvisionalRuntimeProcess({ pid, args, processSubstrate, deps }) {
+  if (processSubstrate !== null) {
+    let substrate;
+    try {
+      substrate = validateMacUserLaunchdProcessReceipt(processSubstrate);
+    } catch (error) {
+      return Object.freeze({
+        state: 'PROCESS_SUBSTRATE_INVALID',
+        exactOwnershipVerified: false,
+        verifiedNotLive: !deps.processAlive(pid),
+        error: error.message,
+      });
+    }
+    if (substrate.pid !== pid) {
+      return Object.freeze({
+        state: 'PROCESS_SUBSTRATE_PID_MISMATCH',
+        exactOwnershipVerified: false,
+        verifiedNotLive: !deps.processAlive(pid),
+      });
+    }
+    try {
+      return await deps.retireProcessSubstrate(substrate, { expectedPid: pid });
+    } catch (error) {
+      return Object.freeze({
+        state: 'PROCESS_SUBSTRATE_RETIRE_FAILED',
+        exactOwnershipVerified: false,
+        verifiedNotLive: !deps.processAlive(pid),
+        error: error.message,
+      });
+    }
+  }
+
+  if (!deps.processAlive(pid)) {
+    return Object.freeze({
+      state: 'ALREADY_NOT_LIVE',
+      exactOwnershipVerified: false,
+      verifiedNotLive: true,
+      signalSent: null,
+    });
+  }
+  const identity = deps.processIdentity({ pid, args });
+  if (!identity?.exactOwnedDetachedGroup) {
+    return Object.freeze({
+      state: 'OWNERSHIP_NOT_PROVEN',
+      exactOwnershipVerified: false,
+      verifiedNotLive: false,
+    });
+  }
+  return deps.terminateRuntime({ pid, args, processSubstrate: null });
 }
 
 function receiptBinds(binding, receipt, args, { allowStarting = true, requireSourceSha = true } = {}) {
@@ -730,11 +790,28 @@ export async function startOrReuseHereticPersistentRuntime({ binding: input, hoo
   const pid = Number(typeof spawned === 'number' ? spawned : spawned?.pid);
   const processSubstrate = typeof spawned === 'number' ? null : (spawned?.processSubstrate ?? null);
   if (!Number.isInteger(pid) || pid <= 0) fail('HERETIC_RUNTIME_START_FAILED', 'mlx_lm.server returned no PID');
-  const identity = await waitForExactOwnedRuntimeProcess({ pid, args, deps });
-  if (!identity?.exactOwnedDetachedGroup) {
-    const cleanup = await deps.terminateRuntime({ pid, args, processSubstrate });
-    fail('HERETIC_RUNTIME_PROCESS_OWNERSHIP_CONFLICT', 'new Heretic process ownership could not be proven', cleanup);
+  const ownership = await waitForExactOwnedRuntimeProcess({ pid, args, deps });
+  if (ownership.state !== 'EXACT') {
+    const cleanup = await retireProvisionalRuntimeProcess({ pid, args, processSubstrate, deps });
+    const cleanupVerified = cleanup?.verifiedNotLive === true
+      && (processSubstrate === null || cleanup?.exactOwnershipVerified === true);
+    if (!cleanupVerified) {
+      fail(
+        'HERETIC_RUNTIME_PRECOMMIT_CLEANUP_FAILED',
+        'provisional Heretic launchd process could not be retired before semantic ownership',
+        { ownershipState: ownership.state, cleanup },
+      );
+    }
+    if (ownership.state === 'CANCELLED') {
+      fail('HERETIC_RUNTIME_CANCELLED', 'Heretic runtime start was cancelled before exact process ownership');
+    }
+    fail(
+      'HERETIC_RUNTIME_PROCESS_OWNERSHIP_CONFLICT',
+      'new Heretic process ownership could not be proven',
+      { ownershipState: ownership.state, cleanup },
+    );
   }
+  const identity = ownership.identity;
   const receiptRef = `receipt.vexlife.heretic-persistent-runtime.${sha256(Buffer.from(`${binding.sourceIdentity.moduleSha256}|${pid}|${deps.now()}`)).slice(0,24)}`;
   const starting = formReceipt(binding, pid, identity, HERETIC_PERSISTENT_RUNTIME_STARTING, deps.now(), receiptRef, undefined, processSubstrate);
   try { deps.writeReceipt(binding.receiptPath, starting); }
