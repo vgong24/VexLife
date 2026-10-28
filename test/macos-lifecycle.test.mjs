@@ -854,6 +854,22 @@ test('MAC06E recoverable Companion start pre-rotates an exact current browser wh
   );
 });
 
+test('MAC06F recoverable auto prompt truthfully labels Enter as reconnect while degraded keeps Enter repair', () => {
+  const lifecycleSource = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
+  assert.match(
+    lifecycleSource,
+    /state === 'EXISTING_RECOVERABLE'[\s\S]*?\[Enter\] reconnect/
+  );
+  assert.match(
+    lifecycleSource,
+    /VexLife needs attention\. Choose: \[s\] stop exact owned processes, \[Enter\] repair/
+  );
+  assert.match(
+    lifecycleSource,
+    /if \(answer === 'r'\) return 'repair';[\s\S]*?return choices\[0\];/
+  );
+});
+
 test('MAC08 lifecycle exposes no destructive local-data removal operation', () => {
   assert.equal(ALLOWED_OPERATIONS.includes('remove-local-data'), false);
   assert.deepEqual(choicesForLifecycleState('EXISTING_HEALTHY'), ['start','stop','repair','rebuild-preserve','uninstall-preserve']);

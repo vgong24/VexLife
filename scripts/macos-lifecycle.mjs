@@ -1129,7 +1129,9 @@ async function promptChoice(state) {
   try {
     const friendly = state === 'EXISTING_HEALTHY'
       ? 'VexLife already exists. Choose: [Enter] resume, [s] stop cleanly, [r] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, [q] quit: '
-      : 'VexLife needs attention. Choose: [s] stop exact owned processes, [Enter] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, [q] quit: ';
+      : state === 'EXISTING_RECOVERABLE'
+        ? 'VexLife can reconnect the accepted Companion binding. Choose: [Enter] reconnect, [s] stop cleanly, [r] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, [q] quit: '
+        : 'VexLife needs attention. Choose: [s] stop exact owned processes, [Enter] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, [q] quit: ';
     const answer = (await rl.question(friendly)).trim().toLowerCase();
     if (answer === 'q') return 'quit';
     if (answer === 's') return 'stop';
