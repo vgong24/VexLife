@@ -15,7 +15,10 @@ import {
   validateHereticModelConfiguration,
   validateHereticPersistentRuntimeReceipt
 } from '../src/core/heretic-runtime-link.mjs';
-import {\n  observeHereticPersistentRuntimeResource,\n  stopHereticPersistentRuntimeFromReceipt\n} from '../src/core/heretic-persistent-runtime-owner.mjs';
+import {
+  observeHereticPersistentRuntimeResource,
+  stopHereticPersistentRuntimeFromReceipt
+} from '../src/core/heretic-persistent-runtime-owner.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const SOURCE_ROOT = path.resolve(HERE, '..');
@@ -695,7 +698,9 @@ function activatedRuntimeProcessEvidenceMatches(binding, processEvidence) {
   return commandLine.endsWith(` ${binding.arguments.join(' ')}`);
 }
 
-export function classifyMacLifecycleState(home, {\n  hereticResourceObserver = observeHereticPersistentRuntimeResource\n} = {}) {
+export function classifyMacLifecycleState(home, {
+  hereticResourceObserver = observeHereticPersistentRuntimeResource
+} = {}) {
   const root = path.resolve(home);
   if (!fs.existsSync(root)) return 'ABSENT';
   try { canonicalMacHomeDirectory(root); } catch { return 'HELD_NONCANONICAL_HOME'; }
