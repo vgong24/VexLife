@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 48462,
       "sha256": "497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7"
+    },
+    {
+      "path": "src/core/host-resource-stewardship-heretic-delegation.mjs",
+      "mode": "100644",
+      "bytes": 11853,
+      "sha256": "4b92c8740a15085ac739dd479ff17440403311131e6b530db531c0074764e293"
     }
   ]
 }
