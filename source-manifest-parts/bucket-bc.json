@@ -23,8 +23,8 @@
     {
       "path": "test/macos-lifecycle.test.mjs",
       "mode": "100755",
-      "bytes": 43567,
-      "sha256": "f69bd350b61a256dce8e382d3a3e0d1e7887b17543b1576248289c3b5357ba8a"
+      "bytes": 47644,
+      "sha256": "5f80d075366a3fe17c2060f2233d9a9c06f32da12b3c14b2bba657457257031d"
     }
   ]
 }

@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 22022,
       "sha256": "3cb3e2f89877d231e54ac0767a601423f49ef0bcd9c8bdc2ed80b54dfc5867ba"
+    },
+    {
+      "path": "src/core/macos-user-launchd-process.mjs",
+      "mode": "100644",
+      "bytes": 11720,
+      "sha256": "7be76f93d2d6ea5fcb66e2dcbe1be1d72e389c9cf3c24bded6fa08052d5c7ba4"
     }
   ]
 }
