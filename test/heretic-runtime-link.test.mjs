@@ -10,6 +10,7 @@ import {
   HERETIC_TRANSPORT_CLASS,
   formHereticPersistentRuntimeBindingRef,
   formHereticPersistentRuntimeLink,
+  formHereticPersistentRuntimeObservedLink,
   formHereticPersistentRuntimeStoppedObservation,
   validateHereticPersistentRuntimeReceipt,
 } from '../src/core/heretic-runtime-link.mjs';
@@ -202,6 +203,194 @@ test('binding identity survives runtime receipt/PID/source refresh while runtime
   );
 });
 
+
+test('current Heretic host-resource observation distinguishes live, externally absent and ambiguous runtime truth', () => {
+  const currentReceipt = receipt();
+  const healthy = formHereticPersistentRuntimeObservedLink({
+    receipt: currentReceipt,
+    homeIdentity,
+    resourceObservation: {
+      schemaVersion: 'vexlife.host-resource-observation/v1',
+      truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+      resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
+      resourceObservationRef: 'observation.vexlife.host-resource.heretic-live-test',
+      ownershipState: 'EXACT_VEX_OWNED',
+      lifecycleState: 'CURRENT',
+      currentness: 'CURRENT',
+      lifecycleEvidenceRefOrNull: null,
+      ownershipProof: {
+        currentness: 'CURRENT',
+        ownerReceiptRef: currentReceipt.receiptRef,
+        runtimeIdentityRef: `runtime.vexlife.heretic.process.${currentReceipt.runtime.pid}`,
+        executableIdentityRef: 'executable.vexlife.heretic.python.test',
+        processGroupIdentityRef: `process-group.vexlife.heretic.${currentReceipt.runtime.processGroupId}`,
+        pidMatchOnly: false,
+        exactOwnedProcessInstance: true,
+      },
+      sourceRefs: ['source.vexlife.heretic-runtime-owner.test', currentReceipt.receiptRef],
+    },
+  });
+  assert.equal(healthy.runtimeObservation.runtimeOwnershipState, 'EXACT_OWNED');
+  assert.equal(healthy.runtimeObservation.runtimeState, 'HEALTHY');
+  assert.equal(healthy.runtimeObservation.qualificationState, 'CURRENT');
+
+  const absent = formHereticPersistentRuntimeObservedLink({
+    receipt: currentReceipt,
+    homeIdentity,
+    resourceObservation: {
+      schemaVersion: 'vexlife.host-resource-observation/v1',
+      truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+      resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
+      resourceObservationRef: 'observation.vexlife.host-resource.heretic-absent-test',
+      ownershipState: 'UNOWNED',
+      lifecycleState: 'ABANDONED',
+      currentness: 'CURRENT',
+      lifecycleEvidenceRefOrNull: 'evidence.vexlife.heretic.not-live.test',
+      ownershipProof: null,
+      sourceRefs: ['source.vexlife.heretic-runtime-owner.test', currentReceipt.receiptRef],
+    },
+  });
+  assert.equal(absent.companionBinding.bindingRef, healthy.companionBinding.bindingRef);
+  assert.equal(absent.runtimeObservation.runtimeOwnershipState, 'NO_OWNED_RUNTIME');
+  assert.equal(absent.runtimeObservation.runtimeState, 'STOPPED');
+  assert.equal(absent.runtimeObservation.qualificationState, 'STALE');
+  assert.equal(absent.runtimeObservation.safeReentryState, 'AVAILABLE');
+  assert.equal(absent.runtimeObservation.currentness, 'CURRENT');
+  assert.ok(absent.runtimeObservation.evidenceRefs.includes('evidence.vexlife.heretic.not-live.test'));
+
+  const ambiguous = formHereticPersistentRuntimeObservedLink({
+    receipt: currentReceipt,
+    homeIdentity,
+    resourceObservation: {
+      schemaVersion: 'vexlife.host-resource-observation/v1',
+      truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+      resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
+      resourceObservationRef: 'observation.vexlife.host-resource.heretic-ambiguous-test',
+      ownershipState: 'AMBIGUOUS',
+      lifecycleState: 'UNKNOWN',
+      currentness: 'CURRENT',
+      lifecycleEvidenceRefOrNull: null,
+      ownershipProof: null,
+      sourceRefs: ['source.vexlife.heretic-runtime-owner.test', currentReceipt.receiptRef],
+    },
+  });
+  assert.equal(ambiguous.runtimeObservation.runtimeOwnershipState, 'CONFLICT');
+  assert.equal(ambiguous.runtimeObservation.runtimeState, 'UNKNOWN');
+  assert.equal(ambiguous.runtimeObservation.safeReentryState, 'HELD');
+});
+
+test('stale or non-current Heretic host-resource truth does not silently become safe automatic reentry', () => {
+  const currentReceipt = receipt();
+  const stale = formHereticPersistentRuntimeObservedLink({
+    receipt: currentReceipt,
+    homeIdentity,
+    resourceObservation: {
+      schemaVersion: 'vexlife.host-resource-observation/v1',
+      truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+      resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
+      resourceObservationRef: 'observation.vexlife.host-resource.heretic-stale-test',
+      ownershipState: 'EXACT_VEX_OWNED',
+      lifecycleState: 'STALE',
+      currentness: 'CURRENT',
+      lifecycleEvidenceRefOrNull: 'evidence.vexlife.heretic.source-stale.test',
+      ownershipProof: {
+        currentness: 'CURRENT',
+        ownerReceiptRef: currentReceipt.receiptRef,
+        runtimeIdentityRef: `runtime.vexlife.heretic.process.${currentReceipt.runtime.pid}`,
+        executableIdentityRef: 'executable.vexlife.heretic.python.test',
+        processGroupIdentityRef: `process-group.vexlife.heretic.${currentReceipt.runtime.processGroupId}`,
+        pidMatchOnly: false,
+        exactOwnedProcessInstance: true,
+      },
+      sourceRefs: ['source.vexlife.heretic-runtime-owner.test', currentReceipt.receiptRef],
+    },
+  });
+  assert.equal(stale.runtimeObservation.runtimeOwnershipState, 'EXACT_OWNED');
+  assert.equal(stale.runtimeObservation.runtimeState, 'DEGRADED');
+  assert.equal(stale.runtimeObservation.qualificationState, 'STALE');
+  assert.equal(stale.runtimeObservation.safeReentryState, 'HUMAN_DECISION_REQUIRED');
+
+  const unknown = formHereticPersistentRuntimeObservedLink({
+    receipt: currentReceipt,
+    homeIdentity,
+    resourceObservation: {
+      schemaVersion: 'vexlife.host-resource-observation/v1',
+      truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+      resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
+      resourceObservationRef: 'observation.vexlife.host-resource.heretic-unknown-test',
+      ownershipState: 'UNOWNED',
+      lifecycleState: 'ABANDONED',
+      currentness: 'UNKNOWN',
+      lifecycleEvidenceRefOrNull: null,
+      ownershipProof: null,
+      sourceRefs: ['source.vexlife.heretic-runtime-owner.test', currentReceipt.receiptRef],
+    },
+  });
+  assert.equal(unknown.runtimeObservation.runtimeOwnershipState, 'UNKNOWN');
+  assert.equal(unknown.runtimeObservation.runtimeState, 'UNKNOWN');
+  assert.equal(unknown.runtimeObservation.safeReentryState, 'HELD');
+  assert.equal(unknown.runtimeObservation.currentness, 'UNKNOWN');
+});
+
+test('current Heretic observation rejects mixed receipt generations and unproved exact ownership', () => {
+  const currentReceipt = receipt();
+  const rotatedReceipt = receipt({
+    receiptRef: 'receipt.vexlocalbridge.heretic-persistent-runtime.rotated',
+    runtime: {
+      ...currentReceipt.runtime,
+      pid: currentReceipt.runtime.pid + 1,
+      processGroupId: currentReceipt.runtime.processGroupId + 1,
+    },
+  });
+  const rotatedObservation = {
+    schemaVersion: 'vexlife.host-resource-observation/v1',
+    truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+    resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+    resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
+    resourceObservationRef: 'observation.vexlife.host-resource.rotated-receipt-test',
+    ownershipState: 'EXACT_VEX_OWNED',
+    lifecycleState: 'CURRENT',
+    currentness: 'CURRENT',
+    lifecycleEvidenceRefOrNull: null,
+    ownershipProof: {
+      currentness: 'CURRENT',
+      ownerReceiptRef: rotatedReceipt.receiptRef,
+      runtimeIdentityRef: `runtime.vexlife.heretic.process.${rotatedReceipt.runtime.pid}`,
+      executableIdentityRef: 'executable.vexlife.heretic.python.rotated-test',
+      processGroupIdentityRef: `process-group.vexlife.heretic.${rotatedReceipt.runtime.processGroupId}`,
+      pidMatchOnly: false,
+      exactOwnedProcessInstance: true,
+    },
+    sourceRefs: ['source.vexlife.heretic-runtime-owner.test', rotatedReceipt.receiptRef],
+  };
+  assert.throws(
+    () => formHereticPersistentRuntimeObservedLink({
+      receipt: currentReceipt,
+      homeIdentity,
+      resourceObservation: rotatedObservation,
+    }),
+    (error) => error?.code === 'HERETIC_RUNTIME_RESOURCE_OBSERVATION_INVALID',
+  );
+
+  assert.throws(
+    () => formHereticPersistentRuntimeObservedLink({
+      receipt: currentReceipt,
+      homeIdentity,
+      resourceObservation: {
+        ...rotatedObservation,
+        resourceObservationRef: 'observation.vexlife.host-resource.unproved-exact-owned-test',
+        ownershipProof: null,
+        sourceRefs: ['source.vexlife.heretic-runtime-owner.test', currentReceipt.receiptRef],
+      },
+    }),
+    (error) => error?.code === 'HERETIC_RUNTIME_RESOURCE_OBSERVATION_INVALID',
+  );
+});
 
 test('exact #636 owned stop projects RECOVERABLE-ready stopped runtime evidence on the same binding', () => {
   const currentReceipt = receipt();

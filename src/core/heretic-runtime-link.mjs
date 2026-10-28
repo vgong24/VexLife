@@ -279,6 +279,128 @@ export function isBoundHereticModelConfiguration(value) {
   return isHereticModelConfiguration(value) && value.state === HERETIC_MODEL_CONFIGURATION_BOUND_STATE;
 }
 
+
+function hereticResourceEvidenceRefs(runtimeReceipt, resourceObservation) {
+  const refs = [
+    runtimeReceipt.receiptRef,
+    resourceObservation.resourceObservationRef,
+    resourceObservation.lifecycleEvidenceRefOrNull ?? null,
+    ...(Array.isArray(resourceObservation.sourceRefs) ? resourceObservation.sourceRefs : []),
+  ].filter((value) => typeof value === 'string' && value.length > 0);
+  return [...new Set(refs)].sort();
+}
+
+function validateHereticHostResourceObservation(resourceObservation, runtimeReceipt) {
+  if (!object(resourceObservation)
+      || resourceObservation.schemaVersion !== 'vexlife.host-resource-observation/v1'
+      || resourceObservation.truthClass !== 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION'
+      || resourceObservation.resourceRef !== 'resource.vexlife.heretic.persistent-runtime'
+      || resourceObservation.resourceClass !== 'HERETIC_PERSISTENT_MLX_RUNTIME'
+      || typeof resourceObservation.resourceObservationRef !== 'string'
+      || resourceObservation.resourceObservationRef.length === 0
+      || typeof resourceObservation.ownershipState !== 'string'
+      || typeof resourceObservation.lifecycleState !== 'string'
+      || typeof resourceObservation.currentness !== 'string'
+      || !Array.isArray(resourceObservation.sourceRefs)
+      || !resourceObservation.sourceRefs.includes(runtimeReceipt.receiptRef)) {
+    fail('HERETIC_RUNTIME_RESOURCE_OBSERVATION_INVALID', 'Heretic current runtime projection requires one source-bound observation for the same runtime receipt');
+  }
+  if (resourceObservation.ownershipState === 'EXACT_VEX_OWNED') {
+    const proof = resourceObservation.ownershipProof;
+    if (!object(proof)
+        || proof.currentness !== 'CURRENT'
+        || proof.ownerReceiptRef !== runtimeReceipt.receiptRef
+        || proof.exactOwnedProcessInstance !== true
+        || proof.pidMatchOnly !== false
+        || typeof proof.runtimeIdentityRef !== 'string'
+        || proof.runtimeIdentityRef.length === 0
+        || typeof proof.executableIdentityRef !== 'string'
+        || proof.executableIdentityRef.length === 0
+        || typeof proof.processGroupIdentityRef !== 'string'
+        || proof.processGroupIdentityRef.length === 0) {
+      fail('HERETIC_RUNTIME_RESOURCE_OBSERVATION_INVALID', 'Heretic exact-owned observation must prove the same runtime receipt and exact process instance');
+    }
+  } else if (resourceObservation.ownershipProof !== null) {
+    fail('HERETIC_RUNTIME_RESOURCE_OBSERVATION_INVALID', 'Heretic non-owned or ambiguous observation cannot carry exact ownership proof');
+  }
+  if (resourceObservation.currentness === 'CURRENT'
+      && resourceObservation.ownershipState === 'UNOWNED'
+      && resourceObservation.lifecycleState === 'ABANDONED'
+      && (typeof resourceObservation.lifecycleEvidenceRefOrNull !== 'string'
+        || resourceObservation.lifecycleEvidenceRefOrNull.length === 0)) {
+    fail('HERETIC_RUNTIME_RESOURCE_OBSERVATION_INVALID', 'Heretic abandoned observation requires current not-live evidence');
+  }
+  return resourceObservation;
+}
+
+export function formHereticPersistentRuntimeObservedLink({ receipt, homeIdentity, resourceObservation }) {
+  const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
+  const resource = validateHereticHostResourceObservation(resourceObservation, runtimeReceipt);
+  const link = formHereticPersistentRuntimeLink({ receipt: runtimeReceipt, homeIdentity });
+  const evidenceRefs = hereticResourceEvidenceRefs(runtimeReceipt, resource);
+  const bindingRef = link.companionBinding.bindingRef;
+
+  let runtimeOwnershipState = 'UNKNOWN';
+  let runtimeState = 'UNKNOWN';
+  let qualificationState = 'UNKNOWN';
+  let safeReentryState = 'HELD';
+  let currentness = resource.currentness === 'CURRENT' ? 'CURRENT' : 'UNKNOWN';
+
+  if (currentness === 'CURRENT'
+      && resource.ownershipState === 'EXACT_VEX_OWNED'
+      && resource.lifecycleState === 'CURRENT') {
+    runtimeOwnershipState = 'EXACT_OWNED';
+    runtimeState = 'HEALTHY';
+    qualificationState = 'CURRENT';
+    safeReentryState = 'HELD';
+  } else if (currentness === 'CURRENT'
+      && resource.ownershipState === 'UNOWNED'
+      && resource.lifecycleState === 'ABANDONED') {
+    runtimeOwnershipState = 'NO_OWNED_RUNTIME';
+    runtimeState = 'STOPPED';
+    qualificationState = 'STALE';
+    safeReentryState = 'AVAILABLE';
+  } else if (currentness === 'CURRENT'
+      && resource.ownershipState === 'EXACT_VEX_OWNED'
+      && resource.lifecycleState === 'STALE') {
+    runtimeOwnershipState = 'EXACT_OWNED';
+    runtimeState = 'DEGRADED';
+    qualificationState = 'STALE';
+    safeReentryState = 'HUMAN_DECISION_REQUIRED';
+  } else if (currentness === 'CURRENT' && resource.ownershipState === 'AMBIGUOUS') {
+    runtimeOwnershipState = 'CONFLICT';
+  }
+
+  const observationRef = digestRef(
+    'observation.vexlife.heretic-persistent-runtime',
+    [
+      bindingRef,
+      runtimeReceipt.receiptRef,
+      resource.resourceObservationRef,
+      runtimeOwnershipState,
+      runtimeState,
+      qualificationState,
+      safeReentryState,
+      currentness,
+    ].join('|'),
+  );
+  const runtimeObservation = freezeDeep({
+    schemaVersion: 'vexlife.companion-runtime-adapter-observation/v1',
+    truthClass: 'FOREIGN_PLATFORM_RUNTIME_OBSERVATION',
+    observationRef,
+    adapterRef: runtimeReceipt.runtimeAdapterRef,
+    bindingRef,
+    homeRef: homeIdentity.homeRef,
+    runtimeOwnershipState,
+    runtimeState,
+    qualificationState,
+    safeReentryState,
+    currentness,
+    evidenceRefs,
+  });
+  return freezeDeep({ ...link, runtimeObservation });
+}
+
 export function formHereticPersistentRuntimeStoppedObservation({ receipt, homeIdentity, stopResult }) {
   const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
   const bindingRef = formHereticPersistentRuntimeBindingRef(homeIdentity);

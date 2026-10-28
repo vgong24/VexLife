@@ -23,10 +23,17 @@ import {
   HERETIC_RUNTIME_ADAPTER_REF,
   HERETIC_RUNTIME_IDENTITY,
   HERETIC_RUNTIME_RECEIPT_SCHEMA,
-  formHereticPersistentRuntimeBindingRef
+  formHereticPersistentRuntimeBindingRef,
+  formHereticPersistentRuntimeLink,
+  formHereticPersistentRuntimeObservedLink
 } from '../src/core/heretic-runtime-link.mjs';
 import { initializeLivedCompanionHome } from '../src/core/lived-companion.mjs';
 import { createServerOwnedBrowserCompanionBridge } from '../scripts/serve-browser-core.mjs';
+import {
+  hereticRuntimeBrowserOptions,
+  recoverHereticPersistentRuntimeFromCurrentHome,
+  resolveHereticPersistentRuntimeCurrentLink
+} from '../scripts/serve-browser.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const profiles = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint', 'vex-operational-profiles.json'), 'utf8'));
@@ -96,7 +103,16 @@ function hereticRequest(identity, overrides = {}) {
   });
 }
 
-function hereticRuntimeReceipt({ pid = 52001, receiptRef = 'receipt.vexlocalbridge.heretic-persistent-runtime.reentry-test' } = {}) {
+function hereticRuntimeReceipt({
+  pid = 52001,
+  receiptRef = 'receipt.vexlocalbridge.heretic-persistent-runtime.reentry-test',
+  sourceIdentity = {
+    repository: 'vgong24/Vextreme-SDK',
+    revision: '7'.repeat(40),
+    tree: '8'.repeat(40),
+    moduleSha256: '9'.repeat(64),
+  }
+} = {}) {
   return {
     schemaVersion: HERETIC_RUNTIME_RECEIPT_SCHEMA,
     receiptRef,
@@ -109,12 +125,7 @@ function hereticRuntimeReceipt({ pid = 52001, receiptRef = 'receipt.vexlocalbrid
     pythonEnvironmentRoot: '/private/heretic/env',
     endpoint: 'http://127.0.0.1:18121',
     requestModel: HERETIC_REQUEST_MODEL,
-    sourceIdentity: {
-      repository: 'vgong24/Vextreme-SDK',
-      revision: '7'.repeat(40),
-      tree: '8'.repeat(40),
-      moduleSha256: '9'.repeat(64),
-    },
+    sourceIdentity,
     runtime: {
       pid,
       processGroupId: pid,
@@ -275,6 +286,42 @@ test('Heretic recovery delegates to injected #636 effect, validates exact receip
     assert.equal(first.proofClass,'SYNTHETIC');
     assert.ok(first.sourceRefs.includes('github.issue.vextreme-sdk.636'));
     assert.ok(first.sourceRefs.includes('receipt.vexlocalbridge.heretic-persistent-runtime.reentry-test'));
+    assert.ok(first.sourceRefs.includes(`git.vextreme-sdk.${'7'.repeat(40)}`));
+    assert.equal(first.sourceRefs.some((ref) => ref.includes('undefined')), false);
+  } finally { fs.rmSync(root,{recursive:true,force:true}); }
+});
+
+test('Heretic recovery emits VexLife module provenance for current VexLife runtime receipts', async () => {
+  const {root,home,identity}=makeHome();
+  const moduleSha256='a'.repeat(64);
+  try {
+    const owner=createHereticRuntimeCompanionRecoveryOwner({
+      home,
+      proofClass:'SYNTHETIC',
+      recoverPersistentRuntime:async()=>{
+        const receipt=hereticRuntimeReceipt({
+          receiptRef:'receipt.vexlife.heretic-persistent-runtime.current-source-test',
+          sourceIdentity:{
+            repository:'vgong24/VexLife',
+            modulePath:'src/core/heretic-persistent-runtime-owner.mjs',
+            moduleSha256
+          }
+        });
+        receipt.schemaVersion='vexlife.heretic-persistent-runtime-owner-receipt/v1';
+        receipt.hostExecutionProfileRef='profile.repository.vexlife.macos-v1';
+        return {
+          disposition:'STARTED_NEW_EXACT_MLX_RUNTIME',
+          pid:receipt.runtime.pid,
+          endpoint:receipt.endpoint,
+          requestModel:receipt.requestModel,
+          receipt
+        };
+      }
+    });
+    const result=await owner.recover(hereticRequest(identity));
+    assert.ok(result.sourceRefs.includes(`source.vexlife.heretic-runtime-owner.${moduleSha256}`));
+    assert.equal(result.sourceRefs.some((ref)=>ref.includes('undefined')),false);
+    assert.equal(result.sourceRefs.some((ref)=>ref.startsWith('git.vextreme-sdk.')),false);
   } finally { fs.rmSync(root,{recursive:true,force:true}); }
 });
 
@@ -350,6 +397,128 @@ test('composite recovery owner dispatches only exact owned runtime adapters', as
     ()=>noHeretic.recover({runtimeAdapterRef:HERETIC_RUNTIME_ADAPTER_REF}),
     /RECOVERY_RUNTIME_ADAPTER_UNOWNED/u
   );
+});
+
+test('production Heretic Browser composition re-resolves live runtime observation and wires the existing recovery effect', async () => {
+  const initialReceipt = hereticRuntimeReceipt();
+  const initialLink = formHereticPersistentRuntimeLink({ receipt: initialReceipt, homeIdentity: {
+    homeRef: 'vex-home.browser-currentness-test',
+    companionLineageRef: 'companion-lineage.browser-currentness-test'
+  }});
+  let currentLink = initialLink;
+  let capturedBridgeOptions = null;
+  let capturedRecoveryOptions = null;
+  const fakeBridge = Object.freeze({ marker: 'fake-browser-bridge' });
+  const options = hereticRuntimeBrowserOptions(initialLink, {
+    companionHome: '/tmp/vexlife-browser-currentness-test',
+    resolveCurrentRuntimeLink: async () => currentLink,
+    recoverPersistentHereticRuntime: async () => ({ unused: true }),
+    recoveryOwnerFactory: (recoveryOptions) => {
+      capturedRecoveryOptions = recoveryOptions;
+      return Object.freeze({ recover: async (input) => input });
+    },
+    serverCompanionBridgeFactory: (bridgeOptions) => {
+      capturedBridgeOptions = bridgeOptions;
+      return fakeBridge;
+    }
+  });
+  assert.equal(options.companionBridge, fakeBridge);
+  assert.equal(typeof capturedBridgeOptions.recoveryOwnerFactory, 'function');
+  const recoveryOwner = capturedBridgeOptions.recoveryOwnerFactory({
+    sourceRoot: ROOT,
+    home: '/tmp/vexlife-browser-currentness-test'
+  });
+  assert.equal(typeof recoveryOwner.recover, 'function');
+  assert.equal(typeof capturedRecoveryOptions.recoverPersistentHereticRuntime, 'function');
+
+  currentLink = formHereticPersistentRuntimeObservedLink({
+    receipt: initialReceipt,
+    homeIdentity: {
+      homeRef: 'vex-home.browser-currentness-test',
+      companionLineageRef: 'companion-lineage.browser-currentness-test'
+    },
+    resourceObservation: {
+      schemaVersion: 'vexlife.host-resource-observation/v1',
+      truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+      resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
+      resourceObservationRef: 'observation.vexlife.host-resource.browser-runtime-dead-test',
+      ownershipState: 'UNOWNED',
+      lifecycleState: 'ABANDONED',
+      currentness: 'CURRENT',
+      lifecycleEvidenceRefOrNull: 'evidence.vexlife.heretic.not-live.browser-test',
+      ownershipProof: null,
+      sourceRefs: ['source.vexlife.heretic-runtime-owner.test', initialReceipt.receiptRef]
+    }
+  });
+  const observed = await options.resolveCompanionRuntimeObservation();
+  assert.equal(observed.runtimeOwnershipState, 'NO_OWNED_RUNTIME');
+  assert.equal(observed.runtimeState, 'STOPPED');
+  assert.equal(observed.safeReentryState, 'AVAILABLE');
+  assert.equal((await options.resolveCompanionBinding()).bindingRef, initialLink.companionBinding.bindingRef);
+});
+
+test('production current-link resolver observes the receipt resource on every read', () => {
+  const { root, home, identity } = makeHome();
+  try {
+    const receiptPath = path.join(root, 'heretic-runtime-receipt.json');
+    const currentReceipt = hereticRuntimeReceipt();
+    fs.writeFileSync(receiptPath, JSON.stringify(currentReceipt, null, 2));
+    let calls = 0;
+    const link = resolveHereticPersistentRuntimeCurrentLink({
+      runtimeReceiptPath: receiptPath,
+      runtimeHome: home,
+      resourceObserver: ({ receiptPath: observedPath }) => {
+        calls += 1;
+        assert.equal(observedPath, receiptPath);
+        return {
+          schemaVersion: 'vexlife.host-resource-observation/v1',
+          truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+          resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+          resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
+          resourceObservationRef: 'observation.vexlife.host-resource.dynamic-read-test',
+          ownershipState: 'UNOWNED',
+          lifecycleState: 'ABANDONED',
+          currentness: 'CURRENT',
+          lifecycleEvidenceRefOrNull: 'evidence.vexlife.heretic.not-live.dynamic-read-test',
+          ownershipProof: null,
+          sourceRefs: ['source.vexlife.heretic-runtime-owner.test', currentReceipt.receiptRef]
+        };
+      }
+    });
+    assert.equal(calls, 1);
+    assert.equal(link.companionBinding.homeRef, identity.homeRef);
+    assert.equal(link.runtimeObservation.runtimeState, 'STOPPED');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('production Heretic Browser recovery delegates to normal start with acquisition disabled and revalidates its receipt', async () => {
+  const { root, home } = makeHome();
+  try {
+    const receiptPath = path.join(root, 'recovered-heretic-runtime.json');
+    const recoveredReceipt = hereticRuntimeReceipt({ pid: 53001, receiptRef: 'receipt.vexlocalbridge.heretic-persistent-runtime.browser-recovery-test' });
+    fs.writeFileSync(receiptPath, JSON.stringify(recoveredReceipt, null, 2));
+    let argv = null;
+    const result = await recoverHereticPersistentRuntimeFromCurrentHome({
+      runtimeHome: home,
+      runNormalStart: async (inputArgv) => {
+        argv = [...inputArgv];
+        return {
+          state: 'HERETIC_RUNTIME_ESTABLISHED',
+          runtimeDisposition: 'STARTED_NEW_EXACT_MLX_RUNTIME',
+          runtimePid: recoveredReceipt.runtime.pid,
+          runtimeReceiptPath: receiptPath,
+          endpoint: recoveredReceipt.endpoint,
+          requestModel: recoveredReceipt.requestModel
+        };
+      }
+    });
+    assert.deepEqual(argv, ['--home', path.resolve(home)]);
+    assert.equal(argv.includes('--allow-acquisition'), false);
+    assert.equal(result.disposition, 'STARTED_NEW_EXACT_MLX_RUNTIME');
+    assert.equal(result.pid, recoveredReceipt.runtime.pid);
+    assert.equal(result.receipt.receiptRef, recoveredReceipt.receiptRef);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
 test('server-owned Browser Companion composition binds one rightful recovery owner', () => {
