@@ -950,25 +950,28 @@ async function establishHeretic(home, repo, options) {
 async function startBrowser(home, repo, initialization, { forceCurrentBrowserRebind = false } = {}) {
   const browserPort = 18110;
   const receiptPath = browserReceiptPath(home);
+  if (forceCurrentBrowserRebind && await portOpen(browserPort)) {
+    const ownedForRebind = getOwnedBrowser(home, repo, { allowRepoDrift: true });
+    if (!ownedForRebind) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
+    if (ownedForRebind.sourceCurrent) {
+      const rebind = await stopOwnedBrowser(home, repo);
+      if (await portOpen(browserPort)) {
+        throw new Error('exact current browser stopped for Companion rebind but port 18110 remains occupied');
+      }
+      if (rebind.sourceDisposition !== 'CURRENT_SOURCE') {
+        throw new Error('current-source browser rebind did not preserve exact ownership classification');
+      }
+    }
+  }
   if (await portOpen(browserPort)) {
     const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true });
     if (!owned) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
-    if (owned.sourceCurrent && !forceCurrentBrowserRebind) {
-      return { disposition: 'REUSED_EXACT_BROWSER', pid: owned.pid };
-    }
+    if (owned.sourceCurrent) return { disposition: 'REUSED_EXACT_BROWSER', pid: owned.pid };
     const rotation = await stopOwnedBrowser(home, repo);
     if (await portOpen(browserPort)) {
-      throw new Error(
-        forceCurrentBrowserRebind
-          ? 'exact current browser stopped for Companion rebind but port 18110 remains occupied'
-          : 'exact prior-source browser stopped but port 18110 remains occupied'
-      );
+      throw new Error('exact prior-source browser stopped but port 18110 remains occupied');
     }
-    if (owned.sourceCurrent) {
-      if (!forceCurrentBrowserRebind || rotation.sourceDisposition !== 'CURRENT_SOURCE') {
-        throw new Error('current-source browser rebind did not preserve exact ownership classification');
-      }
-    } else if (rotation.sourceDisposition !== 'PRIOR_EXACT_SOURCE') {
+    if (rotation.sourceDisposition !== 'PRIOR_EXACT_SOURCE') {
       throw new Error('browser source rotation did not preserve prior-source ownership classification');
     }
   }

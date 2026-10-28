@@ -818,7 +818,7 @@ test('MAC07C protected continuity hashes model files incrementally without whole
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-test('MAC06E recoverable Companion start forces an exact current browser rebind while healthy start preserves reuse', () => {
+test('MAC06E recoverable Companion start pre-rotates an exact current browser while healthy start preserves legacy reuse', () => {
   const lifecycleSource = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
   assert.match(
     lifecycleSource,
@@ -826,15 +826,23 @@ test('MAC06E recoverable Companion start forces an exact current browser rebind 
   );
   assert.match(
     lifecycleSource,
-    /owned\.sourceCurrent && !forceCurrentBrowserRebind/
+    /forceCurrentBrowserRebind && await portOpen\(browserPort\)/
+  );
+  assert.match(
+    lifecycleSource,
+    /const ownedForRebind = getOwnedBrowser\(home, repo, \{ allowRepoDrift: true \}\)/
+  );
+  assert.match(
+    lifecycleSource,
+    /ownedForRebind\.sourceCurrent[\s\S]*?const rebind = await stopOwnedBrowser\(home, repo\)[\s\S]*?rebind\.sourceDisposition !== 'CURRENT_SOURCE'/
+  );
+  assert.match(
+    lifecycleSource,
+    /if \(owned\.sourceCurrent\) return \{ disposition: 'REUSED_EXACT_BROWSER', pid: owned\.pid \}/
   );
   assert.match(
     lifecycleSource,
     /forceCurrentBrowserRebind\s*:\s*state === 'EXISTING_RECOVERABLE'/
-  );
-  assert.match(
-    lifecycleSource,
-    /forceCurrentBrowserRebind[\s\S]*?stopOwnedBrowser\(home, repo\)[\s\S]*?rotation\.sourceDisposition !== 'CURRENT_SOURCE'/
   );
   assert.match(
     lifecycleSource,
