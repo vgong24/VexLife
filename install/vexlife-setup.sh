@@ -128,7 +128,7 @@ controller_actions_from_lifecycle() {
     if [ "$state" = "ABSENT" ] && [ "$host_eligible" = "yes" ]; then
       actions="$(append_action "$actions" first-setup)"
     fi
-    if [ "$state" = "EXISTING_HEALTHY" ]; then
+    if [ "$state" = "EXISTING_HEALTHY" ] || [ "$state" = "EXISTING_RECOVERABLE" ]; then
       actions="$(append_action "$actions" open)"
     fi
   fi
@@ -540,24 +540,24 @@ controller_run() {
       open_vex
       controller_result "FIRST_SETUP_COMPLETE"
       ;;
-    EXISTING_HEALTHY:open)
+    EXISTING_HEALTHY:open|EXISTING_RECOVERABLE:open)
       run_lifecycle start >/dev/null
       open_vex
       controller_result "VEX_OPENED"
       ;;
-    EXISTING_HEALTHY:repair|EXISTING_DEGRADED_REPAIRABLE:repair)
+    EXISTING_HEALTHY:repair|EXISTING_RECOVERABLE:repair|EXISTING_DEGRADED_REPAIRABLE:repair)
       [ "$RUNTIME_ACQUISITION_CONSENT" = "yes" ] || fail "repair was not authorized to verify or reacquire required runtime files."
       run_lifecycle repair yes >/dev/null
       open_vex
       controller_result "REPAIR_COMPLETE"
       ;;
-    EXISTING_HEALTHY:rebuild-preserve|EXISTING_DEGRADED_REPAIRABLE:rebuild-preserve)
+    EXISTING_HEALTHY:rebuild-preserve|EXISTING_RECOVERABLE:rebuild-preserve|EXISTING_DEGRADED_REPAIRABLE:rebuild-preserve)
       [ "$RUNTIME_ACQUISITION_CONSENT" = "yes" ] || fail "rebuild-preserve was not authorized to reacquire required runtime files."
       run_lifecycle rebuild-preserve yes >/dev/null
       open_vex
       controller_result "REBUILD_PRESERVE_COMPLETE"
       ;;
-    EXISTING_HEALTHY:uninstall-preserve|EXISTING_DEGRADED_REPAIRABLE:uninstall-preserve)
+    EXISTING_HEALTHY:uninstall-preserve|EXISTING_RECOVERABLE:uninstall-preserve|EXISTING_DEGRADED_REPAIRABLE:uninstall-preserve)
       run_lifecycle uninstall-preserve >/dev/null
       controller_result "UNINSTALL_PRESERVE_COMPLETE"
       ;;
@@ -675,6 +675,31 @@ case "$STATE" in
         ;;
       u )
         ask_yes_no "Uninstall-preserve stops owned processes and removes runtime/transient state while preserving Home, Memory, conversations, and verified model files. Continue?" n || { say "Stopped. Nothing was uninstalled."; exit 0; }
+        begin_setup_action "uninstall-preserve"; run_lifecycle uninstall-preserve >/dev/null
+        say "VexLife active setup/runtime state was stopped and cleaned while your Vex Home and preserved data stayed in place."
+        ;;
+      q ) say "Stopped. No changes were made." ;;
+      * ) say "That choice is not available for the current VexLife state. Nothing was changed."; exit 1 ;;
+    esac
+    ;;
+
+  EXISTING_RECOVERABLE)
+    say "VexLife found your existing Home and can safely reconnect the accepted Companion binding."
+    printf 'Press [Enter] to reconnect and open Vex, [r] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, or [q] quit: '
+    read -r CHOICE || true
+    CHOICE="$(printf '%s' "$CHOICE" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+    case "$CHOICE" in
+      '' ) begin_setup_action "open"; run_lifecycle start >/dev/null; open_vex ;;
+      r )
+        ask_yes_no "Repair may verify or reacquire required runtime files. Continue?" n || { say "Stopped. No repair was performed."; exit 0; }
+        begin_setup_action "repair"; run_lifecycle repair yes >/dev/null; open_vex
+        ;;
+      b )
+        ask_yes_no "Rebuild-preserve keeps Home, Memory, conversations, and verified model cache while rebuilding runtime state. Continue?" n || { say "Stopped. No rebuild was performed."; exit 0; }
+        begin_setup_action "rebuild-preserve"; run_lifecycle rebuild-preserve yes >/dev/null; open_vex
+        ;;
+      u )
+        ask_yes_no "Uninstall-preserve keeps Home, Memory, conversations, and verified model files. Continue?" n || { say "Stopped. Nothing was uninstalled."; exit 0; }
         begin_setup_action "uninstall-preserve"; run_lifecycle uninstall-preserve >/dev/null
         say "VexLife active setup/runtime state was stopped and cleaned while your Vex Home and preserved data stayed in place."
         ;;

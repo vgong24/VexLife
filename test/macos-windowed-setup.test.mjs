@@ -167,6 +167,29 @@ test('MAC-WIN-02 lifecycle owner choices, not the state label alone, govern cont
   assert.equal(fs.existsSync(rejected.effectLog), false);
 });
 
+test('MAC-WIN-02C recoverable Heretic Home offers ordinary reconnect without relabeling it healthy', () => {
+  const inspect = runController(['--action', 'inspect', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+    state: 'EXISTING_RECOVERABLE',
+    choices: ['start', 'stop', 'repair', 'rebuild-preserve', 'uninstall-preserve']
+  });
+  assert.equal(inspect.status, 0, inspect.stderr);
+  assert.match(inspect.stdout, /VEXLIFE_CONTROLLER_STATE\tEXISTING_RECOVERABLE/u);
+  assert.match(inspect.stdout, /VEXLIFE_CONTROLLER_ACTIONS\topen,repair,rebuild-preserve,uninstall-preserve/u);
+
+  const opened = runController(['--action', 'open', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
+    state: 'EXISTING_RECOVERABLE',
+    choices: ['start', 'stop', 'repair', 'rebuild-preserve', 'uninstall-preserve'],
+    stopBeforeBrowserOpen: true
+  });
+  assert.notEqual(opened.status, 0);
+  assert.match(opened.stderr, /FAKE_LIFECYCLE_STOP_BEFORE_BROWSER_OPEN|stopped safely before completing/u);
+  assert.doesNotMatch(opened.stderr, /model\/runtime acquisition was not authorized/u);
+
+  assert.match(windowSource, /stateValue is "EXISTING_RECOVERABLE"/u);
+  assert.match(windowSource, /VexLife can reconnect/u);
+  assert.match(windowSource, /same accepted binding without changing Home or model selection/u);
+});
+
 test('MAC-WIN-05 host eligibility preflight is selected-Home anchored and remains no-effect', () => {
   const inspect = runController(['--action', 'inspect', '--node-install-consent', 'no', '--runtime-acquisition-consent', 'no'], {
     state: 'ABSENT', hostEligible: true

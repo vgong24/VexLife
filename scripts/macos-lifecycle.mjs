@@ -15,7 +15,10 @@ import {
   validateHereticModelConfiguration,
   validateHereticPersistentRuntimeReceipt
 } from '../src/core/heretic-runtime-link.mjs';
-import { stopHereticPersistentRuntimeFromReceipt } from '../src/core/heretic-persistent-runtime-owner.mjs';
+import {
+  observeHereticPersistentRuntimeResource,
+  stopHereticPersistentRuntimeFromReceipt
+} from '../src/core/heretic-persistent-runtime-owner.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const SOURCE_ROOT = path.resolve(HERE, '..');
@@ -57,20 +60,44 @@ function acceptedHereticConfiguration(home, homeManifest, model) {
 function hereticRuntimeReceiptPath(home, configuration) {
   return path.resolve(home, ...configuration.runtimeReceiptPath.split('/'));
 }
-function qualifiedHereticReceipt(home, homeManifest, model) {
-  if (!isBoundHereticModelConfiguration(model)) return null;
+function classifyHereticRuntimeCurrentness(home, homeManifest, model, {
+  resourceObserver = observeHereticPersistentRuntimeResource
+} = {}) {
+  if (!isHereticModelConfiguration(model)) return null;
   const configuration = acceptedHereticConfiguration(home, homeManifest, model);
-  if (!configuration) return null;
+  if (!configuration || !isBoundHereticModelConfiguration(model)) return 'DEGRADED';
+
   const receiptPath = hereticRuntimeReceiptPath(home, configuration);
   const receipt = jsonRead(receiptPath);
-  if (!receipt) return null;
+  if (!receipt) return 'DEGRADED';
+
   try {
     const accepted = validateHereticPersistentRuntimeReceipt(receipt);
-    if (accepted.endpoint !== configuration.endpoint || accepted.requestModel !== configuration.requestModel) return null;
-    return { configuration, receipt: accepted, receiptPath };
+    if (accepted.endpoint !== configuration.endpoint || accepted.requestModel !== configuration.requestModel) {
+      return 'DEGRADED';
+    }
   } catch {
-    return null;
+    return 'DEGRADED';
   }
+
+  let resource;
+  try {
+    resource = resourceObserver({ receiptPath });
+  } catch {
+    return 'DEGRADED';
+  }
+  if (!resource || resource.currentness !== 'CURRENT') return 'DEGRADED';
+
+  if (resource.ownershipState === 'EXACT_VEX_OWNED' && resource.lifecycleState === 'CURRENT') {
+    return 'HEALTHY';
+  }
+  if (
+    (resource.ownershipState === 'UNOWNED' && resource.lifecycleState === 'ABANDONED') ||
+    (resource.ownershipState === 'EXACT_VEX_OWNED' && resource.lifecycleState === 'STALE')
+  ) {
+    return 'RECOVERABLE';
+  }
+  return 'DEGRADED';
 }
 function writeJsonAtomic(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -671,7 +698,9 @@ function activatedRuntimeProcessEvidenceMatches(binding, processEvidence) {
   return commandLine.endsWith(` ${binding.arguments.join(' ')}`);
 }
 
-export function classifyMacLifecycleState(home) {
+export function classifyMacLifecycleState(home, {
+  hereticResourceObserver = observeHereticPersistentRuntimeResource
+} = {}) {
   const root = path.resolve(home);
   if (!fs.existsSync(root)) return 'ABSENT';
   try { canonicalMacHomeDirectory(root); } catch { return 'HELD_NONCANONICAL_HOME'; }
@@ -683,14 +712,20 @@ export function classifyMacLifecycleState(home) {
   const initialization = jsonRead(path.join(root, 'recovery', 'vex-initialization-receipt.json'));
   if (model?.state === 'BOUND_QUALIFIED' && initialization?.state === 'RUNTIME_QUALIFIED') return 'EXISTING_HEALTHY';
   if (activatedRuntimeReceiptBinding(homeManifest, model, initialization)) return 'EXISTING_HEALTHY';
-  if (acceptedHereticConfiguration(root, homeManifest, model)) {
-    return qualifiedHereticReceipt(root, homeManifest, model) ? 'EXISTING_HEALTHY' : 'EXISTING_DEGRADED_REPAIRABLE';
+  if (isHereticModelConfiguration(model)) {
+    const hereticState = classifyHereticRuntimeCurrentness(root, homeManifest, model, {
+      resourceObserver: hereticResourceObserver
+    });
+    if (hereticState === 'HEALTHY') return 'EXISTING_HEALTHY';
+    if (hereticState === 'RECOVERABLE') return 'EXISTING_RECOVERABLE';
+    return 'EXISTING_DEGRADED_REPAIRABLE';
   }
   return 'EXISTING_DEGRADED_REPAIRABLE';
 }
 export function choicesForLifecycleState(state) {
   if (state === 'ABSENT') return ['start'];
   if (state === 'EXISTING_HEALTHY') return ['start', 'stop', 'repair', 'rebuild-preserve', 'uninstall-preserve'];
+  if (state === 'EXISTING_RECOVERABLE') return ['start', 'stop', 'repair', 'rebuild-preserve', 'uninstall-preserve'];
   if (state === 'EXISTING_DEGRADED_REPAIRABLE') return ['stop', 'repair', 'rebuild-preserve', 'uninstall-preserve'];
   return [];
 }
@@ -912,9 +947,22 @@ async function establishHeretic(home, repo, options) {
     reuseDisposition: established.runtimeDisposition
   };
 }
-async function startBrowser(home, repo, initialization) {
+async function startBrowser(home, repo, initialization, { forceCurrentBrowserRebind = false } = {}) {
   const browserPort = 18110;
   const receiptPath = browserReceiptPath(home);
+  if (forceCurrentBrowserRebind && await portOpen(browserPort)) {
+    const ownedForRebind = getOwnedBrowser(home, repo, { allowRepoDrift: true });
+    if (!ownedForRebind) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
+    if (ownedForRebind.sourceCurrent) {
+      const rebind = await stopOwnedBrowser(home, repo);
+      if (await portOpen(browserPort)) {
+        throw new Error('exact current browser stopped for Companion rebind but port 18110 remains occupied');
+      }
+      if (rebind.sourceDisposition !== 'CURRENT_SOURCE') {
+        throw new Error('current-source browser rebind did not preserve exact ownership classification');
+      }
+    }
+  }
   if (await portOpen(browserPort)) {
     const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true });
     if (!owned) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
@@ -976,7 +1024,7 @@ async function startBrowser(home, repo, initialization) {
   return { disposition: 'STARTED_NEW_BROWSER', pid: child.pid };
 }
 
-async function runStart(home, repo, options) {
+async function runStart(home, repo, options, { forceCurrentBrowserRebind = false } = {}) {
   await bootstrap(home, repo);
   const homeManifest = jsonRead(path.join(home, 'config', 'home.json'));
   const model = jsonRead(path.join(home, 'config', 'model.json'));
@@ -990,7 +1038,7 @@ async function runStart(home, repo, options) {
     initialized = await initialize(home, repo, options);
   }
   if (initialized.state !== 'RUNTIME_QUALIFIED') throw new Error(`initializer did not qualify runtime: ${initialized.state}`);
-  const browser = await startBrowser(home, repo, initialized);
+  const browser = await startBrowser(home, repo, initialized, { forceCurrentBrowserRebind });
   return { initialized, browser };
 }
 export async function cleanStop(home, repo) {
@@ -1081,7 +1129,9 @@ async function promptChoice(state) {
   try {
     const friendly = state === 'EXISTING_HEALTHY'
       ? 'VexLife already exists. Choose: [Enter] resume, [s] stop cleanly, [r] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, [q] quit: '
-      : 'VexLife needs attention. Choose: [s] stop exact owned processes, [Enter] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, [q] quit: ';
+      : state === 'EXISTING_RECOVERABLE'
+        ? 'VexLife can reconnect the accepted Companion binding. Choose: [Enter] reconnect, [s] stop cleanly, [r] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, [q] quit: '
+        : 'VexLife needs attention. Choose: [s] stop exact owned processes, [Enter] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, [q] quit: ';
     const answer = (await rl.question(friendly)).trim().toLowerCase();
     if (answer === 'q') return 'quit';
     if (answer === 's') return 'stop';
@@ -1126,7 +1176,9 @@ export async function runLifecycle(argv = process.argv.slice(2)) {
   if (chosen === 'quit') return { schemaVersion: MAC_LIFECYCLE_SCHEMA, operation: 'quit', state: 'USER_STOPPED_NO_EFFECT' };
   assertLifecycleOperationAdmitted(state, chosen);
   if (chosen === 'start') {
-    const started = await runStart(home, repo, options);
+    const started = await runStart(home, repo, options, {
+      forceCurrentBrowserRebind: state === 'EXISTING_RECOVERABLE'
+    });
     return { schemaVersion: MAC_LIFECYCLE_SCHEMA, operation: 'start', state: 'START_OR_RESUME_COMPLETED', priorState: state, started };
   }
   if (chosen === 'stop') return { schemaVersion: MAC_LIFECYCLE_SCHEMA, ...(await cleanStop(home, repo)), priorState: state };
