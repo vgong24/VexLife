@@ -108,34 +108,10 @@ test('MACUPDATE01 prior exact source can prove its browser for stop while repo s
 
 test('MACUPDATE02 current-source start rotates a proved prior-source browser instead of reusing it as current', () => {
   assert.match(lifecycleSource, /getOwnedBrowser\(home, repo, \{ allowRepoDrift: true \}\)/);
-  assert.match(lifecycleSource, /owned\.sourceCurrent && !forceCurrentBrowserRebind/);
-  assert.match(lifecycleSource, /return \{ disposition: 'REUSED_EXACT_BROWSER', pid: owned\.pid \}/);
+  assert.match(lifecycleSource, /if \(owned\.sourceCurrent\) return \{ disposition: 'REUSED_EXACT_BROWSER'/);
   assert.match(lifecycleSource, /const rotation = await stopOwnedBrowser\(home, repo\);/);
   assert.match(lifecycleSource, /rotation\.sourceDisposition !== 'PRIOR_EXACT_SOURCE'/);
   assert.match(lifecycleSource, /exact prior-source browser stopped but port 18110 remains occupied/);
-});
-
-test('MACUPDATE03 recoverable Companion start forces exact current browser rebind after Heretic recovery', () => {
-  assert.match(
-    lifecycleSource,
-    /async function startBrowser\(home, repo, initialization, \{ forceCurrentBrowserRebind = false \} = \{\}\)/
-  );
-  assert.match(
-    lifecycleSource,
-    /forceCurrentBrowserRebind\s*:\s*state === 'EXISTING_RECOVERABLE'/
-  );
-  assert.match(
-    lifecycleSource,
-    /forceCurrentBrowserRebind[\s\S]*?stopOwnedBrowser\(home, repo\)[\s\S]*?rotation\.sourceDisposition !== 'CURRENT_SOURCE'/
-  );
-  assert.match(
-    lifecycleSource,
-    /exact current browser stopped for Companion rebind but port 18110 remains occupied/
-  );
-  assert.match(
-    lifecycleSource,
-    /current-source browser rebind did not preserve exact ownership classification/
-  );
 });
 
 // [VXG RealForever]

@@ -818,6 +818,34 @@ test('MAC07C protected continuity hashes model files incrementally without whole
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test('MAC06E recoverable Companion start forces an exact current browser rebind while healthy start preserves reuse', () => {
+  const lifecycleSource = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
+  assert.match(
+    lifecycleSource,
+    /async function startBrowser\(home, repo, initialization, \{ forceCurrentBrowserRebind = false \} = \{\}\)/
+  );
+  assert.match(
+    lifecycleSource,
+    /owned\.sourceCurrent && !forceCurrentBrowserRebind/
+  );
+  assert.match(
+    lifecycleSource,
+    /forceCurrentBrowserRebind\s*:\s*state === 'EXISTING_RECOVERABLE'/
+  );
+  assert.match(
+    lifecycleSource,
+    /forceCurrentBrowserRebind[\s\S]*?stopOwnedBrowser\(home, repo\)[\s\S]*?rotation\.sourceDisposition !== 'CURRENT_SOURCE'/
+  );
+  assert.match(
+    lifecycleSource,
+    /exact current browser stopped for Companion rebind but port 18110 remains occupied/
+  );
+  assert.match(
+    lifecycleSource,
+    /current-source browser rebind did not preserve exact ownership classification/
+  );
+});
+
 test('MAC08 lifecycle exposes no destructive local-data removal operation', () => {
   assert.equal(ALLOWED_OPERATIONS.includes('remove-local-data'), false);
   assert.deepEqual(choicesForLifecycleState('EXISTING_HEALTHY'), ['start','stop','repair','rebuild-preserve','uninstall-preserve']);
