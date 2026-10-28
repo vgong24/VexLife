@@ -279,6 +279,99 @@ export function isBoundHereticModelConfiguration(value) {
   return isHereticModelConfiguration(value) && value.state === HERETIC_MODEL_CONFIGURATION_BOUND_STATE;
 }
 
+
+function hereticResourceEvidenceRefs(runtimeReceipt, resourceObservation) {
+  const refs = [
+    runtimeReceipt.receiptRef,
+    resourceObservation.resourceObservationRef,
+    resourceObservation.lifecycleEvidenceRefOrNull ?? null,
+    ...(Array.isArray(resourceObservation.sourceRefs) ? resourceObservation.sourceRefs : []),
+  ].filter((value) => typeof value === 'string' && value.length > 0);
+  return [...new Set(refs)].sort();
+}
+
+function validateHereticHostResourceObservation(resourceObservation) {
+  if (!object(resourceObservation)
+      || resourceObservation.schemaVersion !== 'vexlife.host-resource-observation/v1'
+      || resourceObservation.truthClass !== 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION'
+      || typeof resourceObservation.resourceObservationRef !== 'string'
+      || resourceObservation.resourceObservationRef.length === 0
+      || typeof resourceObservation.ownershipState !== 'string'
+      || typeof resourceObservation.lifecycleState !== 'string'
+      || typeof resourceObservation.currentness !== 'string') {
+    fail('HERETIC_RUNTIME_RESOURCE_OBSERVATION_INVALID', 'Heretic current runtime projection requires one source-bound host resource observation');
+  }
+  return resourceObservation;
+}
+
+export function formHereticPersistentRuntimeObservedLink({ receipt, homeIdentity, resourceObservation }) {
+  const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
+  const resource = validateHereticHostResourceObservation(resourceObservation);
+  const link = formHereticPersistentRuntimeLink({ receipt: runtimeReceipt, homeIdentity });
+  const evidenceRefs = hereticResourceEvidenceRefs(runtimeReceipt, resource);
+  const bindingRef = link.companionBinding.bindingRef;
+
+  let runtimeOwnershipState = 'UNKNOWN';
+  let runtimeState = 'UNKNOWN';
+  let qualificationState = 'UNKNOWN';
+  let safeReentryState = 'HELD';
+  let currentness = resource.currentness === 'CURRENT' ? 'CURRENT' : 'UNKNOWN';
+
+  if (currentness === 'CURRENT'
+      && resource.ownershipState === 'EXACT_VEX_OWNED'
+      && resource.lifecycleState === 'CURRENT') {
+    runtimeOwnershipState = 'EXACT_OWNED';
+    runtimeState = 'HEALTHY';
+    qualificationState = 'CURRENT';
+    safeReentryState = 'HELD';
+  } else if (currentness === 'CURRENT'
+      && resource.ownershipState === 'UNOWNED'
+      && resource.lifecycleState === 'ABANDONED') {
+    runtimeOwnershipState = 'NO_OWNED_RUNTIME';
+    runtimeState = 'STOPPED';
+    qualificationState = 'STALE';
+    safeReentryState = 'AVAILABLE';
+  } else if (currentness === 'CURRENT'
+      && resource.ownershipState === 'EXACT_VEX_OWNED'
+      && resource.lifecycleState === 'STALE') {
+    runtimeOwnershipState = 'EXACT_OWNED';
+    runtimeState = 'DEGRADED';
+    qualificationState = 'STALE';
+    safeReentryState = 'HUMAN_DECISION_REQUIRED';
+  } else if (currentness === 'CURRENT' && resource.ownershipState === 'AMBIGUOUS') {
+    runtimeOwnershipState = 'CONFLICT';
+  }
+
+  const observationRef = digestRef(
+    'observation.vexlife.heretic-persistent-runtime',
+    [
+      bindingRef,
+      runtimeReceipt.receiptRef,
+      resource.resourceObservationRef,
+      runtimeOwnershipState,
+      runtimeState,
+      qualificationState,
+      safeReentryState,
+      currentness,
+    ].join('|'),
+  );
+  const runtimeObservation = freezeDeep({
+    schemaVersion: 'vexlife.companion-runtime-adapter-observation/v1',
+    truthClass: 'FOREIGN_PLATFORM_RUNTIME_OBSERVATION',
+    observationRef,
+    adapterRef: runtimeReceipt.runtimeAdapterRef,
+    bindingRef,
+    homeRef: homeIdentity.homeRef,
+    runtimeOwnershipState,
+    runtimeState,
+    qualificationState,
+    safeReentryState,
+    currentness,
+    evidenceRefs,
+  });
+  return freezeDeep({ ...link, runtimeObservation });
+}
+
 export function formHereticPersistentRuntimeStoppedObservation({ receipt, homeIdentity, stopResult }) {
   const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
   const bindingRef = formHereticPersistentRuntimeBindingRef(homeIdentity);

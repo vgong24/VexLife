@@ -23,10 +23,17 @@ import {
   HERETIC_RUNTIME_ADAPTER_REF,
   HERETIC_RUNTIME_IDENTITY,
   HERETIC_RUNTIME_RECEIPT_SCHEMA,
-  formHereticPersistentRuntimeBindingRef
+  formHereticPersistentRuntimeBindingRef,
+  formHereticPersistentRuntimeLink,
+  formHereticPersistentRuntimeObservedLink
 } from '../src/core/heretic-runtime-link.mjs';
 import { initializeLivedCompanionHome } from '../src/core/lived-companion.mjs';
 import { createServerOwnedBrowserCompanionBridge } from '../scripts/serve-browser-core.mjs';
+import {
+  hereticRuntimeBrowserOptions,
+  recoverHereticPersistentRuntimeFromCurrentHome,
+  resolveHereticPersistentRuntimeCurrentLink
+} from '../scripts/serve-browser.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const profiles = JSON.parse(fs.readFileSync(path.join(ROOT, 'blueprint', 'vex-operational-profiles.json'), 'utf8'));
@@ -350,6 +357,121 @@ test('composite recovery owner dispatches only exact owned runtime adapters', as
     ()=>noHeretic.recover({runtimeAdapterRef:HERETIC_RUNTIME_ADAPTER_REF}),
     /RECOVERY_RUNTIME_ADAPTER_UNOWNED/u
   );
+});
+
+test('production Heretic Browser composition re-resolves live runtime observation and wires the existing recovery effect', async () => {
+  const initialReceipt = hereticRuntimeReceipt();
+  const initialLink = formHereticPersistentRuntimeLink({ receipt: initialReceipt, homeIdentity: {
+    homeRef: 'vex-home.browser-currentness-test',
+    companionLineageRef: 'companion-lineage.browser-currentness-test'
+  }});
+  let currentLink = initialLink;
+  let capturedBridgeOptions = null;
+  let capturedRecoveryOptions = null;
+  const fakeBridge = Object.freeze({ marker: 'fake-browser-bridge' });
+  const options = hereticRuntimeBrowserOptions(initialLink, {
+    companionHome: '/tmp/vexlife-browser-currentness-test',
+    resolveCurrentRuntimeLink: async () => currentLink,
+    recoverPersistentHereticRuntime: async () => ({ unused: true }),
+    recoveryOwnerFactory: (recoveryOptions) => {
+      capturedRecoveryOptions = recoveryOptions;
+      return Object.freeze({ recover: async (input) => input });
+    },
+    serverCompanionBridgeFactory: (bridgeOptions) => {
+      capturedBridgeOptions = bridgeOptions;
+      return fakeBridge;
+    }
+  });
+  assert.equal(options.companionBridge, fakeBridge);
+  assert.equal(typeof capturedBridgeOptions.recoveryOwnerFactory, 'function');
+  const recoveryOwner = capturedBridgeOptions.recoveryOwnerFactory({
+    sourceRoot: ROOT,
+    home: '/tmp/vexlife-browser-currentness-test'
+  });
+  assert.equal(typeof recoveryOwner.recover, 'function');
+  assert.equal(typeof capturedRecoveryOptions.recoverPersistentHereticRuntime, 'function');
+
+  currentLink = formHereticPersistentRuntimeObservedLink({
+    receipt: initialReceipt,
+    homeIdentity: {
+      homeRef: 'vex-home.browser-currentness-test',
+      companionLineageRef: 'companion-lineage.browser-currentness-test'
+    },
+    resourceObservation: {
+      schemaVersion: 'vexlife.host-resource-observation/v1',
+      truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceObservationRef: 'observation.vexlife.host-resource.browser-runtime-dead-test',
+      ownershipState: 'UNOWNED',
+      lifecycleState: 'ABANDONED',
+      currentness: 'CURRENT',
+      lifecycleEvidenceRefOrNull: 'evidence.vexlife.heretic.not-live.browser-test',
+      sourceRefs: ['source.vexlife.heretic-runtime-owner.test']
+    }
+  });
+  const observed = await options.resolveCompanionRuntimeObservation();
+  assert.equal(observed.runtimeOwnershipState, 'NO_OWNED_RUNTIME');
+  assert.equal(observed.runtimeState, 'STOPPED');
+  assert.equal(observed.safeReentryState, 'AVAILABLE');
+  assert.equal((await options.resolveCompanionBinding()).bindingRef, initialLink.companionBinding.bindingRef);
+});
+
+test('production current-link resolver observes the receipt resource on every read', () => {
+  const { root, home, identity } = makeHome();
+  try {
+    const receiptPath = path.join(root, 'heretic-runtime-receipt.json');
+    fs.writeFileSync(receiptPath, JSON.stringify(hereticRuntimeReceipt(), null, 2));
+    let calls = 0;
+    const link = resolveHereticPersistentRuntimeCurrentLink({
+      runtimeReceiptPath: receiptPath,
+      runtimeHome: home,
+      resourceObserver: ({ receiptPath: observedPath }) => {
+        calls += 1;
+        assert.equal(observedPath, receiptPath);
+        return {
+          schemaVersion: 'vexlife.host-resource-observation/v1',
+          truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+          resourceObservationRef: 'observation.vexlife.host-resource.dynamic-read-test',
+          ownershipState: 'UNOWNED',
+          lifecycleState: 'ABANDONED',
+          currentness: 'CURRENT',
+          lifecycleEvidenceRefOrNull: 'evidence.vexlife.heretic.not-live.dynamic-read-test',
+          sourceRefs: ['source.vexlife.heretic-runtime-owner.test']
+        };
+      }
+    });
+    assert.equal(calls, 1);
+    assert.equal(link.companionBinding.homeRef, identity.homeRef);
+    assert.equal(link.runtimeObservation.runtimeState, 'STOPPED');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('production Heretic Browser recovery delegates to normal start with acquisition disabled and revalidates its receipt', async () => {
+  const { root, home } = makeHome();
+  try {
+    const receiptPath = path.join(root, 'recovered-heretic-runtime.json');
+    const recoveredReceipt = hereticRuntimeReceipt({ pid: 53001, receiptRef: 'receipt.vexlocalbridge.heretic-persistent-runtime.browser-recovery-test' });
+    fs.writeFileSync(receiptPath, JSON.stringify(recoveredReceipt, null, 2));
+    let argv = null;
+    const result = await recoverHereticPersistentRuntimeFromCurrentHome({
+      runtimeHome: home,
+      runNormalStart: async (inputArgv) => {
+        argv = [...inputArgv];
+        return {
+          state: 'HERETIC_RUNTIME_ESTABLISHED',
+          runtimeDisposition: 'STARTED_NEW_EXACT_MLX_RUNTIME',
+          runtimePid: recoveredReceipt.runtime.pid,
+          runtimeReceiptPath: receiptPath,
+          endpoint: recoveredReceipt.endpoint,
+          requestModel: recoveredReceipt.requestModel
+        };
+      }
+    });
+    assert.deepEqual(argv, ['--home', path.resolve(home)]);
+    assert.equal(argv.includes('--allow-acquisition'), false);
+    assert.equal(result.disposition, 'STARTED_NEW_EXACT_MLX_RUNTIME');
+    assert.equal(result.pid, recoveredReceipt.runtime.pid);
+    assert.equal(result.receipt.receiptRef, recoveredReceipt.receiptRef);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
 test('server-owned Browser Companion composition binds one rightful recovery owner', () => {

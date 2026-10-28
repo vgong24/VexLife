@@ -35,8 +35,8 @@
     {
       "path": "test/heretic-runtime-link.test.mjs",
       "mode": "100644",
-      "bytes": 10129,
-      "sha256": "d6865f572050f54876d0ea9157d263f56d694988bf813e4f3037086b95175b58"
+      "bytes": 14958,
+      "sha256": "95a18f6575194b3dcf4866ba91f342e8acb61e4d150c6b939ae85af4482044ed"
     }
   ]
 }
