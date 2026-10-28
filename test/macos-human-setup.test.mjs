@@ -365,4 +365,18 @@ test('MACHUMAN10C complete pretty Heretic plan JSON is parsed without line-tail 
   assert.doesNotMatch(setup, /tail -n 1 \| parse_json_state/);
 });
 
+
+test('MACHUMAN11 stable Mac front door delegates durable process lifetime below the temporary setup app', () => {
+  const launchd = fs.readFileSync(path.join(ROOT, 'src', 'core', 'macos-user-launchd-process.mjs'), 'utf8');
+  const hereticOwner = fs.readFileSync(path.join(ROOT, 'src', 'core', 'heretic-persistent-runtime-owner.mjs'), 'utf8');
+  assert.match(launchd, /MACOS_USER_LAUNCHD_SUBSTRATE_REF/u);
+  assert.match(launchd, /<key>KeepAlive<\/key>/u);
+  assert.match(launchd, /keepAlive:\s*false/u);
+  assert.match(hereticOwner, /startMacUserLaunchdProcess/u);
+  assert.match(lifecycle, /startMacUserLaunchdProcess/u);
+  assert.match(lifecycle, /VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH/u);
+  assert.doesNotMatch(hereticOwner, /spawn\(binding\.pythonPath, args/u);
+  assert.doesNotMatch(lifecycle, /spawn\(process\.execPath, args, \{/u);
+});
+
 // [VXG RealForever]

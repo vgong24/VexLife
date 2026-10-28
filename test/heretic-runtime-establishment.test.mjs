@@ -561,4 +561,76 @@ test('Heretic environment runtime probe preserves Python statement boundaries', 
   }
 });
 
+
+test('VexLife Heretic runtime carries and retires the exact launchd lifetime substrate without moving semantic ownership', async () => {
+  const binding = formHereticRuntimeOwnerBinding({
+    authorityRef: 'authority.test.heretic.launchd',
+    modelPath: '/tmp/model-launchd',
+    pythonEnvironmentRoot: '/tmp/env-launchd',
+    port: 8765,
+    receiptPath: '/tmp/runtime/launchd-receipt.json'
+  });
+  const pid = 9292;
+  const live = new Set();
+  let receipt = null;
+  let retiredSubstrate = null;
+  const processSubstrate = {
+    schemaVersion: 'vexlife.macos-user-launchd-process/v1',
+    substrateRef: 'substrate.vexlife.macos-user-launchd-process.001',
+    label: 'com.vexlife.heretic.test-launchd',
+    domainTarget: 'gui/501',
+    plistPath: '/tmp/runtime/launchd/test.plist',
+    programPath: '/tmp/env-launchd/bin/python',
+    programArguments: ['-m', 'mlx_lm.server'],
+    workingDirectory: '/tmp/env-launchd',
+    stdoutPath: '/tmp/runtime/launchd.out.log',
+    stderrPath: '/tmp/runtime/launchd.err.log',
+    keepAlive: false,
+    pid,
+  };
+  const hooks = {
+    host: { platform: 'darwin', architecture: 'arm64' },
+    versionProbe: async () => ({
+      pythonVersion: HERETIC_PYTHON_VERSION,
+      mlxLmVersion: HERETIC_MLX_LM_VERSION,
+      prefix: '/tmp/env-launchd',
+      executable: '/tmp/env-launchd/bin/python'
+    }),
+    readReceipt: () => receipt,
+    writeReceipt: (_path, value) => { receipt = value; },
+    deleteReceipt: () => { receipt = null; },
+    processAlive: (value) => live.has(value),
+    processIdentity: ({ pid: value }) => live.has(value) ? { pid: value, pgid: value, exactOwnedDetachedGroup: true } : null,
+    observeProcessSubstrate: (value) => ({ state: live.has(value.pid) ? 'RUNNING' : 'LOADED_STOPPED', pid: live.has(value.pid) ? value.pid : null }),
+    listMatchingProcesses: async () => [],
+    portOccupied: async () => false,
+    spawnRuntime: async () => { live.add(pid); return { pid, processSubstrate }; },
+    terminateRuntime: async ({ pid: value, processSubstrate: substrate }) => {
+      retiredSubstrate = substrate;
+      live.delete(value);
+      return { state: 'RETIRED_VERIFIED', exactOwnershipVerified: true, verifiedNotLive: true, processGroupId: value, signalSent: 'LAUNCHD_BOOTOUT' };
+    },
+    endpointHealthy: async () => true,
+    fetchImpl: async (url) => {
+      if (url.endsWith('/health')) return { ok: true, json: async () => ({ status: 'ok' }) };
+      if (url.endsWith('/v1/models')) return { ok: true, json: async () => ({ data: [{ id: '/tmp/model-launchd' }] }) };
+      if (url.endsWith('/v1/chat/completions')) return { ok: true, json: async () => ({ model: 'default_model', choices: [{ message: { content: 'OK' } }] }) };
+      throw new Error(`unexpected URL ${url}`);
+    },
+    sleep: async () => {},
+    now: () => '2026-10-28T12:00:00.000Z',
+    nowMs: (() => { let value = 0; return () => (value += 10); })()
+  };
+
+  const started = await startOrReuseHereticPersistentRuntime({ binding, hooks });
+  assert.equal(started.receipt.runtime.processSubstrate.label, processSubstrate.label);
+  assert.equal(started.receipt.runtime.processSubstrate.keepAlive, false);
+  assert.equal(started.receipt.runtime.processSubstrate.pid, pid);
+
+  const stopped = await stopHereticPersistentRuntime({ binding, hooks });
+  assert.equal(stopped.stop.signalSent, 'LAUNCHD_BOOTOUT');
+  assert.equal(retiredSubstrate.label, processSubstrate.label);
+  assert.equal(live.has(pid), false);
+});
+
 // [VXG RealForever]

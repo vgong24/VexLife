@@ -24,6 +24,11 @@ import {
   formHereticPendingModelConfiguration
 } from '../src/core/heretic-runtime-link.mjs';
 import {
+  formMacUserLaunchdProcess,
+  retireMacUserLaunchdProcess,
+  startMacUserLaunchdProcess,
+} from '../src/core/macos-user-launchd-process.mjs';
+import {
   ALLOWED_OPERATIONS,
   choicesForLifecycleState,
   canonicalMacHomeDirectory,
@@ -893,6 +898,82 @@ test('MAC10 candidate initializer source contains bounded POSIX extraction and u
   assert.match(source, /UNPINNED_CANDIDATE_RUNTIME_REUSE_FORBIDDEN/);
   assert.match(source, /readMacProcessEvidence/);
   assert.match(source, /runtimeExecutableSha256/);
+});
+
+
+test('MAC06G launchd substrate keeps process lifetime explicit without becoming the semantic owner', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-launchd-substrate-'));
+  let job = null;
+  let live = false;
+  const launchctl = (args) => {
+    if (args[0] === 'print') {
+      return job
+        ? { status: 0, stdout: `pid = ${job.pid}\n`, stderr: '', error: null }
+        : { status: 113, stdout: '', stderr: 'Could not find service', error: null };
+    }
+    if (args[0] === 'bootstrap') { job = { pid: 4343 }; live = true; return { status: 0, stdout: '', stderr: '', error: null }; }
+    if (args[0] === 'bootout') { live = false; job = null; return { status: 0, stdout: '', stderr: '', error: null }; }
+    throw new Error(`unexpected launchctl args ${args.join(' ')}`);
+  };
+  try {
+    const spec = formMacUserLaunchdProcess({
+      label: 'com.vexlife.browser.test-origin-walk',
+      plistPath: path.join(root, 'browser.plist'),
+      programPath: '/usr/bin/node',
+      programArguments: ['serve-browser.mjs', '--vexlife-home', '/tmp/Vex Home'],
+      workingDirectory: root,
+      stdoutPath: path.join(root, 'browser.out.log'),
+      stderrPath: path.join(root, 'browser.err.log'),
+      environment: { HOME: '/tmp/home' },
+      uid: 501,
+    });
+    const started = await startMacUserLaunchdProcess(spec, { launchctl, sleep: async () => {}, nowMs: (() => { let value = 0; return () => (value += 10); })() });
+    assert.equal(started.pid, 4343);
+    assert.equal(started.keepAlive, false);
+    const plist = fs.readFileSync(spec.plistPath, 'utf8');
+    assert.match(plist, /<key>KeepAlive<\/key>\s*<false\/>/u);
+    assert.match(plist, /<key>RunAtLoad<\/key>\s*<true\/>/u);
+    assert.match(plist, /serve-browser\.mjs/u);
+    assert.doesNotMatch(plist, /semantic owner|Companion READY/u);
+
+    const retired = await retireMacUserLaunchdProcess(started, {
+      launchctl,
+      processAlive: () => live,
+      sleep: async () => {},
+      nowMs: (() => { let value = 0; return () => (value += 10); })(),
+    });
+    assert.equal(retired.state, 'RETIRED_VERIFIED');
+    assert.equal(retired.signalSent, 'LAUNCHD_BOOTOUT');
+    assert.equal(fs.existsSync(spec.plistPath), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('MAC06H Browser start/stop uses launchd lifetime substrate while existing lifecycle remains the semantic owner', () => {
+  const lifecycleSource = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
+  assert.match(lifecycleSource, /startMacUserLaunchdProcess\(\{/u);
+  assert.match(lifecycleSource, /processSubstrate/u);
+  assert.match(lifecycleSource, /retireMacUserLaunchdProcess/u);
+  assert.doesNotMatch(lifecycleSource, /spawn\(process\.execPath, args, \{[\s\S]*?detached:\s*true/u);
+});
+
+
+test('MAC06I Browser records launchd ownership before readiness and retires the exact substrate if receipt persistence fails', () => {
+  const lifecycleSource = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
+  const start = lifecycleSource.slice(
+    lifecycleSource.indexOf('async function startBrowser('),
+    lifecycleSource.indexOf('\nasync function runStart(', lifecycleSource.indexOf('async function startBrowser('))
+  );
+  const writeIndex = start.indexOf('writeJsonAtomic(receiptPath, browserReceipt)');
+  const readinessIndex = start.indexOf('if (!await waitPort(browserPort))');
+  assert.ok(writeIndex >= 0);
+  assert.ok(readinessIndex > writeIndex);
+  assert.match(
+    start,
+    /try \{[\s\S]*?writeJsonAtomic\(receiptPath, browserReceipt\)[\s\S]*?\} catch \(error\) \{[\s\S]*?retireMacUserLaunchdProcess\(processSubstrate, \{ expectedPid: processSubstrate\.pid \}\)[\s\S]*?exactOwnershipVerified !== true[\s\S]*?verifiedNotLive !== true/u
+  );
+  assert.match(start, /browser ownership receipt write failed and launchd cleanup was not verified/u);
 });
 
 // [VXG RealForever]

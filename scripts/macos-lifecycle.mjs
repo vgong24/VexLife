@@ -19,6 +19,12 @@ import {
   observeHereticPersistentRuntimeResource,
   stopHereticPersistentRuntimeFromReceipt
 } from '../src/core/heretic-persistent-runtime-owner.mjs';
+import {
+  observeMacUserLaunchdProcess,
+  retireMacUserLaunchdProcess,
+  startMacUserLaunchdProcess,
+  validateMacUserLaunchdProcessReceipt
+} from '../src/core/macos-user-launchd-process.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const SOURCE_ROOT = path.resolve(HERE, '..');
@@ -403,9 +409,18 @@ function expectedBrowserArgs(repo, home, receipt) {
     '--vexlife-repo', repo
   ];
 }
+function inheritedMacProcessEnvironment(extra = {}) {
+  const result = {};
+  for (const key of ['HOME', 'PATH', 'TMPDIR', 'LANG', 'LC_ALL', 'USER']) {
+    if (typeof process.env[key] === 'string' && process.env[key].length > 0) result[key] = process.env[key];
+  }
+  return { ...result, ...extra };
+}
+
 export function getOwnedBrowser(home, repo, {
   allowRepoDrift = false,
-  processEvidenceReader = readMacProcessEvidence
+  processEvidenceReader = readMacProcessEvidence,
+  processSubstrateObserver = observeMacUserLaunchdProcess
 } = {}) {
   const receipt = jsonRead(browserReceiptPath(home));
   if (!receipt || receipt.state !== 'RUNNING') return null;
@@ -426,28 +441,54 @@ export function getOwnedBrowser(home, repo, {
   if (!runtimeProcessEvidenceMatches({ processEvidence: evidence, expectedExecutablePath, expectedArguments })) {
     throw new Error('browser receipt PID is active but exact process-instance ownership is not proven');
   }
+  let processSubstrate = null;
+  if (receipt.processSubstrate !== undefined) {
+    processSubstrate = validateMacUserLaunchdProcessReceipt(receipt.processSubstrate);
+    const observed = processSubstrateObserver(processSubstrate);
+    if (processSubstrate.pid !== pid || observed.state !== 'RUNNING' || observed.pid !== pid) {
+      throw new Error('browser process is live but its launchd lifetime substrate is not exact-current');
+    }
+  }
   return {
     pid,
     receipt,
     evidence,
+    processSubstrate,
     receiptRepo,
     currentRepo,
     sourceCurrent: receiptRepo === currentRepo
   };
 }
-export async function stopOwnedBrowser(home, repo) {
+export async function stopOwnedBrowser(home, repo, {
+  processSubstrateObserver = observeMacUserLaunchdProcess,
+  processSubstrateRetire = retireMacUserLaunchdProcess
+} = {}) {
   const receiptPath = browserReceiptPath(home);
   const receipt = jsonRead(receiptPath);
   if (!receipt) return { disposition: 'NO_BROWSER_RECEIPT', pid: null };
-  const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true });
+  const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true, processSubstrateObserver });
   if (!owned) {
     if (pidAlive(Number(receipt.pid))) throw new Error('browser receipt PID is active but ownership cannot be proven');
+    if (receipt.processSubstrate !== undefined) {
+      const substrate = validateMacUserLaunchdProcessReceipt(receipt.processSubstrate);
+      const retired = await processSubstrateRetire(substrate, { expectedPid: Number(receipt.pid) });
+      if (retired?.exactOwnershipVerified !== true || retired?.verifiedNotLive !== true) {
+        throw new Error('stale browser launchd lifetime substrate could not be retired');
+      }
+    }
     receipt.state = 'STALE_STOPPED';
     receipt.stoppedAtUtc = new Date().toISOString();
     writeJsonAtomic(receiptPath, receipt);
     return { disposition: 'ALREADY_STOPPED', pid: Number(receipt.pid) || null };
   }
-  await stopPid(owned.pid);
+  if (owned.processSubstrate) {
+    const retired = await processSubstrateRetire(owned.processSubstrate, { expectedPid: owned.pid });
+    if (retired?.exactOwnershipVerified !== true || retired?.verifiedNotLive !== true) {
+      throw new Error('exact browser launchd lifetime substrate did not retire cleanly');
+    }
+  } else {
+    await stopPid(owned.pid);
+  }
   owned.receipt.state = 'STOPPED_BY_LIFECYCLE';
   owned.receipt.stoppedAtUtc = new Date().toISOString();
   writeJsonAtomic(receiptPath, owned.receipt);
@@ -950,6 +991,17 @@ async function establishHeretic(home, repo, options) {
 async function startBrowser(home, repo, initialization, { forceCurrentBrowserRebind = false } = {}) {
   const browserPort = 18110;
   const receiptPath = browserReceiptPath(home);
+  const priorReceipt = jsonRead(receiptPath);
+  if (priorReceipt?.processSubstrate !== undefined && !pidAlive(Number(priorReceipt.pid))) {
+    const substrate = validateMacUserLaunchdProcessReceipt(priorReceipt.processSubstrate);
+    const retired = await retireMacUserLaunchdProcess(substrate, { expectedPid: Number(priorReceipt.pid) });
+    if (retired?.exactOwnershipVerified !== true || retired?.verifiedNotLive !== true) {
+      throw new Error('stale browser launchd lifetime substrate could not be retired before start');
+    }
+    priorReceipt.state = 'STALE_STOPPED';
+    priorReceipt.stoppedAtUtc = new Date().toISOString();
+    writeJsonAtomic(receiptPath, priorReceipt);
+  }
   if (forceCurrentBrowserRebind && await portOpen(browserPort)) {
     const ownedForRebind = getOwnedBrowser(home, repo, { allowRepoDrift: true });
     if (!ownedForRebind) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
@@ -985,14 +1037,15 @@ async function startBrowser(home, repo, initialization, { forceCurrentBrowserReb
   ];
   const runtimeDir = path.join(home, 'runtime');
   fs.mkdirSync(runtimeDir, { recursive: true });
-  const outFd = fs.openSync(path.join(runtimeDir, 'serve-browser.log'), 'a');
-  const errFd = fs.openSync(path.join(runtimeDir, 'serve-browser.err.log'), 'a');
-  const child = spawn(process.execPath, args, {
-    cwd: repo,
-    detached: true,
-    stdio: ['ignore', outFd, errFd],
-    env: {
-      ...process.env,
+  const processSubstrate = await startMacUserLaunchdProcess({
+    label: `com.vexlife.browser.${token}`,
+    plistPath: path.join(runtimeDir, 'launchd', `browser-${token}.plist`),
+    programPath: process.execPath,
+    programArguments: args,
+    workingDirectory: repo,
+    stdoutPath: path.join(runtimeDir, 'serve-browser.log'),
+    stderrPath: path.join(runtimeDir, 'serve-browser.err.log'),
+    environment: inheritedMacProcessEnvironment({
       VEXLIFE_HOME: home,
       VEXLIFE_COMPANION_ENDPOINT: initialization.endpoint,
       VEXLIFE_COMPANION_MODEL: initialization.requestModel,
@@ -1000,30 +1053,39 @@ async function startBrowser(home, repo, initialization, { forceCurrentBrowserReb
       ...(initialization.runtimeReceiptPath
         ? { VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH: initialization.runtimeReceiptPath }
         : {})
-    }
+    })
   });
-  child.unref();
-  fs.closeSync(outFd); fs.closeSync(errFd);
-  if (!child.pid) throw new Error('browser process returned no PID');
-  writeJsonAtomic(receiptPath, {
+  const browserReceipt = {
     schemaVersion: MAC_BROWSER_RECEIPT_SCHEMA,
     state: 'RUNNING',
     processInstanceRef: `browser-process.${token}`,
     ownerToken: token,
-    pid: child.pid,
+    pid: processSubstrate.pid,
     nodeExecutablePath: process.execPath,
     serverScriptPath: serverScript,
     vexHomePath: home,
     repoRootPath: repo,
+    processSubstrate,
     formedAtUtc: new Date().toISOString()
-  });
+  };
+  try {
+    writeJsonAtomic(receiptPath, browserReceipt);
+  } catch (error) {
+    const retired = await retireMacUserLaunchdProcess(processSubstrate, { expectedPid: processSubstrate.pid });
+    if (retired?.exactOwnershipVerified !== true || retired?.verifiedNotLive !== true) {
+      throw new Error(`browser ownership receipt write failed and launchd cleanup was not verified: ${error.message}`);
+    }
+    throw error;
+  }
   if (!await waitPort(browserPort)) {
-    try { process.kill(child.pid, 'SIGTERM'); } catch {}
+    await retireMacUserLaunchdProcess(processSubstrate, { expectedPid: processSubstrate.pid });
+    browserReceipt.state = 'STALE_STOPPED';
+    browserReceipt.stoppedAtUtc = new Date().toISOString();
+    writeJsonAtomic(receiptPath, browserReceipt);
     throw new Error('VexLife browser server did not answer within 15 seconds');
   }
-  return { disposition: 'STARTED_NEW_BROWSER', pid: child.pid };
+  return { disposition: 'STARTED_NEW_BROWSER', pid: processSubstrate.pid };
 }
-
 async function runStart(home, repo, options, { forceCurrentBrowserRebind = false } = {}) {
   await bootstrap(home, repo);
   const homeManifest = jsonRead(path.join(home, 'config', 'home.json'));

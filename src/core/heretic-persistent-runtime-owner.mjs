@@ -2,8 +2,14 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  observeMacUserLaunchdProcess,
+  retireMacUserLaunchdProcess,
+  startMacUserLaunchdProcess,
+  validateMacUserLaunchdProcessReceipt,
+} from './macos-user-launchd-process.mjs';
 import { semanticHash } from './utils.mjs';
 
 export const HERETIC_PERSISTENT_RUNTIME_BINDING_SCHEMA =
@@ -224,23 +230,69 @@ function portOccupied(port) {
     socket.once('error', () => finish(false));
   });
 }
-function spawnRuntime({ binding, args }) {
-  fs.mkdirSync(path.dirname(binding.receiptPath), { recursive: true, mode: 0o700 });
-  const out = fs.openSync(path.join(path.dirname(binding.receiptPath), 'mlx-lm-server.out.log'), 'a');
-  const err = fs.openSync(path.join(path.dirname(binding.receiptPath), 'mlx-lm-server.err.log'), 'a');
-  const child = spawn(binding.pythonPath, args, {
-    cwd: binding.pythonEnvironmentRoot,
-    detached: true,
-    shell: false,
-    stdio: ['ignore', out, err],
-  });
-  child.unref();
-  fs.closeSync(out);
-  fs.closeSync(err);
-  if (!Number.isInteger(child.pid) || child.pid <= 0) fail('HERETIC_RUNTIME_START_FAILED', 'mlx_lm.server returned no PID');
-  return child.pid;
+function inheritedMacProcessEnvironment() {
+  const result = {};
+  for (const key of ['HOME', 'PATH', 'TMPDIR', 'LANG', 'LC_ALL', 'USER']) {
+    if (typeof process.env[key] === 'string' && process.env[key].length > 0) result[key] = process.env[key];
+  }
+  return result;
 }
-async function terminateRuntime({ pid, args, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) }) {
+const HERETIC_PROCESS_GROUP_WRAPPER =
+  'import os,sys; pid=os.getpid(); pgid=os.getpgrp(); os.setpgid(0,0) if pgid != pid else None; os.execv(sys.argv[1], sys.argv[1:])';
+async function spawnRuntime({ binding, args }) {
+  const runtimeDir = path.dirname(binding.receiptPath);
+  fs.mkdirSync(runtimeDir, { recursive: true, mode: 0o700 });
+  const processSubstrate = await startMacUserLaunchdProcess({
+    label: `com.vexlife.heretic.${crypto.randomUUID().toLowerCase()}`,
+    plistPath: path.join(runtimeDir, 'launchd', `heretic-${crypto.randomUUID().toLowerCase()}.plist`),
+    programPath: binding.pythonPath,
+    programArguments: ['-c', HERETIC_PROCESS_GROUP_WRAPPER, binding.pythonPath, ...args],
+    workingDirectory: binding.pythonEnvironmentRoot,
+    stdoutPath: path.join(runtimeDir, 'mlx-lm-server.out.log'),
+    stderrPath: path.join(runtimeDir, 'mlx-lm-server.err.log'),
+    environment: inheritedMacProcessEnvironment(),
+  });
+  return Object.freeze({ pid: processSubstrate.pid, processSubstrate });
+}
+async function terminateRuntime({
+  pid,
+  args,
+  processSubstrate = null,
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+}) {
+  if (processSubstrate !== null) {
+    let substrate;
+    try { substrate = validateMacUserLaunchdProcessReceipt(processSubstrate); }
+    catch (error) {
+      return { state: 'PROCESS_SUBSTRATE_INVALID', exactOwnershipVerified: false, verifiedNotLive: !processAlive(pid), error: error.message };
+    }
+    if (substrate.pid !== pid) {
+      return { state: 'PROCESS_SUBSTRATE_PID_MISMATCH', exactOwnershipVerified: false, verifiedNotLive: !processAlive(pid) };
+    }
+    if (!processAlive(pid)) {
+      try {
+        const retired = await retireMacUserLaunchdProcess(substrate, { expectedPid: pid });
+        return { ...retired, processGroupId: pid };
+      } catch (error) {
+        return { state: 'PROCESS_SUBSTRATE_RETIRE_FAILED', exactOwnershipVerified: true, verifiedNotLive: true, processGroupId: pid, error: error.message };
+      }
+    }
+    const first = processIdentity({ pid, args });
+    if (!first?.exactOwnedDetachedGroup) {
+      return { state: 'OWNERSHIP_NOT_PROVEN', exactOwnershipVerified: false, verifiedNotLive: false };
+    }
+    const observed = observeMacUserLaunchdProcess(substrate);
+    if (observed.state !== 'RUNNING' || observed.pid !== pid) {
+      return { state: 'PROCESS_SUBSTRATE_OWNERSHIP_NOT_PROVEN', exactOwnershipVerified: false, verifiedNotLive: false, processGroupId: first.pgid };
+    }
+    try {
+      const retired = await retireMacUserLaunchdProcess(substrate, { expectedPid: pid });
+      return { ...retired, processGroupId: first.pgid };
+    } catch (error) {
+      return { state: 'PROCESS_SUBSTRATE_RETIRE_FAILED', exactOwnershipVerified: true, verifiedNotLive: !processAlive(pid), processGroupId: first.pgid, error: error.message };
+    }
+  }
+
   const first = processIdentity({ pid, args });
   if (!first?.exactOwnedDetachedGroup) {
     return { state: 'OWNERSHIP_NOT_PROVEN', exactOwnershipVerified: false, verifiedNotLive: !processAlive(pid) };
@@ -348,9 +400,22 @@ function receiptBinds(binding, receipt, args, { allowStarting = true, requireSou
       || receipt.sourceIdentity?.modulePath !== HERETIC_RUNTIME_OWNER_MODULE_PATH
       || !SHA256_RE.test(receipt.sourceIdentity?.moduleSha256 ?? '')
       || JSON.stringify(receipt.runtime?.args) !== JSON.stringify(args)) return false;
+  if (receipt.runtime?.processSubstrate !== undefined) {
+    try {
+      const substrate = validateMacUserLaunchdProcessReceipt(receipt.runtime.processSubstrate);
+      if (substrate.pid !== receipt.runtime?.pid || substrate.keepAlive !== false) return false;
+    } catch { return false; }
+  }
   return requireSourceSha ? receipt.sourceIdentity.moduleSha256 === binding.sourceIdentity.moduleSha256 : true;
 }
-function formReceipt(binding, pid, identity, state, formedAt, receiptRef, qualification = undefined) {
+function formReceipt(binding, pid, identity, state, formedAt, receiptRef, qualification = undefined, processSubstrate = null) {
+  const runtime = {
+    pid,
+    processGroupId: identity.pgid,
+    exactOwnedDetachedGroup: true,
+    args: hereticPersistentRuntimeServerArgs(binding),
+  };
+  if (processSubstrate !== null) runtime.processSubstrate = validateMacUserLaunchdProcessReceipt(processSubstrate);
   const value = {
     schemaVersion: HERETIC_PERSISTENT_RUNTIME_RECEIPT_SCHEMA,
     receiptRef,
@@ -375,7 +440,7 @@ function formReceipt(binding, pid, identity, state, formedAt, receiptRef, qualif
     endpoint: endpoint(binding.port),
     requestModel: REQUEST_MODEL,
     sourceIdentity: binding.sourceIdentity,
-    runtime: { pid, processGroupId: identity.pgid, exactOwnedDetachedGroup: true, args: hereticPersistentRuntimeServerArgs(binding) },
+    runtime,
     effects: EFFECTS,
   };
   if (qualification !== undefined) value.qualification = qualification;
@@ -391,6 +456,8 @@ function defaultDeps(overrides = {}) {
     portOccupied: overrides.portOccupied ?? portOccupied,
     spawnRuntime: overrides.spawnRuntime ?? spawnRuntime,
     terminateRuntime: overrides.terminateRuntime ?? terminateRuntime,
+    observeProcessSubstrate: overrides.observeProcessSubstrate ?? observeMacUserLaunchdProcess,
+    retireProcessSubstrate: overrides.retireProcessSubstrate ?? retireMacUserLaunchdProcess,
     readReceipt: overrides.readReceipt ?? readJson,
     writeReceipt: overrides.writeReceipt ?? writeJsonAtomic,
     deleteReceipt: overrides.deleteReceipt ?? removeFile,
@@ -403,6 +470,23 @@ function defaultDeps(overrides = {}) {
   };
 }
 
+function runtimeProcessSubstrateCurrent(receipt, deps) {
+  if (receipt.runtime?.processSubstrate === undefined) return true;
+  try {
+    const substrate = validateMacUserLaunchdProcessReceipt(receipt.runtime.processSubstrate);
+    const observed = deps.observeProcessSubstrate(substrate);
+    return substrate.pid === receipt.runtime.pid && observed.state === 'RUNNING' && observed.pid === receipt.runtime.pid;
+  } catch { return false; }
+}
+
+async function retireDeadProcessSubstrate(receipt, deps) {
+  if (receipt?.runtime?.processSubstrate === undefined) return null;
+  const retired = await deps.retireProcessSubstrate(receipt.runtime.processSubstrate, { expectedPid: Number(receipt.runtime.pid) });
+  if (retired?.exactOwnershipVerified !== true || retired?.verifiedNotLive !== true) {
+    fail('HERETIC_RUNTIME_STOP_UNVERIFIED', 'dead Heretic launchd substrate could not be retired', retired);
+  }
+  return retired;
+}
 function hostResourceObservation({
   ownershipState,
   lifecycleState,
@@ -514,7 +598,7 @@ export function observeHereticPersistentRuntimeResource({ receiptPath, hooks = {
   }
 
   const identity = deps.processIdentity({ pid, args });
-  if (!identity?.exactOwnedDetachedGroup || identity.pgid !== receipt.runtime?.processGroupId) {
+  if (!identity?.exactOwnedDetachedGroup || identity.pgid !== receipt.runtime?.processGroupId || !runtimeProcessSubstrateCurrent(receipt, deps)) {
     return hostResourceObservation({
       ownershipState: 'AMBIGUOUS',
       lifecycleState: 'UNKNOWN',
@@ -568,13 +652,15 @@ export async function startOrReuseHereticPersistentRuntime({ binding: input, hoo
     const priorPid = Number(prior.runtime?.pid);
     if (Number.isInteger(priorPid) && deps.processAlive(priorPid)) {
       const priorIdentity = deps.processIdentity({ pid: priorPid, args });
-      if (!priorIdentity?.exactOwnedDetachedGroup || priorIdentity.pgid !== prior.runtime.processGroupId) {
+      if (!priorIdentity?.exactOwnedDetachedGroup || priorIdentity.pgid !== prior.runtime.processGroupId || !runtimeProcessSubstrateCurrent(prior, deps)) {
         fail('HERETIC_RUNTIME_PROCESS_OWNERSHIP_CONFLICT', 'stale-source Heretic receipt is live but exact ownership cannot be proven');
       }
-      const retired = await deps.terminateRuntime({ pid: priorPid, args });
+      const retired = await deps.terminateRuntime({ pid: priorPid, args, processSubstrate: prior.runtime?.processSubstrate ?? null });
       if (retired?.exactOwnershipVerified !== true || retired?.verifiedNotLive !== true) {
         fail('HERETIC_RUNTIME_STOP_UNVERIFIED', 'stale-source Heretic runtime could not be retired before current-source restart', retired);
       }
+    } else if (prior?.runtime?.processSubstrate !== undefined) {
+      await retireDeadProcessSubstrate(prior, deps);
     }
     deps.deleteReceipt(binding.receiptPath);
     staleSourceRotated = true;
@@ -586,26 +672,29 @@ export async function startOrReuseHereticPersistentRuntime({ binding: input, hoo
     const pid = Number(currentPrior.runtime?.pid);
     if (Number.isInteger(pid) && deps.processAlive(pid)) {
       const identity = deps.processIdentity({ pid, args });
-      if (!identity?.exactOwnedDetachedGroup || identity.pgid !== currentPrior.runtime.processGroupId) {
-        fail('HERETIC_RUNTIME_PROCESS_OWNERSHIP_CONFLICT', 'live receipt process is not the exact owned Heretic process');
+      if (!identity?.exactOwnedDetachedGroup || identity.pgid !== currentPrior.runtime.processGroupId || !runtimeProcessSubstrateCurrent(currentPrior, deps)) {
+        fail('HERETIC_RUNTIME_PROCESS_OWNERSHIP_CONFLICT', 'live receipt process is not the exact owned Heretic process/lifetime substrate');
       }
       if (currentPrior.state === HERETIC_PERSISTENT_RUNTIME_STARTING) {
         try { await waitForHealthy(binding, pid, deps); }
         catch (error) {
-          const cleanup = await deps.terminateRuntime({ pid, args });
+          const cleanup = await deps.terminateRuntime({ pid, args, processSubstrate: currentPrior.runtime?.processSubstrate ?? null });
           if (cleanup?.verifiedNotLive !== true) fail('HERETIC_RUNTIME_PRECOMMIT_CLEANUP_FAILED', 'STARTING runtime recovery failed and cleanup was not verified', { originalError: error?.code || error?.message, cleanup });
           deps.deleteReceipt(binding.receiptPath);
           throw error;
         }
       }
       if (deps.cancellationRequested()) {
-        const cleanup = await deps.terminateRuntime({ pid, args });
+        const cleanup = await deps.terminateRuntime({ pid, args, processSubstrate: currentPrior.runtime?.processSubstrate ?? null });
         if (cleanup?.verifiedNotLive !== true) fail('HERETIC_RUNTIME_PRECOMMIT_CLEANUP_FAILED', 'cancelled runtime reuse could not be cleaned up', { cleanup });
         deps.deleteReceipt(binding.receiptPath);
         fail('HERETIC_RUNTIME_CANCELLED', 'Heretic runtime start was cancelled');
       }
       const qualification = await qualify(binding, deps.fetchImpl);
-      const qualified = formReceipt(binding, pid, identity, HERETIC_PERSISTENT_RUNTIME_QUALIFIED, deps.now(), currentPrior.receiptRef, qualification);
+      const qualified = formReceipt(
+        binding, pid, identity, HERETIC_PERSISTENT_RUNTIME_QUALIFIED, deps.now(), currentPrior.receiptRef,
+        qualification, currentPrior.runtime?.processSubstrate ?? null,
+      );
       deps.writeReceipt(binding.receiptPath, qualified);
       return Object.freeze({
         disposition: currentPrior.state === HERETIC_PERSISTENT_RUNTIME_STARTING ? 'RECOVERED_EXACT_STARTING_MLX_RUNTIME' : 'REUSED_EXACT_OWNED_MLX_RUNTIME',
@@ -617,20 +706,33 @@ export async function startOrReuseHereticPersistentRuntime({ binding: input, hoo
         qualification,
       });
     }
+    if (currentPrior.runtime?.processSubstrate !== undefined) await retireDeadProcessSubstrate(currentPrior, deps);
     deps.deleteReceipt(binding.receiptPath);
   }
   if (deps.cancellationRequested()) fail('HERETIC_RUNTIME_CANCELLED', 'Heretic runtime start was cancelled');
   const matching = await deps.listMatchingProcesses({ args });
   if (matching.length !== 0) fail('HERETIC_RUNTIME_ORPHAN_OR_MULTIPLE_PROCESS_CONFLICT', 'matching mlx_lm.server exists without a current exact receipt', { matchingCount: matching.length });
   if (await deps.portOccupied(binding.port)) fail('HERETIC_RUNTIME_PORT_COLLISION', 'Heretic endpoint is occupied without exact ownership');
-  const pid = await deps.spawnRuntime({ binding, args });
-  const identity = deps.processIdentity({ pid, args });
-  if (!identity?.exactOwnedDetachedGroup) fail('HERETIC_RUNTIME_PROCESS_OWNERSHIP_CONFLICT', 'new Heretic process ownership could not be proven');
+  const spawned = await deps.spawnRuntime({ binding, args });
+  const pid = Number(typeof spawned === 'number' ? spawned : spawned?.pid);
+  const processSubstrate = typeof spawned === 'number' ? null : (spawned?.processSubstrate ?? null);
+  if (!Number.isInteger(pid) || pid <= 0) fail('HERETIC_RUNTIME_START_FAILED', 'mlx_lm.server returned no PID');
+  let identity = null;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    identity = deps.processIdentity({ pid, args });
+    if (identity?.exactOwnedDetachedGroup) break;
+    if (!deps.processAlive(pid)) break;
+    await deps.sleep(50);
+  }
+  if (!identity?.exactOwnedDetachedGroup) {
+    const cleanup = await deps.terminateRuntime({ pid, args, processSubstrate });
+    fail('HERETIC_RUNTIME_PROCESS_OWNERSHIP_CONFLICT', 'new Heretic process ownership could not be proven', cleanup);
+  }
   const receiptRef = `receipt.vexlife.heretic-persistent-runtime.${sha256(Buffer.from(`${binding.sourceIdentity.moduleSha256}|${pid}|${deps.now()}`)).slice(0,24)}`;
-  const starting = formReceipt(binding, pid, identity, HERETIC_PERSISTENT_RUNTIME_STARTING, deps.now(), receiptRef);
+  const starting = formReceipt(binding, pid, identity, HERETIC_PERSISTENT_RUNTIME_STARTING, deps.now(), receiptRef, undefined, processSubstrate);
   try { deps.writeReceipt(binding.receiptPath, starting); }
   catch (error) {
-    const cleanup = await deps.terminateRuntime({ pid, args });
+    const cleanup = await deps.terminateRuntime({ pid, args, processSubstrate });
     if (cleanup?.verifiedNotLive !== true) fail('HERETIC_RUNTIME_PRECOMMIT_CLEANUP_FAILED', 'STARTING receipt write failed and exact cleanup was not verified', { originalError: error?.message, cleanup });
     fail('HERETIC_RUNTIME_STARTING_RECEIPT_WRITE_FAILED', 'unable to record Heretic runtime ownership before readiness wait');
   }
@@ -641,12 +743,12 @@ export async function startOrReuseHereticPersistentRuntime({ binding: input, hoo
     if (deps.cancellationRequested()) fail('HERETIC_RUNTIME_CANCELLED', 'Heretic runtime start was cancelled');
     qualification = await qualify(binding, deps.fetchImpl);
   } catch (error) {
-    const cleanup = await deps.terminateRuntime({ pid, args });
+    const cleanup = await deps.terminateRuntime({ pid, args, processSubstrate });
     if (cleanup?.verifiedNotLive !== true) fail('HERETIC_RUNTIME_PRECOMMIT_CLEANUP_FAILED', 'qualification failed and exact cleanup was not verified', { originalError: error?.code || error?.message, cleanup });
     deps.deleteReceipt(binding.receiptPath);
     throw error;
   }
-  const qualified = formReceipt(binding, pid, identity, HERETIC_PERSISTENT_RUNTIME_QUALIFIED, deps.now(), receiptRef, qualification);
+  const qualified = formReceipt(binding, pid, identity, HERETIC_PERSISTENT_RUNTIME_QUALIFIED, deps.now(), receiptRef, qualification, processSubstrate);
   deps.writeReceipt(binding.receiptPath, qualified);
   return Object.freeze({
     disposition: staleSourceRotated ? 'ROTATED_STALE_SOURCE_AND_STARTED_NEW_EXACT_MLX_RUNTIME' : 'STARTED_NEW_EXACT_MLX_RUNTIME',
@@ -670,13 +772,14 @@ export async function stopHereticPersistentRuntime({ binding: input, hooks = {},
   }
   const pid = Number(receipt.runtime?.pid);
   if (!Number.isInteger(pid) || !deps.processAlive(pid)) {
+    if (receipt.runtime?.processSubstrate !== undefined) await retireDeadProcessSubstrate(receipt, deps);
     return Object.freeze({ disposition: 'ALREADY_NOT_LIVE', pid: Number.isInteger(pid) ? pid : null, processTerminationPerformed: false });
   }
   const identity = deps.processIdentity({ pid, args });
-  if (!identity?.exactOwnedDetachedGroup || identity.pgid !== receipt.runtime.processGroupId) {
-    fail('HERETIC_RUNTIME_PROCESS_OWNERSHIP_CONFLICT', 'refusing to signal a non-owned process');
+  if (!identity?.exactOwnedDetachedGroup || identity.pgid !== receipt.runtime.processGroupId || !runtimeProcessSubstrateCurrent(receipt, deps)) {
+    fail('HERETIC_RUNTIME_PROCESS_OWNERSHIP_CONFLICT', 'refusing to retire a non-owned process/lifetime substrate');
   }
-  const stopped = await deps.terminateRuntime({ pid, args });
+  const stopped = await deps.terminateRuntime({ pid, args, processSubstrate: receipt.runtime?.processSubstrate ?? null });
   if (stopped?.exactOwnershipVerified !== true || stopped?.verifiedNotLive !== true) {
     fail('HERETIC_RUNTIME_STOP_UNVERIFIED', 'exact Heretic runtime stop could not be verified', stopped);
   }
