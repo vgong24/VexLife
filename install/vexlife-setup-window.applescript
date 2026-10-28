@@ -117,6 +117,36 @@ on run
         return
       end if
 
+    else if stateValue is "EXISTING_RECOVERABLE" then
+      set openAllowed to my hasAction(actionsValue, "open")
+      set recoveryAllowed to my hasAnyRecoveryAction(actionsValue)
+      if openAllowed and recoveryAllowed then
+        set choice to my promptChoice("VexLife can reconnect", "This Home is intact, but the accepted Companion runtime is not currently live/current. Open Vex will ask the lifecycle owner to re-enter the same accepted binding without changing Home or model selection.", "Open Vex", "Recovery…", "Cancel")
+        if choice is NSAlertFirstButtonReturn then
+          set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
+          if (exitCode of actionResult) is not 0 then my handleBackendFailure(repoRoot, homePath, actionResult)
+          return
+        else if choice is NSAlertSecondButtonReturn then
+          my recoveryFlow(repoRoot, homePath, actionsValue, false)
+          return
+        else
+          return
+        end if
+      else if openAllowed then
+        set choice to my promptChoice("VexLife can reconnect", "The current lifecycle owner can safely re-enter the accepted Companion binding for this Home.", "Open Vex", "Cancel", missing value)
+        if choice is NSAlertFirstButtonReturn then
+          set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
+          if (exitCode of actionResult) is not 0 then my handleBackendFailure(repoRoot, homePath, actionResult)
+        end if
+        return
+      else if recoveryAllowed then
+        my recoveryFlow(repoRoot, homePath, actionsValue, false)
+        return
+      else
+        my showMessage("VexLife reconnect held", "This Home is intact, but the lifecycle owner currently admits no reconnect or preservation-safe recovery action. Nothing was changed.", "OK")
+        return
+      end if
+
     else if stateValue is "EXISTING_DEGRADED_REPAIRABLE" then
       if my hasAnyRecoveryAction(actionsValue) then
         my recoveryFlow(repoRoot, homePath, actionsValue, true)

@@ -15,7 +15,7 @@ import {
   validateHereticModelConfiguration,
   validateHereticPersistentRuntimeReceipt
 } from '../src/core/heretic-runtime-link.mjs';
-import { stopHereticPersistentRuntimeFromReceipt } from '../src/core/heretic-persistent-runtime-owner.mjs';
+import {\n  observeHereticPersistentRuntimeResource,\n  stopHereticPersistentRuntimeFromReceipt\n} from '../src/core/heretic-persistent-runtime-owner.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const SOURCE_ROOT = path.resolve(HERE, '..');
@@ -57,20 +57,44 @@ function acceptedHereticConfiguration(home, homeManifest, model) {
 function hereticRuntimeReceiptPath(home, configuration) {
   return path.resolve(home, ...configuration.runtimeReceiptPath.split('/'));
 }
-function qualifiedHereticReceipt(home, homeManifest, model) {
-  if (!isBoundHereticModelConfiguration(model)) return null;
+function classifyHereticRuntimeCurrentness(home, homeManifest, model, {
+  resourceObserver = observeHereticPersistentRuntimeResource
+} = {}) {
+  if (!isHereticModelConfiguration(model)) return null;
   const configuration = acceptedHereticConfiguration(home, homeManifest, model);
-  if (!configuration) return null;
+  if (!configuration || !isBoundHereticModelConfiguration(model)) return 'DEGRADED';
+
   const receiptPath = hereticRuntimeReceiptPath(home, configuration);
   const receipt = jsonRead(receiptPath);
-  if (!receipt) return null;
+  if (!receipt) return 'DEGRADED';
+
   try {
     const accepted = validateHereticPersistentRuntimeReceipt(receipt);
-    if (accepted.endpoint !== configuration.endpoint || accepted.requestModel !== configuration.requestModel) return null;
-    return { configuration, receipt: accepted, receiptPath };
+    if (accepted.endpoint !== configuration.endpoint || accepted.requestModel !== configuration.requestModel) {
+      return 'DEGRADED';
+    }
   } catch {
-    return null;
+    return 'DEGRADED';
   }
+
+  let resource;
+  try {
+    resource = resourceObserver({ receiptPath });
+  } catch {
+    return 'DEGRADED';
+  }
+  if (!resource || resource.currentness !== 'CURRENT') return 'DEGRADED';
+
+  if (resource.ownershipState === 'EXACT_VEX_OWNED' && resource.lifecycleState === 'CURRENT') {
+    return 'HEALTHY';
+  }
+  if (
+    (resource.ownershipState === 'UNOWNED' && resource.lifecycleState === 'ABANDONED') ||
+    (resource.ownershipState === 'EXACT_VEX_OWNED' && resource.lifecycleState === 'STALE')
+  ) {
+    return 'RECOVERABLE';
+  }
+  return 'DEGRADED';
 }
 function writeJsonAtomic(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -671,7 +695,7 @@ function activatedRuntimeProcessEvidenceMatches(binding, processEvidence) {
   return commandLine.endsWith(` ${binding.arguments.join(' ')}`);
 }
 
-export function classifyMacLifecycleState(home) {
+export function classifyMacLifecycleState(home, {\n  hereticResourceObserver = observeHereticPersistentRuntimeResource\n} = {}) {
   const root = path.resolve(home);
   if (!fs.existsSync(root)) return 'ABSENT';
   try { canonicalMacHomeDirectory(root); } catch { return 'HELD_NONCANONICAL_HOME'; }
@@ -683,14 +707,20 @@ export function classifyMacLifecycleState(home) {
   const initialization = jsonRead(path.join(root, 'recovery', 'vex-initialization-receipt.json'));
   if (model?.state === 'BOUND_QUALIFIED' && initialization?.state === 'RUNTIME_QUALIFIED') return 'EXISTING_HEALTHY';
   if (activatedRuntimeReceiptBinding(homeManifest, model, initialization)) return 'EXISTING_HEALTHY';
-  if (acceptedHereticConfiguration(root, homeManifest, model)) {
-    return qualifiedHereticReceipt(root, homeManifest, model) ? 'EXISTING_HEALTHY' : 'EXISTING_DEGRADED_REPAIRABLE';
+  if (isHereticModelConfiguration(model)) {
+    const hereticState = classifyHereticRuntimeCurrentness(root, homeManifest, model, {
+      resourceObserver: hereticResourceObserver
+    });
+    if (hereticState === 'HEALTHY') return 'EXISTING_HEALTHY';
+    if (hereticState === 'RECOVERABLE') return 'EXISTING_RECOVERABLE';
+    return 'EXISTING_DEGRADED_REPAIRABLE';
   }
   return 'EXISTING_DEGRADED_REPAIRABLE';
 }
 export function choicesForLifecycleState(state) {
   if (state === 'ABSENT') return ['start'];
   if (state === 'EXISTING_HEALTHY') return ['start', 'stop', 'repair', 'rebuild-preserve', 'uninstall-preserve'];
+  if (state === 'EXISTING_RECOVERABLE') return ['start', 'stop', 'repair', 'rebuild-preserve', 'uninstall-preserve'];
   if (state === 'EXISTING_DEGRADED_REPAIRABLE') return ['stop', 'repair', 'rebuild-preserve', 'uninstall-preserve'];
   return [];
 }

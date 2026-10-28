@@ -648,7 +648,46 @@ test('MAC06C Heretic product configuration survives transient cleanup and keeps 
     const configuration = formHereticModelConfiguration({ homeIdentity, receipt });
     fs.writeFileSync(path.join(home, 'config', 'model.json'), JSON.stringify(configuration, null, 2) + '\n');
 
-    assert.equal(classifyMacLifecycleState(home), 'EXISTING_HEALTHY');
+    assert.equal(
+      classifyMacLifecycleState(home, {
+        hereticResourceObserver: () => ({
+          ownershipState: 'EXACT_VEX_OWNED',
+          lifecycleState: 'CURRENT',
+          currentness: 'CURRENT'
+        })
+      }),
+      'EXISTING_HEALTHY'
+    );
+    assert.equal(
+      classifyMacLifecycleState(home, {
+        hereticResourceObserver: () => ({
+          ownershipState: 'UNOWNED',
+          lifecycleState: 'ABANDONED',
+          currentness: 'CURRENT'
+        })
+      }),
+      'EXISTING_RECOVERABLE'
+    );
+    assert.equal(
+      classifyMacLifecycleState(home, {
+        hereticResourceObserver: () => ({
+          ownershipState: 'EXACT_VEX_OWNED',
+          lifecycleState: 'STALE',
+          currentness: 'CURRENT'
+        })
+      }),
+      'EXISTING_RECOVERABLE'
+    );
+    assert.equal(
+      classifyMacLifecycleState(home, {
+        hereticResourceObserver: () => ({
+          ownershipState: 'AMBIGUOUS',
+          lifecycleState: 'UNKNOWN',
+          currentness: 'CURRENT'
+        })
+      }),
+      'EXISTING_DEGRADED_REPAIRABLE'
+    );
     const protectedBefore = protectedHomeSnapshot(home);
     assert.equal(protectedBefore.records.some((record) => record.path === 'config/model.json'), true);
     const removed = cleanupRebuildPreserveState(home);
@@ -782,6 +821,7 @@ test('MAC07C protected continuity hashes model files incrementally without whole
 test('MAC08 lifecycle exposes no destructive local-data removal operation', () => {
   assert.equal(ALLOWED_OPERATIONS.includes('remove-local-data'), false);
   assert.deepEqual(choicesForLifecycleState('EXISTING_HEALTHY'), ['start','stop','repair','rebuild-preserve','uninstall-preserve']);
+  assert.deepEqual(choicesForLifecycleState('EXISTING_RECOVERABLE'), ['start','stop','repair','rebuild-preserve','uninstall-preserve']);
   assert.equal(choicesForLifecycleState('HELD_NONCANONICAL_HOME').length, 0);
 });
 
