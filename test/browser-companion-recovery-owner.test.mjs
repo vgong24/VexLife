@@ -400,12 +400,15 @@ test('production Heretic Browser composition re-resolves live runtime observatio
     resourceObservation: {
       schemaVersion: 'vexlife.host-resource-observation/v1',
       truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+      resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
       resourceObservationRef: 'observation.vexlife.host-resource.browser-runtime-dead-test',
       ownershipState: 'UNOWNED',
       lifecycleState: 'ABANDONED',
       currentness: 'CURRENT',
       lifecycleEvidenceRefOrNull: 'evidence.vexlife.heretic.not-live.browser-test',
-      sourceRefs: ['source.vexlife.heretic-runtime-owner.test']
+      ownershipProof: null,
+      sourceRefs: ['source.vexlife.heretic-runtime-owner.test', initialReceipt.receiptRef]
     }
   });
   const observed = await options.resolveCompanionRuntimeObservation();
@@ -419,7 +422,8 @@ test('production current-link resolver observes the receipt resource on every re
   const { root, home, identity } = makeHome();
   try {
     const receiptPath = path.join(root, 'heretic-runtime-receipt.json');
-    fs.writeFileSync(receiptPath, JSON.stringify(hereticRuntimeReceipt(), null, 2));
+    const currentReceipt = hereticRuntimeReceipt();
+    fs.writeFileSync(receiptPath, JSON.stringify(currentReceipt, null, 2));
     let calls = 0;
     const link = resolveHereticPersistentRuntimeCurrentLink({
       runtimeReceiptPath: receiptPath,
@@ -430,12 +434,15 @@ test('production current-link resolver observes the receipt resource on every re
         return {
           schemaVersion: 'vexlife.host-resource-observation/v1',
           truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+          resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+          resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
           resourceObservationRef: 'observation.vexlife.host-resource.dynamic-read-test',
           ownershipState: 'UNOWNED',
           lifecycleState: 'ABANDONED',
           currentness: 'CURRENT',
           lifecycleEvidenceRefOrNull: 'evidence.vexlife.heretic.not-live.dynamic-read-test',
-          sourceRefs: ['source.vexlife.heretic-runtime-owner.test']
+          ownershipProof: null,
+          sourceRefs: ['source.vexlife.heretic-runtime-owner.test', currentReceipt.receiptRef]
         };
       }
     });

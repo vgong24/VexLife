@@ -23,8 +23,8 @@
     {
       "path": "test/browser-companion-recovery-owner.test.mjs",
       "mode": "100644",
-      "bytes": 23292,
-      "sha256": "96e2bc01c602925b0acd3919c8f020d90828b2d024ccc479b7b1389d113b3391"
+      "bytes": 23699,
+      "sha256": "73adf05f8f51618f17fbc684bdc7fd5590b1152bff61d7151db042c7baa3f3a7"
     },
     {
       "path": "test/experience-review-kit.test.mjs",
