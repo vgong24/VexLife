@@ -49,6 +49,8 @@ const TRAINER_SOURCE_COMMIT = '170a11c58ce7d22a720901a2535adb0c218b871b';
 const STARTUP_TIMEOUT_MS = 600000;
 export const HERETIC_QUALIFICATION_COMPLETION_TIMEOUT_MS = 180000;
 const POLL_MS = 500;
+const PROCESS_OWNERSHIP_TIMEOUT_MS = 30000;
+const PROCESS_OWNERSHIP_POLL_MS = 50;
 
 const EFFECTS = Object.freeze({
   modelRuntime: true,
@@ -385,6 +387,17 @@ async function waitForHealthy(binding, pid, deps) {
   fail('HERETIC_RUNTIME_START_FAILED', 'mlx_lm.server did not become healthy before bounded startup timeout');
 }
 
+async function waitForExactOwnedRuntimeProcess({ pid, args, deps }) {
+  const deadline = deps.nowMs() + PROCESS_OWNERSHIP_TIMEOUT_MS;
+  for (;;) {
+    const identity = deps.processIdentity({ pid, args });
+    if (identity?.exactOwnedDetachedGroup) return identity;
+    if (!deps.processAlive(pid)) return null;
+    if (deps.nowMs() >= deadline) return null;
+    await deps.sleep(PROCESS_OWNERSHIP_POLL_MS);
+  }
+}
+
 function receiptBinds(binding, receipt, args, { allowStarting = true, requireSourceSha = true } = {}) {
   if (!object(receipt)) return false;
   if (receipt.schemaVersion !== HERETIC_PERSISTENT_RUNTIME_RECEIPT_SCHEMA) return false;
@@ -717,13 +730,7 @@ export async function startOrReuseHereticPersistentRuntime({ binding: input, hoo
   const pid = Number(typeof spawned === 'number' ? spawned : spawned?.pid);
   const processSubstrate = typeof spawned === 'number' ? null : (spawned?.processSubstrate ?? null);
   if (!Number.isInteger(pid) || pid <= 0) fail('HERETIC_RUNTIME_START_FAILED', 'mlx_lm.server returned no PID');
-  let identity = null;
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    identity = deps.processIdentity({ pid, args });
-    if (identity?.exactOwnedDetachedGroup) break;
-    if (!deps.processAlive(pid)) break;
-    await deps.sleep(50);
-  }
+  const identity = await waitForExactOwnedRuntimeProcess({ pid, args, deps });
   if (!identity?.exactOwnedDetachedGroup) {
     const cleanup = await deps.terminateRuntime({ pid, args, processSubstrate });
     fail('HERETIC_RUNTIME_PROCESS_OWNERSHIP_CONFLICT', 'new Heretic process ownership could not be proven', cleanup);
