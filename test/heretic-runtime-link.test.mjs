@@ -241,6 +241,8 @@ test('current Heretic host-resource observation distinguishes live, externally a
     resourceObservation: {
       schemaVersion: 'vexlife.host-resource-observation/v1',
       truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+      resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
       resourceObservationRef: 'observation.vexlife.host-resource.heretic-absent-test',
       ownershipState: 'UNOWNED',
       lifecycleState: 'ABANDONED',
@@ -264,6 +266,8 @@ test('current Heretic host-resource observation distinguishes live, externally a
     resourceObservation: {
       schemaVersion: 'vexlife.host-resource-observation/v1',
       truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+      resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
       resourceObservationRef: 'observation.vexlife.host-resource.heretic-ambiguous-test',
       ownershipState: 'AMBIGUOUS',
       lifecycleState: 'UNKNOWN',
@@ -286,6 +290,8 @@ test('stale or non-current Heretic host-resource truth does not silently become 
     resourceObservation: {
       schemaVersion: 'vexlife.host-resource-observation/v1',
       truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+      resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
       resourceObservationRef: 'observation.vexlife.host-resource.heretic-stale-test',
       ownershipState: 'EXACT_VEX_OWNED',
       lifecycleState: 'STALE',
@@ -314,6 +320,8 @@ test('stale or non-current Heretic host-resource truth does not silently become 
     resourceObservation: {
       schemaVersion: 'vexlife.host-resource-observation/v1',
       truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+      resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
       resourceObservationRef: 'observation.vexlife.host-resource.heretic-unknown-test',
       ownershipState: 'UNOWNED',
       lifecycleState: 'ABANDONED',
