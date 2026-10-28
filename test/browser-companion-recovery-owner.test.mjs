@@ -103,7 +103,16 @@ function hereticRequest(identity, overrides = {}) {
   });
 }
 
-function hereticRuntimeReceipt({ pid = 52001, receiptRef = 'receipt.vexlocalbridge.heretic-persistent-runtime.reentry-test' } = {}) {
+function hereticRuntimeReceipt({
+  pid = 52001,
+  receiptRef = 'receipt.vexlocalbridge.heretic-persistent-runtime.reentry-test',
+  sourceIdentity = {
+    repository: 'vgong24/Vextreme-SDK',
+    revision: '7'.repeat(40),
+    tree: '8'.repeat(40),
+    moduleSha256: '9'.repeat(64),
+  }
+} = {}) {
   return {
     schemaVersion: HERETIC_RUNTIME_RECEIPT_SCHEMA,
     receiptRef,
@@ -116,12 +125,7 @@ function hereticRuntimeReceipt({ pid = 52001, receiptRef = 'receipt.vexlocalbrid
     pythonEnvironmentRoot: '/private/heretic/env',
     endpoint: 'http://127.0.0.1:18121',
     requestModel: HERETIC_REQUEST_MODEL,
-    sourceIdentity: {
-      repository: 'vgong24/Vextreme-SDK',
-      revision: '7'.repeat(40),
-      tree: '8'.repeat(40),
-      moduleSha256: '9'.repeat(64),
-    },
+    sourceIdentity,
     runtime: {
       pid,
       processGroupId: pid,
@@ -282,6 +286,42 @@ test('Heretic recovery delegates to injected #636 effect, validates exact receip
     assert.equal(first.proofClass,'SYNTHETIC');
     assert.ok(first.sourceRefs.includes('github.issue.vextreme-sdk.636'));
     assert.ok(first.sourceRefs.includes('receipt.vexlocalbridge.heretic-persistent-runtime.reentry-test'));
+    assert.ok(first.sourceRefs.includes(`git.vextreme-sdk.${'7'.repeat(40)}`));
+    assert.equal(first.sourceRefs.some((ref) => ref.includes('undefined')), false);
+  } finally { fs.rmSync(root,{recursive:true,force:true}); }
+});
+
+test('Heretic recovery emits VexLife module provenance for current VexLife runtime receipts', async () => {
+  const {root,home,identity}=makeHome();
+  const moduleSha256='a'.repeat(64);
+  try {
+    const owner=createHereticRuntimeCompanionRecoveryOwner({
+      home,
+      proofClass:'SYNTHETIC',
+      recoverPersistentRuntime:async()=>{
+        const receipt=hereticRuntimeReceipt({
+          receiptRef:'receipt.vexlife.heretic-persistent-runtime.current-source-test',
+          sourceIdentity:{
+            repository:'vgong24/VexLife',
+            modulePath:'src/core/heretic-persistent-runtime-owner.mjs',
+            moduleSha256
+          }
+        });
+        receipt.schemaVersion='vexlife.heretic-persistent-runtime-owner-receipt/v1';
+        receipt.hostExecutionProfileRef='profile.repository.vexlife.macos-v1';
+        return {
+          disposition:'STARTED_NEW_EXACT_MLX_RUNTIME',
+          pid:receipt.runtime.pid,
+          endpoint:receipt.endpoint,
+          requestModel:receipt.requestModel,
+          receipt
+        };
+      }
+    });
+    const result=await owner.recover(hereticRequest(identity));
+    assert.ok(result.sourceRefs.includes(`source.vexlife.heretic-runtime-owner.${moduleSha256}`));
+    assert.equal(result.sourceRefs.some((ref)=>ref.includes('undefined')),false);
+    assert.equal(result.sourceRefs.some((ref)=>ref.startsWith('git.vextreme-sdk.')),false);
   } finally { fs.rmSync(root,{recursive:true,force:true}); }
 });
 

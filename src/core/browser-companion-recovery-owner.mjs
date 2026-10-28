@@ -291,6 +291,9 @@ export function createHereticRuntimeCompanionRecoveryOwner({
       const digest = crypto.createHash('sha256')
         .update(`${request.requestRef}|${request.requestSha256}|${link.runtimeReceiptRef}|${link.runtimePid}`)
         .digest('hex');
+      const recoverySourceRef = link.sourceIdentity.repository === 'vgong24/VexLife'
+        ? `source.vexlife.heretic-runtime-owner.${link.sourceIdentity.moduleSha256}`
+        : `git.vextreme-sdk.${link.sourceIdentity.revision}`;
       const receipt = Object.freeze({
         schemaVersion: 'vexlife.companion-recovery-owner-receipt/v1',
         truthClass: 'FOREIGN_RIGHTFUL_RUNTIME_OWNER_RECEIPT',
@@ -308,7 +311,7 @@ export function createHereticRuntimeCompanionRecoveryOwner({
           'github.issue.vexlife.634',
           'github.issue.vextreme-sdk.636',
           link.runtimeReceiptRef,
-          `git.vextreme-sdk.${link.sourceIdentity.revision}`
+          recoverySourceRef
         ]),
         disposition: 'PERFORMED_SAME_BINDING_REENTRY',
         postRecoveryObservationRequired: true,
