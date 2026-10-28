@@ -947,18 +947,28 @@ async function establishHeretic(home, repo, options) {
     reuseDisposition: established.runtimeDisposition
   };
 }
-async function startBrowser(home, repo, initialization) {
+async function startBrowser(home, repo, initialization, { forceCurrentBrowserRebind = false } = {}) {
   const browserPort = 18110;
   const receiptPath = browserReceiptPath(home);
   if (await portOpen(browserPort)) {
     const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true });
     if (!owned) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
-    if (owned.sourceCurrent) return { disposition: 'REUSED_EXACT_BROWSER', pid: owned.pid };
+    if (owned.sourceCurrent && !forceCurrentBrowserRebind) {
+      return { disposition: 'REUSED_EXACT_BROWSER', pid: owned.pid };
+    }
     const rotation = await stopOwnedBrowser(home, repo);
     if (await portOpen(browserPort)) {
-      throw new Error('exact prior-source browser stopped but port 18110 remains occupied');
+      throw new Error(
+        forceCurrentBrowserRebind
+          ? 'exact current browser stopped for Companion rebind but port 18110 remains occupied'
+          : 'exact prior-source browser stopped but port 18110 remains occupied'
+      );
     }
-    if (rotation.sourceDisposition !== 'PRIOR_EXACT_SOURCE') {
+    if (owned.sourceCurrent) {
+      if (!forceCurrentBrowserRebind || rotation.sourceDisposition !== 'CURRENT_SOURCE') {
+        throw new Error('current-source browser rebind did not preserve exact ownership classification');
+      }
+    } else if (rotation.sourceDisposition !== 'PRIOR_EXACT_SOURCE') {
       throw new Error('browser source rotation did not preserve prior-source ownership classification');
     }
   }
@@ -1011,7 +1021,7 @@ async function startBrowser(home, repo, initialization) {
   return { disposition: 'STARTED_NEW_BROWSER', pid: child.pid };
 }
 
-async function runStart(home, repo, options) {
+async function runStart(home, repo, options, { forceCurrentBrowserRebind = false } = {}) {
   await bootstrap(home, repo);
   const homeManifest = jsonRead(path.join(home, 'config', 'home.json'));
   const model = jsonRead(path.join(home, 'config', 'model.json'));
@@ -1025,7 +1035,7 @@ async function runStart(home, repo, options) {
     initialized = await initialize(home, repo, options);
   }
   if (initialized.state !== 'RUNTIME_QUALIFIED') throw new Error(`initializer did not qualify runtime: ${initialized.state}`);
-  const browser = await startBrowser(home, repo, initialized);
+  const browser = await startBrowser(home, repo, initialized, { forceCurrentBrowserRebind });
   return { initialized, browser };
 }
 export async function cleanStop(home, repo) {
@@ -1161,7 +1171,9 @@ export async function runLifecycle(argv = process.argv.slice(2)) {
   if (chosen === 'quit') return { schemaVersion: MAC_LIFECYCLE_SCHEMA, operation: 'quit', state: 'USER_STOPPED_NO_EFFECT' };
   assertLifecycleOperationAdmitted(state, chosen);
   if (chosen === 'start') {
-    const started = await runStart(home, repo, options);
+    const started = await runStart(home, repo, options, {
+      forceCurrentBrowserRebind: state === 'EXISTING_RECOVERABLE'
+    });
     return { schemaVersion: MAC_LIFECYCLE_SCHEMA, operation: 'start', state: 'START_OR_RESUME_COMPLETED', priorState: state, started };
   }
   if (chosen === 'stop') return { schemaVersion: MAC_LIFECYCLE_SCHEMA, ...(await cleanStop(home, repo)), priorState: state };
