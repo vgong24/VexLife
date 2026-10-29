@@ -10,6 +10,7 @@ import {
   BrowserCompanionBridgeError,
   createBrowserCompanionBridge,
   resolveBrowserCompanionRuntimeBinding,
+  validateBrowserCompanionConversationCurrentnessRequest,
   validateBrowserCompanionConversationRequest,
   validateBrowserCompanionRequest
 } from '../src/core/browser-companion-bridge.mjs';
@@ -198,6 +199,59 @@ test('browser request cannot inject endpoint, Home, runtime or authorization aut
       () => validateBrowserCompanionConversationRequest({ ...admitted, [extra]: 'forbidden' }),
       (error) => error instanceof BrowserCompanionBridgeError && error.code === 'COMPANION_REQUEST_NOT_ADMITTED'
     );
+  }
+});
+
+test('Conversation currentness read admits only exact direct Companion identity and performs no effect', async () => {
+  const request = {
+    projectRef: 'project.self-development',
+    threadRef: 'thread.self-development.open-conversation',
+    channelRef: 'channel.self-development.companion'
+  };
+  assert.deepEqual(validateBrowserCompanionConversationCurrentnessRequest(request), request);
+  assert.throws(
+    () => validateBrowserCompanionConversationCurrentnessRequest({ ...request, content: 'must-not-enter-read' }),
+    (error) => error instanceof BrowserCompanionBridgeError && error.code === 'COMPANION_CURRENTNESS_REQUEST_NOT_ADMITTED'
+  );
+
+  const { root, home } = makeHome();
+  const model = await startModelServer();
+  try {
+    const bridge = createBrowserCompanionBridge({
+      home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.browser-conversation-currentness'
+    });
+    const absent = bridge.conversationCurrentness(request);
+    assert.equal(absent.state, 'ABSENT');
+    assert.equal(absent.truthClass, 'CURRENT_LOCAL_CONVERSATION_IDENTITY');
+    assert.equal(absent.canonicalConversationHeadSha256, null);
+    assert.equal(absent.effectsPerformed, false);
+    assert.equal(model.calls.length, 0);
+
+    const turn = await browserTurn(bridge, {
+      ...request,
+      content: 'Bind one durable current head.'
+    });
+    const current = bridge.conversationCurrentness(request);
+    assert.equal(current.state, 'CURRENT');
+    assert.equal(current.projectRef, request.projectRef);
+    assert.equal(current.threadRef, request.threadRef);
+    assert.equal(current.channelRef, request.channelRef);
+    assert.equal(current.canonicalConversationHeadSha256, turn.canonicalConversationHeadSha256);
+    assert.equal(current.headMessageRefOrNull, turn.responseMessageRef);
+    assert.equal(current.headSequenceOrNull, turn.companionMessageSequence);
+    assert.equal(current.effectsPerformed, false);
+    assert.equal(model.calls.length, 1);
+
+    assert.throws(
+      () => bridge.conversationCurrentness({ ...request, projectRef: 'project.local-vex' }),
+      (error) => error instanceof BrowserCompanionBridgeError && error.code === 'COMPANION_CONVERSATION_BINDING_NOT_ADMITTED'
+    );
+  } finally {
+    await model.close();
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });
 

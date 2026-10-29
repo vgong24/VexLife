@@ -70,6 +70,7 @@ function projectMessage(binding, channel, message) {
     truthClass: message.truthClass ?? 'CURRENT_SYNTHETIC_REFERENCE',
     semanticRelay: clone(message.semanticRelay ?? null),
     conversationHeadSha256: message.conversationHeadSha256 ?? null,
+    canonicalConversationHeadSha256: message.canonicalConversationHeadSha256 ?? null,
     modelNameOrBoundedTestProfileRef: message.modelNameOrBoundedTestProfileRef ?? null
   });
 }
@@ -87,6 +88,15 @@ export function projectConversationEvolutionState(input) {
   const channels = chat.channelsForThread();
   if (!Array.isArray(channels) || !channels.some((candidate) => candidate.channelRef === channel.channelRef)) {
     throw new Error('canonical current channel is absent from its thread channel set');
+  }
+  const canonicalConversationIdentity = binding.chat.canonicalConversationIdentity(channel);
+  if (
+    !canonicalConversationIdentity
+    || canonicalConversationIdentity.projectRef !== state.projectRef
+    || canonicalConversationIdentity.threadRef !== state.threadRef
+    || canonicalConversationIdentity.channelRef !== state.channelRef
+  ) {
+    throw new Error('canonical durable Conversation identity disagrees with shared browser state');
   }
   const key = binding.conversationKey(channel.projectRef, channel.threadRef, channel.channelRef);
   const list = binding.messages.get(key);
@@ -108,6 +118,7 @@ export function projectConversationEvolutionState(input) {
     threadRef: state.threadRef,
     channelRef: state.channelRef,
     selectedNodeRef: state.selectedNodeRef ?? null,
+    canonicalConversationIdentity: clone(canonicalConversationIdentity),
     projectLabel: binding.t(project.stringRef),
     threadLabel: binding.t(thread.stringRef),
     channelLabel: binding.t(channel.labelRef),
@@ -176,6 +187,7 @@ function renderMessage(document, message, { relationshipDirect = false } = {}) {
   const article = el(document, 'article', 'conversation-evolution__message');
   if (message.messageRef) article.dataset.messageRef = message.messageRef;
   article.dataset.truthClass = message.truthClass;
+  if (message.canonicalConversationHeadSha256) article.dataset.canonicalConversationHeadSha256 = message.canonicalConversationHeadSha256;
   const heading = el(document, 'div', 'conversation-evolution__message-heading');
   heading.append(
     el(document, 'strong', null, relationshipDirect ? presentationParticipantLabel(message.speaker, true) : `${message.speaker.label} → ${message.recipients.map((item) => item.label).join(', ') || '—'}`),
@@ -270,6 +282,7 @@ export function createConversationEvolutionAdapter(input) {
     const canonical = canonicalComposer(document);
     const referenceFeed = document.querySelector('#messageFeed');
     const referenceChannels = document.querySelector('#channelTabs');
+    const referenceContext = document.querySelector('#contextSummary');
 
     const render = () => {
       const snapshot = projectConversationEvolutionState(binding);
@@ -299,6 +312,12 @@ export function createConversationEvolutionAdapter(input) {
       root.dataset.semanticOwnerRef = snapshot.semanticOwnerRef;
       root.dataset.interactionOwnerRef = snapshot.interactionOwnerRef;
       root.dataset.oneSemanticState = 'true';
+      root.dataset.projectRef = snapshot.projectRef;
+      root.dataset.threadRef = snapshot.threadRef;
+      root.dataset.canonicalConversationCurrentness = snapshot.canonicalConversationIdentity.currentness;
+      if (snapshot.canonicalConversationIdentity.canonicalConversationHeadSha256) {
+        root.dataset.canonicalConversationHeadSha256 = snapshot.canonicalConversationIdentity.canonicalConversationHeadSha256;
+      }
       root.dataset.presentationMode = relationshipDirect ? 'CONTINUOUS_VEX_RELATIONSHIP' : snapshot.channelKind === 'DIRECT' ? 'EXPLICIT_DIRECT_ADDRESS' : 'EXPLICIT_GROUP_AUDIENCE';
 
       const hero = el(document, 'header', 'conversation-evolution__hero');
@@ -492,7 +511,13 @@ export function createConversationEvolutionAdapter(input) {
           }
           return;
         }
-        const structural = mutations.some(({ target }) => target === referenceFeed || referenceFeed?.contains(target) || target === referenceChannels || referenceChannels?.contains(target));
+        const structural = mutations.some(({ target }) =>
+          target === referenceFeed
+          || referenceFeed?.contains(target)
+          || target === referenceChannels
+          || referenceChannels?.contains(target)
+          || target === referenceContext
+          || referenceContext?.contains?.(target));
         if (structural) {
           const streamOnly = mutations.every(({ target }) => {
             const element = target?.nodeType === 1 ? target : target?.parentElement;
@@ -530,7 +555,7 @@ export function createConversationEvolutionAdapter(input) {
           }
         }
       });
-      for (const target of [referenceFeed, referenceChannels, canonical.form, canonical.hint].filter(Boolean)) {
+      for (const target of [referenceFeed, referenceChannels, referenceContext, canonical.form, canonical.hint].filter(Boolean)) {
         observer.observe(target, { subtree:true, childList:true, attributes:true, characterData:true });
       }
     }

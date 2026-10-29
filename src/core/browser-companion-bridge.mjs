@@ -25,6 +25,8 @@ import { semanticHash } from './utils.mjs';
 export const BROWSER_COMPANION_API_PATH = '/api/v1/companion/turn';
 export const BROWSER_COMPANION_STREAM_API_PATH = '/api/v1/companion/turn/stream';
 export const BROWSER_COMPANION_STATUS_PATH = '/api/v1/companion/status';
+export const BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH = '/api/v1/companion/conversation-currentness';
+export const BROWSER_COMPANION_CONVERSATION_CURRENTNESS_SCHEMA = 'vexlife.browser-companion-conversation-currentness/v1';
 export const BROWSER_COMPANION_RECOVERY_PATH = '/api/v1/companion/recovery';
 export const BROWSER_COMPANION_RECOVERY_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_COMPANION_PROFILE_REF = 'model-profile.vexlife.browser-companion.local';
@@ -53,6 +55,7 @@ const CONVERSATION_REQUEST_KEYS = new Set([
   'messageCreatedAt',
   'originalLanguage'
 ]);
+const CONVERSATION_CURRENTNESS_REQUEST_KEYS = new Set(['projectRef', 'threadRef', 'channelRef']);
 const PORTABLE_REF_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const RECOVERY_REQUEST_KEYS = new Set([
@@ -399,6 +402,26 @@ export function validateBrowserCompanionConversationRequest(value) {
     idempotencyKey: value.idempotencyKey,
     messageCreatedAt: value.messageCreatedAt,
     originalLanguage: value.originalLanguage
+  });
+}
+
+export function validateBrowserCompanionConversationCurrentnessRequest(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new BrowserCompanionBridgeError('COMPANION_CURRENTNESS_REQUEST_NOT_ADMITTED', 'Conversation currentness request must be one JSON object', 400);
+  }
+  const extras = Object.keys(value).filter((key) => !CONVERSATION_CURRENTNESS_REQUEST_KEYS.has(key));
+  if (extras.length || Object.keys(value).length !== CONVERSATION_CURRENTNESS_REQUEST_KEYS.size) {
+    throw new BrowserCompanionBridgeError('COMPANION_CURRENTNESS_REQUEST_NOT_ADMITTED', 'Conversation currentness request must contain exact project/thread/channel identity', 400);
+  }
+  for (const key of CONVERSATION_CURRENTNESS_REQUEST_KEYS) {
+    if (!safePortableRef(value[key])) {
+      throw new BrowserCompanionBridgeError('COMPANION_CURRENTNESS_REQUEST_NOT_ADMITTED', `${key} must be one portable canonical ref`, 400);
+    }
+  }
+  return Object.freeze({
+    projectRef: value.projectRef,
+    threadRef: value.threadRef,
+    channelRef: value.channelRef
   });
 }
 
@@ -875,6 +898,65 @@ export function createBrowserCompanionBridge({
         failureCode: typed.code
       });
     }
+  }
+
+  function conversationCurrentness(input) {
+    const request = validateBrowserCompanionConversationCurrentnessRequest(input);
+    requireCurrentDirectCompanionBinding(request);
+    const identity = loadBrowserCompanionHomeIdentity(home);
+    const channelBinding = readConversationChannelBinding({ home: identity.home, channelRef: request.channelRef });
+    if (channelBinding.state === 'NOT_FOUND') {
+      return Object.freeze({
+        schemaVersion: BROWSER_COMPANION_CONVERSATION_CURRENTNESS_SCHEMA,
+        state: 'ABSENT',
+        truthClass: 'CURRENT_LOCAL_CONVERSATION_IDENTITY',
+        projectRef: request.projectRef,
+        threadRef: request.threadRef,
+        channelRef: request.channelRef,
+        channelSha256: null,
+        channelRecordSha256: null,
+        headMessageRefOrNull: null,
+        headSequenceOrNull: null,
+        canonicalConversationHeadSha256: null,
+        headUpdatedAtOrNull: null,
+        effectsPerformed: false
+      });
+    }
+    const channel = channelBinding.channel;
+    const exactMembers = Array.isArray(channel?.memberRefs)
+      && channel.memberRefs.length === 2
+      && channel.memberRefs.includes(identity.personRef)
+      && channel.memberRefs.includes('role.vex.companion');
+    if (
+      channelBinding.state !== 'CURRENT'
+      || !channel
+      || channel.threadRef !== request.threadRef
+      || channel.kind !== 'DIRECT'
+      || !exactMembers
+    ) {
+      throw new BrowserCompanionBridgeError(
+        'COMPANION_CONVERSATION_CURRENTNESS_INVALID',
+        'Durable Conversation binding does not match the admitted direct Companion identity',
+        409
+      );
+    }
+    const projection = readConversationChannel({ home: identity.home, channelRef: request.channelRef, limit: 1 });
+    const head = projection.head ?? null;
+    return Object.freeze({
+      schemaVersion: BROWSER_COMPANION_CONVERSATION_CURRENTNESS_SCHEMA,
+      state: projection.state === 'CURRENT' ? 'CURRENT' : 'EMPTY',
+      truthClass: 'CURRENT_LOCAL_CONVERSATION_IDENTITY',
+      projectRef: request.projectRef,
+      threadRef: request.threadRef,
+      channelRef: request.channelRef,
+      channelSha256: channelBinding.record.channelSha256,
+      channelRecordSha256: channelBinding.record.recordSha256,
+      headMessageRefOrNull: head?.messageRef ?? null,
+      headSequenceOrNull: head?.sequence ?? null,
+      canonicalConversationHeadSha256: head?.headSha256 ?? null,
+      headUpdatedAtOrNull: head?.updatedAt ?? null,
+      effectsPerformed: false
+    });
   }
 
   async function performRecovery(input) {
@@ -1520,7 +1602,7 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
     }
   }
 
-  return Object.freeze({ binding, instanceRef, status, performRecovery, performTurn, performConversationTurn, activeTurnCurrentness });
+  return Object.freeze({ binding, instanceRef, status, conversationCurrentness, performRecovery, performTurn, performConversationTurn, activeTurnCurrentness });
 }
 
 export function browserCompanionRecoveryFailurePayload(error) {
@@ -1540,6 +1622,19 @@ export function browserCompanionRecoveryFailurePayload(error) {
       homeMutationPerformed: false,
       memoryMutationPerformed: false
     })
+  });
+}
+
+export function browserCompanionConversationCurrentnessFailurePayload(error) {
+  const typed = error instanceof BrowserCompanionBridgeError
+    ? error
+    : new BrowserCompanionBridgeError('COMPANION_CONVERSATION_CURRENTNESS_FAILED', 'Canonical Conversation currentness is unavailable', 500);
+  return Object.freeze({
+    schemaVersion: BROWSER_COMPANION_CONVERSATION_CURRENTNESS_SCHEMA,
+    state: 'HELD',
+    truthClass: 'CURRENT_LOCAL_CONVERSATION_IDENTITY_FAILURE',
+    failureCode: typed.code,
+    effectsPerformed: false
   });
 }
 

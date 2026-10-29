@@ -122,7 +122,9 @@ test('VA-I07 production app composes the accepted completed-turn callback into t
   assert.match(guideSource, /await onFreeformAsk\(question\)/u);
   assert.match(guideSource, /wasActiveConversation && priorHead !== projection\.conversationHeadSha256/u);
   assert.match(guideSource, /addMessage\('guide', projection\.content\)/u);
-  assert.match(appSource, /onFreeformAsk:\(question\)=>chat\.sendCurrentCompanionMessage\(question,\{frameAtSend:navigation\.semanticFrame\(\)\}\)/u);
+  assert.match(appSource, /onFreeformAsk:\(question\)=>sendCurrentVexConversationMessage\(question,\{frameAtSend:navigation\.semanticFrame\(\)\}\)/u);
+  assert.match(appSource, /async function selectCurrentVexConversation\(\)/u);
+  assert.match(appSource, /await chat\.refreshConversationCurrentness\(companion\)/u);
   assert.doesNotMatch(chatSource + guideSource + appSource, /getUserMedia|mediaDevices|camera|microphone|screenCapture/iu);
 });
 

@@ -61,7 +61,7 @@ function fixture({availabilityState='READY',group=false,family=false,securitySta
   messages.get(conversationKey(groupChannel.projectRef,groupChannel.threadRef,groupChannel.channelRef)).push({messageRef:'message.group.0',projectRef:groupChannel.projectRef,threadRef:groupChannel.threadRef,channelRef:groupChannel.channelRef,speakerKey:'guide',recipientKeys:['victor','companion'],content:'Group context stays member-scoped.',sequence:0,truthClass:'CURRENT_SYNTHETIC_REFERENCE'});
   const state={projectRef:project.projectRef,threadRef:thread.threadRef,channelRef:current.channelRef,selectedNodeRef:'element.thread.open-conversation',vexAvailability:'AVAILABLE',unsentLocalDraft:group?null:{state:'UNSENT_LOCAL_DRAFT',channelRef:direct.channelRef,content:'still local',queued:false,accepted:false}};
   const availability={availabilityState,bindingState:'BOUND',recoveryClass:availabilityState==='RECOVERABLE'?'SAFE_REENTRY_AVAILABLE':'NONE',modelRefOrNull:'model.local.current',generationRefOrNull:'generation.m4',runtimeAdapterRef:'runtime.adapter.local'};
-  const chat={currentProject:()=>project,currentThread:()=>thread,currentChannel:()=>current,channelsForThread:()=>channels,roleLabel:(key)=>roles[key]?.label??key,selectChannel:()=>{},companionAvailabilityState:()=>availabilityState,companionAvailability:()=>structuredClone(availability),companionRecoveryAvailable:()=>availabilityState==='RECOVERABLE'};
+  const chat={currentProject:()=>project,currentThread:()=>thread,currentChannel:()=>current,channelsForThread:()=>channels,roleLabel:(key)=>roles[key]?.label??key,selectChannel:()=>{},canonicalConversationIdentity:(channel=current)=>Object.freeze({schemaVersion:'vexlife.browser-canonical-conversation-identity/v1',currentness:channel.roleKey==='companion'?'CURRENT':'UNREAD',projectRef:channel.projectRef,threadRef:channel.threadRef,channelRef:channel.channelRef,headMessageRefOrNull:channel.roleKey==='companion'?'message.direct.0':null,headSequenceOrNull:channel.roleKey==='companion'?0:null,canonicalConversationHeadSha256:channel.roleKey==='companion'?'d'.repeat(64):null,headUpdatedAtOrNull:channel.roleKey==='companion'?'2026-10-29T00:00:00.000Z':null,effectsPerformed:false}),companionAvailabilityState:()=>availabilityState,companionAvailability:()=>structuredClone(availability),companionRecoveryAvailable:()=>availabilityState==='RECOVERABLE'};
   const familyRoom={snapshot:()=>({securityStatus:structuredClone(securityStatus)})};
   return {state,chat,roles,messages,conversationKey,t,familyRoom};
 }
@@ -140,6 +140,12 @@ test('Conversation projection preserves canonical direct addressing and unsent d
   assert.equal(projected.draft.state,'UNSENT_LOCAL_DRAFT');
   assert.equal(projected.draft.content,'still local');
   assert.equal(projected.familySecurityStatus,null);
+  assert.equal(projected.canonicalConversationIdentity.currentness,'CURRENT');
+  assert.equal(projected.canonicalConversationIdentity.projectRef,'project.self-development');
+  assert.equal(projected.canonicalConversationIdentity.threadRef,'thread.self-development.open-conversation');
+  assert.equal(projected.canonicalConversationIdentity.channelRef,'channel.self-development.companion');
+  assert.equal(projected.canonicalConversationIdentity.canonicalConversationHeadSha256,'d'.repeat(64));
+  assert.equal(projected.canonicalConversationIdentity.effectsPerformed,false);
 });
 
 test('RECOVERABLE remains recovery truth and never becomes READY turn authority',()=>{
@@ -185,6 +191,9 @@ test('adapter stays a presentation/delegation layer with no second runtime, reco
   assert.doesNotMatch(source,/demo-data|createChatController\s*\(|\bfetch\s*\(|localStorage|sessionStorage|document\.cookie|\/api\/v1\/companion\//);
   assert.doesNotMatch(source,/requestClose\s*:/);
   assert.match(source,/semanticOwnerRef:\s*'module\.vexlife\.core\.conversation'/);
+  assert.match(source,/canonicalConversationIdentity:\s*clone\(canonicalConversationIdentity\)/);
+  assert.match(source,/root\.dataset\.canonicalConversationCurrentness/);
+  assert.match(source,/root\.dataset\.canonicalConversationHeadSha256/);
   assert.match(source,/interactionOwnerRef:\s*'module\.vexlife\.browser\.chat-controller'/);
   assert.match(source,/binding\.chat\.selectChannel/);
   assert.match(source,/binding\.familyRoom \?\? globalThis\.__VEXLIFE_APP__\?\.familyRoom/);
@@ -236,9 +245,12 @@ test('V1 persistent Vex vessel opens the lived Conversation without adding anoth
   assert.match(app,/projectRef:'project\.self-development'/);
   assert.match(app,/threadRef:'thread\.self-development\.open-conversation'/);
   assert.match(app,/channelRef:'channel\.self-development\.companion'/);
+  assert.match(app,/async function selectCurrentVexConversation\(\)/);
+  assert.match(app,/async function sendCurrentVexConversationMessage\(question/);
   assert.match(app,/async function openCurrentVexConversation\(\)/);
   assert.match(app,/chat\.selectThread\(project,thread,'element\.thread\.open-conversation'\)/);
   assert.match(app,/chat\.selectChannel\(companion,'element\.channel\.companion'\)/);
+  assert.match(app,/await chat\.refreshConversationCurrentness\(companion\)/);
   assert.match(app,/await setUxProjection\(UX_EVOLUTION_PROJECTION\)/);
   assert.match(app,/await openEvolutionSurface\(CONVERSATION_EVOLUTION_SURFACE_REF\)/);
   assert.match(app,/function bindPersistentVexConversationEntry\(\)/);
@@ -250,9 +262,10 @@ test('V1 persistent Vex vessel opens the lived Conversation without adding anoth
   assert.match(app,/void openCurrentVexConversation\(\)/);
   assert.doesNotMatch(app,/openVexConversation/);
   assert.doesNotMatch(app,/ensureCurrentVexConversationMenuEntry/);
-  assert.match(app,/openConversation'\)\.addEventListener\('click',\(\)=>\{void routeCurrentSurface\('surface\.vexlife\.conversation',\(\)=>openContext\('chat'\)\)/);
-  assert.match(app,/document\.addEventListener\('vexlife:open-context',\(event\)=>\{if\(event\.detail\?\.context==='health'\)void openHealth\(\);else openContext\('chat'\);\}\)/);
-  assert.match(app,/openContext,openCurrentVexConversation,openLivingJournal/);
+  assert.match(app,/openConversation'\)\.addEventListener\('click',\(\)=>\{void openCurrentVexConversation\(\)/);
+  assert.match(app,/document\.addEventListener\('vexlife:open-context',\(event\)=>\{if\(event\.detail\?\.context==='health'\)void openHealth\(\);else if\(event\.detail\?\.context==='chat'\)void openCurrentVexConversation\(\);\}\)/);
+  assert.match(app,/action==='chat'\)void openCurrentVexConversation\(\)/);
+  assert.match(app,/openContext,selectCurrentVexConversation,sendCurrentVexConversationMessage,openCurrentVexConversation,openLivingJournal/);
 });
 
 test('accepted app.js seam registers the same canonical Conversation adapter and stylesheet',()=>{
