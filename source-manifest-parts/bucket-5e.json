@@ -10,9 +10,9 @@
     },
     {
       "path": "scripts/browser-integration.mjs",
-      "mode": "100644",
-      "bytes": 71258,
-      "sha256": "ab8e2702c24e777619010597eb26ae913eb58496cd9ddfae95f4fc2753a551c1"
+      "mode": "100755",
+      "bytes": 73206,
+      "sha256": "e483955647e2a6f3574ddd493969b4b275ce942305cd0018afb350f26d1edc4f"
     }
   ]
 }

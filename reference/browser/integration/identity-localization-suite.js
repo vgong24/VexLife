@@ -26,6 +26,7 @@ export const identityLocalizationSuite = Object.freeze({
       for (const roleKey of ['companion','guide','root']) {
         const channel = directByRole.get(roleKey);
         app.chat.selectChannel(channel,directNodeRef(roleKey));
+        if(roleKey==='companion')await app.chat.refreshConversationProjection(channel);
         app.projectFrame();
         const expected = app.visibleRoleLabel(roleKey);
         const actorRef = app.roles[roleKey].actorRef;

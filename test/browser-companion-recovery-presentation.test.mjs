@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 import { createBrowserCompanionBridge } from '../src/core/browser-companion-bridge.mjs';
+import { initializeLivedCompanionHome } from '../src/core/lived-companion.mjs';
+import { appendConversationMessage, materializeConversationChannel } from '../src/core/conversation-store.mjs';
+import { semanticHash } from '../src/core/utils.mjs';
 import { createVexLifeBrowserServer } from '../scripts/serve-browser.mjs';
 
 import {
@@ -172,24 +175,46 @@ function runtimeObservation(overrides = {}) {
   };
 }
 
-async function withReferenceBrowser(viewport, run) {
+function seedCanonicalConversation(home) {
+  const homeManifest = JSON.parse(fs.readFileSync(path.join(home, 'config', 'home.json'), 'utf8'));
+  const device = JSON.parse(fs.readFileSync(path.join(home, 'devices', homeManifest.currentDeviceRef + '.json'), 'utf8'));
+  const channelRef = 'channel.self-development.companion';
+  const threadRef = 'thread.self-development.open-conversation';
+  materializeConversationChannel({
+    home,
+    instanceRef: device.deviceRef,
+    observedAt: device.createdAt,
+    channel: {
+      channelRef,
+      threadRef,
+      kind: 'DIRECT',
+      memberRefs: [device.personRef, 'role.vex.companion'],
+      labelStringRef: 'channel.companion.name',
+      state: 'ACTIVE',
+      createdAt: device.createdAt
+    }
+  });
+  const at0=device.createdAt, at1=new Date(Date.parse(device.createdAt)+1000).toISOString();
+  const append=(message)=>appendConversationMessage({home,instanceRef:device.deviceRef,observedAt:message.createdAt,message});
+  append({messageRef:'message.vr06.presentation.human.000',spaceRef:null,threadRef,channelRef,speakerRef:device.personRef,recipientRefs:['role.vex.companion'],witnessRefs:['witness.vr06.presentation.human.000'],membershipSnapshotRef:null,membershipGeneration:null,sequence:0,content:'Durable Victor first-load message.',contentHash:semanticHash('Durable Victor first-load message.'),createdAt:at0});
+  append({messageRef:'message.vr06.presentation.companion.001',spaceRef:null,threadRef,channelRef,speakerRef:'role.vex.companion',recipientRefs:[device.personRef],witnessRefs:['witness.vr06.presentation.companion.001'],membershipSnapshotRef:null,membershipGeneration:null,sequence:1,content:'Durable Vex first-load response.',contentHash:semanticHash('Durable Vex first-load response.'),createdAt:at1});
+}
+
+async function withReferenceBrowser(viewport, run, { initialObservation = runtimeObservation(), seedConversation = false } = {}) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'vr06-presentation-browser-home-'));
-  fs.mkdirSync(path.join(home, 'config'), { recursive: true });
-  fs.mkdirSync(path.join(home, 'devices'), { recursive: true });
-  fs.writeFileSync(path.join(home, 'config', 'home.json'), JSON.stringify({
-    schemaVersion: 'vexlife.home/v0',
+  initializeLivedCompanionHome({
+    home,
     homeRef: 'home.vr06.presentation',
-    currentDeviceRef: 'device.vr06.presentation',
-    currentCompanionLineageRef: 'lineage.vr06.presentation'
-  }, null, 2) + '\n');
-  fs.writeFileSync(path.join(home, 'devices', 'device.vr06.presentation.json'), JSON.stringify({
+    familyRef: 'vex-family.vr06.presentation',
     deviceRef: 'device.vr06.presentation',
     companionLineageRef: 'lineage.vr06.presentation'
-  }, null, 2) + '\n');
+  });
+  if (seedConversation) seedCanonicalConversation(home);
 
-  let observation = runtimeObservation();
+  let observation = initialObservation;
   const recoveryRequests = [];
   const companionBridge = createBrowserCompanionBridge({
+    home,
     endpoint: null,
     model: null,
     recoveryOwner: {
@@ -235,6 +260,77 @@ async function withReferenceBrowser(viewport, run) {
     fs.rmSync(home, { recursive: true, force: true });
   }
 }
+
+test('Open Vex launch-intent page load projects canonical READY before Victor interacts with the composer', async () => {
+  await withReferenceBrowser(
+    { width: 1440, height: 900 },
+    async ({ page, serverUrl }) => {
+      let turnCalls = 0;
+      page.on('request', (request) => {
+        if (new URL(request.url()).pathname === '/api/v1/companion/turn') turnCalls += 1;
+      });
+
+      await page.goto(serverUrl + '/reference/browser/?open=vex', { waitUntil: 'networkidle', timeout: 30000 });
+      await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 30000 });
+
+      const initial = await page.evaluate(() => ({
+        channelRef: globalThis.__VEXLIFE_APP__.chat.currentChannel().channelRef,
+        availabilityState: globalThis.__VEXLIFE_APP__.chat.companionAvailabilityState(),
+        bindingState: globalThis.__VEXLIFE_APP__.chat.companionBindingState(),
+        conversationCurrentness: globalThis.__VEXLIFE_APP__.chat.canonicalConversationIdentity().currentness,
+        conversationHeadSequence: globalThis.__VEXLIFE_APP__.chat.canonicalConversationIdentity().headSequenceOrNull,
+        composerAvailability: document.querySelector('#composer')?.dataset.availabilityState ?? null,
+        composerCompanionAvailability: document.querySelector('#composer')?.dataset.companionAvailabilityState ?? null,
+        sendDisabled: document.querySelector('#composer button[type="submit"]')?.disabled ?? null,
+        hint: document.querySelector('#composerHint')?.textContent ?? null,
+        messages: [...document.querySelectorAll('#messageFeed .message')].map((row) => ({
+          messageRef: row.dataset.messageRef,
+          text: row.querySelector('.message-body')?.textContent ?? '',
+          index: row.querySelector('.message-index')?.textContent ?? ''
+        }))
+      }));
+
+      assert.deepEqual({
+        channelRef: initial.channelRef,
+        availabilityState: initial.availabilityState,
+        bindingState: initial.bindingState,
+        conversationCurrentness: initial.conversationCurrentness,
+        conversationHeadSequence: initial.conversationHeadSequence,
+        composerAvailability: initial.composerAvailability,
+        composerCompanionAvailability: initial.composerCompanionAvailability,
+        sendDisabled: initial.sendDisabled,
+        turnCalls
+      }, {
+        channelRef: 'channel.self-development.companion',
+        availabilityState: 'READY',
+        bindingState: 'BOUND',
+        conversationCurrentness: 'CURRENT',
+        conversationHeadSequence: 1,
+        composerAvailability: 'AVAILABLE',
+        composerCompanionAvailability: 'READY',
+        sendDisabled: false,
+        turnCalls: 0
+      });
+      assert.deepEqual(initial.messages, [
+        { messageRef: 'message.vr06.presentation.human.000', text: 'Durable Victor first-load message.', index: '[00]' },
+        { messageRef: 'message.vr06.presentation.companion.001', text: 'Durable Vex first-load response.', index: '[01]' }
+      ]);
+      assert.doesNotMatch(initial.hint ?? '', /unavailable/u);
+      assert.equal(initial.messages.some((message) => message.text.includes('engineering dashboard')), false);
+    },
+    {
+      seedConversation: true,
+      initialObservation: runtimeObservation({
+        observationRef: 'observation.vr06.presentation.initial-ready',
+        runtimeOwnershipState: 'EXACT_OWNED',
+        runtimeState: 'HEALTHY',
+        qualificationState: 'CURRENT',
+        safeReentryState: 'NOT_AVAILABLE',
+        evidenceRefs: ['evidence.runtime.vr06.presentation.initial-ready']
+      })
+    }
+  );
+});
 
 test('VR06 Reference composer exposes truthful recoverable action on desktop and compact without sending a turn', async () => {
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {

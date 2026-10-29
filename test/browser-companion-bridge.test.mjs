@@ -300,6 +300,52 @@ test('generic runtime turn remains separate from durable Conversation Send while
 });
 
 
+test('Conversation projection reads the exact durable direct Companion lineage without model or mutation effect', async () => {
+  const request = {
+    projectRef: 'project.self-development',
+    threadRef: 'thread.self-development.open-conversation',
+    channelRef: 'channel.self-development.companion'
+  };
+  const { root, home } = makeHome();
+  const model = await startModelServer();
+  try {
+    const bridge = createBrowserCompanionBridge({
+      home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.browser-conversation-projection'
+    });
+    const absent = bridge.conversationProjection(request);
+    assert.equal(absent.state, 'ABSENT');
+    assert.deepEqual(absent.messages, []);
+    assert.equal(absent.effectsPerformed, false);
+    assert.equal(model.calls.length, 0);
+
+    const completed = await browserTurn(bridge, { ...request, content: 'Durable projection source message.' });
+    assert.equal(completed.state, 'TURN_COMPLETED');
+    assert.equal(model.calls.length, 1);
+
+    const beforeReadCallCount = model.calls.length;
+    const projection = bridge.conversationProjection(request);
+    assert.equal(projection.state, 'CURRENT');
+    assert.equal(projection.truthClass, 'CURRENT_LOCAL_CONVERSATION_PROJECTION');
+    assert.equal(projection.messages.length, 2);
+    assert.deepEqual(projection.messages.map((message) => message.speakerRole), ['VICTOR', 'COMPANION']);
+    assert.deepEqual(projection.messages.map((message) => message.sequence), [0, 1]);
+    assert.equal(projection.messages[0].content, 'Durable projection source message.');
+    assert.equal(projection.messages[1].content, 'Real local bridge reply.');
+    assert.equal(projection.headMessageRefOrNull, projection.messages[1].messageRef);
+    assert.equal(projection.headSequenceOrNull, projection.messages[1].sequence);
+    assert.match(projection.canonicalConversationHeadSha256, /^[0-9a-f]{64}$/u);
+    assert.equal(projection.effectsPerformed, false);
+    assert.equal(projection.truncated, false);
+    assert.equal(model.calls.length, beforeReadCallCount);
+  } finally {
+    await model.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('unbound browser companion fails closed without synthetic output', async () => {
   const { root, home } = makeHome();
   try {

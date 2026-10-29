@@ -14,8 +14,9 @@ import {
 } from '../src/core/intent-workgraph.mjs';
 import { persistIntentWorkgraphRuntimeSnapshot } from '../src/core/intent-workgraph-runtime-snapshot.mjs';
 import { collectRepositoryEvidence, runBoundedGit } from '../src/core/repository-evidence.mjs';
+import { appendConversationMessage, materializeConversationChannel } from '../src/core/conversation-store.mjs';
 import { buildSourceManifest } from '../src/core/source-manifest.mjs';
-import { writeJson } from '../src/core/utils.mjs';
+import { semanticHash, writeJson } from '../src/core/utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const receiptPath = path.resolve(ROOT, process.env.VEXLIFE_BROWSER_RECEIPT || 'generated/health/browser-integration.json');
@@ -123,6 +124,66 @@ function formFcf03ProgressFixtureGraph() {
 
 function seedFcf03ProgressFixture(home) {
   return persistIntentWorkgraphRuntimeSnapshot({ home, graph: formFcf03ProgressFixtureGraph() });
+}
+
+function seedCanonicalConversationFixture(home, {
+  deviceRef = 'device.browser.integration',
+  personRef = 'person.vexlife.owner',
+  createdAt = '2026-09-28T00:00:00.000Z'
+} = {}) {
+  const threadRef = 'thread.self-development.open-conversation';
+  const channelRef = 'channel.self-development.companion';
+  materializeConversationChannel({
+    home,
+    instanceRef: deviceRef,
+    observedAt: createdAt,
+    channel: {
+      channelRef,
+      threadRef,
+      kind: 'DIRECT',
+      memberRefs: [personRef, 'role.vex.companion'],
+      labelStringRef: 'channel.companion.name',
+      state: 'ACTIVE',
+      createdAt
+    }
+  });
+
+  const messages = [
+    {
+      messageRef: 'message.browser.integration.victor.000',
+      speakerRef: personRef,
+      recipientRefs: ['role.vex.companion'],
+      sequence: 0,
+      content: 'Durable integration Victor message.',
+      createdAt: new Date(Date.parse(createdAt) + 1000).toISOString()
+    },
+    {
+      messageRef: 'message.browser.integration.companion.001',
+      speakerRef: 'role.vex.companion',
+      recipientRefs: [personRef],
+      sequence: 1,
+      content: 'Durable integration Vex response.',
+      createdAt: new Date(Date.parse(createdAt) + 2000).toISOString()
+    }
+  ];
+
+  for (const message of messages) {
+    appendConversationMessage({
+      home,
+      instanceRef: deviceRef,
+      observedAt: message.createdAt,
+      message: {
+        ...message,
+        spaceRef: null,
+        threadRef,
+        channelRef,
+        witnessRefs: [`witness.browser.integration.${String(message.sequence).padStart(3, '0')}`],
+        membershipSnapshotRef: null,
+        membershipGeneration: null,
+        contentHash: semanticHash(message.content)
+      }
+    });
+  }
 }
 
 // P4R2 uses the existing browser, server and canonical controllers. The evidence
@@ -669,6 +730,7 @@ if (playwright) {
     createdAt: '2026-09-28T00:00:00.000Z'
   }, null, 2)}\n`);
   seedFcf03ProgressFixture(integrationHome);
+  seedCanonicalConversationFixture(integrationHome, { deviceRef: integrationDeviceRef });
 
   const server = spawn(process.execPath, ['scripts/serve-browser.mjs'], {
     cwd: ROOT,

@@ -151,6 +151,8 @@ test('MACHUMAN04 fresh Terminal setup collects consent before the owned Heretic 
 });
 
 test('MACHUMAN05 state-derived actions are explicit and browser opens only after start-class completion', () => {
+  assert.match(setup, /INSTALL_URL="http:\/\/127\.0\.0\.1:18110\/reference\/browser\/\?open=vex"/);
+  assert.match(setup, /\/usr\/bin\/open "\$INSTALL_URL"/);
   assert.match(setup, /run_lifecycle start >\/dev\/null; open_vex/);
   assert.match(setup, /run_lifecycle repair yes >\/dev\/null; open_vex/);
   assert.match(setup, /run_lifecycle rebuild-preserve yes >\/dev\/null; open_vex/);
