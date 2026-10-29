@@ -5,8 +5,8 @@
     {
       "path": "reference/browser/integration/identity-localization-suite.js",
       "mode": "100644",
-      "bytes": 6654,
-      "sha256": "2462e9125b1bea81d2224e768afe739a1b6a93b0469027898c046f5867931045"
+      "bytes": 6742,
+      "sha256": "357d388c6fefa849568aac6af2cb283403da3f470863785406b06ccff1725513"
     },
     {
       "path": "src/core/project-planning-runtime-snapshot.mjs",

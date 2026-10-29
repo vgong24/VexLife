@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 13339,
       "sha256": "017abf5d78313903446dd51f4fbaab56494c9f56a2d90f942f021f4e0061c3eb"
+    },
+    {
+      "path": "test/browser-companion-conversation-projection.test.mjs",
+      "mode": "100644",
+      "bytes": 7557,
+      "sha256": "70ed63433fb8c102508038457e78430e06911a6b0541f9ae76a7d3311bd75b64"
     }
   ]
 }
