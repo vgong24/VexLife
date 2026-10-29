@@ -72,7 +72,7 @@ const MIN_WIDTH = 320; const MIN_HEIGHT = 330; const SAFE_MARGIN = 12;
 const PREFERRED_GEOMETRY_KEY = 'vexlife.guide.geometry';
 const LEGACY_POSITION_KEY = 'vexlife.guide.position';
 
-export function createGuideController({ state, t, navigation, elementByRef, chat }) {
+export function createGuideController({ state, t, navigation, elementByRef, chat, onFreeformAsk = null }) {
   const records = []; const windowElement = $('#guideWindow');
   let preferredGeometry = loadJson(PREFERRED_GEOMETRY_KEY, loadJson(LEGACY_POSITION_KEY, null));
   let resolvedGeometry = null;
@@ -200,11 +200,16 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     ) {
       throw new Error('Companion vessel turn projection is not current for the visible conversation');
     }
+    const wasActiveConversation = activeConversation;
+    const priorHead = companionTurnProjection?.conversationHeadSha256 ?? null;
     companionTurnProjection = projection;
     companionTurnDisposition = 'CURRENT';
     activeConversation = true;
     explicitSummoned = true;
     attentionSourceRef = null;
+    if (wasActiveConversation && priorHead !== projection.conversationHeadSha256) {
+      addMessage('guide', projection.content);
+    }
     projectPresenceState();
     return structuredClone(projection);
   }
@@ -346,7 +351,23 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
   function addMessage(kind, payload) { const normalized = typeof payload === 'string' ? { content: payload } : payload; records.push({ kind, content: normalized.content ?? null, contentRef: normalized.contentRef ?? null, contentParams: normalized.contentParams ?? {}, intentRef: normalized.intentRef ?? null, instanceRef: `instance.guide-message.${crypto.randomUUID()}` }); renderMessages(); }
   function beginActiveConversation() { activeConversation=true; explicitSummoned=true; attentionSourceRef=null; if (!state.guideMinimized) projectPresenceState(); }
   function askIntent(intentRef) { const promptRef = PROMPT_REF_BY_INTENT[intentRef]; if (!promptRef) throw new Error(`Unknown Guide intentRef: ${intentRef}`); beginActiveConversation(); addMessage('user', { contentRef: promptRef, intentRef }); addMessage('guide', { ...responseForIntent(intentRef), intentRef }); }
-  function ask(question) { beginActiveConversation(); addMessage('user', question); addMessage('guide', { contentRef: 'guide.answer.freeform', contentParams: { question } }); }
+  async function ask(question) {
+    beginActiveConversation();
+    addMessage('user', question);
+    if (typeof onFreeformAsk !== 'function') {
+      addMessage('guide', { contentRef: 'guide.answer.freeform', contentParams: { question } });
+      return Object.freeze({ state: 'LOCAL_GUIDE_FALLBACK' });
+    }
+    try {
+      const result = await onFreeformAsk(question);
+      if (result?.state === 'TURN_COMPLETED') return result;
+      addMessage('guide', { contentRef: 'health.value.unavailable', contentParams: {} });
+      return result ?? Object.freeze({ state: 'COMPANION_DELEGATION_UNAVAILABLE' });
+    } catch {
+      addMessage('guide', { contentRef: 'health.value.unavailable', contentParams: {} });
+      return Object.freeze({ state: 'COMPANION_DELEGATION_FAILED' });
+    }
+  }
   function setAttentionSource(sourceRef = null) {
     if (sourceRef !== null && !elementByRef.has(sourceRef)) throw new Error(`Unknown attentive sourceRef: ${sourceRef}`);
     attentionSourceRef=sourceRef;
@@ -413,7 +434,7 @@ export function createGuideController({ state, t, navigation, elementByRef, chat
     });
   }
   $$('[data-guide-intent-ref]').forEach((button) => button.addEventListener('click', () => askIntent(button.dataset.guideIntentRef)));
-  $('#guideComposer').addEventListener('submit', (event) => { event.preventDefault(); const input=$('#guideInput'); const value=input.value.trim(); if (!value) return; ask(value); input.value=''; });
+  $('#guideComposer').addEventListener('submit', (event) => { event.preventDefault(); const input=$('#guideInput'); const value=input.value.trim(); if (!value) return; void ask(value); input.value=''; });
   $('#guideToggle')?.addEventListener('click', () => setOpen(!state.guideOpen, { focus: !state.guideOpen, explicit:true }));
   $('#vexSummon')?.addEventListener('click', summon);
   $('#guideClose').addEventListener('click', () => setOpen(false,{explicit:true}));
