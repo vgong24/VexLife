@@ -315,7 +315,14 @@ chat=createChatController({
 familyRoom=createFamilyRoomController({state,projects,roles,channels,messages,conversationKey,t,navigation,chat,onChange:()=>queueMicrotask(()=>projectFrame())});
 familyRoom.bind();
 terrain=createTerrainController({state,blueprint,t,navigation,semanticPatchForNode,onCurrentNode:()=>{if(chat)queueMicrotask(()=>projectFrame());}});
-guide=createGuideController({state,t,navigation,elementByRef,chat});
+guide=createGuideController({
+  state,
+  t,
+  navigation,
+  elementByRef,
+  chat,
+  onFreeformAsk:(question)=>sendCurrentVexConversationMessage(question,{frameAtSend:navigation.semanticFrame()})
+});
 securityAccess=createSecurityAccessController({registry:blueprint.securityAccessPreview,t,guide});
 securityAccess.bind();
 const featureWalkthrough=createFeatureWalkthroughGuideAdapter({featureRegistry,experience,guide,navigation});
@@ -386,7 +393,7 @@ const CURRENT_VEX_CONVERSATION=Object.freeze({
   threadRef:'thread.self-development.open-conversation',
   channelRef:'channel.self-development.companion'
 });
-async function openCurrentVexConversation(){
+async function selectCurrentVexConversation(){
   const project=projects.find((item)=>item.projectRef===CURRENT_VEX_CONVERSATION.projectRef);
   const thread=project?.threads.find((item)=>item.threadRef===CURRENT_VEX_CONVERSATION.threadRef);
   if(!project||!thread)return Object.freeze({state:'HELD',reason:'CURRENT_VEX_CONVERSATION_SOURCE_UNAVAILABLE'});
@@ -395,18 +402,29 @@ async function openCurrentVexConversation(){
     .find((item)=>item.channelRef===CURRENT_VEX_CONVERSATION.channelRef&&item.kind==='DIRECT'&&item.roleKey==='companion');
   if(!companion)return Object.freeze({state:'HELD',reason:'CURRENT_VEX_RELATIONSHIP_UNAVAILABLE'});
   chat.selectChannel(companion,'element.channel.companion');
+  const currentness=await chat.refreshConversationCurrentness(companion);
+  return Object.freeze({state:'BOUND',...CURRENT_VEX_CONVERSATION,currentness});
+}
+async function sendCurrentVexConversationMessage(question,{frameAtSend=navigation.semanticFrame()}={}){
+  const selected=await selectCurrentVexConversation();
+  if(selected.state!=='BOUND')return selected;
+  return chat.sendCurrentCompanionMessage(question,{frameAtSend});
+}
+async function openCurrentVexConversation(){
+  const selected=await selectCurrentVexConversation();
+  if(selected.state!=='BOUND')return selected;
   if(uxEvolutionLocalExecution()){
     const projection=await setUxProjection(UX_EVOLUTION_PROJECTION);
     if(projection.state==='PASS'){
       const opened=await openEvolutionSurface(CONVERSATION_EVOLUTION_SURFACE_REF);
       if(opened.state==='OPEN'){
         projectFrame();
-        return Object.freeze({state:'OPEN',projection:UX_EVOLUTION_PROJECTION,...CURRENT_VEX_CONVERSATION});
+        return Object.freeze({state:'OPEN',projection:UX_EVOLUTION_PROJECTION,...CURRENT_VEX_CONVERSATION,currentness:selected.currentness});
       }
     }
   }
   openContext('chat','element.nav.chat');
-  return Object.freeze({state:'OPEN',projection:UX_REFERENCE_PROJECTION,...CURRENT_VEX_CONVERSATION});
+  return Object.freeze({state:'OPEN',projection:UX_REFERENCE_PROJECTION,...CURRENT_VEX_CONVERSATION,currentness:selected.currentness});
 }
 function bindPersistentVexConversationEntry(){
   const control=$('#guideClose');
@@ -456,7 +474,7 @@ chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.render
 void familyRoom.refresh();
 
 const purposeWorkspaceEvolution=createPurposeWorkspaceEvolutionAdapter({t,projectRefForTerrain:(terrainRef)=>TERRAIN_CONTEXT[terrainRef]?.projectRef??null});
-globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,familyRoom,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,openCurrentVexConversation,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,openHealth,refreshHealthCompanionAvailability,healthCompanionAvailability:healthCompanionAvailabilitySnapshot,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,explainSelectedArchitectureNode,familyComposerIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout,purposeWorkspaceEvolution,uxProjectionShell};
+globalThis.__VEXLIFE_APP__={state,projects,roles,channels,messages,chat,familyRoom,terrain,guide,featureWalkthrough,patientZeroWalkthrough,livingJournal,relationships,securityAccess,navigation,rootContract,t,openContext,selectCurrentVexConversation,sendCurrentVexConversationMessage,openCurrentVexConversation,openLivingJournal,loadLivingJournalMemory,loadLivingJournalArchive,returnLivingJournalToNow,openHealth,refreshHealthCompanionAvailability,healthCompanionAvailability:healthCompanionAvailabilitySnapshot,returnToTerrain,setWorkspaceOpen,projectFrame,projectVisibleVexIdentity,explainSelectedArchitectureNode,familyComposerIdentity,visibleVexName,visibleRoleLabel,contextWorkspaceSnapshot,setContextWorkspaceDock,setContextWorkspaceSplitFocus,setContextWorkspaceSize,resetContextWorkspaceLayout,applyContextWorkspaceLayout,purposeWorkspaceEvolution,uxProjectionShell};
 ensureConversationEvolutionStylesheet();
 ensurePurposeWorkspaceEvolutionStylesheet();
 registerEvolutionSurfaceAdapter(CONVERSATION_EVOLUTION_SURFACE_REF,createConversationEvolutionAdapter({state,chat,roles,messages,conversationKey,t}));

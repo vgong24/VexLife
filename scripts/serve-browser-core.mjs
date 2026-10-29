@@ -8,10 +8,12 @@ import {
   BROWSER_COMPANION_API_PATH,
   BROWSER_COMPANION_STREAM_API_PATH,
   BROWSER_COMPANION_STATUS_PATH,
+  BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH,
   BROWSER_COMPANION_RECOVERY_PATH,
   BROWSER_COMPANION_RECOVERY_MAX_BODY_BYTES,
   BrowserCompanionBridgeError,
   browserCompanionFailurePayload,
+  browserCompanionConversationCurrentnessFailurePayload,
   browserCompanionRecoveryFailurePayload,
   createBrowserCompanionBridge,
   formBrowserCompanionRecoveryRequest,
@@ -1917,6 +1919,38 @@ export function createVexLifeBrowserServer({
             ? error
             : new BrowserCompanionBridgeError('COMPANION_RECOVERY_ACTION_FAILED', 'Companion recovery action failed safely', 500);
           sendJson(response, typed.httpStatus, browserCompanionRecoveryFailurePayload(typed));
+        }
+        return;
+      }
+
+      if (url.pathname === BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH) {
+        if (request.method !== 'GET') {
+          response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          if (typeof companionBridge?.conversationCurrentness !== 'function') {
+            throw new BrowserCompanionBridgeError('COMPANION_CONVERSATION_CURRENTNESS_UNAVAILABLE', 'Canonical Conversation currentness reader is unavailable', 503);
+          }
+          const allowed = new Set(['projectRef', 'threadRef', 'channelRef']);
+          const supplied = [...url.searchParams.keys()];
+          if (supplied.some((key) => !allowed.has(key))) {
+            throw new BrowserCompanionBridgeError('COMPANION_CURRENTNESS_REQUEST_NOT_ADMITTED', 'Conversation currentness query contains unadmitted fields', 400);
+          }
+          const values = Object.fromEntries([...allowed].map((key) => {
+            const entries = url.searchParams.getAll(key);
+            if (entries.length !== 1) {
+              throw new BrowserCompanionBridgeError('COMPANION_CURRENTNESS_REQUEST_NOT_ADMITTED', 'Conversation currentness query requires exact project/thread/channel identity', 400);
+            }
+            return [key, entries[0]];
+          }));
+          sendJson(response, 200, companionBridge.conversationCurrentness(values));
+        } catch (error) {
+          const typed = error instanceof BrowserCompanionBridgeError
+            ? error
+            : new BrowserCompanionBridgeError('COMPANION_CONVERSATION_CURRENTNESS_FAILED', 'Canonical Conversation currentness read failed safely', 500);
+          sendJson(response, typed.httpStatus, browserCompanionConversationCurrentnessFailurePayload(typed));
         }
         return;
       }

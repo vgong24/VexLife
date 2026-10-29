@@ -20,6 +20,7 @@ const THREAD_NODE = {
 
 export const BROWSER_COMPANION_AVAILABILITY_PATH = '/api/v1/companion/availability';
 export const BROWSER_COMPANION_RECOVERY_ACTION_PATH = '/api/v1/companion/recovery-action';
+export const BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH = '/api/v1/companion/conversation-currentness';
 export const BROWSER_COMPANION_STREAM_API_PATH = '/api/v1/companion/turn/stream';
 export const BROWSER_COMPANION_STREAM_FRAME_SCHEMA = 'vexlife.browser-companion-turn-stream-frame/v1';
 
@@ -447,6 +448,116 @@ export function createChatController({ state, projects, roles, channels, message
   let companionRecoveryPending = false;
   let companionRecoveryFailure = false;
   let companionVesselProjectionState = 'UNBOUND';
+  const conversationCurrentnessByKey = new Map();
+
+  function canonicalConversationIdentity(channel = currentChannel()) {
+    if (!channel) {
+      return Object.freeze({
+        schemaVersion: 'vexlife.browser-canonical-conversation-identity/v1',
+        currentness: 'UNAVAILABLE',
+        projectRef: null,
+        threadRef: null,
+        channelRef: null,
+        headMessageRefOrNull: null,
+        headSequenceOrNull: null,
+        canonicalConversationHeadSha256: null,
+        headUpdatedAtOrNull: null,
+        effectsPerformed: false
+      });
+    }
+    const observed = conversationCurrentnessByKey.get(keyForChannel(channel)) ?? null;
+    return Object.freeze({
+      schemaVersion: 'vexlife.browser-canonical-conversation-identity/v1',
+      currentness: observed?.state ?? 'UNREAD',
+      projectRef: channel.projectRef,
+      threadRef: channel.threadRef,
+      channelRef: channel.channelRef,
+      headMessageRefOrNull: observed?.headMessageRefOrNull ?? null,
+      headSequenceOrNull: observed?.headSequenceOrNull ?? null,
+      canonicalConversationHeadSha256: observed?.canonicalConversationHeadSha256 ?? null,
+      headUpdatedAtOrNull: observed?.headUpdatedAtOrNull ?? null,
+      effectsPerformed: false
+    });
+  }
+
+  function rememberConversationCurrentness(channel, value) {
+    const key = keyForChannel(channel);
+    conversationCurrentnessByKey.set(key, Object.freeze({ ...value }));
+    if (currentChannel()?.channelRef === channel.channelRef) renderContext();
+    return canonicalConversationIdentity(channel);
+  }
+
+  async function refreshConversationCurrentness(channel = currentChannel()) {
+    if (!channel || channel.roleKey !== 'companion') {
+      return canonicalConversationIdentity(channel);
+    }
+    const query = new URLSearchParams({
+      projectRef: channel.projectRef,
+      threadRef: channel.threadRef,
+      channelRef: channel.channelRef
+    });
+    try {
+      const response = await fetch(`${BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH}?${query.toString()}`, {
+        method: 'GET',
+        cache: 'no-store'
+      });
+      const body = await response.json();
+      const exactState = ['ABSENT', 'EMPTY', 'CURRENT'].includes(body?.state);
+      const exactIdentity = body?.schemaVersion === 'vexlife.browser-companion-conversation-currentness/v1'
+        && body?.truthClass === 'CURRENT_LOCAL_CONVERSATION_IDENTITY'
+        && body?.projectRef === channel.projectRef
+        && body?.threadRef === channel.threadRef
+        && body?.channelRef === channel.channelRef
+        && body?.effectsPerformed === false;
+      const headValid = body?.state === 'CURRENT'
+        ? typeof body.canonicalConversationHeadSha256 === 'string'
+          && /^[0-9a-f]{64}$/u.test(body.canonicalConversationHeadSha256)
+          && typeof body.headMessageRefOrNull === 'string'
+          && Number.isInteger(body.headSequenceOrNull)
+        : body?.canonicalConversationHeadSha256 === null
+          && body?.headMessageRefOrNull === null
+          && body?.headSequenceOrNull === null;
+      if (!response.ok || !exactState || !exactIdentity || !headValid) {
+        throw new Error('Canonical Conversation currentness projection is invalid');
+      }
+      return rememberConversationCurrentness(channel, {
+        state: body.state,
+        headMessageRefOrNull: body.headMessageRefOrNull,
+        headSequenceOrNull: body.headSequenceOrNull,
+        canonicalConversationHeadSha256: body.canonicalConversationHeadSha256,
+        headUpdatedAtOrNull: body.headUpdatedAtOrNull ?? null
+      });
+    } catch {
+      return rememberConversationCurrentness(channel, {
+        state: 'UNAVAILABLE',
+        headMessageRefOrNull: null,
+        headSequenceOrNull: null,
+        canonicalConversationHeadSha256: null,
+        headUpdatedAtOrNull: null
+      });
+    }
+  }
+
+  function bindCanonicalConversationHead(channel, { headSha256, messageRef, sequence, updatedAtOrNull = null } = {}) {
+    if (
+      typeof headSha256 !== 'string'
+      || !/^[0-9a-f]{64}$/u.test(headSha256)
+      || typeof messageRef !== 'string'
+      || !messageRef
+      || !Number.isInteger(sequence)
+      || sequence < 0
+    ) {
+      return canonicalConversationIdentity(channel);
+    }
+    return rememberConversationCurrentness(channel, {
+      state: 'CURRENT',
+      headMessageRefOrNull: messageRef,
+      headSequenceOrNull: sequence,
+      canonicalConversationHeadSha256: headSha256,
+      headUpdatedAtOrNull: updatedAtOrNull
+    });
+  }
+
   if (onCompanionTurnCompleted !== null && typeof onCompanionTurnCompleted !== 'function') {
     throw new TypeError('onCompanionTurnCompleted must be a function or null');
   }
@@ -1079,6 +1190,7 @@ export function createChatController({ state, projects, roles, channels, message
     article.dataset.instanceRef = `instance.message-row.${message.messageRef}`;
     article.dataset.truthClass = message.truthClass || 'CURRENT_SYNTHETIC_REFERENCE';
     if (message.conversationHeadSha256) article.dataset.conversationHeadSha256 = message.conversationHeadSha256;
+    if (message.canonicalConversationHeadSha256) article.dataset.canonicalConversationHeadSha256 = message.canonicalConversationHeadSha256;
     if (message.modelNameOrBoundedTestProfileRef) article.dataset.modelRef = message.modelNameOrBoundedTestProfileRef;
     const speaker = roleLabel(message.speakerKey);
     const recipients = message.recipientKeys.map(roleLabel).join(', ');
@@ -1203,7 +1315,15 @@ export function createChatController({ state, projects, roles, channels, message
 
   function renderContext() {
     const channel = currentChannel();
-    $('#contextSummary').innerHTML = [
+    const identity = canonicalConversationIdentity(channel);
+    const summary = $('#contextSummary');
+    summary.dataset.projectRef = identity.projectRef ?? '';
+    summary.dataset.threadRef = identity.threadRef ?? '';
+    summary.dataset.channelRef = identity.channelRef ?? '';
+    summary.dataset.canonicalConversationCurrentness = identity.currentness;
+    if (identity.canonicalConversationHeadSha256) summary.dataset.canonicalConversationHeadSha256 = identity.canonicalConversationHeadSha256;
+    else delete summary.dataset.canonicalConversationHeadSha256;
+    summary.innerHTML = [
       [t('context.project'), t(currentProject().stringRef)],
       [t('context.thread'), t(currentThread().stringRef)],
       [t('context.channel'), t(channel.labelRef)],
@@ -1369,6 +1489,11 @@ export function createChatController({ state, projects, roles, channels, message
           sourceMessage.truthClass = 'DURABLE_CONVERSATION_HUMAN';
           sourceMessage.canonicalConversationHeadSha256 = body.canonicalConversationHeadSha256 ?? null;
           sourceMessage.companionAttentionState = 'FAILED_AFTER_DURABLE_SEND';
+          bindCanonicalConversationHead(channel, {
+            headSha256: body.canonicalConversationHeadSha256,
+            messageRef: body.requestMessageRef,
+            sequence: body.humanMessageSequence
+          });
           renderMessages();
           return false;
         }
@@ -1388,6 +1513,12 @@ export function createChatController({ state, projects, roles, channels, message
       message.truthClass = 'CURRENT_LOCAL_MODEL';
       if (body.responseSemanticRelay) message.semanticRelay = body.responseSemanticRelay;
       message.conversationHeadSha256 = body.conversationHeadSha256;
+      message.canonicalConversationHeadSha256 = body.canonicalConversationHeadSha256 ?? null;
+      bindCanonicalConversationHead(channel, {
+        headSha256: body.canonicalConversationHeadSha256,
+        messageRef: body.responseMessageRef,
+        sequence: body.companionMessageSequence
+      });
       message.modelNameOrBoundedTestProfileRef = body.modelNameOrBoundedTestProfileRef;
       message.modelTurnFormation = projectBrowserModelTurnFormation({
         modelTurnWitness: body.modelTurnWitness ?? null,
@@ -1426,6 +1557,37 @@ export function createChatController({ state, projects, roles, channels, message
       companionTurnPending = false;
       await refreshCompanionAvailability();
     }
+  }
+
+  async function sendCurrentCompanionMessage(content, { frameAtSend = navigation.semanticFrame() } = {}) {
+    const text = typeof content === 'string' ? content.trim() : '';
+    if (!text) return Object.freeze({ state: 'EMPTY_MESSAGE' });
+    const channel = currentChannel();
+    if (!channel || channel.roleKey !== 'companion') {
+      return Object.freeze({ state: 'CURRENT_CHANNEL_NOT_COMPANION' });
+    }
+    if (!channelIsAvailable(channel) && !companionTurnPending) {
+      await refreshCompanionAvailability();
+    }
+    if (!channelIsAvailable(channel) || companionTurnPending) {
+      return Object.freeze({ state: 'COMPANION_NOT_READY' });
+    }
+    const recipients = channel.memberKeys.filter((key) => key !== 'victor');
+    const list = listForChannel(channel);
+    const message = createMessage(channel.channelRef, 'victor', recipients, text, list.length);
+    message.sendIdempotencyKey = `browser-send.${globalThis.crypto.randomUUID()}`;
+    list.push(message);
+    appendMessageNode(message);
+    if (state.unsentLocalDraft?.channelRef === channel.channelRef) state.unsentLocalDraft = null;
+    renderComposerTruth();
+    const completed = await requestRealCompanionReply(channel, text, frameAtSend, { sourceMessage: message });
+    return Object.freeze({
+      state: completed ? 'TURN_COMPLETED' : 'TURN_NOT_COMPLETED',
+      projectRef: channel.projectRef,
+      threadRef: channel.threadRef,
+      channelRef: channel.channelRef,
+      requestMessageRef: message.messageRef
+    });
   }
 
   function setVexAvailability(nextState) {
@@ -1543,6 +1705,9 @@ export function createChatController({ state, projects, roles, channels, message
     renderContext,
     setVexAvailability,
     refreshCompanionAvailability,
+    refreshConversationCurrentness,
+    canonicalConversationIdentity,
+    sendCurrentCompanionMessage,
     setSemanticRelayInput,
     setSemanticRelayAttention,
     semanticRelayAttention: () => semanticRelayAttention?.publicAttention && semanticRelayScopeMatches(semanticRelayAttention.scope)

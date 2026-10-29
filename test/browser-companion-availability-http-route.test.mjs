@@ -5,7 +5,10 @@ import {
   BROWSER_COMPANION_AVAILABILITY_PATH,
   createVexLifeBrowserServer
 } from '../scripts/serve-browser.mjs';
-import { BROWSER_COMPANION_STATUS_PATH } from '../src/core/browser-companion-bridge.mjs';
+import {
+  BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH,
+  BROWSER_COMPANION_STATUS_PATH
+} from '../src/core/browser-companion-bridge.mjs';
 
 async function withServer(options, run) {
   const server = createVexLifeBrowserServer(options);
@@ -62,6 +65,56 @@ function assertNoAuthority(body) {
   assert.equal(body.processAuthorityGranted, false);
   assert.equal(body.conversationAuthorityGranted, false);
 }
+
+test('Conversation currentness route is exact-identity GET-only and delegates no message content', async () => {
+  const calls = [];
+  const companionBridge = {
+    conversationCurrentness(input) {
+      calls.push(input);
+      return Object.freeze({
+        schemaVersion: 'vexlife.browser-companion-conversation-currentness/v1',
+        state: 'CURRENT',
+        truthClass: 'CURRENT_LOCAL_CONVERSATION_IDENTITY',
+        ...input,
+        channelSha256: 'a'.repeat(64),
+        channelRecordSha256: 'b'.repeat(64),
+        headMessageRefOrNull: 'message.current.001',
+        headSequenceOrNull: 7,
+        canonicalConversationHeadSha256: 'c'.repeat(64),
+        headUpdatedAtOrNull: '2026-10-29T00:00:00.000Z',
+        effectsPerformed: false
+      });
+    }
+  };
+  await withServer({ companionBridge }, async (base) => {
+    const query = new URLSearchParams({
+      projectRef: 'project.self-development',
+      threadRef: 'thread.self-development.open-conversation',
+      channelRef: 'channel.self-development.companion'
+    });
+    const response = await fetch(`${base}${BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH}?${query.toString()}`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.state, 'CURRENT');
+    assert.equal(body.canonicalConversationHeadSha256, 'c'.repeat(64));
+    assert.equal(body.effectsPerformed, false);
+    assert.deepEqual(calls, [{
+      projectRef: 'project.self-development',
+      threadRef: 'thread.self-development.open-conversation',
+      channelRef: 'channel.self-development.companion'
+    }]);
+
+    const bad = await fetch(`${base}${BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH}?projectRef=project.self-development`);
+    assert.equal(bad.status, 400);
+    const held = await bad.json();
+    assert.equal(held.state, 'HELD');
+    assert.equal(held.effectsPerformed, false);
+
+    const post = await fetch(`${base}${BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH}?${query.toString()}`, { method: 'POST' });
+    assert.equal(post.status, 405);
+    assert.equal(post.headers.get('allow'), 'GET');
+  });
+});
 
 test('availability route composes exact VR01 READY truth from injected foreign evidence', async () => {
   await withServer({
