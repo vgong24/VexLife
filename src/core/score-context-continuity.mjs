@@ -790,6 +790,12 @@ function expectedEvidenceClassForState(statementState) {
   }[statementState] ?? null;
 }
 
+function expectedTransitionStateForKind(transitionKind) {
+  return transitionKind === 'CORRECTS' ? 'CORRECTED'
+    : transitionKind === 'SUPERSEDES' ? 'SUPERSEDED'
+      : transitionKind === 'RELEASES_OR_TOMBSTONES' ? 'RELEASED_OR_TOMBSTONED' : null;
+}
+
 function assertSemanticAcceptance(value, candidate, evidence, consent) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'semantic acceptance is missing');
   expectedRefAndHash(value, 'acceptanceRef', 'acceptanceSha256', 'score-semantic-acceptance', 'SCORE_SEMANTIC_ACCEPTANCE_INVALID');
@@ -821,14 +827,17 @@ function assertSemanticAcceptance(value, candidate, evidence, consent) {
   if (JSON.stringify(value.classificationEvidenceBindings) !== JSON.stringify(expectedBindings)) {
     fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'acceptance classification evidence bindings are substituted');
   }
-  const expectedClass = expectedEvidenceClassForState(value.statementState);
-  const semanticEvidence = evidence.filter((item) => item.evidenceClass === expectedClass && item.transitionKind === 'NONE');
-  if (!expectedClass || semanticEvidence.length === 0 || !evidence.every((item) =>
+  if (!evidence.every((item) =>
       item.assertedMemoryRelation === value.memoryRelation && item.assertedStatementState === value.statementState &&
       item.assertedSummarySha256 === value.acceptedSummarySha256)) {
     fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'acceptance semantic fields are not exactly authorized by classification evidence');
   }
   if (value.transitionKind === 'NONE') {
+    const expectedClass = expectedEvidenceClassForState(value.statementState);
+    const semanticEvidence = evidence.filter((item) => item.evidenceClass === expectedClass && item.transitionKind === 'NONE');
+    if (!expectedClass || semanticEvidence.length === 0) {
+      fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'non-transition acceptance lacks exact semantic classification authority');
+    }
     if (value.transitionTargetRef !== null || value.transitionTargetAcceptanceSha256 !== null ||
         evidence.some((item) => item.transitionKind !== 'NONE')) {
       fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'non-transition acceptance carries predecessor authority');
@@ -836,11 +845,20 @@ function assertSemanticAcceptance(value, candidate, evidence, consent) {
   } else {
     const transitionClass = value.transitionKind === 'CORRECTS' ? 'CORRECTION_ACCEPTANCE'
       : value.transitionKind === 'SUPERSEDES' ? 'SUPERSESSION_ACCEPTANCE' : 'RELEASE_TOMBSTONE_AUTHORITY';
+    const expectedTransitionState = expectedTransitionStateForKind(value.transitionKind);
     const transitionEvidence = evidence.filter((item) => item.evidenceClass === transitionClass && item.transitionKind === value.transitionKind);
     if (!value.transitionTargetRef || !SHA256.test(value.transitionTargetAcceptanceSha256 ?? '') || transitionEvidence.length === 0 ||
         !transitionEvidence.every((item) => item.transitionTargetRef === value.transitionTargetRef &&
           item.transitionTargetAcceptanceSha256 === value.transitionTargetAcceptanceSha256)) {
       fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'transition acceptance does not bind exact predecessor authority');
+    }
+    if (value.statementState !== expectedTransitionState) {
+      const expectedLegacyClass = expectedEvidenceClassForState(value.statementState);
+      const legacySemanticEvidence = evidence.filter((item) =>
+        item.evidenceClass === expectedLegacyClass && item.transitionKind === 'NONE');
+      if (!expectedLegacyClass || legacySemanticEvidence.length === 0) {
+        fail('SCORE_SEMANTIC_ACCEPTANCE_INVALID', 'transition semantic state is neither SDK-canonical nor historically authorized');
+      }
     }
   }
   if (value.acceptedForContinuity) {
