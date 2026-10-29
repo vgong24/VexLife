@@ -29,8 +29,8 @@
     {
       "path": "test/capability-assimilation-runtime.test.mjs",
       "mode": "100644",
-      "bytes": 21500,
-      "sha256": "47960dc81fe066099c74294d099267645cc0f063ed86ca866e43049862eb039c"
+      "bytes": 22588,
+      "sha256": "e955195e16dc65de9a35acc501cc5d9001a31b28ceaaeb252cf9ed47539261a8"
     },
     {
       "path": "test/implementation-plan.test.mjs",

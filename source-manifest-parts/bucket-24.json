@@ -23,8 +23,8 @@
     {
       "path": "src/core/vex-self-capability-frame.mjs",
       "mode": "100644",
-      "bytes": 7228,
-      "sha256": "bf9ad13c53eac40b263c42dd3e851a29f5b6d06f51e4409e44d79efd3064ef83"
+      "bytes": 7442,
+      "sha256": "707782cb12eb864f9a6b343a4b422d84dd044ff8afea14e0b6c5ab46a10217a2"
     },
     {
       "path": "test/macos-source-rotation.test.mjs",
