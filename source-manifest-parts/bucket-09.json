@@ -35,8 +35,8 @@
     {
       "path": "test/score-context-continuity.test.mjs",
       "mode": "100644",
-      "bytes": 57463,
-      "sha256": "99fcc88d1940e7c58e8e2bd0b6ec74053ef48eaabea56fe8c0008ec77de5de22"
+      "bytes": 59515,
+      "sha256": "b6d66172941521b1b2ccb5224324d02cddf257c6c6339817a6a4f6cda152ba5a"
     }
   ]
 }

@@ -230,6 +230,12 @@ function transitionEvidenceClass(transitionKind) {
       : transitionKind === 'RELEASES_OR_TOMBSTONES' ? 'RELEASE_TOMBSTONE_AUTHORITY' : null;
 }
 
+function canonicalTransitionStatementState(transitionKind) {
+  return transitionKind === 'CORRECTS' ? 'CORRECTED'
+    : transitionKind === 'SUPERSEDES' ? 'SUPERSEDED'
+      : transitionKind === 'RELEASES_OR_TOMBSTONES' ? 'RELEASED_OR_TOMBSTONED' : null;
+}
+
 function seedSemanticAuthority(ids, g01, input = {}) {
   const source = input.source ?? g01.first;
   const sourceEvents = input.sourceEvents ?? [source.requestEvent, source.responseEvent];
@@ -242,7 +248,12 @@ function seedSemanticAuthority(ids, g01, input = {}) {
   const transitionKind = input.transitionKind ?? (input.correctsStatementRef ? 'CORRECTS'
     : input.supersedesStatementRef ? 'SUPERSEDES'
       : input.releasesOrTombstonesStatementRef ? 'RELEASES_OR_TOMBSTONES' : 'NONE');
-  const statementState = input.statementState ?? (transitionKind === 'RELEASES_OR_TOMBSTONES' ? 'RELEASED_OR_TOMBSTONED' : 'HUMAN_CONFIRMED');
+  const sdkCanonicalTransition = input.sdkCanonicalTransition === true;
+  const statementState = input.statementState ?? (
+    sdkCanonicalTransition && transitionKind !== 'NONE'
+      ? canonicalTransitionStatementState(transitionKind)
+      : transitionKind === 'RELEASES_OR_TOMBSTONES' ? 'RELEASED_OR_TOMBSTONED' : 'HUMAN_CONFIRMED'
+  );
   const candidate = createScoreSemanticCandidate({
     sourceLineageRef: ids.companionLineageRef,
     sourceThreadRef: ids.threadRef,
@@ -303,11 +314,19 @@ function seedSemanticAuthority(ids, g01, input = {}) {
     return addressed('score-classification-evidence', 'classificationEvidenceRef', 'classificationEvidenceSha256', evidenceCore);
   }
 
-  const primaryEvidenceClass = input.evidenceClass ?? classificationEvidenceClass(statementState);
-  if (!primaryEvidenceClass) throw new Error(`No fixture evidence class for ${statementState}`);
-  const evidence = [makeEvidence(primaryEvidenceClass, transitionKind === 'RELEASES_OR_TOMBSTONES' ? transitionKind : 'NONE', 1)];
-  const transitionClass = transitionKind !== 'NONE' && transitionKind !== 'RELEASES_OR_TOMBSTONES' ? transitionEvidenceClass(transitionKind) : null;
-  if (transitionClass) evidence.push(makeEvidence(transitionClass, transitionKind, 2));
+  let evidence;
+  if (sdkCanonicalTransition && transitionKind !== 'NONE') {
+    const transitionClass = transitionEvidenceClass(transitionKind);
+    if (!transitionClass) throw new Error(`No SDK transition evidence class for ${transitionKind}`);
+    evidence = [makeEvidence(transitionClass, transitionKind, 1)];
+  } else {
+    const primaryEvidenceClass = input.evidenceClass ?? classificationEvidenceClass(statementState);
+    if (!primaryEvidenceClass) throw new Error(`No fixture evidence class for ${statementState}`);
+    evidence = [makeEvidence(primaryEvidenceClass, transitionKind === 'RELEASES_OR_TOMBSTONES' ? transitionKind : 'NONE', 1)];
+    const transitionClass = transitionKind !== 'NONE' && transitionKind !== 'RELEASES_OR_TOMBSTONES'
+      ? transitionEvidenceClass(transitionKind) : null;
+    if (transitionClass) evidence.push(makeEvidence(transitionClass, transitionKind, 2));
+  }
 
   const consentDisposition = input.consentDisposition ?? 'PERMITTED';
   const positiveConsent = ['PERMITTED', 'NARROWED'].includes(consentDisposition);
@@ -574,6 +593,33 @@ test('correction and supersession preserve exact semantic subject/relation and p
   assert.equal(state.statements.find((x) => x.statementRef === 'statement.g02.one').effectiveState, 'CORRECTED');
   assert.equal(state.statements.find((x) => x.statementRef === 'statement.g02.two').effectiveState, 'SUPERSEDED');
   assert.deepEqual(state.currentStatementRefs, ['statement.g02.three']);
+});
+
+test('SDK-canonical supersession state/evidence is accepted and currentizes the same semantic subject', () => {
+  const ids = tempHome();
+  const g01 = committedG01(ids);
+  append(ids, g01);
+  const before = loadScoreContextState(ids);
+  const prior = before.statements.find((item) => item.statementRef === 'statement.g02.one');
+
+  append(ids, g01, {
+    source: g01.second,
+    sourceConversationHeadSha256: g01.head.conversationHeadSha256,
+    statementRef: 'statement.g02.sdk-supersession',
+    supersedesStatementRef: prior.statementRef,
+    summary: prior.summary,
+    memoryRelation: prior.memoryRelation,
+    sdkCanonicalTransition: true
+  });
+
+  const state = loadScoreContextState(ids);
+  const predecessor = state.statements.find((item) => item.statementRef === prior.statementRef);
+  const successor = state.statements.find((item) => item.statementRef === 'statement.g02.sdk-supersession');
+  assert.equal(predecessor.effectiveState, 'SUPERSEDED');
+  assert.equal(successor.recordedStatementState, 'SUPERSEDED');
+  assert.equal(successor.acceptedForContinuity, true);
+  assert.deepEqual(state.currentStatementRefs, ['statement.g02.sdk-supersession']);
+  assert.equal(state.head.sourceConversationHeadSha256, g01.head.conversationHeadSha256);
 });
 
 test('cross-subject and cross-relation correction/supersession fail closed', () => {
