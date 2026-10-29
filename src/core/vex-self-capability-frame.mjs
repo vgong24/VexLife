@@ -42,10 +42,8 @@ function validateProjection(projection) {
     throw new TypeError('model-connection projection content address is invalid');
   }
 }
-function currentContext(value) {
-  if (!object(value)) throw new TypeError('currentContext must be one bounded reference object');
-  const extras = Object.keys(value).filter((key) => !CONTEXT_KEYS.includes(key));
-  if (extras.length) throw new TypeError(`currentContext contains unadmitted fields: ${extras.sort().join(', ')}`);
+export function projectVexSelfCapabilityCurrentContext(value = {}) {
+  if (!object(value)) throw new TypeError('currentContext source must be one object');
   const output = {};
   for (const key of CONTEXT_KEYS) {
     const item = value[key] ?? null;
@@ -53,6 +51,12 @@ function currentContext(value) {
     output[key] = item;
   }
   return Object.freeze(output);
+}
+function currentContext(value) {
+  if (!object(value)) throw new TypeError('currentContext must be one bounded reference object');
+  const extras = Object.keys(value).filter((key) => !CONTEXT_KEYS.includes(key));
+  if (extras.length) throw new TypeError(`currentContext contains unadmitted fields: ${extras.sort().join(', ')}`);
+  return projectVexSelfCapabilityCurrentContext(value);
 }
 function selfCapabilityEntry(entry) {
   return freezeDeep({

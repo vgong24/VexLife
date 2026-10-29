@@ -23,6 +23,7 @@ import {
 } from './scheduler-runtime-observer.mjs';
 import { createToolCall, ToolResultRelay } from './tool-result-relay.mjs';
 import { semanticHash } from './utils.mjs';
+import { projectVexSelfCapabilityCurrentContext } from './vex-self-capability-frame.mjs';
 
 export const CAPABILITY_ASSIMILATION_MODES = Object.freeze({
   DIRECT_SINGLE_TURN: 'DIRECT_SINGLE_TURN',
@@ -930,7 +931,7 @@ function defaultExecutors({ capabilityRegistry, processFactoryDefinition, frame,
   };
 }
 
-function requestPrompt(taskIntent, frontier, authorizedEffectCue = null) {
+function requestPrompt(taskIntent, frontier, currentContext, authorizedEffectCue = null) {
   return [
     'VEXLIFE_CAPABILITY_REQUEST_FORMATION/v1',
     authorizedEffectCue
@@ -943,12 +944,13 @@ function requestPrompt(taskIntent, frontier, authorizedEffectCue = null) {
     'No-read schema: {"intentDisposition":"NO_READ_ONLY_FUNCTION_NEEDED","requests":[]}',
     `AUTHORIZED_EFFECT_CUE=${JSON.stringify(authorizedEffectCue)}`,
     `FRESH_COMPANION_FOUNDATION_FRAME=${JSON.stringify(FRESH_COMPANION_FOUNDATION_FRAME)}`,
+    `CURRENT_CONTEXT=${JSON.stringify(currentContext)}`,
     `TASK_INTENT=${JSON.stringify(taskIntent)}`,
     `COMPACT_CAPABILITY_FRONTIER=${JSON.stringify(frontier)}`
   ].join('\n');
 }
 
-function synthesisPrompt(taskIntent, observations, held) {
+function synthesisPrompt(taskIntent, observations, held, frontier, currentContext) {
   const bounded = observations.map((observation) => ({
     observationRef: observation.observationRef,
     capabilityRef: observation.summary.capabilityRef,
@@ -963,7 +965,9 @@ function synthesisPrompt(taskIntent, observations, held) {
     'Do not claim effects, sources, competence, currentness, or authority beyond the supplied evidence.',
     'Do not reveal hidden reasoning. Return only the final human-facing answer.',
     `FRESH_COMPANION_FOUNDATION_FRAME=${JSON.stringify(FRESH_COMPANION_FOUNDATION_FRAME)}`,
+    `CURRENT_CONTEXT=${JSON.stringify(currentContext)}`,
     `TASK_INTENT=${JSON.stringify(taskIntent)}`,
+    `COMPACT_CAPABILITY_FRONTIER=${JSON.stringify(frontier)}`,
     `SOURCE_BOUND_OBSERVATIONS=${JSON.stringify(bounded)}`,
     `HELD_OR_UNKNOWN_NODES=${JSON.stringify(held)}`
   ].join('\n');
@@ -1244,13 +1248,14 @@ export function createCapabilityAssimilationRuntime({
       visibleCapabilityCount: frontier.entries.length,
       rootKernelCount: frontier.rootCapabilityKernel.length
     }));
+    const currentContext = projectVexSelfCapabilityCurrentContext(context);
 
     const requestPhase = await gatedInference({
       phaseRef: `model-phase.${context.taskRef ?? semanticHash(taskIntent).slice(0, 16)}.request-formation`,
       inference,
       input: {
         endpointProfile,
-          requestContent: requestPrompt(taskIntent, frontier, admittedAuthorizedEffect ? {
+          requestContent: requestPrompt(taskIntent, frontier, currentContext, admittedAuthorizedEffect ? {
             capabilityRef: TYPED_COMMAND_CAPABILITY_REF,
             commandRef: admittedAuthorizedEffect.commandRef,
             parameters: clone(admittedAuthorizedEffect.parametersTemplate ?? {})
@@ -1276,7 +1281,7 @@ export function createCapabilityAssimilationRuntime({
         inference,
         input: {
           endpointProfile,
-          requestContent: synthesisPrompt(taskIntent, [], []),
+          requestContent: synthesisPrompt(taskIntent, [], [], frontier, currentContext),
           inMemoryAuthorization,
           timeoutMs,
           ...(responseDeltaObserver ? { responseDeltaObserver } : {})
@@ -1644,7 +1649,7 @@ export function createCapabilityAssimilationRuntime({
       inference,
       input: {
         endpointProfile,
-        requestContent: synthesisPrompt(taskIntent, observations, held),
+        requestContent: synthesisPrompt(taskIntent, observations, held, frontier, currentContext),
         inMemoryAuthorization,
         timeoutMs,
         ...(responseDeltaObserver ? { responseDeltaObserver } : {})
