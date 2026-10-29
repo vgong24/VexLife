@@ -633,4 +633,297 @@ test('VexLife Heretic runtime carries and retires the exact launchd lifetime sub
   assert.equal(live.has(pid), false);
 });
 
+
+
+test('VexLife Heretic launchd start waits beyond the former five-second identity window for the same exact-owned process predicate', async () => {
+  const binding = formHereticRuntimeOwnerBinding({
+    authorityRef: 'authority.test.heretic.launchd-delayed-identity',
+    modelPath: '/tmp/model-launchd-delayed',
+    pythonEnvironmentRoot: '/tmp/env-launchd-delayed',
+    port: 8765,
+    receiptPath: '/tmp/runtime/launchd-delayed-receipt.json'
+  });
+  const pid = 9393;
+  let receipt = null;
+  let elapsedMs = 0;
+  let identityCalls = 0;
+  const writes = [];
+  const processSubstrate = {
+    schemaVersion: 'vexlife.macos-user-launchd-process/v1',
+    substrateRef: 'substrate.vexlife.macos-user-launchd-process.001',
+    label: 'com.vexlife.heretic.test-delayed-identity',
+    domainTarget: 'gui/501',
+    plistPath: '/tmp/runtime/launchd/delayed.plist',
+    programPath: '/tmp/env-launchd-delayed/bin/python',
+    programArguments: ['-m', 'mlx_lm.server'],
+    workingDirectory: '/tmp/env-launchd-delayed',
+    stdoutPath: '/tmp/runtime/launchd-delayed.out.log',
+    stderrPath: '/tmp/runtime/launchd-delayed.err.log',
+    keepAlive: false,
+    pid,
+  };
+  const hooks = {
+    host: { platform: 'darwin', architecture: 'arm64' },
+    versionProbe: async () => ({
+      pythonVersion: HERETIC_PYTHON_VERSION,
+      mlxLmVersion: HERETIC_MLX_LM_VERSION,
+      prefix: '/tmp/env-launchd-delayed',
+      executable: '/tmp/env-launchd-delayed/bin/python'
+    }),
+    readReceipt: () => receipt,
+    writeReceipt: (_path, value) => { receipt = value; writes.push(value.state); },
+    deleteReceipt: () => { receipt = null; },
+    processAlive: () => true,
+    processIdentity: ({ pid: value }) => {
+      identityCalls += 1;
+      return elapsedMs >= 5500
+        ? { pid: value, pgid: value, commandMatches: true, exactOwnedDetachedGroup: true }
+        : { pid: value, pgid: value, commandMatches: false, exactOwnedDetachedGroup: false };
+    },
+    observeProcessSubstrate: () => ({ state: 'RUNNING', pid }),
+    listMatchingProcesses: async () => [],
+    portOccupied: async () => false,
+    spawnRuntime: async () => ({ pid, processSubstrate }),
+    terminateRuntime: async () => { throw new Error('delayed-but-valid exact launchd process must not be retired'); },
+    endpointHealthy: async () => true,
+    fetchImpl: async (url) => {
+      if (url.endsWith('/health')) return { ok: true, json: async () => ({ status: 'ok' }) };
+      if (url.endsWith('/v1/models')) return { ok: true, json: async () => ({ data: [{ id: '/tmp/model-launchd-delayed' }] }) };
+      if (url.endsWith('/v1/chat/completions')) return { ok: true, json: async () => ({ model: 'default_model', choices: [{ message: { content: 'OK' } }] }) };
+      throw new Error(`unexpected URL ${url}`);
+    },
+    sleep: async (ms) => { elapsedMs += ms; },
+    now: () => '2026-10-28T23:50:00.000Z',
+    nowMs: () => elapsedMs,
+  };
+  const started = await startOrReuseHereticPersistentRuntime({ binding, hooks });
+  assert.equal(started.disposition, 'STARTED_NEW_EXACT_MLX_RUNTIME');
+  assert.ok(elapsedMs >= 5500);
+  assert.ok(identityCalls > 100);
+  assert.deepEqual(writes, ['PERSISTENT_MLX_RUNTIME_STARTING', 'PERSISTENT_MLX_RUNTIME_QUALIFIED']);
+  assert.equal(receipt.runtime.processSubstrate.label, processSubstrate.label);
+});
+
+test('VexLife Heretic launchd start still fails closed and retires the exact substrate when ownership never stabilizes before the bounded timeout', async () => {
+  const binding = formHereticRuntimeOwnerBinding({
+    authorityRef: 'authority.test.heretic.launchd-identity-timeout',
+    modelPath: '/tmp/model-launchd-timeout',
+    pythonEnvironmentRoot: '/tmp/env-launchd-timeout',
+    port: 8765,
+    receiptPath: '/tmp/runtime/launchd-timeout-receipt.json'
+  });
+  const pid = 9494;
+  let elapsedMs = 0;
+  let retired = false;
+  let live = true;
+  const processSubstrate = {
+    schemaVersion: 'vexlife.macos-user-launchd-process/v1',
+    substrateRef: 'substrate.vexlife.macos-user-launchd-process.001',
+    label: 'com.vexlife.heretic.test-identity-timeout',
+    domainTarget: 'gui/501',
+    plistPath: '/tmp/runtime/launchd/timeout.plist',
+    programPath: '/tmp/env-launchd-timeout/bin/python',
+    programArguments: ['-m', 'mlx_lm.server'],
+    workingDirectory: '/tmp/env-launchd-timeout',
+    stdoutPath: '/tmp/runtime/launchd-timeout.out.log',
+    stderrPath: '/tmp/runtime/launchd-timeout.err.log',
+    keepAlive: false,
+    pid,
+  };
+  const hooks = {
+    host: { platform: 'darwin', architecture: 'arm64' },
+    versionProbe: async () => ({
+      pythonVersion: HERETIC_PYTHON_VERSION,
+      mlxLmVersion: HERETIC_MLX_LM_VERSION,
+      prefix: '/tmp/env-launchd-timeout',
+      executable: '/tmp/env-launchd-timeout/bin/python'
+    }),
+    readReceipt: () => null,
+    writeReceipt: () => { throw new Error('receipt must not be written without exact process ownership'); },
+    deleteReceipt: () => {},
+    processAlive: () => live,
+    processIdentity: ({ pid: value }) => ({ pid: value, pgid: value, commandMatches: false, exactOwnedDetachedGroup: false }),
+    observeProcessSubstrate: () => ({ state: live ? 'RUNNING' : 'ABSENT', pid: live ? pid : null }),
+    retireProcessSubstrate: async (observed, { expectedPid }) => {
+      assert.equal(observed.label, processSubstrate.label);
+      assert.equal(expectedPid, pid);
+      retired = true;
+      live = false;
+      return { state: 'RETIRED_VERIFIED', exactOwnershipVerified: true, verifiedNotLive: true, processGroupId: pid, signalSent: 'LAUNCHD_BOOTOUT' };
+    },
+    listMatchingProcesses: async () => [],
+    portOccupied: async () => false,
+    spawnRuntime: async () => ({ pid, processSubstrate }),
+    terminateRuntime: async () => { throw new Error('final-process terminate path must not be used before exact semantic ownership'); },
+    endpointHealthy: async () => { throw new Error('readiness must not run without exact ownership'); },
+    fetchImpl: async () => { throw new Error('qualification must not run without exact ownership'); },
+    sleep: async (ms) => { elapsedMs += ms; },
+    now: () => '2026-10-28T23:50:00.000Z',
+    nowMs: () => elapsedMs,
+  };
+  await assert.rejects(
+    startOrReuseHereticPersistentRuntime({ binding, hooks }),
+    (error) => error?.code === 'HERETIC_RUNTIME_PROCESS_OWNERSHIP_CONFLICT'
+      && error?.detail?.ownershipState === 'TIMEOUT'
+      && error?.detail?.cleanup?.state === 'RETIRED_VERIFIED'
+      && error?.detail?.cleanup?.exactOwnershipVerified === true
+      && error?.detail?.cleanup?.verifiedNotLive === true
+  );
+  assert.ok(elapsedMs >= 30000);
+  assert.equal(retired, true);
+  assert.equal(live, false);
+});
+
+test('VexLife Heretic launchd ownership wait observes cancellation and retires provisional launchd custody before any STARTING receipt', async () => {
+  const binding = formHereticRuntimeOwnerBinding({
+    authorityRef: 'authority.test.heretic.launchd-ownership-cancel',
+    modelPath: '/tmp/model-launchd-cancel',
+    pythonEnvironmentRoot: '/tmp/env-launchd-cancel',
+    port: 8765,
+    receiptPath: '/tmp/runtime/launchd-cancel-receipt.json'
+  });
+  const pid = 9595;
+  let elapsedMs = 0;
+  let retired = false;
+  let live = true;
+  const writes = [];
+  const processSubstrate = {
+    schemaVersion: 'vexlife.macos-user-launchd-process/v1',
+    substrateRef: 'substrate.vexlife.macos-user-launchd-process.001',
+    label: 'com.vexlife.heretic.test-ownership-cancel',
+    domainTarget: 'gui/501',
+    plistPath: '/tmp/runtime/launchd/cancel.plist',
+    programPath: '/tmp/env-launchd-cancel/bin/python',
+    programArguments: ['-m', 'mlx_lm.server'],
+    workingDirectory: '/tmp/env-launchd-cancel',
+    stdoutPath: '/tmp/runtime/launchd-cancel.out.log',
+    stderrPath: '/tmp/runtime/launchd-cancel.err.log',
+    keepAlive: false,
+    pid,
+  };
+  const hooks = {
+    host: { platform: 'darwin', architecture: 'arm64' },
+    versionProbe: async () => ({
+      pythonVersion: HERETIC_PYTHON_VERSION,
+      mlxLmVersion: HERETIC_MLX_LM_VERSION,
+      prefix: '/tmp/env-launchd-cancel',
+      executable: '/tmp/env-launchd-cancel/bin/python'
+    }),
+    readReceipt: () => null,
+    writeReceipt: (_path, value) => { writes.push(value.state); },
+    deleteReceipt: () => {},
+    processAlive: () => live,
+    processIdentity: ({ pid: value }) => ({ pid: value, pgid: value, commandMatches: false, exactOwnedDetachedGroup: false }),
+    observeProcessSubstrate: () => ({ state: live ? 'RUNNING' : 'ABSENT', pid: live ? pid : null }),
+    retireProcessSubstrate: async (observed, { expectedPid }) => {
+      assert.equal(observed.label, processSubstrate.label);
+      assert.equal(expectedPid, pid);
+      retired = true;
+      live = false;
+      return { state: 'RETIRED_VERIFIED', exactOwnershipVerified: true, verifiedNotLive: true, processGroupId: pid, signalSent: 'LAUNCHD_BOOTOUT' };
+    },
+    listMatchingProcesses: async () => [],
+    portOccupied: async () => false,
+    spawnRuntime: async () => ({ pid, processSubstrate }),
+    terminateRuntime: async () => { throw new Error('final-process terminate path must not be used for provisional cancellation'); },
+    endpointHealthy: async () => { throw new Error('readiness must not run after provisional cancellation'); },
+    fetchImpl: async () => { throw new Error('qualification must not run after provisional cancellation'); },
+    sleep: async (ms) => { elapsedMs += ms; },
+    now: () => '2026-10-29T00:00:00.000Z',
+    nowMs: () => elapsedMs,
+    cancellationRequested: () => elapsedMs >= 200,
+  };
+
+  await assert.rejects(
+    startOrReuseHereticPersistentRuntime({ binding, hooks }),
+    (error) => error?.code === 'HERETIC_RUNTIME_CANCELLED'
+  );
+  assert.ok(elapsedMs >= 200 && elapsedMs < 1000);
+  assert.equal(retired, true);
+  assert.equal(live, false);
+  assert.deepEqual(writes, []);
+});
+
+
+
+test('VexLife Heretic launchd start preserves the last-known-good direct mlx_lm.server argv and explicit Hugging Face cache environment', () => {
+  const source = fs.readFileSync(new URL('../src/core/heretic-persistent-runtime-owner.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /HERETIC_PROCESS_GROUP_WRAPPER/u);
+  assert.doesNotMatch(source, /programArguments:\s*\['-c'/u);
+  assert.match(source, /programPath:\s*binding\.pythonPath/u);
+  assert.match(source, /programArguments:\s*\[\.\.\.args\]/u);
+  assert.match(source, /'HF_HUB_CACHE'/u);
+});
+
+
+test('VexLife Heretic launchd ownership establishment does not treat a transient kill-zero miss as process exit while the exact launchd substrate remains running', async () => {
+  const binding = formHereticRuntimeOwnerBinding({
+    authorityRef: 'authority.test.heretic.launchd-transient-kill-zero',
+    modelPath: '/tmp/model-launchd-transient-kill-zero',
+    pythonEnvironmentRoot: '/tmp/env-launchd-transient-kill-zero',
+    port: 8765,
+    receiptPath: '/tmp/runtime/launchd-transient-kill-zero-receipt.json'
+  });
+  const pid = 9696;
+  let elapsedMs = 0;
+  let receipt = null;
+  let retired = false;
+  const processSubstrate = {
+    schemaVersion: 'vexlife.macos-user-launchd-process/v1',
+    substrateRef: 'substrate.vexlife.macos-user-launchd-process.001',
+    label: 'com.vexlife.heretic.test-transient-kill-zero',
+    domainTarget: 'gui/501',
+    plistPath: '/tmp/runtime/launchd/transient-kill-zero.plist',
+    programPath: '/tmp/env-launchd-transient-kill-zero/bin/python',
+    programArguments: ['-m', 'mlx_lm.server'],
+    workingDirectory: '/tmp/env-launchd-transient-kill-zero',
+    stdoutPath: '/tmp/runtime/launchd-transient-kill-zero.out.log',
+    stderrPath: '/tmp/runtime/launchd-transient-kill-zero.err.log',
+    keepAlive: false,
+    pid,
+  };
+  const hooks = {
+    host: { platform: 'darwin', architecture: 'arm64' },
+    versionProbe: async () => ({
+      pythonVersion: HERETIC_PYTHON_VERSION,
+      mlxLmVersion: HERETIC_MLX_LM_VERSION,
+      prefix: '/tmp/env-launchd-transient-kill-zero',
+      executable: '/tmp/env-launchd-transient-kill-zero/bin/python'
+    }),
+    readReceipt: () => receipt,
+    writeReceipt: (_path, value) => { receipt = value; },
+    deleteReceipt: () => { receipt = null; },
+    processAlive: () => elapsedMs >= 200,
+    processIdentity: ({ pid: value }) => elapsedMs >= 200
+      ? { pid: value, pgid: value, commandMatches: true, exactOwnedDetachedGroup: true }
+      : null,
+    observeProcessSubstrate: () => ({ state: 'RUNNING', pid }),
+    retireProcessSubstrate: async () => {
+      retired = true;
+      return { state: 'RETIRED_VERIFIED', exactOwnershipVerified: true, verifiedNotLive: true, signalSent: 'LAUNCHD_BOOTOUT' };
+    },
+    listMatchingProcesses: async () => [],
+    portOccupied: async () => false,
+    spawnRuntime: async () => ({ pid, processSubstrate }),
+    terminateRuntime: async () => { throw new Error('transient launchd establishment must not be retired'); },
+    endpointHealthy: async () => true,
+    fetchImpl: async (url) => {
+      if (url.endsWith('/health')) return { ok: true, json: async () => ({ status: 'ok' }) };
+      if (url.endsWith('/v1/models')) return { ok: true, json: async () => ({ data: [{ id: '/tmp/model-launchd-transient-kill-zero' }] }) };
+      if (url.endsWith('/v1/chat/completions')) return { ok: true, json: async () => ({ model: 'default_model', choices: [{ message: { content: 'OK' } }] }) };
+      throw new Error(`unexpected URL ${url}`);
+    },
+    sleep: async (ms) => { elapsedMs += ms; },
+    now: () => '2026-10-29T01:00:00.000Z',
+    nowMs: () => elapsedMs,
+  };
+
+  const started = await startOrReuseHereticPersistentRuntime({ binding, hooks });
+  assert.equal(started.disposition, 'STARTED_NEW_EXACT_MLX_RUNTIME');
+  assert.ok(elapsedMs >= 200);
+  assert.equal(retired, false);
+  assert.equal(receipt.state, 'PERSISTENT_MLX_RUNTIME_QUALIFIED');
+  assert.equal(receipt.runtime.processSubstrate.label, processSubstrate.label);
+});
+
 // [VXG RealForever]
