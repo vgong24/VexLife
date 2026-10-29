@@ -3053,9 +3053,53 @@ export function recoverAbandonedLivedCompanionThreadWriter({
     });
   }
 
+  const recoveryEvidenceDirectory = resolveHomePath(
+    identity.homeRoot,
+    'recovery',
+    'thread-writer-leases',
+    admitted.companionLineageRef,
+    safeThread
+  );
+  fs.mkdirSync(recoveryEvidenceDirectory, { recursive: true });
+  const recoveryEvidencePath = resolveHomePath(
+    identity.homeRoot,
+    'recovery',
+    'thread-writer-leases',
+    admitted.companionLineageRef,
+    safeThread,
+    expectedLeaseSha256 + '.json'
+  );
+  try {
+    fs.linkSync(lockPath, recoveryEvidencePath);
+  } catch (error) {
+    if (error?.code === 'EEXIST') {
+      fail('THREAD_WRITER_CONFLICT', 'the exact abandoned lease already has a recovery claim; preserve evidence for attention', {
+        companionLineageRef: admitted.companionLineageRef,
+        threadRef: safeThread,
+        ownerState: 'ABSENT',
+        leaseSha256: expectedLeaseSha256,
+        observedLeaseFileSha256: second.observedLeaseFileSha256,
+        leaseValidationState: 'RECOVERY_CLAIM_ALREADY_EXISTS',
+        exactNextSafeRoute: 'ATTENTION_REQUIRED_EXISTING_THREAD_WRITER_RECOVERY_CLAIM'
+      });
+    }
+    fail('PERSISTENCE_WRITE_FAILED', 'explicit thread writer recovery could not atomically claim the exact abandoned lease', {
+      cause: error?.message ?? String(error)
+    });
+  }
+
+  const claimStat = fs.lstatSync(recoveryEvidencePath);
+  const lockStat = fs.lstatSync(lockPath);
+  if (claimStat.isSymbolicLink() || !claimStat.isFile()
+      || claimStat.dev !== lockStat.dev || claimStat.ino !== lockStat.ino
+      || fileSha256(recoveryEvidencePath) !== second.observedLeaseFileSha256
+      || fileSha256(lockPath) !== second.observedLeaseFileSha256) {
+    fail('PERSISTENCE_WRITE_FAILED', 'thread writer recovery claim does not bind the exact validated abandoned lease');
+  }
+
   fs.unlinkSync(lockPath);
   if (fs.existsSync(lockPath)) {
-    fail('PERSISTENCE_WRITE_FAILED', 'explicit thread writer recovery could not remove the exact abandoned lease');
+    fail('PERSISTENCE_WRITE_FAILED', 'explicit thread writer recovery could not remove the exact claimed abandoned lease');
   }
   const currentness = readCurrentLivedCompanionThreadWriterCurrentness({
     home: identity.homeRoot,
@@ -3077,6 +3121,7 @@ export function recoverAbandonedLivedCompanionThreadWriter({
     companionLineageRef: admitted.companionLineageRef,
     threadRef: safeThread,
     recoveredLeaseSha256: expectedLeaseSha256,
+    recoveryEvidenceRef: `evidence.vexlife.lived-thread-writer-recovery.${expectedLeaseSha256.slice(0, 32)}`,
     recoveryEffectPerformed: true,
     exactNextSafeRoute: 'RETRY_TURN_WITH_SAME_IDEMPOTENCY_IDENTITY'
   });

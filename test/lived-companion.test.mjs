@@ -1225,9 +1225,20 @@ test('explicit thread writer recovery consumes only the exact proven-absent leas
   assert.equal(recovered.state, 'WRITER_RECOVERED');
   assert.equal(recovered.currentness, 'CURRENT');
   assert.equal(recovered.recoveredLeaseSha256, lease.leaseSha256);
+  assert.match(recovered.recoveryEvidenceRef, /^evidence\\.vexlife\\.lived-thread-writer-recovery\\.[0-9a-f]{32}$/u);
   assert.equal(recovered.recoveryEffectPerformed, true);
   assert.equal(recovered.exactNextSafeRoute, 'RETRY_TURN_WITH_SAME_IDEMPOTENCY_IDENTITY');
   assert.equal(fs.existsSync(lockPath), false);
+  const recoveryEvidenceDirectory = path.join(
+    home.home,
+    'recovery',
+    'thread-writer-leases',
+    home.companionLineageRef,
+    threadRef
+  );
+  const evidencePath = path.join(recoveryEvidenceDirectory, lease.leaseSha256 + '.json');
+  assert.equal(fs.existsSync(evidencePath), true);
+  assert.deepEqual(fs.readFileSync(evidencePath), Buffer.from(JSON.stringify(lease, null, 2) + '\\n'));
 
   const after = readCurrentLivedCompanionThreadWriterCurrentness({ ...home, threadRef });
   assert.equal(after.state, 'IDLE');
@@ -1249,6 +1260,36 @@ test('explicit thread writer recovery rejects stale lease identity without remov
       && error.details?.exactNextSafeRoute === 'REOBSERVE_THREAD_WRITER_CURRENTNESS'
   );
   assert.equal(fs.existsSync(lockPath), true);
+});
+
+test('explicit thread writer recovery never removes a lease when an exact recovery claim already exists', () => {
+  const home = makeHome('writer-explicit-recovery-existing-claim');
+  const threadRef = ref('thread.writer-explicit-recovery-existing-claim');
+  const { lockPath, lease } = writeAbandonedWriterLease(home, threadRef);
+  const recoveryEvidenceDirectory = path.join(
+    home.home,
+    'recovery',
+    'thread-writer-leases',
+    home.companionLineageRef,
+    threadRef
+  );
+  fs.mkdirSync(recoveryEvidenceDirectory, { recursive: true });
+  const evidencePath = path.join(recoveryEvidenceDirectory, lease.leaseSha256 + '.json');
+  fs.linkSync(lockPath, evidencePath);
+
+  assert.throws(
+    () => recoverAbandonedLivedCompanionThreadWriter({
+      ...home,
+      threadRef,
+      expectedLeaseSha256: lease.leaseSha256
+    }),
+    (error) => error instanceof LivedCompanionError
+      && error.code === 'THREAD_WRITER_CONFLICT'
+      && error.details?.leaseValidationState === 'RECOVERY_CLAIM_ALREADY_EXISTS'
+      && error.details?.exactNextSafeRoute === 'ATTENTION_REQUIRED_EXISTING_THREAD_WRITER_RECOVERY_CLAIM'
+  );
+  assert.equal(fs.existsSync(lockPath), true);
+  assert.equal(fs.existsSync(evidencePath), true);
 });
 
 test('explicit thread writer recovery never steals an active lease', () => {
