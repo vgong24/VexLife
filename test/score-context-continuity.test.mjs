@@ -619,7 +619,7 @@ test('SDK-canonical supersession state/evidence is accepted and currentizes the 
   assert.equal(successor.recordedStatementState, 'SUPERSEDED');
   assert.equal(successor.acceptedForContinuity, true);
   assert.deepEqual(state.currentStatementRefs, ['statement.g02.sdk-supersession']);
-  assert.equal(successor.sourceConversationHeadSha256, g01.head.conversationHeadSha256);
+  assert.equal(state.head.sourceConversationHeadSha256, g01.head.conversationHeadSha256);
 });
 
 test('cross-subject and cross-relation correction/supersession fail closed', () => {
