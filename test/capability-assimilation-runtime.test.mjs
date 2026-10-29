@@ -220,8 +220,8 @@ test('ADOPTED_READ_ONLY permits ordinary conversation without fabricating a tool
       if (inferenceCount === 1) {
         assert.match(requestContent, /VEXLIFE_CAPABILITY_REQUEST_FORMATION\/v1/u);
         assert.match(requestContent, /FRESH_COMPANION_FOUNDATION_FRAME=/u);
-        assert.match(requestContent, /CURRENT_CONTEXT=.*\"projectRef\":\"project\.self-development\"/u);
-        assert.match(requestContent, /COMPACT_CAPABILITY_FRONTIER=.*\"capabilityRef\":\"capability\.search\"/u);
+        assert.match(requestContent, /CURRENT_CONTEXT=.*"projectRef":"project\.self-development"/u);
+        assert.match(requestContent, /COMPACT_CAPABILITY_FRONTIER=.*"capabilityRef":"capability\.search"/u);
         assert.doesNotMatch(requestContent, /source\.must-not-project-into-current-context/u);
         assert.match(requestContent, /NO_READ_ONLY_FUNCTION_NEEDED/u);
         return noReadResult();
@@ -229,8 +229,8 @@ test('ADOPTED_READ_ONLY permits ordinary conversation without fabricating a tool
       assert.match(requestContent, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
       assert.match(requestContent, /SOURCE_BOUND_OBSERVATIONS=\[\]/u);
       assert.match(requestContent, /FRESH_COMPANION_FOUNDATION_FRAME=/u);
-      assert.match(requestContent, /CURRENT_CONTEXT=.*\"threadRef\":\"thread\.self-development\.open-conversation\"/u);
-      assert.match(requestContent, /COMPACT_CAPABILITY_FRONTIER=.*\"capabilityRef\":\"capability\.search\"/u);
+      assert.match(requestContent, /CURRENT_CONTEXT=.*"threadRef":"thread\.self-development\.open-conversation"/u);
+      assert.match(requestContent, /COMPACT_CAPABILITY_FRONTIER=.*"capabilityRef":"capability\.search"/u);
       assert.doesNotMatch(requestContent, /source\.must-not-project-into-current-context/u);
       return {
         content: 'Hello. I can talk without inventing a tool read.',
