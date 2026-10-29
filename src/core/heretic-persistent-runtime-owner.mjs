@@ -385,7 +385,19 @@ async function waitForHealthy(binding, pid, deps) {
   fail('HERETIC_RUNTIME_START_FAILED', 'mlx_lm.server did not become healthy before bounded startup timeout');
 }
 
-async function waitForExactOwnedRuntimeProcess({ pid, args, deps }) {
+function provisionalRuntimeProcessLive({ pid, processSubstrate, deps }) {
+  if (processSubstrate === null) return deps.processAlive(pid);
+  try {
+    const substrate = validateMacUserLaunchdProcessReceipt(processSubstrate);
+    if (substrate.pid !== pid) return false;
+    const observed = deps.observeProcessSubstrate(substrate);
+    return observed.state === 'RUNNING' && observed.pid === pid;
+  } catch {
+    return false;
+  }
+}
+
+async function waitForExactOwnedRuntimeProcess({ pid, args, processSubstrate, deps }) {
   const deadline = deps.nowMs() + PROCESS_OWNERSHIP_TIMEOUT_MS;
   for (;;) {
     if (deps.cancellationRequested()) {
@@ -395,7 +407,7 @@ async function waitForExactOwnedRuntimeProcess({ pid, args, deps }) {
     if (identity?.exactOwnedDetachedGroup) {
       return Object.freeze({ state: 'EXACT', identity });
     }
-    if (!deps.processAlive(pid)) {
+    if (!provisionalRuntimeProcessLive({ pid, processSubstrate, deps })) {
       return Object.freeze({ state: 'PROCESS_EXITED', identity: null });
     }
     if (deps.nowMs() >= deadline) {
@@ -788,7 +800,7 @@ export async function startOrReuseHereticPersistentRuntime({ binding: input, hoo
   const pid = Number(typeof spawned === 'number' ? spawned : spawned?.pid);
   const processSubstrate = typeof spawned === 'number' ? null : (spawned?.processSubstrate ?? null);
   if (!Number.isInteger(pid) || pid <= 0) fail('HERETIC_RUNTIME_START_FAILED', 'mlx_lm.server returned no PID');
-  const ownership = await waitForExactOwnedRuntimeProcess({ pid, args, deps });
+  const ownership = await waitForExactOwnedRuntimeProcess({ pid, args, processSubstrate, deps });
   if (ownership.state !== 'EXACT') {
     const cleanup = await retireProvisionalRuntimeProcess({ pid, args, processSubstrate, deps });
     const cleanupVerified = cleanup?.verifiedNotLive === true

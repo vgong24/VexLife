@@ -855,4 +855,75 @@ test('VexLife Heretic launchd start preserves the last-known-good direct mlx_lm.
   assert.match(source, /'HF_HUB_CACHE'/u);
 });
 
+
+test('VexLife Heretic launchd ownership establishment does not treat a transient kill-zero miss as process exit while the exact launchd substrate remains running', async () => {
+  const binding = formHereticRuntimeOwnerBinding({
+    authorityRef: 'authority.test.heretic.launchd-transient-kill-zero',
+    modelPath: '/tmp/model-launchd-transient-kill-zero',
+    pythonEnvironmentRoot: '/tmp/env-launchd-transient-kill-zero',
+    port: 8765,
+    receiptPath: '/tmp/runtime/launchd-transient-kill-zero-receipt.json'
+  });
+  const pid = 9696;
+  let elapsedMs = 0;
+  let receipt = null;
+  let retired = false;
+  const processSubstrate = {
+    schemaVersion: 'vexlife.macos-user-launchd-process/v1',
+    substrateRef: 'substrate.vexlife.macos-user-launchd-process.001',
+    label: 'com.vexlife.heretic.test-transient-kill-zero',
+    domainTarget: 'gui/501',
+    plistPath: '/tmp/runtime/launchd/transient-kill-zero.plist',
+    programPath: '/tmp/env-launchd-transient-kill-zero/bin/python',
+    programArguments: ['-m', 'mlx_lm.server'],
+    workingDirectory: '/tmp/env-launchd-transient-kill-zero',
+    stdoutPath: '/tmp/runtime/launchd-transient-kill-zero.out.log',
+    stderrPath: '/tmp/runtime/launchd-transient-kill-zero.err.log',
+    keepAlive: false,
+    pid,
+  };
+  const hooks = {
+    host: { platform: 'darwin', architecture: 'arm64' },
+    versionProbe: async () => ({
+      pythonVersion: HERETIC_PYTHON_VERSION,
+      mlxLmVersion: HERETIC_MLX_LM_VERSION,
+      prefix: '/tmp/env-launchd-transient-kill-zero',
+      executable: '/tmp/env-launchd-transient-kill-zero/bin/python'
+    }),
+    readReceipt: () => receipt,
+    writeReceipt: (_path, value) => { receipt = value; },
+    deleteReceipt: () => { receipt = null; },
+    processAlive: () => elapsedMs >= 200,
+    processIdentity: ({ pid: value }) => elapsedMs >= 200
+      ? { pid: value, pgid: value, commandMatches: true, exactOwnedDetachedGroup: true }
+      : null,
+    observeProcessSubstrate: () => ({ state: 'RUNNING', pid }),
+    retireProcessSubstrate: async () => {
+      retired = true;
+      return { state: 'RETIRED_VERIFIED', exactOwnershipVerified: true, verifiedNotLive: true, signalSent: 'LAUNCHD_BOOTOUT' };
+    },
+    listMatchingProcesses: async () => [],
+    portOccupied: async () => false,
+    spawnRuntime: async () => ({ pid, processSubstrate }),
+    terminateRuntime: async () => { throw new Error('transient launchd establishment must not be retired'); },
+    endpointHealthy: async () => true,
+    fetchImpl: async (url) => {
+      if (url.endsWith('/health')) return { ok: true, json: async () => ({ status: 'ok' }) };
+      if (url.endsWith('/v1/models')) return { ok: true, json: async () => ({ data: [{ id: '/tmp/model-launchd-transient-kill-zero' }] }) };
+      if (url.endsWith('/v1/chat/completions')) return { ok: true, json: async () => ({ model: 'default_model', choices: [{ message: { content: 'OK' } }] }) };
+      throw new Error(`unexpected URL ${url}`);
+    },
+    sleep: async (ms) => { elapsedMs += ms; },
+    now: () => '2026-10-29T01:00:00.000Z',
+    nowMs: () => elapsedMs,
+  };
+
+  const started = await startOrReuseHereticPersistentRuntime({ binding, hooks });
+  assert.equal(started.disposition, 'STARTED_NEW_EXACT_MLX_RUNTIME');
+  assert.ok(elapsedMs >= 200);
+  assert.equal(retired, false);
+  assert.equal(receipt.state, 'PERSISTENT_MLX_RUNTIME_QUALIFIED');
+  assert.equal(receipt.runtime.processSubstrate.label, processSubstrate.label);
+});
+
 // [VXG RealForever]

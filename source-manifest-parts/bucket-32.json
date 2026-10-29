@@ -23,8 +23,8 @@
     {
       "path": "src/core/heretic-persistent-runtime-owner.mjs",
       "mode": "100644",
-      "bytes": 43645,
-      "sha256": "1d0773ffc92b2aa0cc7843e36152daf5648dfb0d8e787950e3b04a6f6bcfd355"
+      "bytes": 44154,
+      "sha256": "2c607a067735dba289dbbda4ba95a80cc80a1fd0ef36a09adfaae737aefd8aed"
     },
     {
       "path": "src/core/project-continuity.mjs",
