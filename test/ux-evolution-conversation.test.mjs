@@ -262,9 +262,10 @@ test('V1 persistent Vex vessel opens the lived Conversation without adding anoth
   assert.match(app,/void openCurrentVexConversation\(\)/);
   assert.doesNotMatch(app,/openVexConversation/);
   assert.doesNotMatch(app,/ensureCurrentVexConversationMenuEntry/);
-  assert.match(app,/openConversation'\)\.addEventListener\('click',\(\)=>\{void openCurrentVexConversation\(\)/);
-  assert.match(app,/document\.addEventListener\('vexlife:open-context',\(event\)=>\{if\(event\.detail\?\.context==='health'\)void openHealth\(\);else if\(event\.detail\?\.context==='chat'\)void openCurrentVexConversation\(\);\}\)/);
-  assert.match(app,/action==='chat'\)void openCurrentVexConversation\(\)/);
+  assert.match(app,/openConversation'\)\.addEventListener\('click',\(\)=>\{void routeCurrentSurface\('surface\.vexlife\.conversation',\(\)=>openContext\('chat'\)\)/);
+  assert.match(app,/document\.addEventListener\('vexlife:open-context',\(event\)=>\{if\(event\.detail\?\.context==='health'\)void openHealth\(\);else openContext\('chat'\);\}\)/);
+  assert.match(app,/action==='chat'\)openContext\('chat'\)/);
+  assert.doesNotMatch(app,/openConversation'\)\.addEventListener\('click',\(\)=>\{void openCurrentVexConversation\(\)/);
   assert.match(app,/openContext,selectCurrentVexConversation,sendCurrentVexConversationMessage,openCurrentVexConversation,openLivingJournal/);
 });
 

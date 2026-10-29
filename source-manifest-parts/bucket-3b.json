@@ -17,8 +17,8 @@
     {
       "path": "scripts/serve-browser-core.mjs",
       "mode": "100644",
-      "bytes": 93038,
-      "sha256": "9c3f3948764b60565d9a30a6f113eac66217bbeabac9f6e7769e6672e30c9050"
+      "bytes": 94961,
+      "sha256": "bf15bdbfdf2d06385c3cf0c8ebcebf6d1089cdc8c7c8f36dbda8a51e9fc5df55"
     },
     {
       "path": "src/core/portable-behavior-contract.mjs",
