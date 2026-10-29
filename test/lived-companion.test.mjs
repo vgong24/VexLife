@@ -1238,7 +1238,7 @@ test('explicit thread writer recovery consumes only the exact proven-absent leas
   );
   const evidencePath = path.join(recoveryEvidenceDirectory, lease.leaseSha256 + '.json');
   assert.equal(fs.existsSync(evidencePath), true);
-  assert.deepEqual(fs.readFileSync(evidencePath), Buffer.from(JSON.stringify(lease, null, 2) + '\\n'));
+  assert.deepEqual(fs.readFileSync(evidencePath), Buffer.from(JSON.stringify(lease, null, 2) + '\n'));
 
   const after = readCurrentLivedCompanionThreadWriterCurrentness({ ...home, threadRef });
   assert.equal(after.state, 'IDLE');
