@@ -903,28 +903,10 @@ export function createBrowserCompanionBridge({
     }
   }
 
-  function conversationCurrentness(input) {
-    const request = validateBrowserCompanionConversationCurrentnessRequest(input);
+  function readCurrentDirectConversationBinding(request, identity) {
     requireCurrentDirectCompanionBinding(request);
-    const identity = loadBrowserCompanionHomeIdentity(home);
     const channelBinding = readConversationChannelBinding({ home: identity.home, channelRef: request.channelRef });
-    if (channelBinding.state === 'NOT_FOUND') {
-      return Object.freeze({
-        schemaVersion: BROWSER_COMPANION_CONVERSATION_CURRENTNESS_SCHEMA,
-        state: 'ABSENT',
-        truthClass: 'CURRENT_LOCAL_CONVERSATION_IDENTITY',
-        projectRef: request.projectRef,
-        threadRef: request.threadRef,
-        channelRef: request.channelRef,
-        channelSha256: null,
-        channelRecordSha256: null,
-        headMessageRefOrNull: null,
-        headSequenceOrNull: null,
-        canonicalConversationHeadSha256: null,
-        headUpdatedAtOrNull: null,
-        effectsPerformed: false
-      });
-    }
+    if (channelBinding.state === 'NOT_FOUND') return null;
     const channel = channelBinding.channel;
     const exactMembers = Array.isArray(channel?.memberRefs)
       && channel.memberRefs.length === 2
@@ -942,6 +924,30 @@ export function createBrowserCompanionBridge({
         'Durable Conversation binding does not match the admitted direct Companion identity',
         409
       );
+    }
+    return channelBinding;
+  }
+
+  function conversationCurrentness(input) {
+    const request = validateBrowserCompanionConversationCurrentnessRequest(input);
+    const identity = loadBrowserCompanionHomeIdentity(home);
+    const channelBinding = readCurrentDirectConversationBinding(request, identity);
+    if (channelBinding === null) {
+      return Object.freeze({
+        schemaVersion: BROWSER_COMPANION_CONVERSATION_CURRENTNESS_SCHEMA,
+        state: 'ABSENT',
+        truthClass: 'CURRENT_LOCAL_CONVERSATION_IDENTITY',
+        projectRef: request.projectRef,
+        threadRef: request.threadRef,
+        channelRef: request.channelRef,
+        channelSha256: null,
+        channelRecordSha256: null,
+        headMessageRefOrNull: null,
+        headSequenceOrNull: null,
+        canonicalConversationHeadSha256: null,
+        headUpdatedAtOrNull: null,
+        effectsPerformed: false
+      });
     }
     const projection = readConversationChannel({ home: identity.home, channelRef: request.channelRef, limit: 1 });
     const head = projection.head ?? null;
@@ -962,11 +968,11 @@ export function createBrowserCompanionBridge({
     });
   }
 
-
   function conversationProjection(input) {
     const request = validateBrowserCompanionConversationCurrentnessRequest(input);
-    const currentness = conversationCurrentness(request);
-    if (currentness.state === 'ABSENT') {
+    const identity = loadBrowserCompanionHomeIdentity(home);
+    const channelBinding = readCurrentDirectConversationBinding(request, identity);
+    if (channelBinding === null) {
       return Object.freeze({
         schemaVersion: BROWSER_COMPANION_CONVERSATION_PROJECTION_SCHEMA,
         state: 'ABSENT',
@@ -983,8 +989,9 @@ export function createBrowserCompanionBridge({
         effectsPerformed: false
       });
     }
-    const identity = loadBrowserCompanionHomeIdentity(home);
     const exported = exportConversationChannel({ home: identity.home, channelRef: request.channelRef, limit: 1000 });
+    const head = exported.head ?? null;
+    const projectionState = exported.state === 'CURRENT' ? 'CURRENT' : 'EMPTY';
     const projectedMessages = exported.messages.map((event) => {
       let speakerRole, expectedRecipients, recipientRoles;
       if (event.speakerRef === identity.personRef) {
@@ -1009,23 +1016,29 @@ export function createBrowserCompanionBridge({
       });
     });
     const last = projectedMessages.at(-1) ?? null;
-    if (currentness.state === 'CURRENT' && (last === null || last.messageRef !== currentness.headMessageRefOrNull || last.sequence !== currentness.headSequenceOrNull)) {
-      throw new BrowserCompanionBridgeError('COMPANION_CONVERSATION_PROJECTION_INVALID', 'Durable Conversation projection does not terminate at the current canonical head', 409);
+    if (projectionState === 'CURRENT' && (
+      head === null
+      || last === null
+      || last.messageRef !== head.messageRef
+      || last.sequence !== head.sequence
+      || last.eventSha256 !== head.eventSha256
+    )) {
+      throw new BrowserCompanionBridgeError('COMPANION_CONVERSATION_PROJECTION_INVALID', 'Durable Conversation projection does not terminate at the exported canonical head', 409);
     }
-    if (currentness.state === 'EMPTY' && projectedMessages.length !== 0) {
-      throw new BrowserCompanionBridgeError('COMPANION_CONVERSATION_PROJECTION_INVALID', 'Empty durable Conversation unexpectedly contains messages', 409);
+    if (projectionState === 'EMPTY' && (head !== null || projectedMessages.length !== 0)) {
+      throw new BrowserCompanionBridgeError('COMPANION_CONVERSATION_PROJECTION_INVALID', 'Empty durable Conversation unexpectedly carries a head or messages', 409);
     }
     return Object.freeze({
       schemaVersion: BROWSER_COMPANION_CONVERSATION_PROJECTION_SCHEMA,
-      state: currentness.state,
+      state: projectionState,
       truthClass: 'CURRENT_LOCAL_CONVERSATION_PROJECTION',
       projectRef: request.projectRef,
       threadRef: request.threadRef,
       channelRef: request.channelRef,
-      headMessageRefOrNull: currentness.headMessageRefOrNull,
-      headSequenceOrNull: currentness.headSequenceOrNull,
-      canonicalConversationHeadSha256: currentness.canonicalConversationHeadSha256,
-      headUpdatedAtOrNull: currentness.headUpdatedAtOrNull,
+      headMessageRefOrNull: head?.messageRef ?? null,
+      headSequenceOrNull: head?.sequence ?? null,
+      canonicalConversationHeadSha256: head?.headSha256 ?? null,
+      headUpdatedAtOrNull: head?.updatedAt ?? null,
       messages: Object.freeze(projectedMessages),
       truncated: exported.truncated === true,
       effectsPerformed: false
