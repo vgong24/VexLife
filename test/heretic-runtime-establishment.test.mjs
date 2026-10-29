@@ -844,4 +844,15 @@ test('VexLife Heretic launchd ownership wait observes cancellation and retires p
   assert.deepEqual(writes, []);
 });
 
+
+
+test('VexLife Heretic launchd start preserves the last-known-good direct mlx_lm.server argv and explicit Hugging Face cache environment', () => {
+  const source = fs.readFileSync(new URL('../src/core/heretic-persistent-runtime-owner.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /HERETIC_PROCESS_GROUP_WRAPPER/u);
+  assert.doesNotMatch(source, /programArguments:\s*\['-c'/u);
+  assert.match(source, /programPath:\s*binding\.pythonPath/u);
+  assert.match(source, /programArguments:\s*\[\.\.\.args\]/u);
+  assert.match(source, /'HF_HUB_CACHE'/u);
+});
+
 // [VXG RealForever]

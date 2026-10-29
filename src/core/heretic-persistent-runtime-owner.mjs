@@ -234,13 +234,11 @@ function portOccupied(port) {
 }
 function inheritedMacProcessEnvironment() {
   const result = {};
-  for (const key of ['HOME', 'PATH', 'TMPDIR', 'LANG', 'LC_ALL', 'USER']) {
+  for (const key of ['HOME', 'PATH', 'TMPDIR', 'LANG', 'LC_ALL', 'USER', 'HF_HUB_CACHE']) {
     if (typeof process.env[key] === 'string' && process.env[key].length > 0) result[key] = process.env[key];
   }
   return result;
 }
-const HERETIC_PROCESS_GROUP_WRAPPER =
-  'import os,sys; pid=os.getpid(); pgid=os.getpgrp(); os.setpgid(0,0) if pgid != pid else None; os.execv(sys.argv[1], sys.argv[1:])';
 async function spawnRuntime({ binding, args }) {
   const runtimeDir = path.dirname(binding.receiptPath);
   fs.mkdirSync(runtimeDir, { recursive: true, mode: 0o700 });
@@ -248,7 +246,7 @@ async function spawnRuntime({ binding, args }) {
     label: `com.vexlife.heretic.${crypto.randomUUID().toLowerCase()}`,
     plistPath: path.join(runtimeDir, 'launchd', `heretic-${crypto.randomUUID().toLowerCase()}.plist`),
     programPath: binding.pythonPath,
-    programArguments: ['-c', HERETIC_PROCESS_GROUP_WRAPPER, binding.pythonPath, ...args],
+    programArguments: [...args],
     workingDirectory: binding.pythonEnvironmentRoot,
     stdoutPath: path.join(runtimeDir, 'mlx-lm-server.out.log'),
     stderrPath: path.join(runtimeDir, 'mlx-lm-server.err.log'),
