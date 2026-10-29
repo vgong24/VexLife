@@ -11,7 +11,10 @@ import {
   formModelRuntimeInvocationEvidence,
   formModelTurnWitness
 } from '../src/core/model-turn-witness.mjs';
-import { createServerOwnedBrowserCompanionBridge } from '../scripts/serve-browser.mjs';
+import {
+  createServerOwnedBrowserCompanionBridge,
+  hereticRuntimeBrowserOptions
+} from '../scripts/serve-browser.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const H = 'a'.repeat(64);
@@ -133,6 +136,36 @@ test('server-owned adopted composition injects the canonical runtime and real mo
   );
   assert.equal(composed.modelConnectionProjection.effectAuthorityGranted, false);
   assert.equal(composed.selfCapabilityFrame.effectAuthorityGranted, false);
+});
+
+test('Heretic Browser composition source-binds adopted read-only capability runtime without an operational-profile alias', () => {
+  let captured = null;
+  const sentinel = Object.freeze({ ref: 'bridge.heretic.atlas-awareness.adopted' });
+  const runtimeLink = Object.freeze({
+    state: 'BOUND_CURRENT',
+    endpoint: 'http://127.0.0.1:8765',
+    requestModel: 'default_model',
+    modelRef: 'model.devex.heretic.qwen3.8-27b.mlx4.329658ee8f27',
+    runtimeAdapterRef: 'adapter.runtime.mlx.macos-victor.001',
+    companionBinding: Object.freeze({
+      bindingRef: 'binding.vexlife.heretic-persistent-runtime.test'
+    })
+  });
+
+  const options = hereticRuntimeBrowserOptions(runtimeLink, {
+    companionHome: '/not-read-by-captured-heretic-bridge',
+    serverCompanionBridgeFactory(input) {
+      captured = input;
+      return sentinel;
+    }
+  });
+
+  assert.equal(options.companionBridge, sentinel);
+  assert.ok(captured);
+  assert.equal(captured.endpoint, runtimeLink.endpoint);
+  assert.equal(captured.model, runtimeLink.requestModel);
+  assert.equal(captured.runtimeMode, CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY);
+  assert.equal(Object.hasOwn(runtimeLink, 'operationalProfileRef'), false);
 });
 
 test('server-owned direct single-turn composition keeps R3 projection ownership absent rather than borrowing adopted truth', () => {

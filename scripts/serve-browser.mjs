@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import './capability-runtime-policy-bootstrap.mjs';
+import { CAPABILITY_ASSIMILATION_MODES } from '../src/core/capability-assimilation-runtime.mjs';
 import {
   createServerOwnedBrowserCompanionBridge,
   createVexLifeBrowserServer as createCoreVexLifeBrowserServer,
@@ -439,6 +440,7 @@ export function hereticRuntimeBrowserOptions(runtimeLink, {
     companionHome,
     endpoint: runtimeLink.endpoint,
     model: runtimeLink.requestModel,
+    runtimeMode: CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY,
     recoveryOwnerFactory: boundRecoveryOwnerFactory,
   });
   return Object.freeze({
