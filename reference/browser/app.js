@@ -312,6 +312,7 @@ chat=createChatController({
     return guide.bindCompanionTurn(projection);
   }
 });
+await chat.refreshCompanionAvailability();
 familyRoom=createFamilyRoomController({state,projects,roles,channels,messages,conversationKey,t,navigation,chat,onChange:()=>queueMicrotask(()=>projectFrame())});
 familyRoom.bind();
 terrain=createTerrainController({state,blueprint,t,navigation,semanticPatchForNode,onCurrentNode:()=>{if(chat)queueMicrotask(()=>projectFrame());}});
