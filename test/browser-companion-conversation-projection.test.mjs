@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -129,7 +130,10 @@ function seedLongConversation(home, messageCount = 1001) {
 }
 
 test('Conversation projection derives head and messages from one coherent exported snapshot', () => {
-  const source = fs.readFileSync(path.join(ROOT, 'src/core/browser-companion-bridge.mjs'), 'utf8');
+  const bridgePath = path.join(ROOT, 'src/core/browser-companion-bridge.mjs');
+  const bridgeBytes = fs.readFileSync(bridgePath);
+  const source = bridgeBytes.toString('utf8');
+  console.log(`BROWSER_COMPANION_BRIDGE_SHA256=${crypto.createHash('sha256').update(bridgeBytes).digest('hex')}`);
   const start = source.indexOf('  function conversationProjection(input) {');
   const end = source.indexOf('\n  async function performRecovery', start);
   assert.ok(start >= 0 && end > start, 'Conversation projection source boundary must remain discoverable');
