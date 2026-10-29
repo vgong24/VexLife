@@ -579,6 +579,17 @@ export function createChatController({ state, projects, roles, channels, message
     }
   }
 
+  function nextPresentationMessageSequence(channel = currentChannel()) {
+    const list = listForChannel(channel);
+    if (channel?.roleKey !== 'companion') return list.length;
+    const current = canonicalConversationIdentity(channel);
+    if (current.currentness === 'CURRENT' && Number.isSafeInteger(current.headSequenceOrNull)) {
+      return current.headSequenceOrNull + 1;
+    }
+    if (current.currentness === 'EMPTY' || current.currentness === 'ABSENT') return 0;
+    return list.length;
+  }
+
   function bindCanonicalConversationHead(channel, { headSha256, messageRef, sequence, updatedAtOrNull = null } = {}) {
     if (
       typeof headSha256 !== 'string'
@@ -1121,7 +1132,7 @@ export function createChatController({ state, projects, roles, channels, message
     semanticRelayAttention = null;
     const recipients = channel.memberKeys.filter((key) => key !== 'victor');
     const list = listForChannel(channel);
-    const message = createMessage(channel.channelRef, 'victor', recipients, pending.content, list.length);
+    const message = createMessage(channel.channelRef, 'victor', recipients, pending.content, nextPresentationMessageSequence(channel));
     list.push(message);
     appendMessageNode(message);
     if (state.unsentLocalDraft?.channelRef === channel.channelRef) state.unsentLocalDraft = null;
@@ -1618,7 +1629,7 @@ export function createChatController({ state, projects, roles, channels, message
     }
     const recipients = channel.memberKeys.filter((key) => key !== 'victor');
     const list = listForChannel(channel);
-    const message = createMessage(channel.channelRef, 'victor', recipients, text, list.length);
+    const message = createMessage(channel.channelRef, 'victor', recipients, text, nextPresentationMessageSequence(channel));
     message.sendIdempotencyKey = `browser-send.${globalThis.crypto.randomUUID()}`;
     list.push(message);
     appendMessageNode(message);
@@ -1696,7 +1707,7 @@ export function createChatController({ state, projects, roles, channels, message
     }
     const recipients = channel.memberKeys.filter((key) => key !== 'victor');
     const list = listForChannel(channel);
-    const message = createMessage(channel.channelRef, 'victor', recipients, content, list.length);
+    const message = createMessage(channel.channelRef, 'victor', recipients, content, nextPresentationMessageSequence(channel));
     if (channel.roleKey === 'companion') message.sendIdempotencyKey = `browser-send.${globalThis.crypto.randomUUID()}`;
     list.push(message);
     appendMessageNode(message);
