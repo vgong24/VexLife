@@ -21,6 +21,7 @@ const THREAD_NODE = {
 export const BROWSER_COMPANION_AVAILABILITY_PATH = '/api/v1/companion/availability';
 export const BROWSER_COMPANION_RECOVERY_ACTION_PATH = '/api/v1/companion/recovery-action';
 export const BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH = '/api/v1/companion/conversation-currentness';
+export const BROWSER_COMPANION_CONVERSATION_PROJECTION_PATH = '/api/v1/companion/conversation';
 export const BROWSER_COMPANION_STREAM_API_PATH = '/api/v1/companion/turn/stream';
 export const BROWSER_COMPANION_STREAM_FRAME_SCHEMA = 'vexlife.browser-companion-turn-stream-frame/v1';
 
@@ -429,6 +430,21 @@ export function projectBrowserCompanionVesselTurn(value, {
   });
 }
 
+export function normalizeBrowserCompanionConversationProjection(value, { projectRef, threadRef, channelRef } = {}) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Companion Conversation projection must be one object');
+  if (value.schemaVersion !== 'vexlife.browser-companion-conversation-projection/v1' || value.truthClass !== 'CURRENT_LOCAL_CONVERSATION_PROJECTION' || !['ABSENT','EMPTY','CURRENT'].includes(value.state) || value.projectRef !== projectRef || value.threadRef !== threadRef || value.channelRef !== channelRef || value.effectsPerformed !== false || typeof value.truncated !== 'boolean' || !Array.isArray(value.messages) || value.messages.length > 1000) throw new TypeError('Companion Conversation projection schema/truth/identity is invalid');
+  let priorSequence=-1; const seen=new Set();
+  for (const message of value.messages) {
+    if (!message || typeof message !== 'object' || Array.isArray(message) || typeof message.messageRef !== 'string' || message.messageRef.length===0 || seen.has(message.messageRef) || !Number.isSafeInteger(message.sequence) || message.sequence<0 || message.sequence<=priorSequence || !['VICTOR','COMPANION'].includes(message.speakerRole) || !Array.isArray(message.recipientRoles) || message.recipientRoles.length!==1 || message.recipientRoles[0] !== (message.speakerRole==='VICTOR'?'COMPANION':'VICTOR') || typeof message.content !== 'string' || message.content.length===0 || !/^[0-9a-f]{64}$/u.test(message.contentHash??'') || !/^[0-9a-f]{64}$/u.test(message.eventSha256??'') || typeof message.createdAt !== 'string' || !Number.isFinite(Date.parse(message.createdAt)) || new Date(message.createdAt).toISOString() !== message.createdAt) throw new TypeError('Companion Conversation projection message is invalid');
+    priorSequence=message.sequence; seen.add(message.messageRef);
+  }
+  if (value.state==='CURRENT') {
+    const last=value.messages.at(-1)??null;
+    if (last===null || typeof value.headMessageRefOrNull !== 'string' || value.headMessageRefOrNull!==last.messageRef || !Number.isSafeInteger(value.headSequenceOrNull) || value.headSequenceOrNull!==last.sequence || !/^[0-9a-f]{64}$/u.test(value.canonicalConversationHeadSha256??'')) throw new TypeError('Companion Conversation projection current head is invalid');
+  } else if (value.messages.length!==0 || value.headMessageRefOrNull!==null || value.headSequenceOrNull!==null || value.canonicalConversationHeadSha256!==null) throw new TypeError('Companion Conversation projection empty/absent state carries a head');
+  return Object.freeze(structuredClone(value));
+}
+
 export function createChatController({ state, projects, roles, channels, messages, createMessage, conversationKey, t, navigation, experienceFoundation, capabilityRegistry, onCompanionTurnCompleted = null }) {
   const currentProject = () => projects.find((project) => project.projectRef === state.projectRef) || projects[0];
   const currentThread = () => currentProject().threads.find((thread) => thread.threadRef === state.threadRef) || currentProject().threads[0];
@@ -535,6 +551,31 @@ export function createChatController({ state, projects, roles, channels, message
         canonicalConversationHeadSha256: null,
         headUpdatedAtOrNull: null
       });
+    }
+  }
+
+  async function refreshConversationProjection(channel = currentChannel()) {
+    if (!channel || channel.roleKey !== 'companion') return canonicalConversationIdentity(channel);
+    const query=new URLSearchParams({projectRef:channel.projectRef,threadRef:channel.threadRef,channelRef:channel.channelRef});
+    try {
+      const response=await fetch(`${BROWSER_COMPANION_CONVERSATION_PROJECTION_PATH}?${query.toString()}`,{method:'GET',cache:'no-store'});
+      const body=normalizeBrowserCompanionConversationProjection(await response.json(),{projectRef:channel.projectRef,threadRef:channel.threadRef,channelRef:channel.channelRef});
+      if(!response.ok)throw new Error('Canonical Conversation projection HTTP failure');
+      const list=listForChannel(channel);
+      list.splice(0,list.length,...body.messages.map((message)=>({
+        messageRef:message.messageRef,projectRef:channel.projectRef,threadRef:channel.threadRef,channelRef:channel.channelRef,
+        speakerKey:message.speakerRole==='VICTOR'?'victor':'companion',
+        recipientKeys:message.recipientRoles.map((role)=>role==='VICTOR'?'victor':'companion'),
+        content:message.content,contentRef:null,contentParams:{},intentRef:null,sequence:message.sequence,createdAt:message.createdAt,
+        contentHash:message.contentHash,eventSha256:message.eventSha256,
+        truthClass:message.speakerRole==='VICTOR'?'DURABLE_CONVERSATION_HUMAN':'DURABLE_CONVERSATION_COMPANION'
+      })));
+      rememberConversationCurrentness(channel,{state:body.state,headMessageRefOrNull:body.headMessageRefOrNull,headSequenceOrNull:body.headSequenceOrNull,canonicalConversationHeadSha256:body.canonicalConversationHeadSha256,headUpdatedAtOrNull:body.headUpdatedAtOrNull??null});
+      if(currentChannel()?.channelRef===channel.channelRef){renderMessages(true);renderContext();}
+      return canonicalConversationIdentity(channel);
+    } catch {
+      rememberConversationCurrentness(channel,{state:'UNAVAILABLE',headMessageRefOrNull:null,headSequenceOrNull:null,canonicalConversationHeadSha256:null,headUpdatedAtOrNull:null});
+      return canonicalConversationIdentity(channel);
     }
   }
 
@@ -1486,6 +1527,7 @@ export function createChatController({ state, projects, roles, channels, message
       if (!response.ok || body?.state !== 'TURN_COMPLETED' || body?.truthClass !== 'CURRENT_LOCAL_MODEL' || typeof body.content !== 'string' || !body.content) {
         if (body?.sendState === 'DURABLE' && sourceMessage && typeof body.requestMessageRef === 'string') {
           sourceMessage.messageRef = body.requestMessageRef;
+          if (Number.isSafeInteger(body.humanMessageSequence)) sourceMessage.sequence = body.humanMessageSequence;
           sourceMessage.truthClass = 'DURABLE_CONVERSATION_HUMAN';
           sourceMessage.canonicalConversationHeadSha256 = body.canonicalConversationHeadSha256 ?? null;
           sourceMessage.companionAttentionState = 'FAILED_AFTER_DURABLE_SEND';
@@ -1503,6 +1545,7 @@ export function createChatController({ state, projects, roles, channels, message
       const list = listForChannel(channel);
       if (sourceMessage && typeof body.requestMessageRef === 'string') {
         sourceMessage.messageRef = body.requestMessageRef;
+        if (Number.isSafeInteger(body.humanMessageSequence)) sourceMessage.sequence = body.humanMessageSequence;
         sourceMessage.truthClass = 'DURABLE_CONVERSATION_HUMAN';
         sourceMessage.canonicalConversationHeadSha256 = body.humanConversationHeadSha256 ?? null;
         sourceMessage.companionAttentionState = 'COMPLETED';
@@ -1510,6 +1553,7 @@ export function createChatController({ state, projects, roles, channels, message
       if (sourceMessage && body.requestSemanticRelay) { sourceMessage.semanticRelay = body.requestSemanticRelay; renderMessages(); }
       const message = createMessage(channel.channelRef, 'companion', ['victor'], body.content, list.length);
       if (typeof body.responseMessageRef === 'string') message.messageRef = body.responseMessageRef;
+      if (Number.isSafeInteger(body.companionMessageSequence)) message.sequence = body.companionMessageSequence;
       message.truthClass = 'CURRENT_LOCAL_MODEL';
       if (body.responseSemanticRelay) message.semanticRelay = body.responseSemanticRelay;
       message.conversationHeadSha256 = body.conversationHeadSha256;
@@ -1706,6 +1750,7 @@ export function createChatController({ state, projects, roles, channels, message
     setVexAvailability,
     refreshCompanionAvailability,
     refreshConversationCurrentness,
+    refreshConversationProjection,
     canonicalConversationIdentity,
     sendCurrentCompanionMessage,
     setSemanticRelayInput,

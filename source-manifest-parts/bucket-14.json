@@ -23,8 +23,8 @@
     {
       "path": "test/browser-companion-recovery-presentation.test.mjs",
       "mode": "100644",
-      "bytes": 16462,
-      "sha256": "00ef47a159fd80f59e8255142575b41bb9fdab8ebd093dab00d593afe6cfcd72"
+      "bytes": 19277,
+      "sha256": "42e95e0a7b7f93206e3ecc4617cd8a58b6b7eef6aa06385539c66372b0aee1d2"
     },
     {
       "path": "test/vex-core-family-session-authority.test.mjs",

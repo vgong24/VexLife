@@ -10,6 +10,7 @@ import { composeSemanticRelay } from './conversation.mjs';
 import {
   ConversationStoreError,
   appendConversationMessage,
+  exportConversationChannel,
   materializeConversationChannel,
   readConversationChannel,
   readConversationChannelBinding,
@@ -27,6 +28,8 @@ export const BROWSER_COMPANION_STREAM_API_PATH = '/api/v1/companion/turn/stream'
 export const BROWSER_COMPANION_STATUS_PATH = '/api/v1/companion/status';
 export const BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH = '/api/v1/companion/conversation-currentness';
 export const BROWSER_COMPANION_CONVERSATION_CURRENTNESS_SCHEMA = 'vexlife.browser-companion-conversation-currentness/v1';
+export const BROWSER_COMPANION_CONVERSATION_PROJECTION_PATH = '/api/v1/companion/conversation';
+export const BROWSER_COMPANION_CONVERSATION_PROJECTION_SCHEMA = 'vexlife.browser-companion-conversation-projection/v1';
 export const BROWSER_COMPANION_RECOVERY_PATH = '/api/v1/companion/recovery';
 export const BROWSER_COMPANION_RECOVERY_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_COMPANION_PROFILE_REF = 'model-profile.vexlife.browser-companion.local';
@@ -959,6 +962,76 @@ export function createBrowserCompanionBridge({
     });
   }
 
+
+  function conversationProjection(input) {
+    const request = validateBrowserCompanionConversationCurrentnessRequest(input);
+    const currentness = conversationCurrentness(request);
+    if (currentness.state === 'ABSENT') {
+      return Object.freeze({
+        schemaVersion: BROWSER_COMPANION_CONVERSATION_PROJECTION_SCHEMA,
+        state: 'ABSENT',
+        truthClass: 'CURRENT_LOCAL_CONVERSATION_PROJECTION',
+        projectRef: request.projectRef,
+        threadRef: request.threadRef,
+        channelRef: request.channelRef,
+        headMessageRefOrNull: null,
+        headSequenceOrNull: null,
+        canonicalConversationHeadSha256: null,
+        headUpdatedAtOrNull: null,
+        messages: Object.freeze([]),
+        truncated: false,
+        effectsPerformed: false
+      });
+    }
+    const identity = loadBrowserCompanionHomeIdentity(home);
+    const exported = exportConversationChannel({ home: identity.home, channelRef: request.channelRef, limit: 1000 });
+    const projectedMessages = exported.messages.map((event) => {
+      let speakerRole, expectedRecipients, recipientRoles;
+      if (event.speakerRef === identity.personRef) {
+        speakerRole = 'VICTOR'; expectedRecipients = ['role.vex.companion']; recipientRoles = ['COMPANION'];
+      } else if (event.speakerRef === 'role.vex.companion') {
+        speakerRole = 'COMPANION'; expectedRecipients = [identity.personRef]; recipientRoles = ['VICTOR'];
+      } else {
+        throw new BrowserCompanionBridgeError('COMPANION_CONVERSATION_PROJECTION_INVALID', 'Durable Conversation contains a speaker outside the admitted direct Companion relationship', 409);
+      }
+      if (!Array.isArray(event.recipientRefs) || JSON.stringify(event.recipientRefs) !== JSON.stringify(expectedRecipients)) {
+        throw new BrowserCompanionBridgeError('COMPANION_CONVERSATION_PROJECTION_INVALID', 'Durable Conversation contains recipients outside the admitted direct Companion relationship', 409);
+      }
+      return Object.freeze({
+        messageRef: event.messageRef,
+        sequence: event.sequence,
+        speakerRole,
+        recipientRoles: Object.freeze(recipientRoles),
+        content: event.content,
+        contentHash: event.contentHash,
+        createdAt: event.createdAt,
+        eventSha256: event.eventSha256
+      });
+    });
+    const last = projectedMessages.at(-1) ?? null;
+    if (currentness.state === 'CURRENT' && (last === null || last.messageRef !== currentness.headMessageRefOrNull || last.sequence !== currentness.headSequenceOrNull)) {
+      throw new BrowserCompanionBridgeError('COMPANION_CONVERSATION_PROJECTION_INVALID', 'Durable Conversation projection does not terminate at the current canonical head', 409);
+    }
+    if (currentness.state === 'EMPTY' && projectedMessages.length !== 0) {
+      throw new BrowserCompanionBridgeError('COMPANION_CONVERSATION_PROJECTION_INVALID', 'Empty durable Conversation unexpectedly contains messages', 409);
+    }
+    return Object.freeze({
+      schemaVersion: BROWSER_COMPANION_CONVERSATION_PROJECTION_SCHEMA,
+      state: currentness.state,
+      truthClass: 'CURRENT_LOCAL_CONVERSATION_PROJECTION',
+      projectRef: request.projectRef,
+      threadRef: request.threadRef,
+      channelRef: request.channelRef,
+      headMessageRefOrNull: currentness.headMessageRefOrNull,
+      headSequenceOrNull: currentness.headSequenceOrNull,
+      canonicalConversationHeadSha256: currentness.canonicalConversationHeadSha256,
+      headUpdatedAtOrNull: currentness.headUpdatedAtOrNull,
+      messages: Object.freeze(projectedMessages),
+      truncated: exported.truncated === true,
+      effectsPerformed: false
+    });
+  }
+
   async function performRecovery(input) {
     const request = validateBrowserCompanionRecoveryRequest(input);
     if (recoveryOwner === null) {
@@ -1602,7 +1675,7 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
     }
   }
 
-  return Object.freeze({ binding, instanceRef, status, conversationCurrentness, performRecovery, performTurn, performConversationTurn, activeTurnCurrentness });
+  return Object.freeze({ binding, instanceRef, status, conversationCurrentness, conversationProjection, performRecovery, performTurn, performConversationTurn, activeTurnCurrentness });
 }
 
 export function browserCompanionRecoveryFailurePayload(error) {
@@ -1633,6 +1706,19 @@ export function browserCompanionConversationCurrentnessFailurePayload(error) {
     schemaVersion: BROWSER_COMPANION_CONVERSATION_CURRENTNESS_SCHEMA,
     state: 'HELD',
     truthClass: 'CURRENT_LOCAL_CONVERSATION_IDENTITY_FAILURE',
+    failureCode: typed.code,
+    effectsPerformed: false
+  });
+}
+
+export function browserCompanionConversationProjectionFailurePayload(error) {
+  const typed = error instanceof BrowserCompanionBridgeError
+    ? error
+    : new BrowserCompanionBridgeError('COMPANION_CONVERSATION_PROJECTION_FAILED', 'Canonical Conversation projection is unavailable', 500);
+  return Object.freeze({
+    schemaVersion: BROWSER_COMPANION_CONVERSATION_PROJECTION_SCHEMA,
+    state: 'HELD',
+    truthClass: 'CURRENT_LOCAL_CONVERSATION_PROJECTION_FAILURE',
     failureCode: typed.code,
     effectsPerformed: false
   });

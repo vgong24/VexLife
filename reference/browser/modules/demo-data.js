@@ -121,8 +121,6 @@ export function createDemoData({ loadJson, storage = globalThis.localStorage }) 
     list.push(createMessage(channelRef, speakerKey, recipientKeys, payload, list.length));
   };
 
-  seed('channel.self-development.companion', 'victor', ['companion'], 'Hey Vex, I want this conversation to keep its meaning without turning into an engineering dashboard.');
-  seed('channel.self-development.companion', 'companion', ['victor'], 'Yes. This direct channel belongs to Victor ↔ Vex Companion. I can stay natural here while the system preserves exact sources, current context, and retraceability behind the interface.');
   seed('channel.self-development.guide', 'victor', ['guide'], 'What am I looking at, and who can perceive this message?');
   seed('channel.self-development.guide', 'guide', ['victor'], 'You are in the Self Development project, Open conversation thread, Vex Guide direct channel. Only members of this channel receive its raw message context.');
   seed('channel.self-development.root-hub', 'victor', ['root'], 'Can you give me a portfolio-level view without disrupting the project teams?');

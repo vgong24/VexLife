@@ -9,11 +9,13 @@ import {
   BROWSER_COMPANION_STREAM_API_PATH,
   BROWSER_COMPANION_STATUS_PATH,
   BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH,
+  BROWSER_COMPANION_CONVERSATION_PROJECTION_PATH,
   BROWSER_COMPANION_RECOVERY_PATH,
   BROWSER_COMPANION_RECOVERY_MAX_BODY_BYTES,
   BrowserCompanionBridgeError,
   browserCompanionFailurePayload,
   browserCompanionConversationCurrentnessFailurePayload,
+  browserCompanionConversationProjectionFailurePayload,
   browserCompanionRecoveryFailurePayload,
   createBrowserCompanionBridge,
   formBrowserCompanionRecoveryRequest,
@@ -1919,6 +1921,38 @@ export function createVexLifeBrowserServer({
             ? error
             : new BrowserCompanionBridgeError('COMPANION_RECOVERY_ACTION_FAILED', 'Companion recovery action failed safely', 500);
           sendJson(response, typed.httpStatus, browserCompanionRecoveryFailurePayload(typed));
+        }
+        return;
+      }
+
+      if (url.pathname === BROWSER_COMPANION_CONVERSATION_PROJECTION_PATH) {
+        if (request.method !== 'GET') {
+          response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        try {
+          if (typeof companionBridge?.conversationProjection !== 'function') {
+            throw new BrowserCompanionBridgeError('COMPANION_CONVERSATION_PROJECTION_UNAVAILABLE', 'Canonical Conversation projection reader is unavailable', 503);
+          }
+          const allowed = new Set(['projectRef', 'threadRef', 'channelRef']);
+          const supplied = [...url.searchParams.keys()];
+          if (supplied.some((key) => !allowed.has(key))) {
+            throw new BrowserCompanionBridgeError('COMPANION_CURRENTNESS_REQUEST_NOT_ADMITTED', 'Conversation projection query contains unadmitted fields', 400);
+          }
+          const values = Object.fromEntries([...allowed].map((key) => {
+            const entries = url.searchParams.getAll(key);
+            if (entries.length !== 1) {
+              throw new BrowserCompanionBridgeError('COMPANION_CURRENTNESS_REQUEST_NOT_ADMITTED', 'Conversation projection query requires exact project/thread/channel identity', 400);
+            }
+            return [key, entries[0]];
+          }));
+          sendJson(response, 200, companionBridge.conversationProjection(values));
+        } catch (error) {
+          const typed = error instanceof BrowserCompanionBridgeError
+            ? error
+            : new BrowserCompanionBridgeError('COMPANION_CONVERSATION_PROJECTION_FAILED', 'Canonical Conversation projection failed safely', 500);
+          sendJson(response, typed.httpStatus, browserCompanionConversationProjectionFailurePayload(typed));
         }
         return;
       }

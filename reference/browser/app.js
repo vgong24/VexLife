@@ -312,7 +312,7 @@ chat=createChatController({
     return guide.bindCompanionTurn(projection);
   }
 });
-await chat.refreshCompanionAvailability();
+await Promise.all([chat.refreshConversationProjection(),chat.refreshCompanionAvailability()]);
 familyRoom=createFamilyRoomController({state,projects,roles,channels,messages,conversationKey,t,navigation,chat,onChange:()=>queueMicrotask(()=>projectFrame())});
 familyRoom.bind();
 terrain=createTerrainController({state,blueprint,t,navigation,semanticPatchForNode,onCurrentNode:()=>{if(chat)queueMicrotask(()=>projectFrame());}});
@@ -403,7 +403,10 @@ async function selectCurrentVexConversation(){
     .find((item)=>item.channelRef===CURRENT_VEX_CONVERSATION.channelRef&&item.kind==='DIRECT'&&item.roleKey==='companion');
   if(!companion)return Object.freeze({state:'HELD',reason:'CURRENT_VEX_RELATIONSHIP_UNAVAILABLE'});
   chat.selectChannel(companion,'element.channel.companion');
-  const currentness=await chat.refreshConversationCurrentness(companion);
+  const [currentness]=await Promise.all([
+    chat.refreshConversationProjection(companion),
+    chat.refreshCompanionAvailability()
+  ]);
   return Object.freeze({state:'BOUND',...CURRENT_VEX_CONVERSATION,currentness});
 }
 async function sendCurrentVexConversationMessage(question,{frameAtSend=navigation.semanticFrame()}={}){
