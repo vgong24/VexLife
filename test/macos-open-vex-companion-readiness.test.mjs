@@ -119,6 +119,36 @@ test('Mac Open Vex rejects a non-canonical availability projection', () => {
   );
 });
 
+test('Mac Open Vex requires the same canonical availability evidence fields as the browser consumer', () => {
+  const invalidDigest = availability('READY');
+  invalidDigest.projectionSha256 = 'not-a-sha256';
+  assert.throws(
+    () => validateMacCompanionAvailability(invalidDigest),
+    /projectionSha256 is invalid/
+  );
+
+  const duplicateSources = availability('READY');
+  duplicateSources.sourceRefs = ['source.vexlife.test', 'source.vexlife.test'];
+  assert.throws(
+    () => validateMacCompanionAvailability(duplicateSources),
+    /sourceRefs are invalid/
+  );
+
+  const invalidModelRef = availability('READY');
+  invalidModelRef.modelRefOrNull = '';
+  assert.throws(
+    () => validateMacCompanionAvailability(invalidModelRef),
+    /modelRefOrNull must be null or one ref/
+  );
+
+  const missingRegistry = availability('READY');
+  delete missingRegistry.registryRef;
+  assert.throws(
+    () => validateMacCompanionAvailability(missingRegistry),
+    /availability is missing registryRef/
+  );
+});
+
 test('runStart does not claim lifecycle completion before semantic Companion readiness', () => {
   assert.match(
     lifecycleSource,

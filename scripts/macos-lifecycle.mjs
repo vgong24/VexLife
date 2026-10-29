@@ -841,6 +841,7 @@ export function validateMacCompanionAvailability(value) {
     throw new Error('Mac Open Vex requires one canonical Companion availability projection');
   }
   for (const key of [
+    'registryRef',
     'projectionRef',
     'bindingRef',
     'homeRef',
@@ -857,6 +858,21 @@ export function validateMacCompanionAvailability(value) {
     if (typeof value[key] !== 'string' || value[key].length === 0) {
       throw new Error(`Mac Open Vex Companion availability is missing ${key}`);
     }
+  }
+  if (!/^[0-9a-f]{64}$/u.test(value.projectionSha256 ?? '')) {
+    throw new Error('Mac Open Vex Companion availability projectionSha256 is invalid');
+  }
+  for (const key of ['modelRefOrNull', 'generationRefOrNull']) {
+    if (value[key] !== null && (typeof value[key] !== 'string' || value[key].length === 0)) {
+      throw new Error(`Mac Open Vex Companion availability ${key} must be null or one ref`);
+    }
+  }
+  if (
+    !Array.isArray(value.sourceRefs) ||
+    value.sourceRefs.some((ref) => typeof ref !== 'string' || ref.length === 0) ||
+    new Set(value.sourceRefs).size !== value.sourceRefs.length
+  ) {
+    throw new Error('Mac Open Vex Companion availability sourceRefs are invalid');
   }
   for (const key of [
     'effectAuthorityGranted',
