@@ -2966,6 +2966,122 @@ export function readCurrentLivedCompanionThreadWriterCurrentness({
   throw new Error('thread writer lease classifier returned without a disposition');
 }
 
+
+export function recoverAbandonedLivedCompanionThreadWriter({
+  home,
+  homeRef = null,
+  deviceRef = null,
+  companionLineageRef,
+  threadRef,
+  expectedLeaseSha256
+}) {
+  const identity = loadHome(home);
+  const admitted = assertHomeIdentity(identity, { homeRef, deviceRef, companionLineageRef });
+  const safeThread = ensureSafeRef(threadRef, 'threadRef');
+  if (!/^[0-9a-f]{64}$/u.test(expectedLeaseSha256 ?? '')) {
+    fail('THREAD_WRITER_CONFLICT', 'explicit thread writer recovery requires one exact observed lease SHA-256', {
+      companionLineageRef: admitted.companionLineageRef,
+      threadRef: safeThread,
+      ownerState: 'UNKNOWN',
+      leaseSha256: null,
+      observedLeaseFileSha256: null,
+      leaseValidationState: 'EXPECTED_LEASE_SHA256_INVALID',
+      exactNextSafeRoute: 'REOBSERVE_THREAD_WRITER_CURRENTNESS'
+    });
+  }
+
+  const lockDirectory = resolveHomePath(
+    identity.homeRoot,
+    'runtime',
+    'thread-writer-locks',
+    admitted.companionLineageRef
+  );
+  const lockPath = path.join(lockDirectory, safeThread + '.lock');
+  if (!fs.existsSync(lockPath)) {
+    return Object.freeze({
+      schemaVersion: 'vexlife.lived-companion-thread-writer-recovery/v1',
+      state: 'NO_WRITER',
+      currentness: 'CURRENT',
+      homeRef: admitted.homeRef,
+      deviceRef: admitted.deviceRef,
+      companionLineageRef: admitted.companionLineageRef,
+      threadRef: safeThread,
+      recoveredLeaseSha256: null,
+      recoveryEffectPerformed: false,
+      exactNextSafeRoute: 'RETRY_TURN_WITH_SAME_IDEMPOTENCY_IDENTITY'
+    });
+  }
+
+  let first;
+  try {
+    classifyExistingThreadWriterLease(identity.homeRoot, lockPath, admitted.companionLineageRef, safeThread);
+  } catch (error) {
+    if (!(error instanceof LivedCompanionError) || error.code !== 'THREAD_WRITER_RECOVERY_REQUIRED') throw error;
+    first = error.details;
+  }
+  if (!first || first.ownerState !== 'ABSENT' || first.leaseSha256 !== expectedLeaseSha256) {
+    fail('THREAD_WRITER_CONFLICT', 'thread writer recovery lease identity is stale; currentness must be re-observed', {
+      companionLineageRef: admitted.companionLineageRef,
+      threadRef: safeThread,
+      ownerState: first?.ownerState ?? 'UNKNOWN',
+      leaseSha256: first?.leaseSha256 ?? null,
+      observedLeaseFileSha256: first?.observedLeaseFileSha256 ?? null,
+      leaseValidationState: first?.leaseValidationState ?? 'UNKNOWN',
+      exactNextSafeRoute: 'REOBSERVE_THREAD_WRITER_CURRENTNESS'
+    });
+  }
+
+  let second;
+  try {
+    classifyExistingThreadWriterLease(identity.homeRoot, lockPath, admitted.companionLineageRef, safeThread);
+  } catch (error) {
+    if (!(error instanceof LivedCompanionError) || error.code !== 'THREAD_WRITER_RECOVERY_REQUIRED') throw error;
+    second = error.details;
+  }
+  if (!second
+      || second.ownerState !== 'ABSENT'
+      || second.leaseSha256 !== expectedLeaseSha256
+      || second.observedLeaseFileSha256 !== first.observedLeaseFileSha256) {
+    fail('THREAD_WRITER_CONFLICT', 'thread writer recovery evidence changed before the effect; currentness must be re-observed', {
+      companionLineageRef: admitted.companionLineageRef,
+      threadRef: safeThread,
+      ownerState: second?.ownerState ?? 'UNKNOWN',
+      leaseSha256: second?.leaseSha256 ?? null,
+      observedLeaseFileSha256: second?.observedLeaseFileSha256 ?? null,
+      leaseValidationState: second?.leaseValidationState ?? 'UNKNOWN',
+      exactNextSafeRoute: 'REOBSERVE_THREAD_WRITER_CURRENTNESS'
+    });
+  }
+
+  fs.unlinkSync(lockPath);
+  if (fs.existsSync(lockPath)) {
+    fail('PERSISTENCE_WRITE_FAILED', 'explicit thread writer recovery could not remove the exact abandoned lease');
+  }
+  const currentness = readCurrentLivedCompanionThreadWriterCurrentness({
+    home: identity.homeRoot,
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThread
+  });
+  if (currentness.state !== 'IDLE' || currentness.recoveryRequired !== false) {
+    fail('PERSISTENCE_WRITE_FAILED', 'thread writer recovery did not converge to IDLE currentness');
+  }
+
+  return Object.freeze({
+    schemaVersion: 'vexlife.lived-companion-thread-writer-recovery/v1',
+    state: 'WRITER_RECOVERED',
+    currentness: 'CURRENT',
+    homeRef: admitted.homeRef,
+    deviceRef: admitted.deviceRef,
+    companionLineageRef: admitted.companionLineageRef,
+    threadRef: safeThread,
+    recoveredLeaseSha256: expectedLeaseSha256,
+    recoveryEffectPerformed: true,
+    exactNextSafeRoute: 'RETRY_TURN_WITH_SAME_IDEMPOTENCY_IDENTITY'
+  });
+}
+
 export function readCurrentLivedCompanionCompletedTurn({
   home,
   homeRef = null,
