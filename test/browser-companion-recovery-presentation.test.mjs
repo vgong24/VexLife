@@ -196,8 +196,8 @@ function seedCanonicalConversation(home) {
   });
   const at0=device.createdAt, at1=new Date(Date.parse(device.createdAt)+1000).toISOString();
   const append=(message)=>appendConversationMessage({home,instanceRef:device.deviceRef,observedAt:message.createdAt,message});
-  append({messageRef:'message.vr06.presentation.human.000',spaceRef:null,threadRef,channelRef,speakerRef:device.personRef,recipientRefs:['role.vex.companion'],witnessRefs:[],membershipSnapshotRef:null,membershipGeneration:null,sequence:0,content:'Durable Victor first-load message.',contentHash:semanticHash('Durable Victor first-load message.'),createdAt:at0});
-  append({messageRef:'message.vr06.presentation.companion.001',spaceRef:null,threadRef,channelRef,speakerRef:'role.vex.companion',recipientRefs:[device.personRef],witnessRefs:[],membershipSnapshotRef:null,membershipGeneration:null,sequence:1,content:'Durable Vex first-load response.',contentHash:semanticHash('Durable Vex first-load response.'),createdAt:at1});
+  append({messageRef:'message.vr06.presentation.human.000',spaceRef:null,threadRef,channelRef,speakerRef:device.personRef,recipientRefs:['role.vex.companion'],witnessRefs:['witness.vr06.presentation.human.000'],membershipSnapshotRef:null,membershipGeneration:null,sequence:0,content:'Durable Victor first-load message.',contentHash:semanticHash('Durable Victor first-load message.'),createdAt:at0});
+  append({messageRef:'message.vr06.presentation.companion.001',spaceRef:null,threadRef,channelRef,speakerRef:'role.vex.companion',recipientRefs:[device.personRef],witnessRefs:['witness.vr06.presentation.companion.001'],membershipSnapshotRef:null,membershipGeneration:null,sequence:1,content:'Durable Vex first-load response.',contentHash:semanticHash('Durable Vex first-load response.'),createdAt:at1});
 }
 
 async function withReferenceBrowser(viewport, run, { initialObservation = runtimeObservation(), seedConversation = false } = {}) {
