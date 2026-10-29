@@ -818,6 +818,134 @@ async function waitPort(port, timeoutMs = 15000) {
   }
   return false;
 }
+
+export const MAC_COMPANION_AVAILABILITY_URL =
+  'http://127.0.0.1:18110/api/v1/companion/availability';
+
+const MAC_COMPANION_AVAILABILITY_STATES = new Set([
+  'READY',
+  'STARTING',
+  'RECOVERABLE',
+  'ACTION_REQUIRED',
+  'UNAVAILABLE',
+  'HELD'
+]);
+
+export function validateMacCompanionAvailability(value) {
+  if (
+    !value || typeof value !== 'object' || Array.isArray(value) ||
+    value.schemaVersion !== 'vexlife.companion-availability/v1' ||
+    value.truthClass !== 'SOURCE_BOUND_COMPANION_AVAILABILITY' ||
+    !MAC_COMPANION_AVAILABILITY_STATES.has(value.availabilityState)
+  ) {
+    throw new Error('Mac Open Vex requires one canonical Companion availability projection');
+  }
+  for (const key of [
+    'projectionRef',
+    'bindingRef',
+    'homeRef',
+    'companionLineageRef',
+    'runtimeAdapterRef',
+    'runtimeObservationRef',
+    'recoveryClass',
+    'reasonCode',
+    'bindingState',
+    'runtimeOwnershipState',
+    'runtimeState',
+    'qualificationState'
+  ]) {
+    if (typeof value[key] !== 'string' || value[key].length === 0) {
+      throw new Error(`Mac Open Vex Companion availability is missing ${key}`);
+    }
+  }
+  for (const key of [
+    'effectAuthorityGranted',
+    'rendererAuthorityGranted',
+    'modelIdentityAuthorityGranted',
+    'processAuthorityGranted',
+    'conversationAuthorityGranted'
+  ]) {
+    if (value[key] !== false) {
+      throw new Error(`Mac Open Vex Companion availability widened ${key}`);
+    }
+  }
+  return Object.freeze(structuredClone(value));
+}
+
+export async function readMacCompanionAvailability({
+  fetchImpl = globalThis.fetch,
+  timeoutMs = 2000
+} = {}) {
+  if (typeof fetchImpl !== 'function') {
+    throw new TypeError('Mac Open Vex Companion readiness requires fetch');
+  }
+  const signal = typeof globalThis.AbortSignal?.timeout === 'function'
+    ? globalThis.AbortSignal.timeout(timeoutMs)
+    : undefined;
+  const response = await fetchImpl(MAC_COMPANION_AVAILABILITY_URL, {
+    method: 'GET',
+    cache: 'no-store',
+    ...(signal ? { signal } : {})
+  });
+  if (!response?.ok) {
+    throw new Error(`Mac Open Vex Companion availability HTTP ${response?.status ?? 'UNKNOWN'}`);
+  }
+  return validateMacCompanionAvailability(await response.json());
+}
+
+export async function waitForMacCompanionReady({
+  fetchImpl = globalThis.fetch,
+  maxAttempts = 60,
+  intervalMs = 250,
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+} = {}) {
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+    throw new TypeError('Mac Open Vex Companion readiness maxAttempts must be positive');
+  }
+  if (!Number.isInteger(intervalMs) || intervalMs < 0) {
+    throw new TypeError('Mac Open Vex Companion readiness intervalMs must be non-negative');
+  }
+  if (typeof sleep !== 'function') {
+    throw new TypeError('Mac Open Vex Companion readiness sleep must be one function');
+  }
+
+  let lastAvailability = null;
+  let lastReadFailure = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      lastAvailability = await readMacCompanionAvailability({ fetchImpl });
+      lastReadFailure = null;
+      if (lastAvailability.availabilityState === 'READY') {
+        return Object.freeze({
+          state: 'READY',
+          attempt,
+          availability: lastAvailability
+        });
+      }
+      if (lastAvailability.availabilityState !== 'STARTING') {
+        throw new Error(
+          `Mac Open Vex Companion is not READY: ${lastAvailability.availabilityState}/` +
+          `${lastAvailability.recoveryClass}/${lastAvailability.reasonCode}`
+        );
+      }
+    } catch (error) {
+      if (
+        lastAvailability &&
+        lastAvailability.availabilityState !== 'STARTING' &&
+        lastAvailability.availabilityState !== 'READY'
+      ) {
+        throw error;
+      }
+      lastReadFailure = error;
+    }
+    if (attempt < maxAttempts) await sleep(intervalMs);
+  }
+
+  const detail = lastAvailability
+    ? `${lastAvailability.availabilityState}/${lastAvailability.recoveryClass}/${lastAvailability.reasonCode}`
+    : `UNREADABLE/${lastReadFailure?.message ?? 'NO_AVAILABILITY_PROJECTION'}`;
+  throw new Error(`Mac Open Vex Companion did not reach READY: ${detail}`);
+}
 async function runNode(argv, { cwd = SOURCE_ROOT, accepted = [0], env = {}, forwardStderr = false } = {}) {
   const maxBuffer = 32 * 1024 * 1024;
   return new Promise((resolve, reject) => {
@@ -1136,7 +1264,8 @@ async function runStart(home, repo, options, { forceCurrentBrowserRebind = false
   }
   if (initialized.state !== 'RUNTIME_QUALIFIED') throw new Error(`initializer did not qualify runtime: ${initialized.state}`);
   const browser = await startBrowser(home, repo, initialized, { forceCurrentBrowserRebind });
-  return { initialized, browser };
+  const companionAvailability = await waitForMacCompanionReady();
+  return { initialized, browser, companionAvailability };
 }
 export async function cleanStop(home, repo) {
   const homeRoot = canonicalMacHomeDirectory(home);
