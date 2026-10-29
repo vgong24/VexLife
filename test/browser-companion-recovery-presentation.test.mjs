@@ -261,7 +261,7 @@ async function withReferenceBrowser(viewport, run, { initialObservation = runtim
   }
 }
 
-test('ordinary Reference page load projects canonical READY before Victor interacts with the composer', async () => {
+test('Open Vex launch-intent page load projects canonical READY before Victor interacts with the composer', async () => {
   await withReferenceBrowser(
     { width: 1440, height: 900 },
     async ({ page, serverUrl }) => {
@@ -270,7 +270,7 @@ test('ordinary Reference page load projects canonical READY before Victor intera
         if (new URL(request.url()).pathname === '/api/v1/companion/turn') turnCalls += 1;
       });
 
-      await page.goto(serverUrl + '/reference/browser/', { waitUntil: 'networkidle', timeout: 30000 });
+      await page.goto(serverUrl + '/reference/browser/?open=vex', { waitUntil: 'networkidle', timeout: 30000 });
       await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 30000 });
 
       const initial = await page.evaluate(() => ({

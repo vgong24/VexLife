@@ -69,7 +69,9 @@ const UX_CONVERSATION_STYLESHEET_REF='ux-evolution-conversation';
 const UX_PURPOSE_WORKSPACE_STYLESHEET_REF='ux-evolution-purpose-workspace';
 function ensurePurposeWorkspaceEvolutionStylesheet(){const href=new URL('./evolution/purpose-workspace.css',import.meta.url).href;const existing=document.querySelector('link[data-ux-evolution-stylesheet="'+UX_PURPOSE_WORKSPACE_STYLESHEET_REF+'"]');if(existing){if(existing.href!==href)throw new Error('Purpose Workspace Evolution stylesheet binding drift');return existing}const link=document.createElement('link');link.rel='stylesheet';link.href=href;link.dataset.uxEvolutionStylesheet=UX_PURPOSE_WORKSPACE_STYLESHEET_REF;document.head.append(link);return link}
 function ensureConversationEvolutionStylesheet(){const href=new URL('./evolution/conversation.css',import.meta.url).href;const existing=document.querySelector('link[data-ux-evolution-stylesheet="'+UX_CONVERSATION_STYLESHEET_REF+'"]');if(existing){if(existing.href!==href)throw new Error('Conversation Evolution stylesheet binding drift');return existing}const link=document.createElement('link');link.rel='stylesheet';link.href=href;link.dataset.uxEvolutionStylesheet=UX_CONVERSATION_STYLESHEET_REF;document.head.append(link);return link}
-const uxInitialProjectionParam=new URLSearchParams(globalThis.location?.search??'').get('projection');
+const browserLaunchParams=new URLSearchParams(globalThis.location?.search??'');
+const uxInitialProjectionParam=browserLaunchParams.get('projection');
+const openVexLaunchRequested=browserLaunchParams.get('open')==='vex';
 state.uxProjection=uxInitialProjectionParam==='evolution'&&uxLoopbackHostnames.has(globalThis.location?.hostname??'')?UX_EVOLUTION_PROJECTION:UX_REFERENCE_PROJECTION;
 state.uxActiveSurfaceRef=null;
 const BROWSER_ARCHITECTURE_NODE_API_PATH='/api/v1/architecture/node';
@@ -117,8 +119,10 @@ const TERRAIN_CONTEXT = Object.freeze({
   'terrain.thread.root-welcome': { projectRef:'project.vexlife.root-hub', threadRef:'thread.root-hub.welcome', channelRef:'channel.root-hub.welcome.root' }
 });
 
-const initialTerrainRef = blueprint.terrain.find((node) => !node.parentRef)?.terrainNodeRef;
-Object.assign(state, TERRAIN_CONTEXT[initialTerrainRef] || {});
+const defaultTerrainRef = blueprint.terrain.find((node) => !node.parentRef)?.terrainNodeRef;
+const initialTerrainRef = openVexLaunchRequested ? 'terrain.thread.open-conversation' : defaultTerrainRef;
+if (!initialTerrainRef || !TERRAIN_CONTEXT[initialTerrainRef]) throw new Error('Initial browser terrain is not source-bound');
+Object.assign(state, TERRAIN_CONTEXT[initialTerrainRef]);
 state.terrain = { ...(state.terrain || {}), selected: initialTerrainRef };
 state.selectedNodeRef = initialTerrainRef;
 const elementByRef = new Map(compileInterfaceEntries(blueprint).map((entry) => [entry.ref, entry]));

@@ -7,7 +7,7 @@ if [ "$#" -gt 0 ] && [[ "$1" != --* ]]; then
   REPO_ROOT="$1"
   shift
 fi
-INSTALL_URL="http://127.0.0.1:18110"
+INSTALL_URL="http://127.0.0.1:18110/reference/browser/?open=vex"
 DEFAULT_HOME="${VEXLIFE_HOME:-$HOME/.vexlife}"
 CONTROLLER_MODE=false
 CONTROLLER_HOME=""
