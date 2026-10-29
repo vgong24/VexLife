@@ -417,6 +417,27 @@ function inheritedMacProcessEnvironment(extra = {}) {
   return { ...result, ...extra };
 }
 
+function browserCompanionBindingForInitialization(initialization) {
+  return Object.freeze({
+    endpoint: String(initialization.endpoint),
+    requestModel: String(initialization.requestModel),
+    runtimeReceiptPath: initialization.runtimeReceiptPath
+      ? path.resolve(String(initialization.runtimeReceiptPath))
+      : null
+  });
+}
+
+function browserReceiptMatchesInitialization(receipt, initialization) {
+  const expected = browserCompanionBindingForInitialization(initialization);
+  const actual = receipt?.companionBinding;
+  return Boolean(
+    actual
+    && actual.endpoint === expected.endpoint
+    && actual.requestModel === expected.requestModel
+    && actual.runtimeReceiptPath === expected.runtimeReceiptPath
+  );
+}
+
 export function getOwnedBrowser(home, repo, {
   allowRepoDrift = false,
   processEvidenceReader = readMacProcessEvidence,
@@ -1015,6 +1036,19 @@ async function startBrowser(home, repo, initialization, { forceCurrentBrowserReb
       }
     }
   }
+  if (!forceCurrentBrowserRebind && await portOpen(browserPort)) {
+    const ownedForBinding = getOwnedBrowser(home, repo, { allowRepoDrift: true });
+    if (!ownedForBinding) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
+    if (ownedForBinding.sourceCurrent && !browserReceiptMatchesInitialization(ownedForBinding.receipt, initialization)) {
+      const rebind = await stopOwnedBrowser(home, repo);
+      if (await portOpen(browserPort)) {
+        throw new Error('exact current browser stopped for Companion binding correction but port 18110 remains occupied');
+      }
+      if (rebind.sourceDisposition !== 'CURRENT_SOURCE') {
+        throw new Error('current-source browser binding correction did not preserve exact ownership classification');
+      }
+    }
+  }
   if (await portOpen(browserPort)) {
     const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true });
     if (!owned) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
@@ -1065,6 +1099,7 @@ async function startBrowser(home, repo, initialization, { forceCurrentBrowserReb
     serverScriptPath: serverScript,
     vexHomePath: home,
     repoRootPath: repo,
+    companionBinding: browserCompanionBindingForInitialization(initialization),
     processSubstrate,
     formedAtUtc: new Date().toISOString()
   };

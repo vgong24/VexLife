@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 9389,
       "sha256": "c416b327aa0a4f7c9a306b69fdf5658ff7cf2ea019ba87cfebcc84d206ced4bf"
+    },
+    {
+      "path": "test/macos-browser-companion-binding-reuse.test.mjs",
+      "mode": "100644",
+      "bytes": 2094,
+      "sha256": "6edada7a9382e1c69842b2366db721e10347b6c60f421ceee5d67080a463f736"
     }
   ]
 }
