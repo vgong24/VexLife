@@ -1292,7 +1292,7 @@ function applyEvent(projection, event) {
       consentDispositionSha256: event.consentDispositionSha256,
       eventRef: event.scoreEventRef,
       eventHash: event.scoreEventHash,
-      current: !['SUPERSEDED', 'RELEASED_OR_TOMBSTONED'].includes(event.statementState)
+      current: event.statementState !== 'RELEASED_OR_TOMBSTONED'
     });
   } else {
     if (event.openLoopState !== 'OPEN') fail('OPEN_LOOP_INVALID', 'G02 open-loop resolution is held pending a source-managed resolution contract');
