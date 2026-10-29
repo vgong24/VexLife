@@ -1023,14 +1023,10 @@ async function startBrowser(home, repo, initialization, { forceCurrentBrowserReb
     priorReceipt.stoppedAtUtc = new Date().toISOString();
     writeJsonAtomic(receiptPath, priorReceipt);
   }
-  if (await portOpen(browserPort)) {
-    const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true });
-    if (!owned) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
-    if (owned.sourceCurrent) {
-      const bindingCurrent = browserReceiptMatchesInitialization(owned.receipt, initialization);
-      if (!forceCurrentBrowserRebind && bindingCurrent) {
-        return { disposition: 'REUSED_EXACT_BROWSER', pid: owned.pid };
-      }
+  if (forceCurrentBrowserRebind && await portOpen(browserPort)) {
+    const ownedForRebind = getOwnedBrowser(home, repo, { allowRepoDrift: true });
+    if (!ownedForRebind) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
+    if (ownedForRebind.sourceCurrent) {
       const rebind = await stopOwnedBrowser(home, repo);
       if (await portOpen(browserPort)) {
         throw new Error('exact current browser stopped for Companion rebind but port 18110 remains occupied');
@@ -1038,14 +1034,31 @@ async function startBrowser(home, repo, initialization, { forceCurrentBrowserReb
       if (rebind.sourceDisposition !== 'CURRENT_SOURCE') {
         throw new Error('current-source browser rebind did not preserve exact ownership classification');
       }
-    } else {
-      const rotation = await stopOwnedBrowser(home, repo);
+    }
+  }
+  if (!forceCurrentBrowserRebind && await portOpen(browserPort)) {
+    const ownedForBinding = getOwnedBrowser(home, repo, { allowRepoDrift: true });
+    if (!ownedForBinding) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
+    if (ownedForBinding.sourceCurrent && !browserReceiptMatchesInitialization(ownedForBinding.receipt, initialization)) {
+      const rebind = await stopOwnedBrowser(home, repo);
       if (await portOpen(browserPort)) {
-        throw new Error('exact prior-source browser stopped but port 18110 remains occupied');
+        throw new Error('exact current browser stopped for Companion binding correction but port 18110 remains occupied');
       }
-      if (rotation.sourceDisposition !== 'PRIOR_EXACT_SOURCE') {
-        throw new Error('browser source rotation did not preserve prior-source ownership classification');
+      if (rebind.sourceDisposition !== 'CURRENT_SOURCE') {
+        throw new Error('current-source browser binding correction did not preserve exact ownership classification');
       }
+    }
+  }
+  if (await portOpen(browserPort)) {
+    const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true });
+    if (!owned) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
+    if (owned.sourceCurrent) return { disposition: 'REUSED_EXACT_BROWSER', pid: owned.pid };
+    const rotation = await stopOwnedBrowser(home, repo);
+    if (await portOpen(browserPort)) {
+      throw new Error('exact prior-source browser stopped but port 18110 remains occupied');
+    }
+    if (rotation.sourceDisposition !== 'PRIOR_EXACT_SOURCE') {
+      throw new Error('browser source rotation did not preserve prior-source ownership classification');
     }
   }
   const token = crypto.randomUUID().toLowerCase();

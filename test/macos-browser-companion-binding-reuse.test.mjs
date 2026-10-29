@@ -26,11 +26,11 @@ test('Mac current-source browser reuse requires the exact qualified Companion bi
   );
   assert.match(
     lifecycleSource,
-    /owned\.sourceCurrent[\s\S]*?browserReceiptMatchesInitialization\(owned\.receipt, initialization\)[\s\S]*?!forceCurrentBrowserRebind && bindingCurrent[\s\S]*?REUSED_EXACT_BROWSER/
+    /!forceCurrentBrowserRebind && await portOpen\(browserPort\)[\s\S]*?ownedForBinding\.sourceCurrent && !browserReceiptMatchesInitialization\(ownedForBinding\.receipt, initialization\)[\s\S]*?stopOwnedBrowser\(home, repo\)/
   );
   assert.match(
     lifecycleSource,
-    /owned\.sourceCurrent[\s\S]*?const rebind = await stopOwnedBrowser\(home, repo\)[\s\S]*?rebind\.sourceDisposition !== 'CURRENT_SOURCE'/
+    /if \(owned\.sourceCurrent\) return \{ disposition: 'REUSED_EXACT_BROWSER', pid: owned\.pid \}/
   );
   assert.match(
     lifecycleSource,
@@ -45,7 +45,7 @@ test('recoverable start still forces current-browser rebind even when its record
   );
   assert.match(
     lifecycleSource,
-    /if \(!forceCurrentBrowserRebind && bindingCurrent\)[\s\S]*?REUSED_EXACT_BROWSER/
+    /forceCurrentBrowserRebind && await portOpen\(browserPort\)/
   );
   assert.match(
     lifecycleSource,
