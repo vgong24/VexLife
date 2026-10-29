@@ -315,7 +315,14 @@ chat=createChatController({
 familyRoom=createFamilyRoomController({state,projects,roles,channels,messages,conversationKey,t,navigation,chat,onChange:()=>queueMicrotask(()=>projectFrame())});
 familyRoom.bind();
 terrain=createTerrainController({state,blueprint,t,navigation,semanticPatchForNode,onCurrentNode:()=>{if(chat)queueMicrotask(()=>projectFrame());}});
-guide=createGuideController({state,t,navigation,elementByRef,chat});
+guide=createGuideController({
+  state,
+  t,
+  navigation,
+  elementByRef,
+  chat,
+  onFreeformAsk:(question)=>chat.sendCurrentCompanionMessage(question,{frameAtSend:navigation.semanticFrame()})
+});
 securityAccess=createSecurityAccessController({registry:blueprint.securityAccessPreview,t,guide});
 securityAccess.bind();
 const featureWalkthrough=createFeatureWalkthroughGuideAdapter({featureRegistry,experience,guide,navigation});

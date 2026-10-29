@@ -115,6 +115,14 @@ test('VA-I07 production app composes the accepted completed-turn callback into t
   assert.match(appSource, /onCompanionTurnCompleted:\s*async \(projection\)/u);
   assert.match(appSource, /guide\.bindCompanionTurn\(projection\)/u);
   assert.match(appSource, /Guide controller is unavailable for Companion vessel projection/u);
+  assert.match(chatSource, /async function sendCurrentCompanionMessage\(content/u);
+  assert.match(chatSource, /await requestRealCompanionReply\(channel, text, frameAtSend, \{ sourceMessage: message \}\)/u);
+  assert.match(chatSource, /sendCurrentCompanionMessage,/u);
+  assert.match(guideSource, /onFreeformAsk = null/u);
+  assert.match(guideSource, /await onFreeformAsk\(question\)/u);
+  assert.match(guideSource, /wasActiveConversation && priorHead !== projection\.conversationHeadSha256/u);
+  assert.match(guideSource, /addMessage\('guide', projection\.content\)/u);
+  assert.match(appSource, /onFreeformAsk:\(question\)=>chat\.sendCurrentCompanionMessage\(question,\{frameAtSend:navigation\.semanticFrame\(\)\}\)/u);
   assert.doesNotMatch(chatSource + guideSource + appSource, /getUserMedia|mediaDevices|camera|microphone|screenCapture/iu);
 });
 

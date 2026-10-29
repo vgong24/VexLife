@@ -1428,6 +1428,37 @@ export function createChatController({ state, projects, roles, channels, message
     }
   }
 
+  async function sendCurrentCompanionMessage(content, { frameAtSend = navigation.semanticFrame() } = {}) {
+    const text = typeof content === 'string' ? content.trim() : '';
+    if (!text) return Object.freeze({ state: 'EMPTY_MESSAGE' });
+    const channel = currentChannel();
+    if (!channel || channel.roleKey !== 'companion') {
+      return Object.freeze({ state: 'CURRENT_CHANNEL_NOT_COMPANION' });
+    }
+    if (!channelIsAvailable(channel) && !companionTurnPending) {
+      await refreshCompanionAvailability();
+    }
+    if (!channelIsAvailable(channel) || companionTurnPending) {
+      return Object.freeze({ state: 'COMPANION_NOT_READY' });
+    }
+    const recipients = channel.memberKeys.filter((key) => key !== 'victor');
+    const list = listForChannel(channel);
+    const message = createMessage(channel.channelRef, 'victor', recipients, text, list.length);
+    message.sendIdempotencyKey = `browser-send.${globalThis.crypto.randomUUID()}`;
+    list.push(message);
+    appendMessageNode(message);
+    if (state.unsentLocalDraft?.channelRef === channel.channelRef) state.unsentLocalDraft = null;
+    renderComposerTruth();
+    const completed = await requestRealCompanionReply(channel, text, frameAtSend, { sourceMessage: message });
+    return Object.freeze({
+      state: completed ? 'TURN_COMPLETED' : 'TURN_NOT_COMPLETED',
+      projectRef: channel.projectRef,
+      threadRef: channel.threadRef,
+      channelRef: channel.channelRef,
+      requestMessageRef: message.messageRef
+    });
+  }
+
   function setVexAvailability(nextState) {
     if (!['AVAILABLE', 'UNAVAILABLE'].includes(nextState)) {
       throw new Error(`Unsupported Vex availability: ${nextState}`);
@@ -1543,6 +1574,7 @@ export function createChatController({ state, projects, roles, channels, message
     renderContext,
     setVexAvailability,
     refreshCompanionAvailability,
+    sendCurrentCompanionMessage,
     setSemanticRelayInput,
     setSemanticRelayAttention,
     semanticRelayAttention: () => semanticRelayAttention?.publicAttention && semanticRelayScopeMatches(semanticRelayAttention.scope)
