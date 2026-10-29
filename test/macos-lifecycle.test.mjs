@@ -823,35 +823,27 @@ test('MAC07C protected continuity hashes model files incrementally without whole
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-test('MAC06E current-source browser reuse requires the exact qualified Companion binding', () => {
+test('MAC06E recoverable Companion start pre-rotates an exact current browser while healthy start preserves legacy reuse', () => {
   const lifecycleSource = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
   assert.match(
     lifecycleSource,
-    /function browserCompanionBindingForInitialization\(initialization\)/
+    /async function startBrowser\(home, repo, initialization, \{ forceCurrentBrowserRebind = false \} = \{\}\)/
   );
   assert.match(
     lifecycleSource,
-    /runtimeReceiptPath:\s*initialization\.runtimeReceiptPath[\s\S]*?path\.resolve\(String\(initialization\.runtimeReceiptPath\)\)/
+    /forceCurrentBrowserRebind && await portOpen\(browserPort\)/
   );
   assert.match(
     lifecycleSource,
-    /function browserReceiptMatchesInitialization\(receipt, initialization\)/
+    /const ownedForRebind = getOwnedBrowser\(home, repo, \{ allowRepoDrift: true \}\)/
   );
   assert.match(
     lifecycleSource,
-    /actual\.endpoint === expected\.endpoint[\s\S]*?actual\.requestModel === expected\.requestModel[\s\S]*?actual\.runtimeReceiptPath === expected\.runtimeReceiptPath/
+    /ownedForRebind\.sourceCurrent[\s\S]*?const rebind = await stopOwnedBrowser\(home, repo\)[\s\S]*?rebind\.sourceDisposition !== 'CURRENT_SOURCE'/
   );
   assert.match(
     lifecycleSource,
-    /owned\.sourceCurrent[\s\S]*?browserReceiptMatchesInitialization\(owned\.receipt, initialization\)[\s\S]*?!forceCurrentBrowserRebind && bindingCurrent[\s\S]*?REUSED_EXACT_BROWSER/
-  );
-  assert.match(
-    lifecycleSource,
-    /owned\.sourceCurrent[\s\S]*?const rebind = await stopOwnedBrowser\(home, repo\)[\s\S]*?rebind\.sourceDisposition !== 'CURRENT_SOURCE'/
-  );
-  assert.match(
-    lifecycleSource,
-    /companionBinding:\s*browserCompanionBindingForInitialization\(initialization\)/
+    /if \(owned\.sourceCurrent\) return \{ disposition: 'REUSED_EXACT_BROWSER', pid: owned\.pid \}/
   );
   assert.match(
     lifecycleSource,
@@ -860,6 +852,10 @@ test('MAC06E current-source browser reuse requires the exact qualified Companion
   assert.match(
     lifecycleSource,
     /exact current browser stopped for Companion rebind but port 18110 remains occupied/
+  );
+  assert.match(
+    lifecycleSource,
+    /current-source browser rebind did not preserve exact ownership classification/
   );
 });
 
