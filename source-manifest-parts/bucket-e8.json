@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 10313,
       "sha256": "096517bbd3c536848b571cea89e829658a0524b54194018a4c014fe0be2827b2"
+    },
+    {
+      "path": "test/macos-open-vex-companion-readiness.test.mjs",
+      "mode": "100644",
+      "bytes": 5533,
+      "sha256": "616707b2e5f42e6ad034728bdba2d35f280164955983bcafe338a556885b7064"
     }
   ]
 }
