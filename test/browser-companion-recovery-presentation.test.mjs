@@ -172,7 +172,7 @@ function runtimeObservation(overrides = {}) {
   };
 }
 
-async function withReferenceBrowser(viewport, run) {
+async function withReferenceBrowser(viewport, run, { initialObservation = runtimeObservation() } = {}) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'vr06-presentation-browser-home-'));
   fs.mkdirSync(path.join(home, 'config'), { recursive: true });
   fs.mkdirSync(path.join(home, 'devices'), { recursive: true });
@@ -187,7 +187,7 @@ async function withReferenceBrowser(viewport, run) {
     companionLineageRef: 'lineage.vr06.presentation'
   }, null, 2) + '\n');
 
-  let observation = runtimeObservation();
+  let observation = initialObservation;
   const recoveryRequests = [];
   const companionBridge = createBrowserCompanionBridge({
     endpoint: null,
@@ -235,6 +235,60 @@ async function withReferenceBrowser(viewport, run) {
     fs.rmSync(home, { recursive: true, force: true });
   }
 }
+
+test('ordinary Reference page load projects canonical READY before Victor interacts with the composer', async () => {
+  await withReferenceBrowser(
+    { width: 1440, height: 900 },
+    async ({ page, serverUrl }) => {
+      let turnCalls = 0;
+      page.on('request', (request) => {
+        if (new URL(request.url()).pathname === '/api/v1/companion/turn') turnCalls += 1;
+      });
+
+      await page.goto(serverUrl + '/reference/browser/', { waitUntil: 'networkidle', timeout: 30000 });
+      await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 30000 });
+
+      const initial = await page.evaluate(() => ({
+        channelRef: globalThis.__VEXLIFE_APP__.chat.currentChannel().channelRef,
+        availabilityState: globalThis.__VEXLIFE_APP__.chat.companionAvailabilityState(),
+        bindingState: globalThis.__VEXLIFE_APP__.chat.companionBindingState(),
+        composerAvailability: document.querySelector('#composer')?.dataset.availabilityState ?? null,
+        composerCompanionAvailability: document.querySelector('#composer')?.dataset.companionAvailabilityState ?? null,
+        sendDisabled: document.querySelector('#composer button[type="submit"]')?.disabled ?? null,
+        hint: document.querySelector('#composerHint')?.textContent ?? null
+      }));
+
+      assert.deepEqual({
+        channelRef: initial.channelRef,
+        availabilityState: initial.availabilityState,
+        bindingState: initial.bindingState,
+        composerAvailability: initial.composerAvailability,
+        composerCompanionAvailability: initial.composerCompanionAvailability,
+        sendDisabled: initial.sendDisabled,
+        turnCalls
+      }, {
+        channelRef: 'channel.self-development.companion',
+        availabilityState: 'READY',
+        bindingState: 'BOUND',
+        composerAvailability: 'AVAILABLE',
+        composerCompanionAvailability: 'READY',
+        sendDisabled: false,
+        turnCalls: 0
+      });
+      assert.doesNotMatch(initial.hint ?? '', /unavailable/u);
+    },
+    {
+      initialObservation: runtimeObservation({
+        observationRef: 'observation.vr06.presentation.initial-ready',
+        runtimeOwnershipState: 'EXACT_OWNED',
+        runtimeState: 'HEALTHY',
+        qualificationState: 'CURRENT',
+        safeReentryState: 'NOT_AVAILABLE',
+        evidenceRefs: ['evidence.runtime.vr06.presentation.initial-ready']
+      })
+    }
+  );
+});
 
 test('VR06 Reference composer exposes truthful recoverable action on desktop and compact without sending a turn', async () => {
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
