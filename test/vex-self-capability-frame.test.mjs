@@ -5,7 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { compileModelConnection } from '../src/core/model-connection-compiler.mjs';
-import { formVexSelfCapabilityFrame } from '../src/core/vex-self-capability-frame.mjs';
+import {
+  formVexSelfCapabilityFrame,
+  projectVexSelfCapabilityCurrentContext
+} from '../src/core/vex-self-capability-frame.mjs';
 import { normalizeModelRuntimeResponse } from '../src/core/model-runtime-adapter.mjs';
 import { formModelRuntimeInvocationEvidence, formModelTurnWitness } from '../src/core/model-turn-witness.mjs';
 
@@ -96,6 +99,34 @@ test('self-capability frame is bounded source truth and grants no effect authori
   ]) {
     assert.equal(text.includes(forbidden), false, forbidden);
   }
+});
+
+test('current-context projector extracts only admitted refs from richer runtime context', () => {
+  const context = projectVexSelfCapabilityCurrentContext({
+    taskRef: 'task.runtime-only',
+    sourceRefs: ['source.runtime-only'],
+    homeRef: 'vex-home.local',
+    deviceRef: 'device.local',
+    companionLineageRef: 'companion-lineage.local',
+    projectRef: 'project.self-development',
+    threadRef: 'thread.self-development.open-conversation',
+    channelRef: 'channel.self-development.companion',
+    screenRef: 'screen.vexlife.chat',
+    selectedNodeRef: 'element.channel.companion'
+  });
+  assert.deepEqual(context, {
+    homeRef: 'vex-home.local',
+    deviceRef: 'device.local',
+    companionLineageRef: 'companion-lineage.local',
+    projectRef: 'project.self-development',
+    threadRef: 'thread.self-development.open-conversation',
+    channelRef: 'channel.self-development.companion',
+    screenRef: 'screen.vexlife.chat',
+    selectedNodeRef: 'element.channel.companion'
+  });
+  assert.equal(Object.hasOwn(context, 'taskRef'), false);
+  assert.equal(Object.hasOwn(context, 'sourceRefs'), false);
+  assert.throws(() => projectVexSelfCapabilityCurrentContext({ threadRef: { unsafe: true } }), /currentContext\.threadRef/);
 });
 
 test('self frame rejects ambient/unbounded context fields', () => {

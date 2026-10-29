@@ -203,18 +203,35 @@ test('ADOPTED_READ_ONLY permits ordinary conversation without fabricating a tool
   const result = await runtime.resolveTurn({
     taskIntent: 'Hello Vex.',
     endpointProfile: { profileRef: 'profile.test', admitted: true, endpoint: 'http://127.0.0.1:1', model: 'test' },
-    context: { taskRef: 'task.test.no-read' },
+    context: {
+      taskRef: 'task.test.no-read',
+      homeRef: 'vex-home.test',
+      deviceRef: 'device.test',
+      companionLineageRef: 'companion-lineage.test',
+      projectRef: 'project.self-development',
+      threadRef: 'thread.self-development.open-conversation',
+      channelRef: 'channel.self-development.companion',
+      screenRef: 'screen.vexlife.chat',
+      selectedNodeRef: 'element.channel.companion',
+      sourceRefs: ['source.must-not-project-into-current-context']
+    },
     inference: async ({ requestContent }) => {
       inferenceCount += 1;
       if (inferenceCount === 1) {
         assert.match(requestContent, /VEXLIFE_CAPABILITY_REQUEST_FORMATION\/v1/u);
         assert.match(requestContent, /FRESH_COMPANION_FOUNDATION_FRAME=/u);
+        assert.match(requestContent, /CURRENT_CONTEXT=.*"projectRef":"project\.self-development"/u);
+        assert.match(requestContent, /COMPACT_CAPABILITY_FRONTIER=.*"capabilityRef":"capability\.search"/u);
+        assert.doesNotMatch(requestContent, /source\.must-not-project-into-current-context/u);
         assert.match(requestContent, /NO_READ_ONLY_FUNCTION_NEEDED/u);
         return noReadResult();
       }
       assert.match(requestContent, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
       assert.match(requestContent, /SOURCE_BOUND_OBSERVATIONS=\[\]/u);
       assert.match(requestContent, /FRESH_COMPANION_FOUNDATION_FRAME=/u);
+      assert.match(requestContent, /CURRENT_CONTEXT=.*"threadRef":"thread\.self-development\.open-conversation"/u);
+      assert.match(requestContent, /COMPACT_CAPABILITY_FRONTIER=.*"capabilityRef":"capability\.search"/u);
+      assert.doesNotMatch(requestContent, /source\.must-not-project-into-current-context/u);
       return {
         content: 'Hello. I can talk without inventing a tool read.',
         model: 'model.test.no-read-synthesis'
