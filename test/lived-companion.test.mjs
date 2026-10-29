@@ -1225,7 +1225,7 @@ test('explicit thread writer recovery consumes only the exact proven-absent leas
   assert.equal(recovered.state, 'WRITER_RECOVERED');
   assert.equal(recovered.currentness, 'CURRENT');
   assert.equal(recovered.recoveredLeaseSha256, lease.leaseSha256);
-  assert.match(recovered.recoveryEvidenceRef, /^evidence\\.vexlife\\.lived-thread-writer-recovery\\.[0-9a-f]{32}$/u);
+  assert.match(recovered.recoveryEvidenceRef, /^evidence\.vexlife\.lived-thread-writer-recovery\.[0-9a-f]{32}$/u);
   assert.equal(recovered.recoveryEffectPerformed, true);
   assert.equal(recovered.exactNextSafeRoute, 'RETRY_TURN_WITH_SAME_IDEMPOTENCY_IDENTITY');
   assert.equal(fs.existsSync(lockPath), false);
