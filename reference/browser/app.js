@@ -77,6 +77,7 @@ function ensureConversationEvolutionStylesheet(){const href=new URL('./evolution
 const browserLaunchParams=new URLSearchParams(globalThis.location?.search??'');
 const uxInitialProjectionParam=browserLaunchParams.get('projection');
 const openVexLaunchRequested=browserLaunchParams.get('open')==='vex';
+if(openVexLaunchRequested)state.contextProjection='chat';
 state.uxProjection=uxInitialProjectionParam==='evolution'&&uxLoopbackHostnames.has(globalThis.location?.hostname??'')?UX_EVOLUTION_PROJECTION:UX_REFERENCE_PROJECTION;
 state.uxActiveSurfaceRef=null;
 const BROWSER_ARCHITECTURE_NODE_API_PATH='/api/v1/architecture/node';

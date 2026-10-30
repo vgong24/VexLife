@@ -276,6 +276,8 @@ test('Open Vex launch-intent page load projects canonical READY before Victor in
 
       const initial = await page.evaluate(() => ({
         channelRef: globalThis.__VEXLIFE_APP__.chat.currentChannel().channelRef,
+        contextProjection: globalThis.__VEXLIFE_APP__.state.contextProjection,
+        chatHidden: document.querySelector('#view-chat')?.hidden ?? null,
         availabilityState: globalThis.__VEXLIFE_APP__.chat.companionAvailabilityState(),
         bindingState: globalThis.__VEXLIFE_APP__.chat.companionBindingState(),
         conversationCurrentness: globalThis.__VEXLIFE_APP__.chat.canonicalConversationIdentity().currentness,
@@ -293,6 +295,8 @@ test('Open Vex launch-intent page load projects canonical READY before Victor in
 
       assert.deepEqual({
         channelRef: initial.channelRef,
+        contextProjection: initial.contextProjection,
+        chatHidden: initial.chatHidden,
         availabilityState: initial.availabilityState,
         bindingState: initial.bindingState,
         conversationCurrentness: initial.conversationCurrentness,
@@ -303,6 +307,8 @@ test('Open Vex launch-intent page load projects canonical READY before Victor in
         turnCalls
       }, {
         channelRef: 'channel.self-development.companion',
+        contextProjection: 'chat',
+        chatHidden: false,
         availabilityState: 'READY',
         bindingState: 'BOUND',
         conversationCurrentness: 'CURRENT',
@@ -371,7 +377,7 @@ test('automatic same-binding recovery failure does not retry and leaves draft pl
       }));
     }, draft);
     page.on('request', (request) => { const url = new URL(request.url()); if (url.pathname === BROWSER_COMPANION_RECOVERY_ACTION_PATH && request.method() === 'POST') recoveryPosts += 1; if (url.pathname === '/api/v1/companion/turn') turnCalls += 1; });
-    await page.goto(serverUrl + '/reference/browser/?open=vex', { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto(serverUrl + '/reference/browser/?open=vex', { waitUntil: 'load', timeout: 30000 });
     await page.waitForFunction(() => globalThis.__VEXLIFE_APP__?.chat?.companionAvailabilityState?.() === 'RECOVERABLE', null, { timeout: 5000 });
     await page.waitForTimeout(100); assert.equal(recoveryPosts, 1); assert.equal(recoveryRequests.length, 1);
     const preservedBeforeManual = await page.evaluate(() => ({
