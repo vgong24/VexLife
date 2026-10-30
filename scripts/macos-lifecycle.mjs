@@ -25,6 +25,10 @@ import {
   startMacUserLaunchdProcess,
   validateMacUserLaunchdProcessReceipt
 } from '../src/core/macos-user-launchd-process.mjs';
+import {
+  readCurrentLivedCompanionThreadWriterCurrentness,
+  recoverAbandonedLivedCompanionThreadWriter
+} from '../src/core/lived-companion.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const SOURCE_ROOT = path.resolve(HERE, '..');
@@ -41,6 +45,7 @@ const TRANSIENT_EXACT = new Set([
   'recovery/browser-process.json',
   'recovery/macos-lifecycle-receipt.json'
 ]);
+const OPEN_VEX_THREAD_REF = 'thread.self-development.open-conversation';
 
 function jsonRead(filePath) {
   if (!fs.existsSync(filePath)) return null;
@@ -62,6 +67,61 @@ function acceptedHereticConfiguration(home, homeManifest, model) {
   } catch {
     return null;
   }
+}
+
+export function recoverOpenVexThreadWriterForStart(home, homeManifest, {
+  currentnessReader = readCurrentLivedCompanionThreadWriterCurrentness,
+  recoveryEffect = recoverAbandonedLivedCompanionThreadWriter
+} = {}) {
+  const companionLineageRef = homeManifest?.currentCompanionLineageRef;
+  if (typeof companionLineageRef !== 'string' || companionLineageRef.length === 0) {
+    throw new Error('Open Vex start requires one current Companion lineage');
+  }
+  if (typeof currentnessReader !== 'function' || typeof recoveryEffect !== 'function') {
+    throw new TypeError('Open Vex thread-writer currentness/recovery owners must be functions');
+  }
+
+  const input = { home, companionLineageRef, threadRef: OPEN_VEX_THREAD_REF };
+  const before = currentnessReader(input);
+  if (!before || before.currentness !== 'CURRENT') {
+    throw new Error('Open Vex thread-writer currentness is unavailable');
+  }
+  if (before.state === 'IDLE') {
+    return Object.freeze({
+      state: 'IDLE',
+      recoveryEffectPerformed: false,
+      exactNextSafeRoute: before.exactNextSafeRoute ?? 'NONE_REQUIRED'
+    });
+  }
+  if (
+    before.state === 'RECOVERY_REQUIRED'
+    && before.ownerState === 'ABSENT'
+    && /^[0-9a-f]{64}$/u.test(before.leaseSha256 ?? '')
+  ) {
+    const recovered = recoveryEffect({ ...input, expectedLeaseSha256: before.leaseSha256 });
+    if (
+      recovered?.state !== 'WRITER_RECOVERED'
+      || recovered?.recoveryEffectPerformed !== true
+      || recovered?.recoveredLeaseSha256 !== before.leaseSha256
+    ) {
+      throw new Error('Open Vex abandoned thread-writer recovery did not bind the exact observed lease');
+    }
+    const after = currentnessReader(input);
+    if (!after || after.currentness !== 'CURRENT' || after.state !== 'IDLE' || after.recoveryRequired !== false) {
+      throw new Error('Open Vex abandoned thread-writer recovery did not converge to IDLE');
+    }
+    return Object.freeze({
+      state: 'RECOVERED_TO_IDLE',
+      recoveryEffectPerformed: true,
+      recoveredLeaseSha256: recovered.recoveredLeaseSha256,
+      recoveryEvidenceRef: recovered.recoveryEvidenceRef ?? null,
+      exactNextSafeRoute: after.exactNextSafeRoute ?? 'NONE_REQUIRED'
+    });
+  }
+
+  throw new Error(
+    `Open Vex thread writer is not safely startable: ${before.state ?? 'UNKNOWN'}/${before.ownerState ?? 'UNKNOWN'}/${before.exactNextSafeRoute ?? 'UNKNOWN'}`
+  );
 }
 function hereticRuntimeReceiptPath(home, configuration) {
   return path.resolve(home, ...configuration.runtimeReceiptPath.split('/'));
@@ -1269,6 +1329,7 @@ async function runStart(home, repo, options, { forceCurrentBrowserRebind = false
   await bootstrap(home, repo);
   const homeManifest = jsonRead(path.join(home, 'config', 'home.json'));
   const model = jsonRead(path.join(home, 'config', 'model.json'));
+  const openVexThreadWriter = recoverOpenVexThreadWriterForStart(home, homeManifest);
   let initialized;
   if (isHereticModelConfiguration(model)) {
     if (!acceptedHereticConfiguration(home, homeManifest, model)) {
@@ -1281,7 +1342,7 @@ async function runStart(home, repo, options, { forceCurrentBrowserRebind = false
   if (initialized.state !== 'RUNTIME_QUALIFIED') throw new Error(`initializer did not qualify runtime: ${initialized.state}`);
   const browser = await startBrowser(home, repo, initialized, { forceCurrentBrowserRebind });
   const companionAvailability = await waitForMacCompanionReady();
-  return { initialized, browser, companionAvailability };
+  return { initialized, browser, companionAvailability, openVexThreadWriter };
 }
 export async function cleanStop(home, repo) {
   const homeRoot = canonicalMacHomeDirectory(home);

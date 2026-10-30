@@ -11,8 +11,8 @@
     {
       "path": "scripts/macos-lifecycle.mjs",
       "mode": "100755",
-      "bytes": 66451,
-      "sha256": "e49698f93f960cfd54528a517b9d7cafbcd360036c28e7c333f7fe08d6093b9e"
+      "bytes": 69165,
+      "sha256": "0d95e3b35bdefa960675279e7f6b2b265e88d1de8b473981d913d052bc0484fb"
     }
   ]
 }
