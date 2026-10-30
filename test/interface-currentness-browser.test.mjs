@@ -463,4 +463,221 @@ test('READY direct Companion persists a fresh exact-scope unsent draft across vi
   }
 });
 
+
+
+function f3Availability(state, tag) {
+  if (!['RECOVERABLE', 'READY'].includes(state)) throw new Error('Unsupported F3 availability state ' + state);
+  const ready = state === 'READY';
+  return Object.freeze({
+    ...READY_DRAFT_AVAILABILITY,
+    availabilityState: state,
+    recoveryClass: ready ? 'NONE' : 'SAFE_REENTRY_AVAILABLE',
+    reasonCode: 'F3_' + state,
+    runtimeState: ready ? 'READY' : 'RECOVERABLE',
+    projectionRef: 'projection.test.interface-currentness.f3.' + tag + '.' + state.toLowerCase(),
+    projectionSha256: (ready ? 'c' : 'b').repeat(64),
+    runtimeObservationRef: 'observation.test.interface-currentness.f3.' + tag + '.' + state.toLowerCase(),
+    sourceRefs: ['source.test.interface-currentness.f3.' + tag]
+  });
+}
+
+function createF3Server({ sourceTreeSha256, availabilityState = 'READY' }) {
+  let currentAvailability = f3Availability(availabilityState, sourceTreeSha256.slice(0, 8));
+  const server = createVexLifeBrowserServer({
+    servingSourceTreeSha256: sourceTreeSha256,
+    companionBridge: Object.freeze({
+      conversationCurrentness: readyDraftConversationCurrentness,
+      conversationProjection: readyDraftConversationProjection
+    }),
+    resolveCompanionBinding: async () => Object.freeze({}),
+    resolveCompanionRuntimeObservation: async () => Object.freeze({}),
+    companionAvailabilityCompiler: () => currentAvailability
+  });
+  return Object.freeze({
+    server,
+    setAvailability(state) {
+      currentAvailability = f3Availability(state, sourceTreeSha256.slice(0, 8));
+      return currentAvailability;
+    }
+  });
+}
+
+async function listenF3Server(server, port = 0) {
+  await new Promise((resolve, reject) => {
+    const onError = (error) => reject(error);
+    server.once('error', onError);
+    server.listen(port, '127.0.0.1', () => {
+      server.off('error', onError);
+      resolve();
+    });
+  });
+  const address = server.address();
+  assert.equal(typeof address, 'object');
+  return address.port;
+}
+
+async function closeF3Server(server) {
+  if (!server?.listening) return;
+  server.closeIdleConnections?.();
+  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+}
+
+test('F3A same visible document re-observes external RECOVERABLE to READY without performing recovery or turn effects', { timeout: 45_000 }, async () => {
+  const fixture = createF3Server({ sourceTreeSha256: SOURCE_A, availabilityState: 'RECOVERABLE' });
+  const port = await listenF3Server(fixture.server);
+  let browser = null;
+  try {
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    let recoveryPosts = 0;
+    let turnPosts = 0;
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (request.method() === 'POST' && url.pathname === '/api/v1/companion/recovery-action') recoveryPosts += 1;
+      if (request.method() === 'POST' && url.pathname === '/api/v1/companion/turn/stream') turnPosts += 1;
+    });
+    const pageUrl = 'http://127.0.0.1:' + port + '/reference/browser/?open=vex';
+    const draft = 'Keep F3A draft through external recovery observation';
+    const key = browserSessionDraftKey(SCOPE_A);
+
+    await page.goto(pageUrl, { waitUntil: 'load', timeout: 10_000 });
+    await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 10_000 });
+    await page.evaluate(() => globalThis.__VEXLIFE_APP__.openContext('chat'));
+    await waitForReadyDraftVisibleChat(page, 'F3A_INITIAL', key);
+    await page.waitForFunction(
+      () => globalThis.__VEXLIFE_APP__?.chat?.interfaceCurrentness?.().kind === 'RECOVERABLE',
+      null,
+      { timeout: 10_000 }
+    );
+    await page.locator('#messageInput').fill(draft);
+    await waitForReadyDraftStorage(page, key, draft, 'F3A_INITIAL');
+    const beforeUrl = page.url();
+    await page.evaluate(() => { document.documentElement.dataset.f3DocumentToken = 'same-document-f3a'; });
+
+    fixture.setAvailability('READY');
+    await page.evaluate(() => globalThis.dispatchEvent(new Event('focus')));
+    await page.waitForFunction(
+      () => globalThis.__VEXLIFE_APP__?.chat?.interfaceCurrentness?.().kind === 'READY',
+      null,
+      { timeout: 10_000 }
+    );
+
+    const after = await page.evaluate((storageKey) => ({
+      relationship: globalThis.__VEXLIFE_APP__.chat.interfaceCurrentness(),
+      documentToken: document.documentElement.dataset.f3DocumentToken ?? null,
+      input: document.querySelector('#messageInput')?.value ?? null,
+      sendDisabled: document.querySelector('#composer button[type="submit"]')?.disabled ?? null,
+      sessionDraftRaw: sessionStorage.getItem(storageKey)
+    }), key);
+    assert.equal(page.url(), beforeUrl);
+    assert.equal(after.relationship.kind, 'READY');
+    assert.equal(after.documentToken, 'same-document-f3a');
+    assert.equal(after.input, draft);
+    assert.equal(after.sendDisabled, false);
+    assert.equal(JSON.parse(after.sessionDraftRaw).content, draft);
+    assert.equal(recoveryPosts, 0);
+    assert.equal(turnPosts, 0);
+  } finally {
+    if (browser) await browser.close();
+    await closeF3Server(fixture.server);
+  }
+});
+
+test('F3A newer READY observation rejects an older delayed RECOVERABLE completion on the same scope', async () => {
+  const delayed = deferred();
+  let availabilityRead = 0;
+  const controller = createInterfaceCurrentnessController({
+    loadedDocumentSourceTreeSha256: SOURCE_A,
+    currentScope: () => SCOPE_A,
+    readCurrentServerSource: async () => ({ treeSha256: SOURCE_A }),
+    readCompanionAvailability: async () => availabilityRead++ === 0
+      ? delayed.promise
+      : f3Availability('READY', 'newer'),
+    readConversationCurrentness: async (scope) => ({ ...scope, currentness: 'CURRENT' })
+  });
+
+  const older = controller.observe('focus-external-recovery-old');
+  const newer = controller.observe('pageshow-external-recovery-new');
+  const newerResult = await newer;
+  assert.equal(newerResult.state, 'OBSERVATION_ADMITTED');
+  assert.equal(newerResult.projection.relationship.kind, 'READY');
+
+  delayed.resolve(f3Availability('RECOVERABLE', 'older'));
+  const olderResult = await older;
+  assert.equal(olderResult.state, 'STALE_OBSERVATION_REJECTED');
+  assert.equal(controller.snapshot().relationship.kind, 'READY');
+  assert.deepEqual(controller.snapshot().relationship.scope, SCOPE_A);
+});
+
+test('F3B loaded source A observes server source B, records SOURCE_MISMATCH, replaces the document and restores the exact draft at READY', { timeout: 60_000 }, async () => {
+  let fixtureA = createF3Server({ sourceTreeSha256: SOURCE_A, availabilityState: 'READY' });
+  let fixtureB = null;
+  const port = await listenF3Server(fixtureA.server);
+  let browser = null;
+  try {
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    const pageUrl = 'http://127.0.0.1:' + port + '/reference/browser/?open=vex';
+    const draft = 'Carry this exact F3B draft from source A to source B';
+    const key = browserSessionDraftKey(SCOPE_A);
+    const mismatchWitnessKey = 'vexlife.test.f3b.beforeunload.relationship';
+    const draftWitnessKey = 'vexlife.test.f3b.beforeunload.draft';
+
+    await page.goto(pageUrl, { waitUntil: 'load', timeout: 10_000 });
+    await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 10_000 });
+    await waitForReadyDraftInterface(page, 'F3B_SOURCE_A', key);
+    await page.evaluate(() => globalThis.__VEXLIFE_APP__.openContext('chat'));
+    await waitForReadyDraftVisibleChat(page, 'F3B_SOURCE_A', key);
+    await page.locator('#messageInput').fill(draft);
+    await waitForReadyDraftStorage(page, key, draft, 'F3B_SOURCE_A');
+    await page.evaluate(({ mismatchWitnessKey, draftWitnessKey }) => {
+      globalThis.addEventListener('beforeunload', () => {
+        sessionStorage.setItem(
+          mismatchWitnessKey,
+          globalThis.__VEXLIFE_APP__?.chat?.interfaceCurrentness?.().kind ?? 'MISSING'
+        );
+        sessionStorage.setItem(
+          draftWitnessKey,
+          document.querySelector('#messageInput')?.value ?? ''
+        );
+      }, { once: true });
+    }, { mismatchWitnessKey, draftWitnessKey });
+
+    await closeF3Server(fixtureA.server);
+    fixtureA = null;
+    fixtureB = createF3Server({ sourceTreeSha256: SOURCE_B, availabilityState: 'READY' });
+    await listenF3Server(fixtureB.server, port);
+
+    await page.evaluate(() => globalThis.dispatchEvent(new Event('focus')));
+    await page.waitForURL((url) => new URL(url).searchParams.get('source') === SOURCE_B, { timeout: 10_000 });
+    await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 10_000 });
+    await waitForReadyDraftInterface(page, 'F3B_SOURCE_B', key);
+    await waitForReadyDraftVisibleChat(page, 'F3B_SOURCE_B', key);
+    await waitForReadyDraftRestoredValue(page, key, draft);
+
+    const after = await page.evaluate(({ key, mismatchWitnessKey, draftWitnessKey }) => ({
+      relationship: globalThis.__VEXLIFE_APP__.chat.interfaceCurrentness(),
+      contextProjection: globalThis.__VEXLIFE_APP__.state.contextProjection,
+      loadedDocumentSource: document.querySelector('meta[name="vexlife-source-tree-sha256"]')?.content ?? null,
+      input: document.querySelector('#messageInput')?.value ?? null,
+      sessionDraftRaw: sessionStorage.getItem(key),
+      mismatchWitness: sessionStorage.getItem(mismatchWitnessKey),
+      draftWitness: sessionStorage.getItem(draftWitnessKey)
+    }), { key, mismatchWitnessKey, draftWitnessKey });
+    assert.equal(after.mismatchWitness, 'SOURCE_MISMATCH');
+    assert.equal(after.draftWitness, draft);
+    assert.equal(after.contextProjection, 'chat');
+    assert.equal(after.loadedDocumentSource, SOURCE_B);
+    assert.equal(after.relationship.loadedDocumentSourceTreeSha256, SOURCE_B);
+    assert.equal(after.relationship.currentServerSourceTreeSha256, SOURCE_B);
+    assert.equal(after.relationship.kind, 'READY');
+    assert.equal(after.input, draft);
+    assert.equal(JSON.parse(after.sessionDraftRaw).content, draft);
+  } finally {
+    if (browser) await browser.close();
+    if (fixtureA) await closeF3Server(fixtureA.server);
+    if (fixtureB) await closeF3Server(fixtureB.server);
+  }
+});
+
 // [VXG RealForever]

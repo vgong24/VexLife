@@ -333,7 +333,12 @@ function reloadCurrentInterfaceSource(relationship){
   const current=relationship?.currentServerSourceTreeSha256;
   if(relationship?.kind!=='SOURCE_MISMATCH'||typeof current!=='string')return false;
   const url=new URL(globalThis.location.href);if(url.searchParams.get('source')===current)return false;
-  url.searchParams.set('source',current);globalThis.location.replace(url.href);return true;
+  url.searchParams.set('source',current);
+  if(globalThis.history?.replaceState&&globalThis.location?.reload){
+    globalThis.history.replaceState(globalThis.history.state,'',url.href);
+    globalThis.location.reload();
+  }else globalThis.location.replace(url.href);
+  return true;
 }
 interfaceCurrentness=createInterfaceCurrentnessController({
   loadedDocumentSourceTreeSha256:readLoadedDocumentSourceIdentity(),
