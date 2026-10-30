@@ -97,6 +97,7 @@ import { createIntentSchedulerState } from '../src/core/state.mjs';
 import { projectConcernAggregate } from '../src/core/concern-watch.mjs';
 import { FAMILY_SECURITY_AWARENESS_SCHEMA } from '../src/core/family-security-projection.mjs';
 import { semanticHash } from '../src/core/utils.mjs';
+import { hydrateStoredSourceManifest } from '../src/core/source-manifest.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.VEXLIFE_PORT ?? 18110);
@@ -107,6 +108,51 @@ export const BROWSER_ARCHITECTURE_NODE_SCHEMA = 'vexlife.browser-architecture-no
 export const BROWSER_ARCHITECTURE_NODE_FAILURE_SCHEMA = 'vexlife.browser-architecture-node-failure/v1';
 export const BROWSER_ARCHITECTURE_NODE_RELATION_LIMIT = 24;
 export const BROWSER_COMPANION_AVAILABILITY_PATH = '/api/v1/companion/availability';
+export const BROWSER_INTERFACE_SOURCE_CURRENTNESS_PATH = '/api/v1/interface/source-currentness';
+export const BROWSER_INTERFACE_SOURCE_CURRENTNESS_SCHEMA = 'vexlife.browser-interface-source-currentness/v1';
+export const BROWSER_INTERFACE_SOURCE_CURRENTNESS_TRUTH = 'CURRENT_SERVER_SOURCE_IDENTITY';
+export const BROWSER_INTERFACE_SOURCE_META_NAME = 'vexlife-source-tree-sha256';
+const BROWSER_INTERFACE_SOURCE_HASH = /^[0-9a-f]{64}$/u;
+
+export function browserInterfaceSourceCurrentnessProjection(treeSha256) {
+  if (!BROWSER_INTERFACE_SOURCE_HASH.test(treeSha256 ?? '')) {
+    throw new TypeError('Browser Interface source projection requires one exact Source Manifest treeSha256');
+  }
+  return Object.freeze({
+    schemaVersion: BROWSER_INTERFACE_SOURCE_CURRENTNESS_SCHEMA,
+    truthClass: BROWSER_INTERFACE_SOURCE_CURRENTNESS_TRUTH,
+    treeSha256,
+    effectsPerformed: false
+  });
+}
+
+export function loadBrowserServingSourceIdentity(sourceRoot = root) {
+  const descriptorPath = path.join(sourceRoot, 'SOURCE-MANIFEST.json');
+  const partsRoot = path.join(sourceRoot, 'source-manifest-parts');
+  if (!fs.existsSync(descriptorPath) || !fs.existsSync(partsRoot)) return null;
+  const descriptor = JSON.parse(fs.readFileSync(descriptorPath, 'utf8'));
+  const partEntries = fs.readdirSync(partsRoot)
+    .filter((name) => /^bucket-[0-9a-f]{2}\.json$/u.test(name))
+    .sort((left, right) => Buffer.from(left).compare(Buffer.from(right)))
+    .map((name) => Object.freeze({
+      ref: 'source-manifest-parts/' + name,
+      value: JSON.parse(fs.readFileSync(path.join(partsRoot, name), 'utf8'))
+    }));
+  const hydrated = hydrateStoredSourceManifest(descriptor, partEntries);
+  return browserInterfaceSourceCurrentnessProjection(hydrated.treeSha256);
+}
+
+export function injectBrowserDocumentSourceIdentity(html, treeSha256) {
+  if (typeof html !== 'string' || !html.includes('</head>')) {
+    throw new TypeError('Browser document source identity requires one HTML document with </head>');
+  }
+  if (html.includes('name="' + BROWSER_INTERFACE_SOURCE_META_NAME + '"')) {
+    throw new Error('Browser document already carries a source identity');
+  }
+  const projection = browserInterfaceSourceCurrentnessProjection(treeSha256);
+  const meta = '  <meta name="' + BROWSER_INTERFACE_SOURCE_META_NAME + '" content="' + projection.treeSha256 + '">\n';
+  return html.replace('</head>', meta + '</head>');
+}
 export const BROWSER_COMPANION_RECOVERY_ACTION_PATH = '/api/v1/companion/recovery-action';
 export const BROWSER_COMPANION_RECOVERY_ACTION_MAX_BODY_BYTES = 4 * 1024;
 export const BROWSER_COMPANION_RECOVERY_ACTION_BINDING_SCHEMA = 'vexlife.browser-companion-recovery-action-binding/v1';
@@ -1697,6 +1743,7 @@ export function createVexLifeBrowserServer({
   }),
   resolveHomeIdentity = () => loadBrowserCompanionHomeIdentity(home),
   companionAvailabilitySourceRoot = staticRoot,
+  servingSourceTreeSha256 = null,
   resolveCompanionBinding = null,
   resolveCompanionRuntimeObservation = null,
   companionAvailabilityCompiler = compileCompanionAvailability,
@@ -1720,6 +1767,9 @@ export function createVexLifeBrowserServer({
   resolveFamilyWorkProjection = null,
   resolveFamilySecurityProjection = null
 } = {}) {
+  const servingSourceIdentity = servingSourceTreeSha256 === null
+    ? loadBrowserServingSourceIdentity(staticRoot)
+    : browserInterfaceSourceCurrentnessProjection(servingSourceTreeSha256);
   const architectureNodeResolver = createServerOwnedArchitectureNodeResolver({ sourceRoot: staticRoot });
   const resolveCompanionAvailability = createServerOwnedCompanionAvailabilityResolver({
     sourceRoot: companionAvailabilitySourceRoot,
@@ -2304,6 +2354,25 @@ export function createVexLifeBrowserServer({
         return;
       }
 
+      if (url.pathname === BROWSER_INTERFACE_SOURCE_CURRENTNESS_PATH) {
+        if (request.method !== 'GET') {
+          response.writeHead(405, { Allow: 'GET', 'Cache-Control': 'no-store' });
+          response.end();
+          return;
+        }
+        if (servingSourceIdentity === null) {
+          sendJson(response, 503, {
+            schemaVersion: 'vexlife.browser-interface-source-currentness-failure/v1',
+            truthClass: 'CURRENT_SERVER_SOURCE_UNAVAILABLE',
+            failureCode: 'SOURCE_MANIFEST_UNAVAILABLE',
+            effectsPerformed: false
+          });
+          return;
+        }
+        sendJson(response, 200, servingSourceIdentity);
+        return;
+      }
+
       let relative = decodeURIComponent(url.pathname);
       if (relative === '/') {
         response.writeHead(302, { Location: '/reference/browser/' });
@@ -2315,7 +2384,23 @@ export function createVexLifeBrowserServer({
       if (!filePath.startsWith(staticRoot + path.sep) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
         response.writeHead(404); response.end('Not found'); return;
       }
-      response.writeHead(200, { 'Content-Type': types[path.extname(filePath)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
+      const contentType = types[path.extname(filePath)] ?? 'application/octet-stream';
+      if (path.resolve(filePath) === path.resolve(staticRoot, 'reference/browser/index.html') && servingSourceIdentity !== null) {
+        const sourceDocument = injectBrowserDocumentSourceIdentity(
+          fs.readFileSync(filePath, 'utf8'),
+          servingSourceIdentity.treeSha256
+        );
+        const body = Buffer.from(sourceDocument, 'utf8');
+        response.writeHead(200, {
+          'Content-Type': contentType,
+          'Cache-Control': 'no-store',
+          'Content-Length': body.length
+        });
+        if (request.method === 'HEAD') response.end();
+        else response.end(body);
+        return;
+      }
+      response.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store' });
       if (request.method === 'HEAD') {
         response.end();
         return;

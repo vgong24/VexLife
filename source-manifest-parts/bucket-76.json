@@ -21,6 +21,12 @@
       "sha256": "a5a5c199ba02189ae8c46a334223371a20599d9c298ef65e7540ede4a3f72d59"
     },
     {
+      "path": "reference/browser/modules/interface-currentness.js",
+      "mode": "100644",
+      "bytes": 14462,
+      "sha256": "d20eb3065662c9d0c717ccca5f05c331e119ef04295746deb47f336065b4598e"
+    },
+    {
       "path": "scripts/doctor.mjs",
       "mode": "100644",
       "bytes": 1131,

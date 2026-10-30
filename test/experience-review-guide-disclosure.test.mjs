@@ -228,8 +228,63 @@ async function listen(server) {
   return `http://127.0.0.1:${address.port}/reference/browser/`;
 }
 
+const INTERFACE_REVIEW_SOURCE = 'c'.repeat(64);
+const INTERFACE_REVIEW_AVAILABILITY = Object.freeze({
+  schemaVersion: 'vexlife.companion-availability/v1',
+  truthClass: 'SOURCE_BOUND_COMPANION_AVAILABILITY',
+  availabilityState: 'HELD',
+  registryRef: 'registry.test.interface-currentness',
+  bindingRef: 'binding.test.interface-currentness',
+  homeRef: 'home.test.interface-currentness',
+  companionLineageRef: 'lineage.test.interface-currentness',
+  runtimeAdapterRef: 'adapter.test.interface-currentness',
+  runtimeObservationRef: 'observation.test.interface-currentness',
+  recoveryClass: 'NONE',
+  reasonCode: 'TEST_FIXTURE_HELD',
+  bindingState: 'CURRENT',
+  runtimeOwnershipState: 'CURRENT',
+  runtimeState: 'HELD',
+  qualificationState: 'HELD',
+  projectionRef: 'projection.test.interface-currentness',
+  projectionSha256: 'c'.repeat(64),
+  modelRefOrNull: null,
+  generationRefOrNull: null,
+  sourceRefs: ['source.test.interface-currentness'],
+  effectAuthorityGranted: false,
+  rendererAuthorityGranted: false,
+  modelIdentityAuthorityGranted: false,
+  processAuthorityGranted: false,
+  conversationAuthorityGranted: false
+});
+function interfaceReviewConversationCurrentness(scope) {
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-companion-conversation-currentness/v1',
+    state: 'EMPTY',
+    truthClass: 'CURRENT_LOCAL_CONVERSATION_IDENTITY',
+    projectRef: scope.projectRef,
+    threadRef: scope.threadRef,
+    channelRef: scope.channelRef,
+    channelSha256: null,
+    channelRecordSha256: null,
+    headMessageRefOrNull: null,
+    headSequenceOrNull: null,
+    canonicalConversationHeadSha256: null,
+    headUpdatedAtOrNull: null,
+    effectsPerformed: false
+  });
+}
+function createInterfaceCurrentnessReviewServer() {
+  return createVexLifeBrowserServer({
+    servingSourceTreeSha256: INTERFACE_REVIEW_SOURCE,
+    companionBridge: Object.freeze({ conversationCurrentness: interfaceReviewConversationCurrentness }),
+    resolveCompanionBinding: async () => Object.freeze({}),
+    resolveCompanionRuntimeObservation: async () => Object.freeze({}),
+    companionAvailabilityCompiler: () => INTERFACE_REVIEW_AVAILABILITY
+  });
+}
+
 test('real Stage-5 replay reveals the minimized Guide through the canonical fixed disclosure', async (t) => {
-  const server = createVexLifeBrowserServer();
+  const server = createInterfaceCurrentnessReviewServer();
   const pageUrl = await listen(server);
   t.after(() => new Promise((resolve) => server.close(() => resolve())));
   const observedDisclosureClicks = [];

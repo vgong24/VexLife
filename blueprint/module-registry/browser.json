@@ -2,7 +2,7 @@
   {
     "moduleRef": "module.vexlife.browser.document",
     "path": "reference/browser/index.html",
-    "role": "Semantic product shell whose interactive elements carry stable data-node-ref identities.",
+    "role": "Semantic product shell whose interactive elements carry stable data-node-ref identities and whose served document receives the exact serving Source Manifest identity before application JavaScript executes.",
     "platformScope": "BROWSER",
     "reads": [
       "blueprint/vexlife.blueprint.json",
@@ -13,7 +13,8 @@
       "module.vexlife.script.serve-browser"
     ],
     "tests": [
-      "test/browser.test.mjs"
+      "test/browser.test.mjs",
+      "test/interface-currentness-browser.test.mjs"
     ],
     "changeMap": [
       "reference/browser/app.js",
@@ -42,22 +43,25 @@
   {
     "moduleRef": "module.vexlife.browser.adapter",
     "path": "reference/browser/app.js",
-    "role": "Working browser adapter for selection, channels, bottom append, localization, screen-aware Guide and Terrain.",
+    "role": "Working browser adapter for selection, channels, bottom append, localization, screen-aware Guide/Terrain, lifecycle-triggered Interface currentness observation, and browser-owned source-mismatch reload.",
     "platformScope": "BROWSER",
     "reads": [
       "blueprint/design-tokens.json",
       "blueprint/strings/*.json",
       "blueprint/vexlife.blueprint.json",
-      "reference/browser/modules/**"
+      "reference/browser/modules/**",
+      "module.vexlife.browser.interface-currentness"
     ],
     "writes": [
-      "browser localStorage for user layout/language only"
+      "browser localStorage for user layout/language only",
+      "browser sessionStorage for Chat-owned unsent-draft carriage only"
     ],
     "loadedBy": [
       "reference/browser/index.html"
     ],
     "tests": [
-      "test/browser.test.mjs"
+      "test/browser.test.mjs",
+      "test/interface-currentness-browser.test.mjs"
     ],
     "changeMap": [
       "reference/browser/modules/**",
@@ -134,16 +138,18 @@
   {
     "moduleRef": "module.vexlife.browser.chat-controller",
     "path": "reference/browser/modules/chat-controller.js",
-    "role": "Owns addressed direct/group chat, project/thread/channel selection, incremental bottom append, browser Send idempotency identity, and the human-visible distinction between an unsent local draft and a server-confirmed durable human message whose Companion attention may still fail.",
+    "role": "Owns addressed direct/group chat, project/thread/channel selection, incremental bottom append, browser Send idempotency identity, session-scoped unsent local draft carriage, and the human-visible distinction between an unsent draft and a server-confirmed durable human message whose Companion attention may still fail; consumes Interface currentness rather than owning the relationship.",
     "reads": [
-      "module.vexlife.core.browser-companion-bridge"
+      "module.vexlife.core.browser-companion-bridge",
+      "module.vexlife.browser.interface-currentness"
     ],
     "writes": [],
     "consumers": [
       "reference/browser/app.js"
     ],
     "tests": [
-      "test/browser.test.mjs"
+      "test/browser.test.mjs",
+      "test/interface-currentness-browser.test.mjs"
     ],
     "changeMap": [
       "reference/browser/app.js"
@@ -643,6 +649,33 @@
     "changeMap": [
       "reference/browser/evolution/conversation-projection.js",
       "reference/browser/app.js"
+    ]
+  },
+  {
+    "moduleRef": "module.vexlife.browser.interface-currentness",
+    "path": "reference/browser/modules/interface-currentness.js",
+    "role": "Browser-native realization of the accepted portable Interface currentness convergence: current-generation observation, exact selected Conversation scope, retained VexCompoundState inputs plus derived relationship State, stale-result rejection, and zero effect authority.",
+    "platformScope": "BROWSER",
+    "reads": [
+      "module.vexlife.core.state-relay",
+      "module.vexlife.core.companion-availability-reentry",
+      "module.vexlife.core.browser-companion-bridge",
+      "module.vexlife.script.serve-browser",
+      "module.vexlife.browser.document"
+    ],
+    "writes": [],
+    "consumers": [
+      "reference/browser/app.js",
+      "reference/browser/modules/chat-controller.js"
+    ],
+    "tests": [
+      "test/interface-currentness-browser.test.mjs"
+    ],
+    "changeMap": [
+      "scripts/serve-browser-core.mjs",
+      "reference/browser/app.js",
+      "reference/browser/modules/chat-controller.js",
+      "install/vexlife-setup.sh"
     ]
   }
 ]

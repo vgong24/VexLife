@@ -13,9 +13,63 @@ const ROOT = path.resolve(HERE, '..');
 const read = (relativePath) => fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
 const json = (relativePath) => JSON.parse(read(relativePath));
 const RELATIONSHIPS_TERRAIN_REF = 'terrain.resource.relationships';
+const INTERFACE_CURRENTNESS_TEST_SOURCE = 'd'.repeat(64);
+const INTERFACE_CURRENTNESS_TEST_AVAILABILITY = Object.freeze({
+  schemaVersion: 'vexlife.companion-availability/v1',
+  truthClass: 'SOURCE_BOUND_COMPANION_AVAILABILITY',
+  availabilityState: 'HELD',
+  registryRef: 'registry.test.interface-currentness.relationships',
+  bindingRef: 'binding.test.interface-currentness.relationships',
+  homeRef: 'home.test.interface-currentness.relationships',
+  companionLineageRef: 'lineage.test.interface-currentness.relationships',
+  runtimeAdapterRef: 'adapter.test.interface-currentness.relationships',
+  runtimeObservationRef: 'observation.test.interface-currentness.relationships',
+  recoveryClass: 'NONE',
+  reasonCode: 'TEST_FIXTURE_HELD',
+  bindingState: 'CURRENT',
+  runtimeOwnershipState: 'CURRENT',
+  runtimeState: 'HELD',
+  qualificationState: 'HELD',
+  projectionRef: 'projection.test.interface-currentness.relationships',
+  projectionSha256: 'd'.repeat(64),
+  modelRefOrNull: null,
+  generationRefOrNull: null,
+  sourceRefs: ['source.test.interface-currentness.relationships'],
+  effectAuthorityGranted: false,
+  rendererAuthorityGranted: false,
+  modelIdentityAuthorityGranted: false,
+  processAuthorityGranted: false,
+  conversationAuthorityGranted: false
+});
+function interfaceCurrentnessTestConversation(scope) {
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-companion-conversation-currentness/v1',
+    state: 'EMPTY',
+    truthClass: 'CURRENT_LOCAL_CONVERSATION_IDENTITY',
+    projectRef: scope.projectRef,
+    threadRef: scope.threadRef,
+    channelRef: scope.channelRef,
+    channelSha256: null,
+    channelRecordSha256: null,
+    headMessageRefOrNull: null,
+    headSequenceOrNull: null,
+    canonicalConversationHeadSha256: null,
+    headUpdatedAtOrNull: null,
+    effectsPerformed: false
+  });
+}
+function interfaceCurrentnessTestServerOptions() {
+  return Object.freeze({
+    servingSourceTreeSha256: INTERFACE_CURRENTNESS_TEST_SOURCE,
+    companionBridge: Object.freeze({ conversationCurrentness: interfaceCurrentnessTestConversation }),
+    resolveCompanionBinding: async () => Object.freeze({}),
+    resolveCompanionRuntimeObservation: async () => Object.freeze({}),
+    companionAvailabilityCompiler: () => INTERFACE_CURRENTNESS_TEST_AVAILABILITY
+  });
+}
 
 async function openReferenceServer() {
-  const server = createVexLifeBrowserServer({ staticRoot: ROOT });
+  const server = createVexLifeBrowserServer({ staticRoot: ROOT, ...interfaceCurrentnessTestServerOptions() });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   return server;
 }

@@ -250,7 +250,8 @@ test('V1 persistent Vex vessel opens the lived Conversation without adding anoth
   assert.match(app,/async function openCurrentVexConversation\(\)/);
   assert.match(app,/chat\.selectThread\(project,thread,'element\.thread\.open-conversation'\)/);
   assert.match(app,/chat\.selectChannel\(companion,'element\.channel\.companion'\)/);
-  assert.match(app,/chat\.refreshConversationProjection\(companion\)/);
+  assert.match(app,/const observed=await interfaceCurrentness\.observe\('selected-conversation'\)/);
+  assert.match(app,/chat\.refreshConversationProjection\(companion,\{acceptIf:\(\)=>interfaceCurrentness\.isCurrentObservation\(observed\)\}\)/);
   assert.match(app,/await setUxProjection\(UX_EVOLUTION_PROJECTION\)/);
   assert.match(app,/await openEvolutionSurface\(CONVERSATION_EVOLUTION_SURFACE_REF\)/);
   assert.match(app,/function bindPersistentVexConversationEntry\(\)/);
