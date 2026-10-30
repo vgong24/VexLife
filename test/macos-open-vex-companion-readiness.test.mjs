@@ -150,7 +150,7 @@ test('Mac Open Vex requires the same canonical availability evidence fields as t
 test('runStart does not claim lifecycle completion before semantic Companion readiness', () => {
   assert.match(
     lifecycleSource,
-    /const browser = await startBrowser\(home, repo, initialized, \{ forceCurrentBrowserRebind \}\);[\s\S]*?const companionAvailability = await waitForMacCompanionReady\(\);[\s\S]*?return \{ initialized, browser, companionAvailability \};/
+    /const openVexThreadWriter = recoverOpenVexThreadWriterForStart\(home, homeManifest\);[\s\S]*?const browser = await startBrowser\(home, repo, initialized, \{ forceCurrentBrowserRebind \}\);[\s\S]*?const companionAvailability = await waitForMacCompanionReady\(\);[\s\S]*?return \{ initialized, browser, companionAvailability, openVexThreadWriter \};/
   );
   assert.doesNotMatch(
     lifecycleSource,
