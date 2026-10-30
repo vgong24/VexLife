@@ -39,6 +39,7 @@ import {
   protectedHomeSnapshot,
   qualifiedInitializationFromCurrentHome,
   readMacProcessEvidence,
+  recoverOpenVexThreadWriterForStart,
   stopOwnedRuntime,
   validateMacTarEntries,
   validateMacTarTopology
@@ -873,6 +874,97 @@ test('MAC06F recoverable auto prompt truthfully labels Enter as reconnect while 
     lifecycleSource,
     /if \(answer === 'r'\) return 'repair';[\s\S]*?return choices\[0\];/
   );
+});
+
+test('MAC06J Open Vex start recovers only one exact abandoned thread writer and holds active or unverifiable state', () => {
+  const home = '/private/tmp/vexlife-open-vex-start-test';
+  const homeManifest = { currentCompanionLineageRef: 'companion-lineage.vexlife.test' };
+  const observedInputs = [];
+
+  const idle = recoverOpenVexThreadWriterForStart(home, homeManifest, {
+    currentnessReader: (input) => {
+      observedInputs.push(input);
+      return { currentness:'CURRENT', state:'IDLE', ownerState:'NONE', recoveryRequired:false, exactNextSafeRoute:'NONE_REQUIRED' };
+    },
+    recoveryEffect: () => { throw new Error('IDLE must not recover'); }
+  });
+  assert.deepEqual(idle, { state:'IDLE', recoveryEffectPerformed:false, exactNextSafeRoute:'NONE_REQUIRED' });
+  assert.deepEqual(observedInputs.at(-1), {
+    home,
+    companionLineageRef: homeManifest.currentCompanionLineageRef,
+    threadRef: 'thread.self-development.open-conversation'
+  });
+
+  for (const held of [
+    { state:'ACTIVE', ownerState:'ACTIVE', exactNextSafeRoute:'WAIT_FOR_ACTIVE_THREAD_WRITER_OR_RETRY' },
+    { state:'HELD_UNVERIFIABLE', ownerState:'UNVERIFIABLE', exactNextSafeRoute:'ATTENTION_REQUIRED_UNVERIFIABLE_THREAD_WRITER' }
+  ]) {
+    assert.throws(
+      () => recoverOpenVexThreadWriterForStart(home, homeManifest, {
+        currentnessReader: () => ({ currentness:'CURRENT', recoveryRequired:false, ...held }),
+        recoveryEffect: () => { throw new Error('held writer must not recover'); }
+      }),
+      new RegExp(`Open Vex thread writer is not safely startable: ${held.state}/${held.ownerState}/${held.exactNextSafeRoute}`, 'u')
+    );
+  }
+
+  const leaseSha256 = 'a'.repeat(64);
+  const states = [
+    {
+      currentness:'CURRENT',
+      state:'RECOVERY_REQUIRED',
+      ownerState:'ABSENT',
+      leaseSha256,
+      recoveryRequired:true,
+      exactNextSafeRoute:'EXPLICIT_THREAD_WRITER_LEASE_RECOVERY_REQUIRED'
+    },
+    {
+      currentness:'CURRENT',
+      state:'IDLE',
+      ownerState:'NONE',
+      recoveryRequired:false,
+      exactNextSafeRoute:'NONE_REQUIRED'
+    }
+  ];
+  let recoveryCalls = 0;
+  const recovered = recoverOpenVexThreadWriterForStart(home, homeManifest, {
+    currentnessReader: () => states.shift(),
+    recoveryEffect: (input) => {
+      recoveryCalls += 1;
+      assert.equal(input.expectedLeaseSha256, leaseSha256);
+      return {
+        state:'WRITER_RECOVERED',
+        recoveryEffectPerformed:true,
+        recoveredLeaseSha256:leaseSha256,
+        recoveryEvidenceRef:'evidence.vexlife.thread-writer.test'
+      };
+    }
+  });
+  assert.equal(recoveryCalls, 1);
+  assert.deepEqual(recovered, {
+    state:'RECOVERED_TO_IDLE',
+    recoveryEffectPerformed:true,
+    recoveredLeaseSha256:leaseSha256,
+    recoveryEvidenceRef:'evidence.vexlife.thread-writer.test',
+    exactNextSafeRoute:'NONE_REQUIRED'
+  });
+});
+
+test('MAC06K Open Vex thread-writer convergence precedes Heretic/browser readiness in runStart', () => {
+  const lifecycleSource = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
+  const start = lifecycleSource.slice(
+    lifecycleSource.indexOf('async function runStart('),
+    lifecycleSource.indexOf('\nexport async function cleanStop(', lifecycleSource.indexOf('async function runStart('))
+  );
+  const writerIndex = start.indexOf('recoverOpenVexThreadWriterForStart(home, homeManifest)');
+  const hereticIndex = start.indexOf('initialized = await establishHeretic(');
+  const browserIndex = start.indexOf('const browser = await startBrowser(');
+  const readinessIndex = start.indexOf('const companionAvailability = await waitForMacCompanionReady()');
+  assert.ok(writerIndex >= 0);
+  assert.ok(hereticIndex > writerIndex);
+  assert.ok(browserIndex > hereticIndex);
+  assert.ok(readinessIndex > browserIndex);
+  assert.match(start, /return \{ initialized, browser, companionAvailability, openVexThreadWriter \};/u);
 });
 
 test('MAC08 lifecycle exposes no destructive local-data removal operation', () => {
