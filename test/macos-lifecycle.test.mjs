@@ -7,6 +7,10 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  applyBootstrapPlan,
+  buildBootstrapPlan
+} from '../src/core/boot.mjs';
+import {
   buildRuntimeArguments,
   evaluateOperationalProfileHost,
   qualificationContentMatches,
@@ -948,6 +952,46 @@ test('MAC06J Open Vex start recovers only one exact abandoned thread writer and 
     recoveryEvidenceRef:'evidence.vexlife.thread-writer.test',
     exactNextSafeRoute:'NONE_REQUIRED'
   });
+});
+
+test('MAC06J2 first Vex Home starts with canonical Open Vex thread writer IDLE and performs no recovery', () => {
+  const canonicalTmp = fs.realpathSync.native(os.tmpdir());
+  const root = fs.mkdtempSync(path.join(canonicalTmp, 'vexlife-first-home-writer-'));
+  const home = path.join(root, 'home');
+  try {
+    const plan = buildBootstrapPlan({
+      home,
+      personRef: 'person.vexlife.first-home-test',
+      familyRef: 'vex-family.first-home-test',
+      deviceName: 'First Home Test Mac',
+      platform: 'darwin',
+      architecture: 'arm64',
+      sourceRoot: ROOT
+    });
+    const bootstrapped = applyBootstrapPlan(plan);
+    assert.equal(bootstrapped.applied, true);
+
+    const homeManifest = JSON.parse(fs.readFileSync(path.join(home, 'config', 'home.json'), 'utf8'));
+    const result = recoverOpenVexThreadWriterForStart(home, homeManifest);
+
+    assert.deepEqual(result, {
+      state: 'IDLE',
+      recoveryEffectPerformed: false,
+      exactNextSafeRoute: 'NONE_REQUIRED'
+    });
+    assert.equal(
+      fs.existsSync(path.join(
+        home,
+        'runtime',
+        'thread-writer-locks',
+        homeManifest.currentCompanionLineageRef,
+        'thread.self-development.open-conversation.lock'
+      )),
+      false
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('MAC06K Open Vex thread-writer convergence precedes Heretic/browser readiness in runStart', () => {
