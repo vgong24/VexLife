@@ -7,11 +7,6 @@ export const PORTABLE_CONVERGENCE_REQUIRED_INVARIANTS = Object.freeze([
   'RELATIONSHIP_OUTPUT_NOT_EFFECT_COMMAND',
   'SEMANTIC_STATE_NOT_DISPLAY_STATE',
   'RELATIONSHIP_OUTPUT_HANDS_TO_FAMILY_STATE',
-  'LOADED_DOCUMENT_SOURCE_DISTINCT_FROM_CURRENT_SERVER_SOURCE',
-  'STALE_OBSERVATION_CANNOT_OVERWRITE_CURRENT_GENERATION',
-  'READY_REQUIRES_CURRENT_SELECTED_CONVERSATION',
-  'RECOVERY_TRUTH_DOES_NOT_REQUIRE_SEND_CURRENTNESS',
-  'SOURCE_MISMATCH_PRECEDES_RECOVERY_PRESENTATION',
   'SOURCE_DESCENT',
   'PROOF_OBLIGATION_IDENTITY'
 ]);
@@ -34,11 +29,18 @@ const STATE_KEYS = Object.freeze([
 const INVARIANT_KEYS = Object.freeze(['invariantRef','code','statement']);
 const LAW_KEYS = Object.freeze(['rowRef','when','derivedStateRef','effectAuthorityGranted','sourceRefs']);
 const SOURCE_KEYS = Object.freeze(['sourceRef','repository','commit','role','paths']);
+const CONVERGENCE_SOURCE_PREFIX = 'blueprint/fragments/convergence-contracts/';
 
 function nonEmptyString(value){return typeof value==='string'&&value.length>0;}
 function exactKeys(value,expected){if(!value||typeof value!=='object'||Array.isArray(value))return false;return JSON.stringify(Object.keys(value).sort())===JSON.stringify([...expected].sort());}
 function validRef(value){return nonEmptyString(value)&&REF.test(value);}
 function nonEmptyStringArray(value){return Array.isArray(value)&&value.length>0&&value.every(nonEmptyString)&&new Set(value).size===value.length;}
+function validCanonicalSourcePath(value){
+  if(!nonEmptyString(value)||!value.startsWith(CONVERGENCE_SOURCE_PREFIX)||!value.endsWith('.json')||value.includes('\\'))return false;
+  const relative=value.slice(CONVERGENCE_SOURCE_PREFIX.length);
+  const segments=relative.split('/');
+  return segments.length>0&&segments.every(segment=>segment!=='.'&&segment!=='..'&&/^[A-Za-z0-9][A-Za-z0-9._-]*$/u.test(segment));
+}
 function identityEntry({ref,kind,brief,record,edges=[]}){return Object.freeze({ref,kind,brief,stateHash:semanticHash(record),edges:Object.freeze(edges.map(edge=>Object.freeze(edge)))});}
 
 function collectIdentities(contract,errors){
@@ -62,14 +64,15 @@ function collectIdentities(contract,errors){
 
 function validateContract(contract,index,errors,{knownOwnerRefs=null}={}){
   const label=contract?.contractRef??`portable convergence contract ${index}`;
-  if(!contract||typeof contract!=='object'||Array.isArray(contract)){errors.push(`portable convergence contract ${index} must be an object`);return {laws:0,ownedRefs:0};}
+  if(!contract||typeof contract!=='object'||Array.isArray(contract)){errors.push(`portable convergence contract ${index} must be an object`);return {laws:0,ownedRefs:0,inputs:0,states:0,stableRefs:new Set()};}
   if(!exactKeys(contract,CONTRACT_KEYS))errors.push(`${label} must use exact top-level fields`);
   for(const field of ['contractRef','relationshipRef','ownerBlueprintRef','purpose','initialStateRef']){
     if(!nonEmptyString(contract[field])||(field!=='purpose'&&!REF.test(contract[field])))errors.push(`${label} missing valid ${field}`);
   }
+  if(validRef(contract.contractRef)&&contract.contractRef===contract.relationshipRef)errors.push(`${label} contractRef and relationshipRef must be distinct stable identities`);
   if(contract.schemaVersion!==PORTABLE_CONVERGENCE_SCHEMA_VERSION)errors.push(`${label} schemaVersion must be ${PORTABLE_CONVERGENCE_SCHEMA_VERSION}`);
   if(contract.ownerBlueprintRef!=='blueprint.vexlife.universal.001')errors.push(`${label} ownerBlueprintRef must remain blueprint.vexlife.universal.001`);
-  if(!exactKeys(contract.canonicalSource,CANONICAL_SOURCE_KEYS)||contract.canonicalSource.repository!=='vgong24/VexLife'||contract.canonicalSource.path!=='blueprint/fragments/convergence-contracts/interface-currentness.json'||contract.canonicalSource.compositionField!=='convergenceContracts')errors.push(`${label} canonicalSource must bind the VexLife convergenceContracts composition`);
+  if(!exactKeys(contract.canonicalSource,CANONICAL_SOURCE_KEYS)||contract.canonicalSource.repository!=='vgong24/VexLife'||!validCanonicalSourcePath(contract.canonicalSource.path)||contract.canonicalSource.compositionField!=='convergenceContracts')errors.push(`${label} canonicalSource must bind a safe VexLife convergenceContracts source path`);
   if(!exactKeys(contract.authority,AUTHORITY_KEYS)||contract.authority.portableMeaningOwner!==true||contract.authority.platformRealizationOwner!==false||contract.authority.effectAuthorityOwner!==false||contract.authority.rendererAuthorityOwner!==false||contract.authority.stateOwnerTransferAllowed!==false)errors.push(`${label} authority boundary is malformed`);
 
   const {all,byField}=collectIdentities(contract,errors);
@@ -115,18 +118,26 @@ function validateContract(contract,index,errors,{knownOwnerRefs=null}={}){
     if(!nonEmptyString(source.repository)||!HEX40.test(source.commit??'')||!nonEmptyString(source.role)||!nonEmptyStringArray(source.paths))errors.push(`${source.sourceRef??label} source binding is malformed`);
   }
   if(!Array.isArray(contract.heldRealizations)||contract.heldRealizations.length===0||contract.heldRealizations.some(x=>!nonEmptyString(x))||new Set(contract.heldRealizations).size!==contract.heldRealizations.length)errors.push(`${label} heldRealizations must be unique and non-empty`);
-  return {laws:contract.relationshipLawRows?.length??0,ownedRefs:all.size,inputs:inputs.size,states:states.size};
+  return {laws:contract.relationshipLawRows?.length??0,ownedRefs:all.size,inputs:inputs.size,states:states.size,stableRefs:all};
 }
 
 export function validatePortableConvergenceContracts(contracts,options={}){
   const errors=[];
   if(!Array.isArray(contracts)||contracts.length===0)return {ok:false,errors:['universal blueprint missing portable convergenceContracts composition'],stats:{contracts:0,laws:0,ownedRefs:0,inputs:0,states:0}};
-  const contractRefs=new Set(),relationshipRefs=new Set();let laws=0,ownedRefs=0,inputs=0,states=0;
+  const contractRefs=new Set(),relationshipRefs=new Set(),stableRefOwners=new Map();let laws=0,ownedRefs=0,inputs=0,states=0;
   for(const [index,contract] of contracts.entries()){
+    const label=contract?.contractRef??`portable convergence contract ${index}`;
     if(contractRefs.has(contract?.contractRef))errors.push(`duplicate portable convergence contract ${contract.contractRef}`);
     if(relationshipRefs.has(contract?.relationshipRef))errors.push(`duplicate portable convergence relationship ${contract.relationshipRef}`);
     if(contract?.contractRef)contractRefs.add(contract.contractRef);if(contract?.relationshipRef)relationshipRefs.add(contract.relationshipRef);
-    const stats=validateContract(contract,index,errors,options);laws+=stats.laws;ownedRefs+=stats.ownedRefs;inputs+=stats.inputs;states+=stats.states;
+    const stats=validateContract(contract,index,errors,options);
+    for(const ref of stats.stableRefs){
+      if(!validRef(ref))continue;
+      const prior=stableRefOwners.get(ref);
+      if(prior&&prior.index!==index)errors.push(`duplicate portable convergence stable identity ${ref} across ${prior.label} and ${label}`);
+      else stableRefOwners.set(ref,{index,label});
+    }
+    laws+=stats.laws;ownedRefs+=stats.ownedRefs;inputs+=stats.inputs;states+=stats.states;
   }
   return {ok:errors.length===0,errors,stats:{contracts:contracts.length,laws,ownedRefs,inputs,states}};
 }
