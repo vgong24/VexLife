@@ -301,7 +301,20 @@ function returnToTerrain(nodeRef='element.nav.terrain',actionRef='action.view.se
 function projectFrame(){const host=$('#contextSurface'),app=$('#app'),projection=state.contextProjection??'terrain';host.dataset.contextProjection=projection;app.dataset.contextProjection=projection;host.hidden=!state.contextProjection;host.setAttribute('aria-hidden',String(!state.contextProjection));$('#view-chat').hidden=state.contextProjection!=='chat';$('#view-health').hidden=state.contextProjection!=='health';$('#view-living-journal').hidden=state.contextProjection!=='living-journal';const relationshipsView=$('#view-relationships');if(relationshipsView)relationshipsView.hidden=state.contextProjection!=='relationships';chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();livingJournal?.render();if(state.contextProjection==='relationships')relationships?.render();else relationships?.close();renderLivingJournalWalkthroughControls();terrain?.render(false);applyContextWorkspaceLayout();renderHealth();securityAccess?.render();guide?.updateFrame();projectVisibleVexIdentity();familyRoom?.render();if(state.contextProjection)guide?.avoidDeclaredControls();renderUxProjectionShell();}
 
 let interfaceCurrentness=null;
+let automaticCompanionRecoveryBindingRef=null;
+let automaticCompanionRecoveryInFlight=false;
 const requestInterfaceObservation=(reason)=>interfaceCurrentness?.observe(reason)??Promise.resolve(Object.freeze({state:'INTERFACE_NOT_BOUND'}));
+async function maybeAutomaticCompanionRecovery(relationship){
+  if(relationship?.kind==='READY'){automaticCompanionRecoveryBindingRef=null;return false;}
+  if(relationship?.kind!=='RECOVERABLE'||automaticCompanionRecoveryInFlight)return false;
+  const channel=chat?.currentChannel?.(),scope=relationship?.scope;
+  if(channel?.roleKey!=='companion'||scope?.projectRef!==channel.projectRef||scope?.threadRef!==channel.threadRef||scope?.channelRef!==channel.channelRef)return false;
+  let availability;try{availability=normalizeBrowserCompanionAvailability(chat.companionAvailability());}catch{return false;}
+  if(availability.availabilityState!=='RECOVERABLE'||availability.recoveryClass!=='SAFE_REENTRY_AVAILABLE')return false;
+  if(automaticCompanionRecoveryBindingRef===availability.bindingRef)return false;
+  automaticCompanionRecoveryBindingRef=availability.bindingRef;automaticCompanionRecoveryInFlight=true;
+  try{return await chat.requestCompanionRecovery();}catch{return false;}finally{automaticCompanionRecoveryInFlight=false;}
+}
 const interfaceFrameScopeKey=(frame)=>JSON.stringify([frame?.projectRef??null,frame?.threadRef??null,frame?.channelRef??null]);
 let interfaceFrameScope=interfaceFrameScopeKey(state);
 navigation=createNavigationController({
@@ -352,6 +365,7 @@ interfaceCurrentness=createInterfaceCurrentnessController({
   onCurrentState:(projection)=>{
     chat.setInterfaceCurrentness(projection.relationship);
     reloadCurrentInterfaceSource(projection.relationship);
+    void maybeAutomaticCompanionRecovery(projection.relationship);
   }
 });
 const initialInterfaceObservation=await interfaceCurrentness.observe('startup');

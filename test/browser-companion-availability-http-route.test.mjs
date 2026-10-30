@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { chromium } from 'playwright';
 
 import {
   BROWSER_COMPANION_AVAILABILITY_PATH,
@@ -277,6 +278,7 @@ test('production browser composition discovers current bound Heretic receipt fro
   const deadPid = 2147483000;
   const previousReceiptEnvironment = process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH;
   let server = null;
+  let browser = null;
   try {
     writeProductionDiscoveryJson(path.join(home, 'config', 'home.json'), {
       schemaVersion: 'vexlife.home/v0',
@@ -362,12 +364,36 @@ test('production browser composition discovers current bound Heretic receipt fro
         homeMutation: false,
       },
     };
+    let runtimeLive = false;
+    let recoveryEffectCalls = 0;
+    const resourceObserver = () => Object.freeze({
+      schemaVersion: 'vexlife.host-resource-observation/v1',
+      truthClass: 'SOURCE_BOUND_HOST_RESOURCE_OBSERVATION',
+      resourceObservationRef: runtimeLive ? 'observation.production-heretic-discovery.runtime-live' : 'observation.production-heretic-discovery.runtime-stopped',
+      resourceRef: 'resource.vexlife.heretic.persistent-runtime',
+      resourceClass: 'HERETIC_PERSISTENT_MLX_RUNTIME',
+      ownershipState: runtimeLive ? 'EXACT_VEX_OWNED' : 'UNOWNED',
+      lifecycleState: runtimeLive ? 'CURRENT' : 'ABANDONED',
+      currentness: 'CURRENT',
+      ownershipProof: runtimeLive ? {
+        currentness: 'CURRENT', ownerReceiptRef: receipt.receiptRef, exactOwnedProcessInstance: true, pidMatchOnly: false,
+        runtimeIdentityRef: 'runtime.production-heretic-discovery.current', executableIdentityRef: 'executable.production-heretic-discovery.current',
+        processGroupIdentityRef: 'process-group.production-heretic-discovery.current',
+      } : null,
+      lifecycleEvidenceRefOrNull: runtimeLive ? null : 'evidence.production-heretic-discovery.verified-not-live',
+      sourceRefs: [receipt.receiptRef, 'source.test.production-heretic-resource-observer'],
+    });
+    const recoverPersistentHereticRuntime = async () => {
+      recoveryEffectCalls += 1; runtimeLive = true;
+      return Object.freeze({ disposition: 'STARTED_NEW_EXACT_MLX_RUNTIME', pid: receipt.runtime.pid, endpoint: receipt.endpoint, requestModel: receipt.requestModel, receipt });
+    };
+
     const homeIdentity = loadBrowserCompanionHomeIdentity(home);
     writeProductionDiscoveryJson(path.join(home, 'config', 'model.json'), formHereticModelConfiguration({ homeIdentity, receipt }));
     writeProductionDiscoveryJson(runtimeReceiptPath, receipt);
 
     delete process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH;
-    const options = createProductionHereticRuntimeBrowserOptions(home);
+    const options = createProductionHereticRuntimeBrowserOptions(home, { resourceObserver, recoverPersistentHereticRuntime });
     assert.equal(typeof options.resolveCompanionBinding, 'function');
     assert.equal(typeof options.resolveCompanionRuntimeObservation, 'function');
     server = createVexLifeBrowserServer(options);
@@ -389,7 +415,32 @@ test('production browser composition discovers current bound Heretic receipt fro
     assert.equal(availability.qualificationState, 'STALE');
     assert.equal(availability.bindingState, 'BOUND');
     assert.equal(availability.homeRef, homeRef);
+
+    let recoveryPosts = 0, turnPosts = 0;
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    page.on('request', (request) => {
+      const pathname = new URL(request.url()).pathname;
+      if (pathname === '/api/v1/companion/recovery-action' && request.method() === 'POST') recoveryPosts += 1;
+      if (pathname === '/api/v1/companion/turn' && request.method() === 'POST') turnPosts += 1;
+    });
+    await page.goto('http://127.0.0.1:' + address.port + '/reference/browser/?open=vex', { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForFunction(() => globalThis.__VEXLIFE_APP__?.chat?.companionAvailabilityState?.() === 'READY', null, { timeout: 5000 });
+    const browserState = await page.evaluate(() => ({
+      availabilityState: globalThis.__VEXLIFE_APP__.chat.companionAvailabilityState(),
+      interfaceCurrentness: globalThis.__VEXLIFE_APP__.chat.interfaceCurrentness().kind,
+      sendDisabled: document.querySelector('#composer button[type="submit"]')?.disabled ?? null,
+      recoveryVisible: !document.querySelector('#companionRecoveryButton')?.hidden,
+    }));
+    assert.deepEqual(browserState, { availabilityState: 'READY', interfaceCurrentness: 'READY', sendDisabled: false, recoveryVisible: false });
+    assert.equal(recoveryPosts, 1); assert.equal(recoveryEffectCalls, 1); assert.equal(turnPosts, 0);
+    const readyResponse = await fetch('http://127.0.0.1:' + address.port + BROWSER_COMPANION_AVAILABILITY_PATH);
+    assert.equal(readyResponse.status, 200);
+    const readyAvailability = await readyResponse.json();
+    assert.equal(readyAvailability.availabilityState, 'READY');
+    assert.equal(readyAvailability.recoveryClass, 'NONE_REQUIRED');
   } finally {
+    if (browser) await browser.close();
     if (server?.listening) await new Promise((resolve) => server.close(() => resolve()));
     if (previousReceiptEnvironment === undefined) delete process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH;
     else process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH = previousReceiptEnvironment;

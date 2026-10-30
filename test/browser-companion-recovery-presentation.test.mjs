@@ -200,7 +200,7 @@ function seedCanonicalConversation(home) {
   append({messageRef:'message.vr06.presentation.companion.001',spaceRef:null,threadRef,channelRef,speakerRef:'role.vex.companion',recipientRefs:[device.personRef],witnessRefs:['witness.vr06.presentation.companion.001'],membershipSnapshotRef:null,membershipGeneration:null,sequence:1,content:'Durable Vex first-load response.',contentHash:semanticHash('Durable Vex first-load response.'),createdAt:at1});
 }
 
-async function withReferenceBrowser(viewport, run, { initialObservation = runtimeObservation(), seedConversation = false } = {}) {
+async function withReferenceBrowser(viewport, run, { initialObservation = runtimeObservation(), seedConversation = false, recoveryFailure = false } = {}) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'vr06-presentation-browser-home-'));
   initializeLivedCompanionHome({
     home,
@@ -220,6 +220,7 @@ async function withReferenceBrowser(viewport, run, { initialObservation = runtim
     recoveryOwner: {
       recover: async (input) => {
         recoveryRequests.push(structuredClone(input));
+        if (recoveryFailure) throw new Error('synthetic same-binding recovery failure');
         observation = runtimeObservation({
           observationRef: 'observation.vr06.presentation.ready',
           runtimeOwnershipState: 'EXACT_OWNED',
@@ -332,104 +333,53 @@ test('Open Vex launch-intent page load projects canonical READY before Victor in
   );
 });
 
-test('VR06 Reference composer exposes truthful recoverable action on desktop and compact without sending a turn', async () => {
+test('VR06 Reference composer automatically re-enters one exact recoverable binding on desktop and compact', async () => {
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await withReferenceBrowser(viewport, async ({ page, serverUrl, recoveryRequests }) => {
-      const consoleErrors = [];
-      const pageErrors = [];
-      let recoveryPosts = 0;
-      let turnCalls = 0;
-      let postedBinding = null;
-
-      page.on('console', (message) => {
-        if (message.type() === 'error') consoleErrors.push(message.text());
-      });
+      const consoleErrors = [], pageErrors = []; let recoveryPosts = 0, turnCalls = 0;
+      page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()); });
       page.on('pageerror', (error) => pageErrors.push(error.message));
-      page.on('request', (request) => {
-        const url = new URL(request.url());
-        if (url.pathname === '/api/v1/companion/turn') turnCalls += 1;
-        if (url.pathname === BROWSER_COMPANION_RECOVERY_ACTION_PATH && request.method() === 'POST') {
-          recoveryPosts += 1;
-          postedBinding = request.postDataJSON();
-        }
-      });
-
-      await page.goto(serverUrl + '/reference/browser/', { waitUntil: 'networkidle', timeout: 30000 });
-      await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 30000 });
-      const refreshed = await page.evaluate(async () => {
-        const app = globalThis.__VEXLIFE_APP__;
-        app.openContext('chat');
-        const project = app.projects.find((candidate) => candidate.projectRef === 'project.self-development');
-        const thread = project?.threads.find((candidate) => candidate.threadRef === 'thread.self-development.open-conversation');
-        const channel = app.channels.find((candidate) => candidate.channelRef === 'channel.self-development.companion');
-        if (!project || !thread || !channel) throw new Error('VR06 canonical Companion conversation target is unavailable');
-        app.chat.selectThread(project, thread, 'element.thread.open-conversation');
-        app.chat.selectChannel(channel, 'element.channel.companion');
-        await app.chat.refreshCompanionAvailability();
-        return {
-          channelRef: app.chat.currentChannel().channelRef,
-          state: app.chat.companionAvailabilityState(),
-          recoverable: app.chat.companionRecoveryAvailable()
-        };
-      });
-      assert.deepEqual(refreshed, {
-        channelRef: 'channel.self-development.companion',
-        state: 'RECOVERABLE',
-        recoverable: true
-      });
-      await page.locator('#messageInput').waitFor({ state: 'visible', timeout: 5000 });
-
-      const draft = 'Keep this exact unsent draft through recovery';
-      await page.locator('#messageInput').fill(draft);
-      await page.locator('#messageInput').dispatchEvent('input');
-
-      const recoverButton = page.locator('#companionRecoveryButton');
-      await recoverButton.waitFor({ state: 'visible', timeout: 5000 });
-      assert.match(await page.locator('#composerHint').textContent(), /Same-binding recovery is available/u);
-      assert.equal(await recoverButton.isEnabled(), true);
-      await recoverButton.focus();
-      assert.equal(await page.evaluate(() => document.activeElement?.id), 'companionRecoveryButton');
-
-      const before = await page.evaluate(() => ({
-        draft: globalThis.__VEXLIFE_APP__.state.unsentLocalDraft,
-        state: globalThis.__VEXLIFE_APP__.chat.companionAvailabilityState(),
-        recoverable: globalThis.__VEXLIFE_APP__.chat.companionRecoveryAvailable()
-      }));
-      assert.equal(before.state, 'RECOVERABLE');
-      assert.equal(before.recoverable, true);
-      assert.equal(before.draft?.content, draft);
-
-      await page.keyboard.press('Enter');
-      await page.waitForFunction(() => globalThis.__VEXLIFE_APP__.chat.companionAvailabilityState() === 'READY', null, { timeout: 5000 });
-
-      const after = await page.evaluate(() => ({
-        draft: globalThis.__VEXLIFE_APP__.state.unsentLocalDraft,
-        input: document.querySelector('#messageInput')?.value,
-        state: globalThis.__VEXLIFE_APP__.chat.companionAvailabilityState(),
-        recoveryVisible: !document.querySelector('#companionRecoveryButton')?.hidden,
-        sendDisabled: document.querySelector('#composer button[type="submit"]')?.disabled
-      }));
-      assert.equal(after.state, 'READY');
-      assert.equal(after.draft?.content, draft);
-      assert.equal(after.input, draft);
-      assert.equal(after.recoveryVisible, false);
-      assert.equal(after.sendDisabled, false);
-      assert.equal(recoveryPosts, 1);
-      assert.equal(recoveryRequests.length, 1);
-      assert.equal(turnCalls, 0);
-      assert.deepEqual(Object.keys(postedBinding).sort(), [
-        'actionRef',
-        'availabilityProjectionRef',
-        'effectAuthorityGranted',
-        'schemaVersion',
-        'truthClass'
-      ]);
-      assert.equal(recoveryRequests[0].actionRef, postedBinding.actionRef);
-      assert.equal(recoveryRequests[0].availabilityProjectionRef, postedBinding.availabilityProjectionRef);
-      assert.equal(recoveryRequests[0].effectAuthorityGranted, false);
-      assert.match(recoveryRequests[0].requestSha256, /^[0-9a-f]{64}$/u);
-      assert.deepEqual(consoleErrors, []);
-      assert.deepEqual(pageErrors, []);
+      page.on('request', (request) => { const url = new URL(request.url()); if (url.pathname === '/api/v1/companion/turn') turnCalls += 1; if (url.pathname === BROWSER_COMPANION_RECOVERY_ACTION_PATH && request.method() === 'POST') recoveryPosts += 1; });
+      await page.goto(serverUrl + '/reference/browser/?open=vex', { waitUntil: 'networkidle', timeout: 30000 });
+      await page.waitForFunction(() => globalThis.__VEXLIFE_APP__?.chat?.companionAvailabilityState?.() === 'READY', null, { timeout: 5000 });
+      const projected = await page.evaluate(() => ({ channelRef: globalThis.__VEXLIFE_APP__.chat.currentChannel().channelRef, availabilityState: globalThis.__VEXLIFE_APP__.chat.companionAvailabilityState(), interfaceCurrentness: globalThis.__VEXLIFE_APP__.chat.interfaceCurrentness().kind, sendDisabled: document.querySelector('#composer button[type="submit"]')?.disabled ?? null, recoveryVisible: !document.querySelector('#companionRecoveryButton')?.hidden }));
+      assert.deepEqual(projected, { channelRef: 'channel.self-development.companion', availabilityState: 'READY', interfaceCurrentness: 'READY', sendDisabled: false, recoveryVisible: false });
+      assert.equal(recoveryPosts, 1); assert.equal(recoveryRequests.length, 1); assert.equal(turnCalls, 0); assert.deepEqual(consoleErrors, []); assert.deepEqual(pageErrors, []);
     });
   }
 });
+
+test('automatic same-binding recovery failure does not retry and leaves draft plus manual fallback intact', async () => {
+  await withReferenceBrowser({ width: 1440, height: 900 }, async ({ page, serverUrl, recoveryRequests }) => {
+    let recoveryPosts = 0, turnCalls = 0;
+    page.on('request', (request) => { const url = new URL(request.url()); if (url.pathname === BROWSER_COMPANION_RECOVERY_ACTION_PATH && request.method() === 'POST') recoveryPosts += 1; if (url.pathname === '/api/v1/companion/turn') turnCalls += 1; });
+    await page.goto(serverUrl + '/reference/browser/?open=vex', { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForFunction(() => globalThis.__VEXLIFE_APP__?.chat?.companionAvailabilityState?.() === 'RECOVERABLE', null, { timeout: 5000 });
+    await page.waitForTimeout(100); assert.equal(recoveryPosts, 1); assert.equal(recoveryRequests.length, 1);
+    const draft = 'Keep this exact unsent draft through failed automatic recovery';
+    await page.locator('#messageInput').fill(draft); await page.locator('#messageInput').dispatchEvent('input'); await page.waitForTimeout(100); assert.equal(recoveryPosts, 1);
+    const recoverButton = page.locator('#companionRecoveryButton'); await recoverButton.waitFor({ state: 'visible', timeout: 5000 }); assert.equal(await recoverButton.isEnabled(), true);
+    await recoverButton.click(); await page.waitForTimeout(100); assert.equal(recoveryPosts, 2); assert.equal(recoveryRequests.length, 2);
+    const after = await page.evaluate(() => ({ draft: globalThis.__VEXLIFE_APP__.state.unsentLocalDraft, input: document.querySelector('#messageInput')?.value, availabilityState: globalThis.__VEXLIFE_APP__.chat.companionAvailabilityState(), recoveryVisible: !document.querySelector('#companionRecoveryButton')?.hidden, sendDisabled: document.querySelector('#composer button[type="submit"]')?.disabled ?? null }));
+    assert.equal(after.draft?.content, draft); assert.equal(after.input, draft); assert.equal(after.availabilityState, 'RECOVERABLE'); assert.equal(after.recoveryVisible, true); assert.equal(after.sendDisabled, true); assert.equal(turnCalls, 0);
+  }, { recoveryFailure: true });
+});
+
+test('automatic same-binding recovery does not run for ACTION_REQUIRED, UNAVAILABLE, or HELD', async () => {
+  const cases = [
+    runtimeObservation({ observationRef: 'observation.vr06.presentation.action-required', runtimeOwnershipState: 'EXACT_OWNED', runtimeState: 'DEGRADED', qualificationState: 'STALE', safeReentryState: 'HUMAN_DECISION_REQUIRED' }),
+    runtimeObservation({ observationRef: 'observation.vr06.presentation.unavailable', runtimeOwnershipState: 'NO_OWNED_RUNTIME', runtimeState: 'STOPPED', qualificationState: 'STALE', safeReentryState: 'NOT_AVAILABLE' }),
+    runtimeObservation({ observationRef: 'observation.vr06.presentation.held', runtimeOwnershipState: 'NO_OWNED_RUNTIME', runtimeState: 'STOPPED', qualificationState: 'STALE', safeReentryState: 'HELD' }),
+  ];
+  for (const initialObservation of cases) {
+    await withReferenceBrowser({ width: 390, height: 844 }, async ({ page, serverUrl, recoveryRequests }) => {
+      let recoveryPosts = 0;
+      page.on('request', (request) => { if (new URL(request.url()).pathname === BROWSER_COMPANION_RECOVERY_ACTION_PATH && request.method() === 'POST') recoveryPosts += 1; });
+      await page.goto(serverUrl + '/reference/browser/?open=vex', { waitUntil: 'networkidle', timeout: 30000 });
+      await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 5000 }); await page.waitForTimeout(100);
+      assert.equal(recoveryPosts, 0); assert.equal(recoveryRequests.length, 0); assert.equal(await page.locator('#composer button[type="submit"]').isDisabled(), true);
+    }, { initialObservation });
+  }
+});
+
+// [VXG RealForever]

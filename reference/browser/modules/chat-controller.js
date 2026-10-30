@@ -1900,6 +1900,7 @@ export function createChatController({ state, projects, roles, channels, message
     companionAvailabilityState,
     companionAvailability: companionAvailabilitySnapshot,
     companionRecoveryAvailable: () => browserCompanionRecoveryAvailable(companionAvailability),
+    requestCompanionRecovery,
     companionVesselProjectionState: () => companionVesselProjectionState,
     composerCommandState: () => structuredClone(composerCommandState),
     pendingReplyCount: () => pendingReplyTimers.size
