@@ -76,6 +76,10 @@
     "brief": "Equal derived projections do not notify or rerender."
   },
   {
+    "testRef": "test.state.relay-foundation",
+    "brief": "State Relay proves immutable snapshot and observation distinction, reinstance identity, latest-coherent-input hold, serialized Compound reconciliation, synchronous effect-free reducers and semantic no-op suppression through the accepted core runtime plus canonical foundation-map proof."
+  },
+  {
     "testRef": "test.permission.no-inferred-effect",
     "brief": "Visible tools and roles never infer effect authority."
   },

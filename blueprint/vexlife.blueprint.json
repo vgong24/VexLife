@@ -21,6 +21,9 @@
     "behaviorContracts": [
       "blueprint/fragments/behavior-contracts/vexstream-playback-play-pause.json"
     ],
+    "convergenceContracts": [
+      "blueprint/fragments/convergence-contracts/interface-currentness.json"
+    ],
     "terrain": "blueprint/fragments/terrain.json",
     "platforms": "blueprint/fragments/platform-bindings.json",
     "tests": [

@@ -18,7 +18,7 @@
   {
     "moduleRef": "module.vexlife.core.state-relay",
     "path": "src/core/state-relay.mjs",
-    "role": "Immutable state cells, combined narrow projections and semantic distinct-until-changed delivery.",
+    "role": "Immutable state cells and observation snapshots, combined narrow projections, retained named Compound inputs, latest-coherent-input gating, serialized synchronous effect-free reconciliation and semantic distinct-until-changed delivery.",
     "platformScope": "UNIVERSAL",
     "reads": [
       "module.vexlife.core.utils"
@@ -26,7 +26,8 @@
     "writes": [],
     "loadedBy": [],
     "tests": [
-      "test/core.test.mjs"
+      "test/core.test.mjs",
+      "test/state-relay-foundation-map.test.mjs"
     ],
     "changeMap": [
       "src/core/navigation.mjs",

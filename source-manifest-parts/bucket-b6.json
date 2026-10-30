@@ -17,8 +17,8 @@
     {
       "path": "docs/UNIVERSAL-BLUEPRINT.md",
       "mode": "100644",
-      "bytes": 3917,
-      "sha256": "497eddccd7fb2f06eb9c6ae2f9d26238ea48f16a80f33d87eeb497fa71cfbfa0"
+      "bytes": 5251,
+      "sha256": "06c3fff1ac3a6691aa9fe63b1b4e7c3dc5d07101f4fc2e3c12823601c91c3880"
     },
     {
       "path": "scripts/establish-heretic-runtime.mjs",

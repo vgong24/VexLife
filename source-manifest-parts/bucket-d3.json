@@ -11,8 +11,8 @@
     {
       "path": "blueprint/fragments/tests.json",
       "mode": "100644",
-      "bytes": 63958,
-      "sha256": "f9caddda222337262007dc29744624fa90d062a1e54f6f28570f37c9deba9ac6"
+      "bytes": 64315,
+      "sha256": "dcd71f6fa7aa7feb758d7de053e876594baeaf645e49d2aad25e508fa8efc2e6"
     },
     {
       "path": "blueprint/module-registry/vessel-studio.json",

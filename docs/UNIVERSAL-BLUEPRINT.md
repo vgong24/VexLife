@@ -105,6 +105,38 @@ SyncState
 
 A screen registers selectors over those domains. It never receives the universal state object merely for convenience.
 
+## Family Circuit and Compound convergence
+
+Independently owned truth, relationship meaning, semantic behavior and effects remain separate:
+
+```text
+independently owned State truths
+        ↓
+retained coherent Compound input
+        ↓
+portable relationship State
+        ↓
+rightful Family semantic State
+      + Control
+        ↓
+       Act
+        ↓
+rightful effect owner
+        ↓
+downstream presentation
+```
+
+The Universal Blueprint may own portable `convergenceContracts` for relationship meaning that multiple platform realizations must preserve. A convergence contract names independently owned inputs, one stable semantic State vocabulary, complete derivation laws, invariants, exact source descent and proof identities. It grants no renderer, runtime, navigation, Conversation, model or other execution authority.
+
+The State Relay foundation owns the universal retained-state mechanics, including immutable observation snapshots and serialized `VexCompoundState` reconciliation. A portable convergence contract does not reimplement that runtime. Platform code consumes the portable relationship meaning using target-native observation and lifecycle forms.
+
+```text
+REUSABLE_MEANING != REUSABLE_TYPE_EQUATION
+RELATIONSHIP_OUTPUT != EFFECT_COMMAND
+SEMANTIC_STATE != DISPLAY_STATE
+OBSERVATION_TRIGGER != CONTROL
+```
+
 ## Atlas query
 
 The model-facing record is intentionally thin:
