@@ -665,6 +665,7 @@ export function createChatController({ state, projects, roles, channels, message
       })));
       rememberConversationCurrentness(channel,{state:body.state,headMessageRefOrNull:body.headMessageRefOrNull,headSequenceOrNull:body.headSequenceOrNull,canonicalConversationHeadSha256:body.canonicalConversationHeadSha256,headUpdatedAtOrNull:body.headUpdatedAtOrNull??null});
       if(currentChannel()?.channelRef===channel.channelRef){renderMessages(true);renderContext();}
+      await requestInterfaceObservation('conversation-projection-refresh');
       return canonicalConversationIdentity(channel);
     } catch {
       if(typeof acceptIf!=='function'||acceptIf()!==true)return Object.freeze({state:'STALE_PROJECTION_REJECTED',...canonicalConversationIdentity(channel)});

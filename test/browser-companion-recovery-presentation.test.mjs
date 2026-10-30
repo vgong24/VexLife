@@ -339,6 +339,70 @@ test('Open Vex launch-intent page load projects canonical READY before Victor in
   );
 });
 
+test('Open Vex re-observes Interface currentness after canonical Conversation projection heals a first-read miss', async () => {
+  await withReferenceBrowser(
+    { width: 1440, height: 900 },
+    async ({ page, serverUrl }) => {
+      let currentnessReads = 0;
+      await page.addInitScript(() => {
+        const nativeAddEventListener = EventTarget.prototype.addEventListener;
+        EventTarget.prototype.addEventListener = function addEventListenerWithoutIncidentalInterfaceRefresh(type, listener, options) {
+          const suppressWindowRefresh = this === window && (type === 'focus' || type === 'pageshow');
+          const suppressVisibilityRefresh = this === document && type === 'visibilitychange';
+          if (suppressWindowRefresh || suppressVisibilityRefresh) return;
+          return nativeAddEventListener.call(this, type, listener, options);
+        };
+      });
+      await page.route('**/api/v1/companion/conversation-currentness?*', async (route) => {
+        currentnessReads += 1;
+        if (currentnessReads === 1) {
+          await route.fulfill({
+            status: 503,
+            contentType: 'application/json',
+            body: JSON.stringify({ state: 'UNAVAILABLE' })
+          });
+          return;
+        }
+        await route.continue();
+      });
+
+      await page.goto(serverUrl + '/reference/browser/?open=vex', { waitUntil: 'networkidle', timeout: 30000 });
+      await page.waitForFunction(
+        () => globalThis.__VEXLIFE_APP__?.chat?.interfaceCurrentness?.().kind === 'READY',
+        null,
+        { timeout: 5000 }
+      );
+
+      const projected = await page.evaluate(() => ({
+        interfaceCurrentness: globalThis.__VEXLIFE_APP__.chat.interfaceCurrentness().kind,
+        conversationCurrentness: globalThis.__VEXLIFE_APP__.chat.canonicalConversationIdentity().currentness,
+        messages: [...document.querySelectorAll('#messageFeed .message')].map((row) => row.querySelector('.message-body')?.textContent ?? ''),
+        sendDisabled: document.querySelector('#composer button[type="submit"]')?.disabled ?? null
+      }));
+
+      assert.ok(currentnessReads >= 2);
+      assert.equal(projected.interfaceCurrentness, 'READY');
+      assert.equal(projected.conversationCurrentness, 'CURRENT');
+      assert.deepEqual(projected.messages, [
+        'Durable Victor first-load message.',
+        'Durable Vex first-load response.'
+      ]);
+      assert.equal(projected.sendDisabled, false);
+    },
+    {
+      seedConversation: true,
+      initialObservation: runtimeObservation({
+        observationRef: 'observation.vr06.presentation.initial-ready-after-currentness-miss',
+        runtimeOwnershipState: 'EXACT_OWNED',
+        runtimeState: 'HEALTHY',
+        qualificationState: 'CURRENT',
+        safeReentryState: 'NOT_AVAILABLE',
+        evidenceRefs: ['evidence.runtime.vr06.presentation.initial-ready-after-currentness-miss']
+      })
+    }
+  );
+});
+
 test('VR06 Reference composer automatically re-enters one exact recoverable binding on desktop and compact', async () => {
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await withReferenceBrowser(viewport, async ({ page, serverUrl, recoveryRequests }) => {
