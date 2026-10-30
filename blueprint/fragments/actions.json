@@ -1017,5 +1017,17 @@
     },
     "effectClass": "PRIVATE_HOME_ROUTED_READ_ADMIT_MAPS_PLACE_SEARCH",
     "outputStateRefs": []
+  },
+  {
+    "actionRef": "action.theme-mode.select",
+    "permissionRef": "permission.theme-mode.select",
+    "inputSchema": {
+      "mode": "string"
+    },
+    "effectClass": "LOCAL_PREFERENCE_WRITE",
+    "outputStateRefs": [
+      "state.theme-mode",
+      "state.theme-mode.durable-selection"
+    ]
   }
 ]

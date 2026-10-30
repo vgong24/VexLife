@@ -100,5 +100,11 @@
     "effectClass": "SCOPED_FAMILY_SYNC",
     "confirmation": "RECORD_SCOPE_TARGET_LINEAGES_AND_CONSENT",
     "recovery": "REVOKE_CURRENT_POINTER_KEEP_SOURCE_RECEIPTS"
+  },
+  {
+    "permissionRef": "permission.theme-mode.select",
+    "effectClass": "LOCAL_PREFERENCE_WRITE",
+    "confirmation": "THEME_MODE_SELECTION_CONTROL",
+    "recovery": "SELECT_OTHER_MODE_OR_FORGET"
   }
 ]

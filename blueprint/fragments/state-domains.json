@@ -173,5 +173,49 @@
     "stateRef": "state.family-space",
     "ownerRef": "service.family-space",
     "brief": "Canonical Vex Home local Family Space membership, principal-binding references, explicit owner/admin/member roles, membership generations, history-visibility policy and independently versioned Family Vex lineage binding; device pairing and relationship labels cannot grant membership."
+  },
+  {
+    "stateRef": "state.theme-mode",
+    "ownerRef": "service.theme-mode",
+    "brief": "One live semantic ThemeMode current State. Durable preference is observed as a dependency; it is not a second live current-State owner.",
+    "valueVocabulary": [
+      "NOT_SET",
+      "LIGHT",
+      "DARK"
+    ],
+    "currentnessContract": {
+      "holder": "SINGLE_STATE_RELAY",
+      "dependencyStateRefs": [
+        "state.theme-mode.durable-selection"
+      ],
+      "dependencyObservationRule": "DURABLE_SELECTION_REENTERS_SAME_CURRENTNESS_BOUNDARY",
+      "genericCurrentEmissionPersists": false
+    }
+  },
+  {
+    "stateRef": "state.theme-mode.durable-selection",
+    "ownerRef": "service.theme-mode-store",
+    "brief": "Durable explicit ThemeMode selection. NOT_SET means no explicit durable selection; platform storage mechanics remain target-owned.",
+    "valueVocabulary": [
+      "NOT_SET",
+      "LIGHT",
+      "DARK"
+    ],
+    "durabilityContract": {
+      "operations": [
+        "OBSERVE",
+        "GET",
+        "SAVE",
+        "FORGET"
+      ],
+      "explicitSelectionSaveValues": [
+        "LIGHT",
+        "DARK"
+      ],
+      "forgetValue": "NOT_SET",
+      "processRecreationRestorationRequired": true,
+      "observationTargetStateRef": "state.theme-mode",
+      "platformStorageMechanicsOwner": "PLATFORM_REALIZATION"
+    }
   }
 ]
