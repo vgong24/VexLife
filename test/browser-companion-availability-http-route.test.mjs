@@ -8,7 +8,10 @@ import { chromium } from 'playwright';
 import {
   BROWSER_COMPANION_AVAILABILITY_PATH,
   createProductionHereticRuntimeBrowserOptions,
-  createVexLifeBrowserServer
+  createVexLifeBrowserServer,
+  hereticRuntimeBrowserOptions,
+  resolveHereticPersistentRuntimeCurrentLink,
+  resolveHereticPersistentRuntimeLink,
 } from '../scripts/serve-browser.mjs';
 import {
   HERETIC_PRODUCT_ENDPOINT,
@@ -393,15 +396,15 @@ test('production browser composition discovers current bound Heretic receipt fro
     writeProductionDiscoveryJson(runtimeReceiptPath, receipt);
 
     delete process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH;
-    const options = createProductionHereticRuntimeBrowserOptions(home, { resourceObserver, recoverPersistentHereticRuntime });
-    assert.equal(typeof options.resolveCompanionBinding, 'function');
-    assert.equal(typeof options.resolveCompanionRuntimeObservation, 'function');
-    server = createVexLifeBrowserServer(options);
+    const productionOptions = createProductionHereticRuntimeBrowserOptions(home);
+    assert.equal(typeof productionOptions.resolveCompanionBinding, 'function');
+    assert.equal(typeof productionOptions.resolveCompanionRuntimeObservation, 'function');
+    server = createVexLifeBrowserServer(productionOptions);
     await new Promise((resolve, reject) => {
       server.once('error', reject);
       server.listen(0, '127.0.0.1', resolve);
     });
-    const address = server.address();
+    let address = server.address();
     assert.equal(typeof address, 'object');
     const response = await fetch('http://127.0.0.1:' + address.port + BROWSER_COMPANION_AVAILABILITY_PATH);
     assert.equal(response.status, 200);
@@ -415,6 +418,22 @@ test('production browser composition discovers current bound Heretic receipt fro
     assert.equal(availability.qualificationState, 'STALE');
     assert.equal(availability.bindingState, 'BOUND');
     assert.equal(availability.homeRef, homeRef);
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    server = null;
+
+    const runtimeLink = resolveHereticPersistentRuntimeLink({ runtimeHome: home });
+    const recoveryProofOptions = hereticRuntimeBrowserOptions(runtimeLink, {
+      companionHome: home,
+      resolveCurrentRuntimeLink: () => resolveHereticPersistentRuntimeCurrentLink({ runtimeHome: home, resourceObserver }),
+      recoverPersistentHereticRuntime,
+    });
+    server = createVexLifeBrowserServer(recoveryProofOptions);
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', resolve);
+    });
+    address = server.address();
+    assert.equal(typeof address, 'object');
 
     let recoveryPosts = 0, turnPosts = 0;
     browser = await chromium.launch({ headless: true });

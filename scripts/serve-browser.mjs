@@ -481,18 +481,16 @@ export function hereticRuntimeBrowserOptions(runtimeLink, {
   });
 }
 
-export function createProductionHereticRuntimeBrowserOptions(runtimeHome = home, {
-  resourceObserver = observeHereticPersistentRuntimeResource,
-  recoverPersistentHereticRuntime = null,
-} = {}) {
-  if (typeof resourceObserver !== 'function') throw new TypeError('Production Heretic Browser options require one runtime resource observer');
-  if (recoverPersistentHereticRuntime !== null && typeof recoverPersistentHereticRuntime !== 'function') throw new TypeError('Production Heretic Browser recovery effect must be null or one function');
+export function createProductionHereticRuntimeBrowserOptions(runtimeHome = home) {
   const runtimeLink = resolveHereticPersistentRuntimeLink({ runtimeHome });
-  const recoveryEffect = runtimeLink === null ? null : recoverPersistentHereticRuntime ?? (() => recoverHereticPersistentRuntimeFromCurrentHome({ runtimeHome }));
   return hereticRuntimeBrowserOptions(runtimeLink, {
     companionHome: runtimeHome,
-    resolveCurrentRuntimeLink: runtimeLink === null ? null : () => resolveHereticPersistentRuntimeCurrentLink({ runtimeHome, resourceObserver }),
-    recoverPersistentHereticRuntime: recoveryEffect,
+    resolveCurrentRuntimeLink: runtimeLink === null
+      ? null
+      : () => resolveHereticPersistentRuntimeCurrentLink({ runtimeHome }),
+    recoverPersistentHereticRuntime: runtimeLink === null
+      ? null
+      : () => recoverHereticPersistentRuntimeFromCurrentHome({ runtimeHome }),
   });
 }
 
