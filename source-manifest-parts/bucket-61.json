@@ -27,6 +27,12 @@
       "sha256": "c315d24bcc082603e4cac5fd49b52d224589ad0a972b536f8eee7936ad7aa97d"
     },
     {
+      "path": "src/core/portable-convergence-contract.mjs",
+      "mode": "100644",
+      "bytes": 14009,
+      "sha256": "992d39064903af55dd4750fc78d65728d543c87c188ee9ac73c3bb1c42ff91fb"
+    },
+    {
       "path": "src/core/repository-evidence.mjs",
       "mode": "100644",
       "bytes": 33675,

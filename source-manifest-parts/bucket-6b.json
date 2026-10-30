@@ -25,6 +25,12 @@
       "mode": "100644",
       "bytes": 29692,
       "sha256": "84e63e05278ca0c7d859c43adcff4280f412e0fec58c2b4489b45658d4d32422"
+    },
+    {
+      "path": "test/state-relay-foundation-map.test.mjs",
+      "mode": "100644",
+      "bytes": 1853,
+      "sha256": "71290a644181eb912a53f168ab0603baa74727007a56e311116f39ff35abcdfd"
     }
   ]
 }

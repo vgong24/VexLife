@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 43165,
       "sha256": "f8c8dad5f5cf03a374424edf6a3e717308d77a09a80ea872427ffe1d98b1889d"
+    },
+    {
+      "path": "test/interface-currentness-foundation.test.mjs",
+      "mode": "100644",
+      "bytes": 11081,
+      "sha256": "d6787e06e27647d908a30cd25c30c235686174b7b691322ca4c5502ec61e9ce9"
     }
   ]
 }

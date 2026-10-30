@@ -3,9 +3,14 @@ import {
   buildPortableBehaviorIdentityEntries,
   validatePortableBehaviorContracts
 } from './portable-behavior-contract.mjs';
+import {
+  buildPortableConvergenceIdentityEntries,
+  validatePortableConvergenceContracts
+} from './portable-convergence-contract.mjs';
 
 export * from './blueprint-base.mjs';
 export * from './portable-behavior-contract.mjs';
+export * from './portable-convergence-contract.mjs';
 
 const REGISTRATION_EXTENSION_KEYS = new Set([
   'schemaVersion',
@@ -94,12 +99,32 @@ export function loadBlueprint(root = base.VEXLIFE_ROOT) {
   };
 }
 
+function convergenceOwnerRefs(bundle, behaviorValidation) {
+  if (!behaviorValidation.ok) return null;
+  const baseEntries = base.buildIdentityIndex(bundle);
+  const behaviorEntries = buildPortableBehaviorIdentityEntries(bundle?.blueprint?.behaviorContracts);
+  return new Set([...baseEntries, ...behaviorEntries].map((entry) => entry.ref));
+}
+
 export function validateBlueprint(bundle) {
   const baseValidation = base.validateBlueprint(bundle);
   const behaviorValidation = validatePortableBehaviorContracts(bundle?.blueprint?.behaviorContracts);
+  let ownerRefs = null;
+  let ownerResolutionError = null;
+  try {
+    ownerRefs = convergenceOwnerRefs(bundle, behaviorValidation);
+  } catch (error) {
+    ownerResolutionError = error;
+  }
+  const convergenceValidation = validatePortableConvergenceContracts(
+    bundle?.blueprint?.convergenceContracts,
+    { knownOwnerRefs: ownerRefs }
+  );
   const errors = [
     ...baseValidation.errors,
-    ...behaviorValidation.errors.map((error) => `portable behavior: ${error}`)
+    ...behaviorValidation.errors.map((error) => `portable behavior: ${error}`),
+    ...(ownerResolutionError ? [`portable convergence owner resolution: ${ownerResolutionError.message}`] : []),
+    ...convergenceValidation.errors.map((error) => `portable convergence: ${error}`)
   ];
   return {
     ...baseValidation,
@@ -109,7 +134,12 @@ export function validateBlueprint(bundle) {
       ...baseValidation.stats,
       portableBehaviorContracts: behaviorValidation.stats.contracts,
       portableBehaviorRows: behaviorValidation.stats.rows,
-      portableBehaviorOwnedRefs: behaviorValidation.stats.ownedRefs
+      portableBehaviorOwnedRefs: behaviorValidation.stats.ownedRefs,
+      portableConvergenceContracts: convergenceValidation.stats.contracts,
+      portableConvergenceLaws: convergenceValidation.stats.laws,
+      portableConvergenceOwnedRefs: convergenceValidation.stats.ownedRefs,
+      portableConvergenceInputs: convergenceValidation.stats.inputs,
+      portableConvergenceStates: convergenceValidation.stats.states
     }
   };
 }
@@ -118,12 +148,21 @@ export function buildIdentityIndex(blueprintOrBundle) {
   const blueprint = blueprintOrBundle?.blueprint ?? blueprintOrBundle;
   const baseEntries = base.buildIdentityIndex(blueprintOrBundle);
   const behaviorEntries = buildPortableBehaviorIdentityEntries(blueprint?.behaviorContracts);
+  const ownerRefs = new Set([...baseEntries, ...behaviorEntries].map((entry) => entry.ref));
+  const convergenceValidation = validatePortableConvergenceContracts(
+    blueprint?.convergenceContracts,
+    { knownOwnerRefs: ownerRefs }
+  );
+  if (!convergenceValidation.ok) {
+    throw new Error(`Portable Convergence invalid: ${convergenceValidation.errors.join('; ')}`);
+  }
+  const convergenceEntries = buildPortableConvergenceIdentityEntries(blueprint?.convergenceContracts);
   const seen = new Set();
-  for (const entry of [...baseEntries, ...behaviorEntries]) {
+  for (const entry of [...baseEntries, ...behaviorEntries, ...convergenceEntries]) {
     if (seen.has(entry.ref)) throw new Error(`duplicate identity index ref ${entry.ref}`);
     seen.add(entry.ref);
   }
-  return [...baseEntries, ...behaviorEntries];
+  return [...baseEntries, ...behaviorEntries, ...convergenceEntries];
 }
 
 // [VXG RealForever]

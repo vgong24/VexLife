@@ -19,19 +19,25 @@
   {
     "foundationRef": "foundation.vexlife.state-relay.v1",
     "foundationVersion": 1,
-    "purpose": "Immutable domain ownership, narrow selectors, combine and semantic distinct-until-changed delivery.",
+    "purpose": "Immutable domain ownership, immutable observation snapshots, narrow selectors, retained Compound inputs, latest-coherent-input gating, serialized synchronous effect-free reconciliation, and semantic distinct-until-changed delivery.",
     "ownedContracts": [
       "StateCell",
       "CombinedProjection",
       "semanticEquality",
-      "noOpSuppression"
+      "noOpSuppression",
+      "createStateSnapshot",
+      "VexCompoundState",
+      "latestCoherentInput",
+      "serializedReconciliation"
     ],
     "invalidationSelectors": [
       "state-owner-change",
       "selector-input-change",
-      "semantic-equality-change"
+      "semantic-equality-change",
+      "observation-currentness-change",
+      "compound-input-change"
     ],
-    "revalidationProcedureRef": "test.state.distinct-until-changed"
+    "revalidationProcedureRef": "test.state.relay-foundation"
   },
   {
     "foundationRef": "foundation.vexlife.permission-effects.v1",

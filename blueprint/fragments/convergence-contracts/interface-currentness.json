@@ -1,0 +1,252 @@
+[
+  {
+    "schemaVersion": "vexlife.portable-convergence-contract/v1",
+    "contractRef": "contract.vexlife.interface.currentness-convergence.001",
+    "relationshipRef": "relationship.vexlife.interface.currentness",
+    "ownerBlueprintRef": "blueprint.vexlife.universal.001",
+    "purpose": "Own the portable relationship meaning that reconciles independently owned server-source, loaded-document, Companion, canonical Conversation and browser-observation truth into one current Interface semantic State before any platform effect or presentation decision.",
+    "initialStateRef": "state.vexlife.interface.currentness.unobserved",
+    "canonicalSource": {
+      "repository": "vgong24/VexLife",
+      "path": "blueprint/fragments/convergence-contracts/interface-currentness.json",
+      "compositionField": "convergenceContracts"
+    },
+    "authority": {
+      "portableMeaningOwner": true,
+      "platformRealizationOwner": false,
+      "effectAuthorityOwner": false,
+      "rendererAuthorityOwner": false,
+      "stateOwnerTransferAllowed": false
+    },
+    "inputIdentities": [
+      {
+        "inputRef": "input.vexlife.interface.currentness.loaded-document-source",
+        "ownerRef": "module.vexlife.browser.document",
+        "brief": "Exact source-content identity bound by the server that served the currently loaded browser document.",
+        "independentOwner": true,
+        "requiredForCoherence": true
+      },
+      {
+        "inputRef": "input.vexlife.interface.currentness.current-server-source",
+        "ownerRef": "module.vexlife.script.serve-browser",
+        "brief": "Exact source-content identity of the browser server currently answering the visible interface.",
+        "independentOwner": true,
+        "requiredForCoherence": true
+      },
+      {
+        "inputRef": "input.vexlife.interface.currentness.companion-availability",
+        "ownerRef": "module.vexlife.core.companion-availability-reentry",
+        "brief": "Canonical source-bound Companion binding/runtime availability and safe-reentry relationship truth.",
+        "independentOwner": true,
+        "requiredForCoherence": true
+      },
+      {
+        "inputRef": "input.vexlife.interface.currentness.conversation-currentness",
+        "ownerRef": "module.vexlife.core.browser-companion-bridge",
+        "brief": "Canonical selected Conversation identity/currentness and head relationship consumed by the browser Companion boundary.",
+        "independentOwner": true,
+        "requiredForCoherence": true
+      },
+      {
+        "inputRef": "input.vexlife.interface.currentness.browser-observation-currentness",
+        "ownerRef": "module.vexlife.browser.adapter",
+        "brief": "Exact browser observation generation and selected project/thread/channel scope under which current inputs were admitted.",
+        "independentOwner": true,
+        "requiredForCoherence": true
+      }
+    ],
+    "stateIdentities": [
+      {
+        "stateRef": "state.vexlife.interface.currentness.unobserved",
+        "kind": "UNOBSERVED",
+        "brief": "The Interface relationship has not yet admitted one coherent observation of every required input.",
+        "conditions": ["latestCoherentInput=UNAVAILABLE"],
+        "semanticState": true,
+        "familySemanticState": true,
+        "displayState": false,
+        "effectCommand": false
+      },
+      {
+        "stateRef": "state.vexlife.interface.currentness.source-mismatch",
+        "kind": "SOURCE_MISMATCH",
+        "brief": "The loaded browser document belongs to different source content than the currently answering browser server.",
+        "conditions": ["loadedDocumentSource=PRESENT", "currentServerSource=PRESENT", "loadedDocumentSource!=currentServerSource"],
+        "semanticState": true,
+        "familySemanticState": true,
+        "displayState": false,
+        "effectCommand": false
+      },
+      {
+        "stateRef": "state.vexlife.interface.currentness.observing",
+        "kind": "OBSERVING",
+        "brief": "Source identity is current but the active browser observation generation has not yet admitted complete current relationship truth.",
+        "conditions": ["loadedDocumentSource=currentServerSource", "browserObservationCurrentness=OBSERVING|companionAvailability=STARTING"],
+        "semanticState": true,
+        "familySemanticState": true,
+        "displayState": false,
+        "effectCommand": false
+      },
+      {
+        "stateRef": "state.vexlife.interface.currentness.recoverable",
+        "kind": "RECOVERABLE",
+        "brief": "The current source relationship is intact and canonical Companion truth exposes same-binding recovery without granting the relationship recovery authority.",
+        "conditions": ["loadedDocumentSource=currentServerSource", "browserObservationCurrentness=CURRENT", "companionAvailability=RECOVERABLE"],
+        "semanticState": true,
+        "familySemanticState": true,
+        "displayState": false,
+        "effectCommand": false
+      },
+      {
+        "stateRef": "state.vexlife.interface.currentness.action-required",
+        "kind": "ACTION_REQUIRED",
+        "brief": "The current source relationship is intact and canonical Companion truth requires one explicit existing-owner action before READY can be derived.",
+        "conditions": ["loadedDocumentSource=currentServerSource", "browserObservationCurrentness=CURRENT", "companionAvailability=ACTION_REQUIRED"],
+        "semanticState": true,
+        "familySemanticState": true,
+        "displayState": false,
+        "effectCommand": false
+      },
+      {
+        "stateRef": "state.vexlife.interface.currentness.unavailable",
+        "kind": "UNAVAILABLE",
+        "brief": "Current coherent relationship truth cannot admit a usable Send relationship and exposes no same-binding recovery state.",
+        "conditions": ["currentServerSource=UNAVAILABLE|companionAvailability=HELD|companionAvailability=UNAVAILABLE|readyConversationNotAdmitted"],
+        "semanticState": true,
+        "familySemanticState": true,
+        "displayState": false,
+        "effectCommand": false
+      },
+      {
+        "stateRef": "state.vexlife.interface.currentness.ready",
+        "kind": "READY",
+        "brief": "Loaded source, current server, browser observation, Companion and exact selected canonical Conversation truth are coherently current for the existing Send circuit.",
+        "conditions": ["loadedDocumentSource=currentServerSource", "browserObservationCurrentness=CURRENT", "companionAvailability=READY", "conversationScope=selectedScope", "conversationCurrentness=CURRENT|EMPTY|ABSENT"],
+        "semanticState": true,
+        "familySemanticState": true,
+        "displayState": false,
+        "effectCommand": false
+      }
+    ],
+    "invariantIdentities": [
+      {"invariantRef":"invariant.vexlife.interface.currentness.independent-input-ownership","code":"INDEPENDENT_INPUT_OWNERSHIP","statement":"Every currentness input retains its rightful independent source owner; the relationship does not become that owner."},
+      {"invariantRef":"invariant.vexlife.interface.currentness.latest-coherent-input","code":"LATEST_COHERENT_INPUT_REQUIRED","statement":"No relationship state after UNOBSERVED is derived before every required input has one admitted coherent observation."},
+      {"invariantRef":"invariant.vexlife.interface.currentness.output-not-effect","code":"RELATIONSHIP_OUTPUT_NOT_EFFECT_COMMAND","statement":"A derived relationship State never grants or performs navigation, recovery, Conversation, model, setup or source effects."},
+      {"invariantRef":"invariant.vexlife.interface.currentness.semantic-not-display","code":"SEMANTIC_STATE_NOT_DISPLAY_STATE","statement":"Portable Interface currentness is semantic Family State; composer controls and human copy remain downstream presentation."},
+      {"invariantRef":"invariant.vexlife.interface.currentness.family-handoff","code":"RELATIONSHIP_OUTPUT_HANDS_TO_FAMILY_STATE","statement":"The derived relationship State is the stable semantic State consumed by the rightful Family Circuit before Control-to-Act resolution."},
+      {"invariantRef":"invariant.vexlife.interface.currentness.document-server-distinction","code":"LOADED_DOCUMENT_SOURCE_DISTINCT_FROM_CURRENT_SERVER_SOURCE","statement":"A healthy current server never proves that an already-loaded browser document belongs to the same source content."},
+      {"invariantRef":"invariant.vexlife.interface.currentness.stale-observation","code":"STALE_OBSERVATION_CANNOT_OVERWRITE_CURRENT_GENERATION","statement":"An older asynchronous observation generation cannot overwrite a newer admitted browser relationship."},
+      {"invariantRef":"invariant.vexlife.interface.currentness.ready-selected-conversation","code":"READY_REQUIRES_CURRENT_SELECTED_CONVERSATION","statement":"READY requires exact currentness for the selected project/thread/channel Conversation identity; another Conversation cannot authorize Send."},
+      {"invariantRef":"invariant.vexlife.interface.currentness.recovery-not-send-currentness","code":"RECOVERY_TRUTH_DOES_NOT_REQUIRE_SEND_CURRENTNESS","statement":"Canonical same-binding RECOVERABLE or ACTION_REQUIRED truth remains visible even when Conversation Send-currentness is unavailable."},
+      {"invariantRef":"invariant.vexlife.interface.currentness.source-mismatch-precedence","code":"SOURCE_MISMATCH_PRECEDES_RECOVERY_PRESENTATION","statement":"A stale loaded document is SOURCE_MISMATCH before Companion recovery/action truth may be presented as current in that document."},
+      {"invariantRef":"invariant.vexlife.interface.currentness.source-descent","code":"SOURCE_DESCENT","statement":"Every portable law descends to exact accepted product, Family/Compound reference and semantic-provenance source evidence."},
+      {"invariantRef":"invariant.vexlife.interface.currentness.proof-identity","code":"PROOF_OBLIGATION_IDENTITY","statement":"Each portable relationship law has a stable identity that platform realizations and tests can bind without copying the relationship semantics."}
+    ],
+    "relationshipLawRows": [
+      {
+        "rowRef": "law.vexlife.interface.currentness.server-source-unavailable",
+        "when": ["currentServerSource=UNAVAILABLE"],
+        "derivedStateRef": "state.vexlife.interface.currentness.unavailable",
+        "effectAuthorityGranted": false,
+        "sourceRefs": ["source.vexlife.interface-foundation.b6d9dd4876132fc408f0eacd2bb6b5b0d56e009f"]
+      },
+      {
+        "rowRef": "law.vexlife.interface.currentness.source-mismatch",
+        "when": ["loadedDocumentSource=PRESENT", "currentServerSource=PRESENT", "loadedDocumentSource!=currentServerSource"],
+        "derivedStateRef": "state.vexlife.interface.currentness.source-mismatch",
+        "effectAuthorityGranted": false,
+        "sourceRefs": ["source.vexlife.interface-foundation.b6d9dd4876132fc408f0eacd2bb6b5b0d56e009f", "source.vexlife-android.family-compound.14bb2c4e82eb6cf55cbdc6ef5f2c65d38f97e45b"]
+      },
+      {
+        "rowRef": "law.vexlife.interface.currentness.observation-pending",
+        "when": ["loadedDocumentSource=currentServerSource", "browserObservationCurrentness=OBSERVING"],
+        "derivedStateRef": "state.vexlife.interface.currentness.observing",
+        "effectAuthorityGranted": false,
+        "sourceRefs": ["source.vexlife.interface-foundation.b6d9dd4876132fc408f0eacd2bb6b5b0d56e009f", "source.vexlife-android.family-compound.14bb2c4e82eb6cf55cbdc6ef5f2c65d38f97e45b"]
+      },
+      {
+        "rowRef": "law.vexlife.interface.currentness.companion-starting",
+        "when": ["loadedDocumentSource=currentServerSource", "browserObservationCurrentness=CURRENT", "companionAvailability=STARTING"],
+        "derivedStateRef": "state.vexlife.interface.currentness.observing",
+        "effectAuthorityGranted": false,
+        "sourceRefs": ["source.vexlife.interface-foundation.b6d9dd4876132fc408f0eacd2bb6b5b0d56e009f"]
+      },
+      {
+        "rowRef": "law.vexlife.interface.currentness.companion-recoverable",
+        "when": ["loadedDocumentSource=currentServerSource", "browserObservationCurrentness=CURRENT", "companionAvailability=RECOVERABLE"],
+        "derivedStateRef": "state.vexlife.interface.currentness.recoverable",
+        "effectAuthorityGranted": false,
+        "sourceRefs": ["source.vexlife.interface-foundation.b6d9dd4876132fc408f0eacd2bb6b5b0d56e009f", "source.vexlife-android.family-compound.14bb2c4e82eb6cf55cbdc6ef5f2c65d38f97e45b"]
+      },
+      {
+        "rowRef": "law.vexlife.interface.currentness.companion-action-required",
+        "when": ["loadedDocumentSource=currentServerSource", "browserObservationCurrentness=CURRENT", "companionAvailability=ACTION_REQUIRED"],
+        "derivedStateRef": "state.vexlife.interface.currentness.action-required",
+        "effectAuthorityGranted": false,
+        "sourceRefs": ["source.vexlife.interface-foundation.b6d9dd4876132fc408f0eacd2bb6b5b0d56e009f"]
+      },
+      {
+        "rowRef": "law.vexlife.interface.currentness.companion-unavailable",
+        "when": ["loadedDocumentSource=currentServerSource", "companionAvailability=HELD|UNAVAILABLE"],
+        "derivedStateRef": "state.vexlife.interface.currentness.unavailable",
+        "effectAuthorityGranted": false,
+        "sourceRefs": ["source.vexlife.interface-foundation.b6d9dd4876132fc408f0eacd2bb6b5b0d56e009f"]
+      },
+      {
+        "rowRef": "law.vexlife.interface.currentness.ready-conversation-not-admitted",
+        "when": ["loadedDocumentSource=currentServerSource", "browserObservationCurrentness=CURRENT", "companionAvailability=READY", "conversationScope!=selectedScope|conversationCurrentness=UNAVAILABLE|HELD|UNKNOWN"],
+        "derivedStateRef": "state.vexlife.interface.currentness.unavailable",
+        "effectAuthorityGranted": false,
+        "sourceRefs": ["source.vexlife.interface-foundation.b6d9dd4876132fc408f0eacd2bb6b5b0d56e009f"]
+      },
+      {
+        "rowRef": "law.vexlife.interface.currentness.ready-current-selected-conversation",
+        "when": ["loadedDocumentSource=currentServerSource", "browserObservationCurrentness=CURRENT", "companionAvailability=READY", "conversationScope=selectedScope", "conversationCurrentness=CURRENT|EMPTY|ABSENT"],
+        "derivedStateRef": "state.vexlife.interface.currentness.ready",
+        "effectAuthorityGranted": false,
+        "sourceRefs": ["source.vexlife.interface-foundation.b6d9dd4876132fc408f0eacd2bb6b5b0d56e009f", "source.vexlife-android.family-compound.14bb2c4e82eb6cf55cbdc6ef5f2c65d38f97e45b", "source.vextreme-sdk.semantic-provenance.9be6c8c3c169e8b98b04c7821b300f84cb8342de"]
+      }
+    ],
+    "sourceBindings": [
+      {
+        "sourceRef": "source.vexlife.interface-foundation.b6d9dd4876132fc408f0eacd2bb6b5b0d56e009f",
+        "repository": "vgong24/VexLife",
+        "commit": "b6d9dd4876132fc408f0eacd2bb6b5b0d56e009f",
+        "role": "ACCEPTED_PRODUCT_FOUNDATION_EVIDENCE",
+        "paths": [
+          "docs/UNIVERSAL-BLUEPRINT.md",
+          "src/core/state-relay.mjs",
+          "src/core/companion-availability-reentry.mjs",
+          "src/core/browser-companion-bridge.mjs",
+          "reference/browser/modules/chat-controller.js",
+          "scripts/serve-browser-core.mjs"
+        ]
+      },
+      {
+        "sourceRef": "source.vexlife-android.family-compound.14bb2c4e82eb6cf55cbdc6ef5f2c65d38f97e45b",
+        "repository": "vgong24/VexLife-Android",
+        "commit": "14bb2c4e82eb6cf55cbdc6ef5f2c65d38f97e45b",
+        "role": "NATIVE_FAMILY_COMPOUND_REFERENCE_EVIDENCE",
+        "paths": [
+          "architecture/behavior/FAMILY-CIRCUIT.md",
+          "architecture/behavior/README.md",
+          "architecture/relay/README.md",
+          "architecture/relay/src/main/kotlin/com/vextreme/vexlife/android/relay/VexCompoundRelay.kt",
+          "architecture/relay/src/main/kotlin/com/vextreme/vexlife/android/relay/VexCompoundState.kt"
+        ]
+      },
+      {
+        "sourceRef": "source.vextreme-sdk.semantic-provenance.9be6c8c3c169e8b98b04c7821b300f84cb8342de",
+        "repository": "vgong24/Vextreme-SDK",
+        "commit": "9be6c8c3c169e8b98b04c7821b300f84cb8342de",
+        "role": "CROSS_REPOSITORY_SEMANTIC_PROVENANCE_LENS",
+        "paths": ["docs/architecture/semantic-provenance-purpose-to-form.md"]
+      }
+    ],
+    "heldRealizations": [
+      "BROWSER_NATIVE_OBSERVATION",
+      "MACOS_SOURCE_MIGRATION",
+      "LIVED_HUMAN_PROOF",
+      "ANDROID_ADOPTION"
+    ]
+  }
+]

@@ -3,6 +3,12 @@
   "bucketId": "cd",
   "files": [
     {
+      "path": "blueprint/fragments/convergence-contracts/interface-currentness.json",
+      "mode": "100644",
+      "bytes": 16435,
+      "sha256": "f8c3e6eb68251c473ec6c65fb79b95b1fbeb673a59c6c853b9e14b84c7e30931"
+    },
+    {
       "path": "blueprint/public-learning-browser/strings/en.json",
       "mode": "100644",
       "bytes": 2095,
