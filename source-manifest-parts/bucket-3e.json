@@ -25,6 +25,12 @@
       "mode": "100644",
       "bytes": 6421,
       "sha256": "d054f0bdb96d4f18033c2bdc0d36f276f761ce27c9f8c5b000d87b44ded485de"
+    },
+    {
+      "path": "test/theme-mode-durability-contract.test.mjs",
+      "mode": "100644",
+      "bytes": 9720,
+      "sha256": "09a256e22cc7522c0f55865569438eb8e3229e93a89e2491e471067d9bc7d516"
     }
   ]
 }

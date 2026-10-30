@@ -11,8 +11,8 @@
     {
       "path": "blueprint/process-factory/processes-core.json",
       "mode": "100644",
-      "bytes": 61584,
-      "sha256": "4476b46f1f57c163ff165fac0ca52aebc0cb8d38895c7494a178e00c62dd3d2d"
+      "bytes": 65257,
+      "sha256": "d1e342710561d8aa0c7101b64797a120dedb54ccbadee2482e9689fa53d06efa"
     },
     {
       "path": "blueprint/vex-birth-lab-architecture.json",
