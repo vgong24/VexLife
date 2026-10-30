@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { chromium } from 'playwright';
 import {
   BROWSER_INTERFACE_SOURCE_CURRENTNESS_PATH,
   bindInterfaceCurrentnessLifecycle,
@@ -231,6 +232,235 @@ test('selected Conversation READY is scope-exact at the Send consumer and semant
   const navigationSource = appSource.slice(navigationBinding, navigationEnd);
   assert.match(navigationSource, /const nextInterfaceFrameScope=interfaceFrameScopeKey\(frame\)/u);
   assert.match(navigationSource, /nextInterfaceFrameScope!==interfaceFrameScope[\s\S]*requestInterfaceObservation\('semantic-frame-scope-change'\)/u);
+});
+
+
+const READY_DRAFT_SOURCE = 'e'.repeat(64);
+const READY_DRAFT_AVAILABILITY = Object.freeze({
+  schemaVersion: 'vexlife.companion-availability/v1',
+  truthClass: 'SOURCE_BOUND_COMPANION_AVAILABILITY',
+  availabilityState: 'READY',
+  registryRef: 'registry.test.interface-currentness.ready-draft',
+  bindingRef: 'binding.test.interface-currentness.ready-draft',
+  homeRef: 'home.test.interface-currentness.ready-draft',
+  companionLineageRef: 'lineage.test.interface-currentness.ready-draft',
+  runtimeAdapterRef: 'adapter.test.interface-currentness.ready-draft',
+  runtimeObservationRef: 'observation.test.interface-currentness.ready-draft',
+  recoveryClass: 'NONE',
+  reasonCode: 'TEST_READY',
+  bindingState: 'CURRENT',
+  runtimeOwnershipState: 'CURRENT',
+  runtimeState: 'READY',
+  qualificationState: 'CURRENT',
+  projectionRef: 'projection.test.interface-currentness.ready-draft',
+  projectionSha256: 'e'.repeat(64),
+  modelRefOrNull: 'model.test.interface-currentness.ready-draft',
+  generationRefOrNull: 'generation.test.interface-currentness.ready-draft',
+  sourceRefs: ['source.test.interface-currentness.ready-draft'],
+  effectAuthorityGranted: false,
+  rendererAuthorityGranted: false,
+  modelIdentityAuthorityGranted: false,
+  processAuthorityGranted: false,
+  conversationAuthorityGranted: false
+});
+function readyDraftConversationCurrentness(scope) {
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-companion-conversation-currentness/v1',
+    state: 'EMPTY',
+    truthClass: 'CURRENT_LOCAL_CONVERSATION_IDENTITY',
+    projectRef: scope.projectRef,
+    threadRef: scope.threadRef,
+    channelRef: scope.channelRef,
+    channelSha256: null,
+    channelRecordSha256: null,
+    headMessageRefOrNull: null,
+    headSequenceOrNull: null,
+    canonicalConversationHeadSha256: null,
+    headUpdatedAtOrNull: null,
+    effectsPerformed: false
+  });
+}
+function readyDraftConversationProjection(scope) {
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-companion-conversation-projection/v1',
+    state: 'EMPTY',
+    truthClass: 'CURRENT_LOCAL_CONVERSATION_PROJECTION',
+    projectRef: scope.projectRef,
+    threadRef: scope.threadRef,
+    channelRef: scope.channelRef,
+    headMessageRefOrNull: null,
+    headSequenceOrNull: null,
+    canonicalConversationHeadSha256: null,
+    headUpdatedAtOrNull: null,
+    messages: Object.freeze([]),
+    truncated: false,
+    effectsPerformed: false
+  });
+}
+function createReadyDraftServer() {
+  return createVexLifeBrowserServer({
+    servingSourceTreeSha256: READY_DRAFT_SOURCE,
+    companionBridge: Object.freeze({
+      conversationCurrentness: readyDraftConversationCurrentness,
+      conversationProjection: readyDraftConversationProjection
+    }),
+    resolveCompanionBinding: async () => Object.freeze({}),
+    resolveCompanionRuntimeObservation: async () => Object.freeze({}),
+    companionAvailabilityCompiler: () => READY_DRAFT_AVAILABILITY
+  });
+}
+async function readyDraftBrowserSnapshot(page, storageKey = null) {
+  return page.evaluate((key) => ({
+    appBound: Boolean(globalThis.__VEXLIFE_APP__),
+    contextProjection: globalThis.__VEXLIFE_APP__?.state?.contextProjection ?? null,
+    selectedNodeRef: globalThis.__VEXLIFE_APP__?.state?.selectedNodeRef ?? null,
+    currentChannelRef: globalThis.__VEXLIFE_APP__?.chat?.currentChannel?.()?.channelRef ?? null,
+    interfaceCurrentness: globalThis.__VEXLIFE_APP__?.chat?.interfaceCurrentness?.() ?? null,
+    composerVisibility: (() => {
+      const element = document.querySelector('#messageInput');
+      if (!element) return 'ABSENT';
+      const style = getComputedStyle(element);
+      return element.getClientRects().length > 0 && style.visibility !== 'hidden' && style.display !== 'none'
+        ? 'VISIBLE'
+        : 'HIDDEN';
+    })(),
+    composerValue: document.querySelector('#messageInput')?.value ?? null,
+    composerAvailability: document.querySelector('#composer')?.dataset?.availabilityState ?? null,
+    companionAvailability: document.querySelector('#composer')?.dataset?.companionAvailabilityState ?? null,
+    semanticFrame: history.state?.semanticFrame ?? null,
+    sessionDraftRaw: key ? sessionStorage.getItem(key) : null
+  }), storageKey).catch(() => ({ evaluationFailed: true }));
+}
+async function waitForReadyDraftInterface(page, stage, storageKey = null) {
+  try {
+    await page.waitForFunction(
+      () => globalThis.__VEXLIFE_APP__?.chat?.interfaceCurrentness?.().kind === 'READY',
+      null,
+      { timeout: 10_000 }
+    );
+  } catch (error) {
+    const snapshot = await readyDraftBrowserSnapshot(page, storageKey);
+    throw new Error('READY_DRAFT_' + stage + '_READY_TIMEOUT:' + JSON.stringify(snapshot) + ':' + error.message);
+  }
+}
+async function waitForReadyDraftVisibleChat(page, stage, storageKey = null) {
+  try {
+    await page.waitForFunction(
+      () => globalThis.__VEXLIFE_APP__?.state?.contextProjection === 'chat',
+      null,
+      { timeout: 5_000 }
+    );
+    await page.locator('#messageInput').waitFor({ state: 'visible', timeout: 5_000 });
+  } catch (error) {
+    const snapshot = await readyDraftBrowserSnapshot(page, storageKey);
+    throw new Error('READY_DRAFT_' + stage + '_VISIBLE_CHAT_TIMEOUT:' + JSON.stringify(snapshot) + ':' + error.message);
+  }
+}
+async function waitForReadyDraftStorage(page, key, draft, stage) {
+  try {
+    await page.waitForFunction(({ key, draft }) => {
+      const raw = sessionStorage.getItem(key);
+      if (raw === null) return false;
+      try {
+        const value = JSON.parse(raw);
+        return value?.schemaVersion === 'vexlife.browser-session-draft/v1'
+          && value?.state === 'UNSENT_LOCAL_DRAFT'
+          && value?.content === draft
+          && value?.queued === false
+          && value?.accepted === false;
+      } catch {
+        return false;
+      }
+    }, { key, draft }, { timeout: 5_000 });
+  } catch (error) {
+    const snapshot = await readyDraftBrowserSnapshot(page, key);
+    throw new Error('READY_DRAFT_' + stage + '_STORAGE_TIMEOUT:' + JSON.stringify(snapshot) + ':' + error.message);
+  }
+}
+async function waitForReadyDraftRestoredValue(page, key, draft) {
+  try {
+    await page.waitForFunction(
+      (expectedDraft) => document.querySelector('#messageInput')?.value === expectedDraft,
+      draft,
+      { timeout: 5_000 }
+    );
+  } catch (error) {
+    const snapshot = await readyDraftBrowserSnapshot(page, key);
+    throw new Error('READY_DRAFT_RELOAD_VALUE_TIMEOUT:' + JSON.stringify(snapshot) + ':' + error.message);
+  }
+}
+
+test('real composer input handler persists a new direct-Companion draft even while READY', () => {
+  const source = fs.readFileSync(new URL('../reference/browser/modules/chat-controller.js', import.meta.url), 'utf8');
+  const start = source.indexOf("$('#messageInput').addEventListener('input'");
+  const end = source.indexOf('const announceShortcutButton', start);
+  assert.ok(start >= 0 && end > start);
+  const handler = source.slice(start, end);
+  assert.match(
+    handler,
+    /channel\.roleKey === 'companion' \|\| !channelIsAvailable\(channel\) \|\| existing[\s\S]*setLocalDraft\(channel, event\.target\.value\)/u
+  );
+});
+
+test('READY direct Companion persists a fresh exact-scope unsent draft across visible Chat document reload', { timeout: 45_000 }, async () => {
+  const server = createReadyDraftServer();
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  let browser = null;
+  try {
+    const address = server.address();
+    assert.equal(typeof address, 'object');
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    const pageUrl = 'http://127.0.0.1:' + address.port + '/reference/browser/?open=vex';
+    const draft = 'Preserve this fresh READY draft across source reload';
+    const key = browserSessionDraftKey(SCOPE_A);
+
+    await page.goto(pageUrl, { waitUntil: 'load', timeout: 10_000 });
+    await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 10_000 });
+    await waitForReadyDraftInterface(page, 'INITIAL', key);
+
+    await page.evaluate(() => globalThis.__VEXLIFE_APP__.openContext('chat'));
+    await waitForReadyDraftVisibleChat(page, 'INITIAL', key);
+    const frameBefore = await page.evaluate(() => history.state?.semanticFrame ?? null);
+    assert.equal(frameBefore?.contextProjection, 'chat');
+
+    await page.locator('#messageInput').fill(draft);
+    await waitForReadyDraftStorage(page, key, draft, 'INITIAL');
+
+    const storedBeforeReload = JSON.parse(await page.evaluate((storageKey) => sessionStorage.getItem(storageKey), key));
+    assert.equal(storedBeforeReload.content, draft);
+    assert.equal(storedBeforeReload.projectRef, SCOPE_A.projectRef);
+    assert.equal(storedBeforeReload.threadRef, SCOPE_A.threadRef);
+    assert.equal(storedBeforeReload.channelRef, SCOPE_A.channelRef);
+    assert.equal(storedBeforeReload.queued, false);
+    assert.equal(storedBeforeReload.accepted, false);
+
+    await page.reload({ waitUntil: 'load', timeout: 10_000 });
+    await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_APP__), null, { timeout: 10_000 });
+    await waitForReadyDraftInterface(page, 'RELOAD', key);
+    await waitForReadyDraftVisibleChat(page, 'RELOAD', key);
+    const frameAfter = await page.evaluate(() => history.state?.semanticFrame ?? null);
+    assert.equal(frameAfter?.contextProjection, 'chat');
+    await waitForReadyDraftRestoredValue(page, key, draft);
+    assert.equal(await page.locator('#messageInput').inputValue(), draft);
+    await waitForReadyDraftStorage(page, key, draft, 'RELOAD');
+
+    const rawRestored = await page.evaluate((storageKey) => sessionStorage.getItem(storageKey), key);
+    assert.notEqual(rawRestored, null);
+    const restored = JSON.parse(rawRestored);
+    assert.equal(restored.content, draft);
+    assert.equal(restored.projectRef, SCOPE_A.projectRef);
+    assert.equal(restored.threadRef, SCOPE_A.threadRef);
+    assert.equal(restored.channelRef, SCOPE_A.channelRef);
+    assert.equal(restored.queued, false);
+    assert.equal(restored.accepted, false);
+  } finally {
+    if (browser) await browser.close();
+    await new Promise((resolve) => server.close(() => resolve()));
+  }
 });
 
 // [VXG RealForever]

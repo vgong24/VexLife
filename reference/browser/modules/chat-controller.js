@@ -1790,7 +1790,7 @@ export function createChatController({ state, projects, roles, channels, message
     resetComposerCommandState();
     if (slashCandidate) {
       if (existing) setLocalDraft(channel, '');
-    } else if (!channelIsAvailable(channel) || existing) {
+    } else if (channel.roleKey === 'companion' || !channelIsAvailable(channel) || existing) {
       setLocalDraft(channel, event.target.value);
     }
     renderComposerTruth();

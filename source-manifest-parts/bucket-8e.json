@@ -23,8 +23,8 @@
     {
       "path": "test/interface-currentness-browser.test.mjs",
       "mode": "100644",
-      "bytes": 11481,
-      "sha256": "df9c81765fc925fe52902b1a76e54f35636c702119fc9a10c13fbcaad1c8ae4f"
+      "bytes": 21802,
+      "sha256": "24a7097b8b8286cd8d69ffe42bd8d0fc0ea44bfbdb78bc1b20d28f297ace45dc"
     }
   ]
 }
