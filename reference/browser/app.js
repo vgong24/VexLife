@@ -300,6 +300,10 @@ function openContext(context,nodeRef=`element.nav.${context}`){navigation.openCo
 function returnToTerrain(nodeRef='element.nav.terrain',actionRef='action.view.select'){if(state.contextProjection==='living-journal')livingJournal?.close();if(state.contextProjection==='relationships')relationships?.close();navigation.returnToPrimaryStage(nodeRef,actionRef);setWorkspaceOpen(false);projectFrame();}
 function projectFrame(){const host=$('#contextSurface'),app=$('#app'),projection=state.contextProjection??'terrain';host.dataset.contextProjection=projection;app.dataset.contextProjection=projection;host.hidden=!state.contextProjection;host.setAttribute('aria-hidden',String(!state.contextProjection));$('#view-chat').hidden=state.contextProjection!=='chat';$('#view-health').hidden=state.contextProjection!=='health';$('#view-living-journal').hidden=state.contextProjection!=='living-journal';const relationshipsView=$('#view-relationships');if(relationshipsView)relationshipsView.hidden=state.contextProjection!=='relationships';chat.renderProjectRail();chat.renderChannels();chat.renderPresence();chat.renderMessages();chat.updateComposer();chat.renderContext();livingJournal?.render();if(state.contextProjection==='relationships')relationships?.render();else relationships?.close();renderLivingJournalWalkthroughControls();terrain?.render(false);applyContextWorkspaceLayout();renderHealth();securityAccess?.render();guide?.updateFrame();projectVisibleVexIdentity();familyRoom?.render();if(state.contextProjection)guide?.avoidDeclaredControls();renderUxProjectionShell();}
 
+let interfaceCurrentness=null;
+const requestInterfaceObservation=(reason)=>interfaceCurrentness?.observe(reason)??Promise.resolve(Object.freeze({state:'INTERFACE_NOT_BOUND'}));
+const interfaceFrameScopeKey=(frame)=>JSON.stringify([frame?.projectRef??null,frame?.threadRef??null,frame?.channelRef??null]);
+let interfaceFrameScope=interfaceFrameScopeKey(state);
 navigation=createNavigationController({
   state,
   elementByRef,
@@ -309,13 +313,13 @@ navigation=createNavigationController({
   resolveSemanticNodeRef:semanticNodeRefForInteraction,
   resolveInteractionRef:interactionRefForSource,
   onFrameChange:(frame)=>{
+    const nextInterfaceFrameScope=interfaceFrameScopeKey(frame);
+    if(nextInterfaceFrameScope!==interfaceFrameScope){interfaceFrameScope=nextInterfaceFrameScope;void requestInterfaceObservation('semantic-frame-scope-change');}
     if(terrainNodeRefs.has(frame.selectedNodeRef)&&state.terrain?.selected!==frame.selectedNodeRef)state.terrain.selected=frame.selectedNodeRef;
     queueMicrotask(()=>chat&&terrain&&projectFrame());
   }
 });
 navigation.seedCurrentJourney(initialTerrainRef);
-let interfaceCurrentness=null;
-const requestInterfaceObservation=(reason)=>interfaceCurrentness?.observe(reason)??Promise.resolve(Object.freeze({state:'INTERFACE_NOT_BOUND'}));
 chat=createChatController({
   state,projects,roles,channels,messages,createMessage,conversationKey,t,navigation,experienceFoundation,capabilityRegistry,
   onCompanionTurnCompleted: async (projection) => {

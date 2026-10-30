@@ -209,4 +209,28 @@ test('guarded Conversation projection rejects stale success and stale failure be
   );
 });
 
+test('selected Conversation READY is scope-exact at the Send consumer and semantic-frame scope changes re-observe', () => {
+  const chatSource = fs.readFileSync(new URL('../reference/browser/modules/chat-controller.js', import.meta.url), 'utf8');
+  const gateStart = chatSource.indexOf('const interfaceCurrentnessSnapshot');
+  const gateEnd = chatSource.indexOf('const draftScope', gateStart);
+  assert.ok(gateStart >= 0 && gateEnd > gateStart);
+  const gate = chatSource.slice(gateStart, gateEnd);
+  assert.match(gate, /const interfaceCurrentnessMatchesChannel = \(channel = currentChannel\(\)\) => Boolean/u);
+  assert.match(gate, /interfaceCurrentness\.kind === 'READY'/u);
+  assert.match(gate, /interfaceCurrentness\.scope\?\.projectRef === channel\.projectRef/u);
+  assert.match(gate, /interfaceCurrentness\.scope\?\.threadRef === channel\.threadRef/u);
+  assert.match(gate, /interfaceCurrentness\.scope\?\.channelRef === channel\.channelRef/u);
+  assert.match(gate, /interfaceCurrentnessMatchesChannel\(channel\) && !companionTurnPending/u);
+
+  const appSource = fs.readFileSync(new URL('../reference/browser/app.js', import.meta.url), 'utf8');
+  const currentnessBinding = appSource.indexOf('let interfaceCurrentness=null;');
+  const navigationBinding = appSource.indexOf('navigation=createNavigationController({');
+  assert.ok(currentnessBinding >= 0 && navigationBinding > currentnessBinding, 'Interface observation hook must exist before Navigation can restore a semantic frame');
+  const navigationEnd = appSource.indexOf('navigation.seedCurrentJourney(initialTerrainRef);', navigationBinding);
+  assert.ok(navigationEnd > navigationBinding);
+  const navigationSource = appSource.slice(navigationBinding, navigationEnd);
+  assert.match(navigationSource, /const nextInterfaceFrameScope=interfaceFrameScopeKey\(frame\)/u);
+  assert.match(navigationSource, /nextInterfaceFrameScope!==interfaceFrameScope[\s\S]*requestInterfaceObservation\('semantic-frame-scope-change'\)/u);
+});
+
 // [VXG RealForever]

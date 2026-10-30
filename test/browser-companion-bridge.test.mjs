@@ -427,7 +427,9 @@ test('browser source never routes companion channel through simulatedReply', () 
   assert.match(server, /BROWSER_COMPANION_STREAM_API_PATH/u);
   assert.match(server, /application\/x-ndjson/u);
   assert.match(server, /frameType, sequence, payload/u);
-  assert.match(chat, /channel\.roleKey === 'companion'[\s\S]*interfaceCurrentness\.kind === 'READY' && !companionTurnPending[\s\S]*isVexAvailable\(\)/u);
+  assert.match(chat, /const interfaceCurrentnessMatchesChannel = \(channel = currentChannel\(\)\) => Boolean/u);
+  assert.match(chat, /interfaceCurrentness\.scope\?\.projectRef === channel\.projectRef[\s\S]*interfaceCurrentness\.scope\?\.threadRef === channel\.threadRef[\s\S]*interfaceCurrentness\.scope\?\.channelRef === channel\.channelRef/u);
+  assert.match(chat, /channel\?\.roleKey === 'companion'[\s\S]*interfaceCurrentnessMatchesChannel\(channel\) && !companionTurnPending[\s\S]*isVexAvailable\(\)/u);
   assert.doesNotMatch(chat, /if \(currentChannel\(\)\?\.roleKey === 'companion'\) void refreshCompanionAvailability\(\);\s+return \{/u);
   const selectThreadSource = chat.slice(chat.indexOf('function selectThread'), chat.indexOf('function renderChannels'));
   assert.doesNotMatch(selectThreadSource, /refreshCompanionAvailability\(\)/u);

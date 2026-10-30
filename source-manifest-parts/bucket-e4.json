@@ -35,8 +35,8 @@
     {
       "path": "test/context-return-identity.test.mjs",
       "mode": "100644",
-      "bytes": 5157,
-      "sha256": "4dd626e0cedd52f67786e27ddcd4fc9fcccf2c497124833602ef6a8b22528a75"
+      "bytes": 7489,
+      "sha256": "935df5d26226007d83cd9e58e244696dac36dea6428674debce2abdd5d68f460"
     }
   ]
 }

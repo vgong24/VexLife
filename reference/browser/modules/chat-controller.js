@@ -974,9 +974,16 @@ export function createChatController({ state, projects, roles, channels, message
     : null;
   const companionAvailabilityState = () =>
     companionAvailability?.availabilityState ?? companionAvailabilityReadState;
+  const interfaceCurrentnessMatchesChannel = (channel = currentChannel()) => Boolean(
+    channel?.roleKey === 'companion'
+    && interfaceCurrentness.kind === 'READY'
+    && interfaceCurrentness.scope?.projectRef === channel.projectRef
+    && interfaceCurrentness.scope?.threadRef === channel.threadRef
+    && interfaceCurrentness.scope?.channelRef === channel.channelRef
+  );
   const channelIsAvailable = (channel = currentChannel()) =>
-    channel.roleKey === 'companion'
-      ? interfaceCurrentness.kind === 'READY' && !companionTurnPending
+    channel?.roleKey === 'companion'
+      ? interfaceCurrentnessMatchesChannel(channel) && !companionTurnPending
       : isVexAvailable();
   const draftScope = (channel = currentChannel()) => Object.freeze({
     projectRef: channel.projectRef,
