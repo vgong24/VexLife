@@ -1,10 +1,29 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
   BROWSER_COMPANION_AVAILABILITY_PATH,
+  createProductionHereticRuntimeBrowserOptions,
   createVexLifeBrowserServer
 } from '../scripts/serve-browser.mjs';
+import {
+  HERETIC_PRODUCT_ENDPOINT,
+  HERETIC_REQUEST_MODEL,
+  HERETIC_RUNTIME_IDENTITY,
+  HERETIC_RUNTIME_RECEIPT_RELATIVE_PATH,
+  HERETIC_VEXLIFE_HOST_EXECUTION_PROFILE_REF,
+  HERETIC_VEXLIFE_RUNTIME_RECEIPT_SCHEMA,
+  formHereticModelConfiguration,
+} from '../src/core/heretic-runtime-link.mjs';
+import {
+  HERETIC_PERSISTENT_RUNTIME_BINDING_SCHEMA,
+  currentHereticRuntimeOwnerSourceIdentity,
+  hereticPersistentRuntimeServerArgs,
+} from '../src/core/heretic-persistent-runtime-owner.mjs';
+import { loadBrowserCompanionHomeIdentity } from '../src/core/browser-companion-bridge.mjs';
 import {
   BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH,
   BROWSER_COMPANION_STATUS_PATH
@@ -236,6 +255,146 @@ test('availability route is GET-only and existing status does not consume availa
     assert.equal(bindingCalls, 1);
     assert.equal(runtimeCalls, 1);
   });
+});
+
+
+function writeProductionDiscoveryJson(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(value, null, 2) + '\n');
+}
+
+test('production browser composition discovers current bound Heretic receipt from Home when launch-only receipt environment is absent', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-production-heretic-discovery-'));
+  const deviceRef = 'device.production-heretic-discovery';
+  const lineageRef = 'lineage.production-heretic-discovery';
+  const homeRef = 'home.production-heretic-discovery';
+  const personRef = 'person.production-heretic-discovery';
+  const runtimeReceiptPath = path.join(home, ...HERETIC_RUNTIME_RECEIPT_RELATIVE_PATH.split('/'));
+  const modelPath = path.join(home, 'fixture-model');
+  const pythonEnvironmentRoot = path.join(home, 'fixture-python');
+  const pythonPath = path.join(pythonEnvironmentRoot, 'bin', 'python');
+  const sourceIdentity = currentHereticRuntimeOwnerSourceIdentity();
+  const deadPid = 2147483000;
+  const previousReceiptEnvironment = process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH;
+  let server = null;
+  try {
+    writeProductionDiscoveryJson(path.join(home, 'config', 'home.json'), {
+      schemaVersion: 'vexlife.home/v0',
+      homeRef,
+      currentDeviceRef: deviceRef,
+      currentCompanionLineageRef: lineageRef,
+    });
+    writeProductionDiscoveryJson(path.join(home, 'devices', deviceRef + '.json'), {
+      deviceRef,
+      companionLineageRef: lineageRef,
+      personRef,
+      createdAt: '2026-10-30T00:00:00.000Z',
+    });
+    const binding = {
+      schemaVersion: HERETIC_PERSISTENT_RUNTIME_BINDING_SCHEMA,
+      authorityRef: 'authority.production-heretic-discovery',
+      modelRef: HERETIC_RUNTIME_IDENTITY.modelRef,
+      modelProfileRef: HERETIC_RUNTIME_IDENTITY.modelProfileRef,
+      artifactRef: HERETIC_RUNTIME_IDENTITY.artifactRef,
+      artifactCustodyEvidenceRef: HERETIC_RUNTIME_IDENTITY.artifactCustodyEvidenceRef,
+      artifactContentSetSha256: HERETIC_RUNTIME_IDENTITY.artifactContentSetSha256,
+      runtimeAdapterRef: HERETIC_RUNTIME_IDENTITY.runtimeAdapterRef,
+      runtimeClass: HERETIC_RUNTIME_IDENTITY.runtimeClass,
+      hostExecutionProfileRef: HERETIC_VEXLIFE_HOST_EXECUTION_PROFILE_REF,
+      pythonVersion: HERETIC_RUNTIME_IDENTITY.pythonVersion,
+      mlxLmVersion: HERETIC_RUNTIME_IDENTITY.mlxLmVersion,
+      trainerSourceCommit: HERETIC_RUNTIME_IDENTITY.trainerSourceCommit,
+      modelPath,
+      pythonPath,
+      pythonEnvironmentRoot,
+      port: Number(new URL(HERETIC_PRODUCT_ENDPOINT).port),
+      receiptPath: runtimeReceiptPath,
+      sourceIdentity,
+    };
+    const runtimeArgs = hereticPersistentRuntimeServerArgs(binding);
+    const receipt = {
+      schemaVersion: HERETIC_VEXLIFE_RUNTIME_RECEIPT_SCHEMA,
+      receiptRef: 'receipt.vexlife.heretic-persistent-runtime.production-discovery',
+      state: 'PERSISTENT_MLX_RUNTIME_QUALIFIED',
+      formedAt: '2026-10-30T00:00:00.000Z',
+      authorityRef: binding.authorityRef,
+      modelRef: binding.modelRef,
+      modelProfileRef: binding.modelProfileRef,
+      artifactRef: binding.artifactRef,
+      artifactCustodyEvidenceRef: binding.artifactCustodyEvidenceRef,
+      artifactContentSetSha256: binding.artifactContentSetSha256,
+      runtimeAdapterRef: binding.runtimeAdapterRef,
+      runtimeClass: binding.runtimeClass,
+      transportClass: HERETIC_RUNTIME_IDENTITY.transportClass,
+      hostExecutionProfileRef: binding.hostExecutionProfileRef,
+      pythonVersion: binding.pythonVersion,
+      mlxLmVersion: binding.mlxLmVersion,
+      trainerSourceCommit: binding.trainerSourceCommit,
+      modelPath,
+      pythonPath,
+      pythonEnvironmentRoot,
+      endpoint: HERETIC_PRODUCT_ENDPOINT,
+      requestModel: HERETIC_REQUEST_MODEL,
+      sourceIdentity,
+      runtime: {
+        pid: deadPid,
+        processGroupId: deadPid,
+        exactOwnedDetachedGroup: true,
+        args: runtimeArgs,
+      },
+      qualification: {
+        healthAndExactModelVerified: true,
+        actualChatCompletionPerformed: true,
+        loadResultRef: null,
+      },
+      effects: {
+        modelRuntime: true,
+        providerNetwork: false,
+        modelDownload: false,
+        artifactMutation: false,
+        training: false,
+        weightMutation: false,
+        memoryMutation: false,
+        activation: false,
+        succession: false,
+        publication: false,
+        repositoryMutation: false,
+        homeMutation: false,
+      },
+    };
+    const homeIdentity = loadBrowserCompanionHomeIdentity(home);
+    writeProductionDiscoveryJson(path.join(home, 'config', 'model.json'), formHereticModelConfiguration({ homeIdentity, receipt }));
+    writeProductionDiscoveryJson(runtimeReceiptPath, receipt);
+
+    delete process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH;
+    const options = createProductionHereticRuntimeBrowserOptions(home);
+    assert.equal(typeof options.resolveCompanionBinding, 'function');
+    assert.equal(typeof options.resolveCompanionRuntimeObservation, 'function');
+    server = createVexLifeBrowserServer(options);
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', resolve);
+    });
+    const address = server.address();
+    assert.equal(typeof address, 'object');
+    const response = await fetch('http://127.0.0.1:' + address.port + BROWSER_COMPANION_AVAILABILITY_PATH);
+    assert.equal(response.status, 200);
+    const availability = await response.json();
+    assert.equal(availability.schemaVersion, 'vexlife.companion-availability/v1');
+    assert.equal(availability.truthClass, 'SOURCE_BOUND_COMPANION_AVAILABILITY');
+    assert.equal(availability.availabilityState, 'RECOVERABLE');
+    assert.equal(availability.recoveryClass, 'SAFE_REENTRY_AVAILABLE');
+    assert.equal(availability.runtimeOwnershipState, 'NO_OWNED_RUNTIME');
+    assert.equal(availability.runtimeState, 'STOPPED');
+    assert.equal(availability.qualificationState, 'STALE');
+    assert.equal(availability.bindingState, 'BOUND');
+    assert.equal(availability.homeRef, homeRef);
+  } finally {
+    if (server?.listening) await new Promise((resolve) => server.close(() => resolve()));
+    if (previousReceiptEnvironment === undefined) delete process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH;
+    else process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH = previousReceiptEnvironment;
+    fs.rmSync(home, { recursive: true, force: true });
+  }
 });
 
 // [VXG RealForever]
