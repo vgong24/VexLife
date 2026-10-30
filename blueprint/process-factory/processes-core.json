@@ -1772,5 +1772,87 @@
       "test.runtime-recovery.r21-canonical-projections",
       "test.runtime-recovery.r22-semantic-no-op"
     ]
+  },
+  {
+    "processRef": "process.vexlife.theme-mode.select-and-persist",
+    "processVersion": 1,
+    "purpose": "Apply one explicit ThemeMode selection, make that explicit choice durable, and restore durable selection observations through the same semantic currentness boundary after process recreation.",
+    "applicabilityRules": [
+      "state.theme-mode and state.theme-mode.durable-selection are registered",
+      "requested mode is NOT_SET, LIGHT or DARK"
+    ],
+    "requiredInputs": [
+      "requestedMode",
+      "currentThemeMode",
+      "durableSelectionState"
+    ],
+    "optionalInputs": [
+      "platformStateStoreRef"
+    ],
+    "sourceResolutionRules": [
+      "resolve exact CURRENT ThemeMode before applying selection",
+      "resolve durable selection from the StateStore dependency rather than from presentation state",
+      "do not infer durable persistence from generic CURRENT State emission",
+      "keep platform storage technology outside canonical portable meaning"
+    ],
+    "preconditions": [
+      "requested mode belongs to the canonical ThemeMode vocabulary",
+      "durable observation source is current or explicitly unavailable",
+      "action.theme-mode.select is admitted for the current human interaction"
+    ],
+    "steps": [
+      "resolve-explicit-selection-against-current-theme-mode",
+      "admit-selected-theme-mode-through-single-currentness-boundary",
+      "save-light-or-dark-to-durable-state-store",
+      "forget-durable-state-store-when-not-set",
+      "observe-durable-state-store-through-same-currentness-boundary",
+      "restore-observed-durable-selection-after-process-recreation-before-projecting-appearance"
+    ],
+    "effectOwnerRule": "ThemeMode owns semantic selection meaning; StateStore owns durable selection truth; the StateRelay/currentness layer observes the durable dependency; each platform owns its storage mechanics.",
+    "authorityEnvelope": {
+      "effects": [
+        "LOCAL_PREFERENCE_WRITE",
+        "READ_PROJECTION"
+      ],
+      "pathScope": []
+    },
+    "outputTemplateRefs": [],
+    "canonicalDispositionVocabulary": [
+      "THEME_MODE_SELECTED",
+      "THEME_MODE_SELECTION_PERSISTED",
+      "THEME_MODE_SELECTION_FORGOTTEN",
+      "THEME_MODE_RESTORED",
+      "STORE_WRITE_FAILED",
+      "STORE_OBSERVATION_UNAVAILABLE"
+    ],
+    "returnRouteRule": "project current ThemeMode only from the one semantic current-State owner after the selection or durable observation is admitted",
+    "closureRule": "selection closes only after semantic admission and the required durable write/forget result is known; restoration closes after durable observation is admitted into current State",
+    "recoveryRule": "select another mode or forget the durable selection; never rewrite history or infer durable preference from display/current projection alone",
+    "foundationDependencies": [
+      "foundation.vexlife.identity-lattice.v1",
+      "foundation.vexlife.state-relay.v1",
+      "foundation.vexlife.permission-effects.v1"
+    ],
+    "downstreamConsumerRefs": [
+      "state.theme-mode",
+      "state.theme-mode.durable-selection",
+      "platform.browser",
+      "platform.android",
+      "platform.ios",
+      "platform.windows",
+      "platform.macos"
+    ],
+    "invalidationTriggers": [
+      "theme-mode-vocabulary-change",
+      "durable-selection-contract-change",
+      "state-relay-currentness-boundary-change",
+      "platform-storage-realization-change"
+    ],
+    "testRefs": [
+      "test.blueprint.identity-and-reference-integrity",
+      "test.state.distinct-until-changed",
+      "test.permission.no-inferred-effect",
+      "test.feature.reference-coverage"
+    ]
   }
 ]
