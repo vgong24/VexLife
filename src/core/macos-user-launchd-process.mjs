@@ -154,7 +154,6 @@ export function validateMacUserLaunchdProcess(value) {
   const [kind, uidRaw] = String(value.domainTarget ?? '').split('/');
   if (kind !== 'gui' || !/^\d+$/u.test(uidRaw ?? '')) throw new TypeError('launchd process domainTarget is invalid');
   if (legacy && value.keepAlive !== false) throw new TypeError('legacy launchd process KeepAlive must remain false');
-  if (!legacy && typeof value.keepAlive !== 'boolean') throw new TypeError('launchd process KeepAlive must be boolean');
   const spec = formMacUserLaunchdProcess({
     label: value.label,
     plistPath: value.plistPath,
@@ -235,12 +234,9 @@ export async function retireMacUserLaunchdProcess(value, {
   const spec = validateMacUserLaunchdProcess(value);
   const before = observeMacUserLaunchdProcess(spec, { launchctl });
   if (before.state === 'UNKNOWN') throw new Error(`launchd job ownership is unknown: ${before.detail ?? before.error ?? 'UNKNOWN'}`);
-  if (before.state === 'RUNNING' && expectedPid !== null && before.pid !== expectedPid && !spec.keepAlive) {
+  if (before.state === 'RUNNING' && expectedPid !== null && before.pid !== expectedPid) {
     throw new Error(`launchd job pid mismatch: expected ${expectedPid}, observed ${before.pid}`);
   }
-  const retirementPid = before.state === 'RUNNING'
-    ? before.pid
-    : spec.keepAlive ? null : expectedPid;
   if (before.state !== 'ABSENT') {
     const bootout = launchctl(['bootout', jobTarget(spec)]);
     if (bootout.error || bootout.status !== 0) {
@@ -250,7 +246,7 @@ export async function retireMacUserLaunchdProcess(value, {
   const deadline = nowMs() + timeoutMs;
   for (;;) {
     const observed = observeMacUserLaunchdProcess(spec, { launchctl });
-    const pidLive = retirementPid !== null && processAlive(retirementPid);
+    const pidLive = expectedPid !== null && processAlive(expectedPid);
     if (observed.state === 'ABSENT' && !pidLive) {
       removePlist(spec.plistPath);
       return Object.freeze({

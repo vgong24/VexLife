@@ -10,9 +10,6 @@ export const QUALIFIED_OUTPUT_ROOT = path.join(REPOSITORY_ROOT, 'generated', 're
 
 export const FROZEN_RELEASE_SOURCE = Object.freeze({
   releaseCandidateFreezeRef: 'freeze.onb-dist.vexlife.release-candidate.20260921.6a73b49f',
-  evidenceClass: 'HISTORICAL_UNSIGNED_RELEASE_CANDIDATE',
-  currentProductEntryAuthority: false,
-  ordinaryMacCurrentEntryPath: 'setup-vexlife.command',
   sourceCommit: '6a73b49fad78711261fc50aeae8e8cbe62c11da9',
   sourceTree: '8cdb1e0c1f54ae526a3012c6e5c4feae9ba2be5f',
   sourceTarFilename: 'vexlife-source-6a73b49fad78711261fc50aeae8e8cbe62c11da9.tar',
@@ -347,9 +344,6 @@ export function buildPlatformPackagePlan(platform, verifiedArchive, packagingSou
     },
     source: {
       releaseCandidateFreezeRef: FROZEN_RELEASE_SOURCE.releaseCandidateFreezeRef,
-      evidenceClass: FROZEN_RELEASE_SOURCE.evidenceClass,
-      currentProductEntryAuthority: FROZEN_RELEASE_SOURCE.currentProductEntryAuthority,
-      ordinaryMacCurrentEntryPath: FROZEN_RELEASE_SOURCE.ordinaryMacCurrentEntryPath,
       sourceCommit: FROZEN_RELEASE_SOURCE.sourceCommit,
       sourceTree: FROZEN_RELEASE_SOURCE.sourceTree,
       sourceTarFilename: FROZEN_RELEASE_SOURCE.sourceTarFilename,

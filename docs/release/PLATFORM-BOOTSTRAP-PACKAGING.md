@@ -22,13 +22,6 @@ The packaging tooling may advance after that source freeze. The payload source d
 not. A different TAR digest is a different release input and is rejected before a
 package is formed.
 
-This freeze is **historical unsigned-release-candidate evidence only**. It has
-`currentProductEntryAuthority=false` and must never be used as the current ordinary
-VexLife source merely because it once passed R1/R2 reproduction. The ordinary macOS
-product entry remains `setup-vexlife.command`: at each invocation it resolves the
-current accepted `main` ref to one exact immutable commit and then runs only those
-exact bytes for that launch.
-
 Every package plan separately binds the **packaging-tool** Git HEAD/tree and exact Git
 blob IDs for the six executable packaging sources. Planning fails if any of those
 working-copy bytes differ from their committed blobs. Host build receipts then bind the

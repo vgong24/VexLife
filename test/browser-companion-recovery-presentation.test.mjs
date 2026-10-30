@@ -200,7 +200,7 @@ function seedCanonicalConversation(home) {
   append({messageRef:'message.vr06.presentation.companion.001',spaceRef:null,threadRef,channelRef,speakerRef:'role.vex.companion',recipientRefs:[device.personRef],witnessRefs:['witness.vr06.presentation.companion.001'],membershipSnapshotRef:null,membershipGeneration:null,sequence:1,content:'Durable Vex first-load response.',contentHash:semanticHash('Durable Vex first-load response.'),createdAt:at1});
 }
 
-async function withReferenceBrowser(viewport, run, { initialObservation = runtimeObservation(), seedConversation = false, recoveryFailure = false, availabilityFailures = 0 } = {}) {
+async function withReferenceBrowser(viewport, run, { initialObservation = runtimeObservation(), seedConversation = false, recoveryFailure = false } = {}) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'vr06-presentation-browser-home-'));
   initializeLivedCompanionHome({
     home,
@@ -212,7 +212,6 @@ async function withReferenceBrowser(viewport, run, { initialObservation = runtim
   if (seedConversation) seedCanonicalConversation(home);
 
   let observation = initialObservation;
-  let runtimeObservationReads = 0;
   const recoveryRequests = [];
   const companionBridge = createBrowserCompanionBridge({
     home,
@@ -238,11 +237,7 @@ async function withReferenceBrowser(viewport, run, { initialObservation = runtim
   const server = createVexLifeBrowserServer({
     companionBridge,
     resolveCompanionBinding: async () => binding(),
-    resolveCompanionRuntimeObservation: async () => {
-      runtimeObservationReads += 1;
-      if (runtimeObservationReads <= availabilityFailures) throw new Error('synthetic transient Companion availability read failure');
-      return observation;
-    },
+    resolveCompanionRuntimeObservation: async () => observation,
     relationshipsPersistenceHome: home,
     familyConversationHome: home,
     familyLifecycleHome: home,
@@ -259,7 +254,7 @@ async function withReferenceBrowser(viewport, run, { initialObservation = runtim
     const serverUrl = `http://127.0.0.1:${address.port}`;
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport });
-    await run({ page, serverUrl, recoveryRequests, runtimeObservationReads: () => runtimeObservationReads });
+    await run({ page, serverUrl, recoveryRequests });
   } finally {
     if (browser) await browser.close();
     await new Promise((resolve) => server.close(() => resolve()));
@@ -343,33 +338,6 @@ test('Open Vex launch-intent page load projects canonical READY before Victor in
     }
   );
 });
-
-test('Open Vex bounded service re-observation recovers a transient Companion availability outage', async () => {
-  await withReferenceBrowser(
-    { width: 1440, height: 900 },
-    async ({ page, serverUrl, runtimeObservationReads }) => {
-      await page.goto(serverUrl + '/reference/browser/?open=vex', { waitUntil: 'load', timeout: 30000 });
-      await page.waitForFunction(
-        () => globalThis.__VEXLIFE_APP__?.chat?.interfaceCurrentness?.().kind === 'READY',
-        null,
-        { timeout: 10000 }
-      );
-      const state = await page.evaluate(() => ({
-        availabilityState: globalThis.__VEXLIFE_APP__.chat.companionAvailabilityState(),
-        interfaceCurrentness: globalThis.__VEXLIFE_APP__.chat.interfaceCurrentness().kind,
-        sendDisabled: document.querySelector('#composer button[type="submit"]')?.disabled ?? null,
-      }));
-      assert.deepEqual(state, {
-        availabilityState: 'READY',
-        interfaceCurrentness: 'READY',
-        sendDisabled: false,
-      });
-      assert.ok(runtimeObservationReads() >= 3);
-    },
-    { availabilityFailures: 2 }
-  );
-});
-
 
 test('VR06 Reference composer automatically re-enters one exact recoverable binding on desktop and compact', async () => {
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {

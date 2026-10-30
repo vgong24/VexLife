@@ -456,7 +456,6 @@ export function getOwnedBrowser(home, repo, {
   if (!allowRepoDrift && receiptRepo !== currentRepo) throw new Error('browser process receipt repo identity mismatch');
 
   const recordedPid = Number(receipt.pid);
-  if (!Number.isInteger(recordedPid) || recordedPid <= 0) throw new Error('browser process receipt PID is invalid');
   let pid = recordedPid;
   let processSubstrate = null;
   if (receipt.processSubstrate !== undefined) {
@@ -467,7 +466,7 @@ export function getOwnedBrowser(home, repo, {
     }
     if (processSubstrate.keepAlive) {
       pid = observed.pid;
-      if (processSubstrate.pid !== pid) processSubstrate = Object.freeze({ ...processSubstrate, pid });
+      processSubstrate = Object.freeze({ ...processSubstrate, pid });
     } else if (processSubstrate.pid !== recordedPid || observed.pid !== recordedPid) {
       throw new Error('browser process is live but its launchd lifetime substrate is not exact-current');
     }
@@ -482,7 +481,6 @@ export function getOwnedBrowser(home, repo, {
   }
   return {
     pid,
-    recordedPid,
     receipt,
     evidence,
     processSubstrate,
@@ -492,15 +490,13 @@ export function getOwnedBrowser(home, repo, {
     sourceCurrent: receiptRepo === currentRepo
   };
 }
-
-function refreshBrowserReceiptProcessIdentity(receiptPath, owned) {
+function refreshRestartedBrowserReceipt(receiptPath, owned) {
   if (!owned?.processRestarted) return false;
-  const next = {
+  writeJsonAtomic(receiptPath, {
     ...owned.receipt,
     pid: owned.pid,
-    ...(owned.processSubstrate ? { processSubstrate: { ...owned.processSubstrate, pid: owned.pid } } : {})
-  };
-  writeJsonAtomic(receiptPath, next);
+    processSubstrate: { ...owned.processSubstrate, pid: owned.pid }
+  });
   return true;
 }
 
@@ -1184,21 +1180,16 @@ async function startBrowser(home, repo, initialization, { forceCurrentBrowserReb
   if (priorReceipt?.processSubstrate !== undefined && !pidAlive(Number(priorReceipt.pid))) {
     const substrate = validateMacUserLaunchdProcessReceipt(priorReceipt.processSubstrate);
     const observed = observeMacUserLaunchdProcess(substrate);
-    if (substrate.keepAlive && observed.state === 'RUNNING') {
-      const restarted = getOwnedBrowser(home, repo, { allowRepoDrift: true });
-      if (!restarted) throw new Error('restartable browser launchd job is running but exact browser ownership is unavailable');
-      refreshBrowserReceiptProcessIdentity(receiptPath, restarted);
+    if (observed.state === 'UNKNOWN') {
+      throw new Error('browser launchd lifetime substrate currentness is unknown');
+    }
+    if (substrate.keepAlive && observed.state !== 'ABSENT') {
       if (!await waitPort(browserPort)) {
-        const retired = await retireMacUserLaunchdProcess(restarted.processSubstrate, { expectedPid: restarted.pid });
-        if (retired?.exactOwnershipVerified !== true || retired?.verifiedNotLive !== true) {
-          throw new Error('restartable browser launchd job failed readiness and could not be retired exactly');
-        }
-        priorReceipt.state = 'STALE_STOPPED';
-        priorReceipt.stoppedAtUtc = new Date().toISOString();
-        priorReceipt.pid = restarted.pid;
-        priorReceipt.processSubstrate = { ...restarted.processSubstrate, pid: restarted.pid };
-        writeJsonAtomic(receiptPath, priorReceipt);
+        throw new Error('restartable browser process did not return to port 18110 before readiness timeout');
       }
+      const restarted = getOwnedBrowser(home, repo, { allowRepoDrift: true });
+      if (!restarted) throw new Error('restartable browser process returned without exact ownership');
+      refreshRestartedBrowserReceipt(receiptPath, restarted);
     } else {
       const retired = await retireMacUserLaunchdProcess(substrate, { expectedPid: Number(priorReceipt.pid) });
       if (retired?.exactOwnershipVerified !== true || retired?.verifiedNotLive !== true) {
@@ -1238,10 +1229,7 @@ async function startBrowser(home, repo, initialization, { forceCurrentBrowserReb
   if (await portOpen(browserPort)) {
     const owned = getOwnedBrowser(home, repo, { allowRepoDrift: true });
     if (!owned) throw new Error('port 18110 is already answering but exact browser ownership is not proven');
-    if (owned.sourceCurrent) {
-      refreshBrowserReceiptProcessIdentity(receiptPath, owned);
-      return { disposition: 'REUSED_EXACT_BROWSER', pid: owned.pid };
-    }
+    if (owned.sourceCurrent) return { disposition: 'REUSED_EXACT_BROWSER', pid: owned.pid };
     const rotation = await stopOwnedBrowser(home, repo);
     if (await portOpen(browserPort)) {
       throw new Error('exact prior-source browser stopped but port 18110 remains occupied');

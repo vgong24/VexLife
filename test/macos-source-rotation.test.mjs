@@ -9,6 +9,7 @@ import {
   MAC_BROWSER_RECEIPT_SCHEMA,
   getOwnedBrowser
 } from '../scripts/macos-lifecycle.mjs';
+import { formMacUserLaunchdProcess } from '../src/core/macos-user-launchd-process.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const lifecycleSource = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
@@ -102,6 +103,43 @@ test('MACUPDATE01 prior exact source can prove its browser for stop while repo s
   const currentSourceEvidence = browserEvidence({ nodeExecutablePath, repo: currentRepo, home, ownerToken });
   const current = getOwnedBrowser(home, currentRepo, { processEvidenceReader: () => currentSourceEvidence });
   assert.equal(current?.sourceCurrent, true);
+
+  const restartableSubstrate = {
+    ...formMacUserLaunchdProcess({
+      label: 'com.vexlife.browser.test-restartable-source',
+      plistPath: path.join(root, 'browser.plist'),
+      programPath: nodeExecutablePath,
+      programArguments: [
+        path.join(currentRepo, 'scripts', 'serve-browser.mjs'),
+        '--vexlife-browser-owner-token', ownerToken,
+        '--vexlife-home', home,
+        '--vexlife-repo', currentRepo
+      ],
+      workingDirectory: currentRepo,
+      stdoutPath: path.join(root, 'browser.out.log'),
+      stderrPath: path.join(root, 'browser.err.log'),
+      keepAlive: true,
+      uid: 501
+    }),
+    pid: 4242
+  };
+  fs.writeFileSync(receiptPath, `${JSON.stringify({
+    ...receipt,
+    repoRootPath: currentRepo,
+    serverScriptPath: path.join(currentRepo, 'scripts', 'serve-browser.mjs'),
+    processSubstrate: restartableSubstrate
+  }, null, 2)}\n`);
+  let evidencePid = null;
+  const restarted = getOwnedBrowser(home, currentRepo, {
+    processEvidenceReader: (pid) => {
+      evidencePid = pid;
+      return currentSourceEvidence;
+    },
+    processSubstrateObserver: () => ({ state: 'RUNNING', pid: 4343 })
+  });
+  assert.equal(evidencePid, 4343);
+  assert.equal(restarted?.pid, 4343);
+  assert.equal(restarted?.processRestarted, true);
 
   fs.rmSync(root, { recursive: true, force: true });
 });

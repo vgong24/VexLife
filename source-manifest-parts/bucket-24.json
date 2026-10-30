@@ -29,8 +29,8 @@
     {
       "path": "test/macos-source-rotation.test.mjs",
       "mode": "100644",
-      "bytes": 4602,
-      "sha256": "119682c82a425ff88b69c5745bd1024d9157a0c1b9b8c3831cded0b01f41c58e"
+      "bytes": 5970,
+      "sha256": "4ba51cdd8eec6b1777c93e56540c5ddadfbe3808c51e768d7cebf89a62113d18"
     },
     {
       "path": "test/vex-family-invitation-store.test.mjs",

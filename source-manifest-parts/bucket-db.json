@@ -17,8 +17,8 @@
     {
       "path": "src/core/release-bootstrap-packaging.mjs",
       "mode": "100644",
-      "bytes": 17926,
-      "sha256": "08c0eba106b1324f3f28433b467f9914aa6dbdf80a63fa69207e07749e3c2dfb"
+      "bytes": 17541,
+      "sha256": "bfb2df655452971fe4a85cc6e0805c417afb5310509f3da56eb5dfd28bdac1d4"
     }
   ]
 }

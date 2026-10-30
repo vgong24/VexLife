@@ -304,33 +304,7 @@ function projectFrame(){const host=$('#contextSurface'),app=$('#app'),projection
 let interfaceCurrentness=null;
 let automaticCompanionRecoveryBindingRef=null;
 let automaticCompanionRecoveryInFlight=false;
-const AUTOMATIC_INTERFACE_REOBSERVE_MAX_ATTEMPTS=20;
-const AUTOMATIC_INTERFACE_REOBSERVE_INTERVAL_MS=500;
-let automaticInterfaceReobserveAttempts=0;
-let automaticInterfaceReobserveTimer=null;
 const requestInterfaceObservation=(reason)=>interfaceCurrentness?.observe(reason)??Promise.resolve(Object.freeze({state:'INTERFACE_NOT_BOUND'}));
-function resetAutomaticInterfaceReobserve(){
-  if(automaticInterfaceReobserveTimer!==null)globalThis.clearTimeout(automaticInterfaceReobserveTimer);
-  automaticInterfaceReobserveTimer=null;automaticInterfaceReobserveAttempts=0;
-}
-function maybeScheduleAutomaticInterfaceReobserve(relationship){
-  if(relationship?.kind==='READY'){resetAutomaticInterfaceReobserve();return false;}
-  if(relationship?.kind!=='UNAVAILABLE'){
-    if(relationship?.kind!=='OBSERVING')resetAutomaticInterfaceReobserve();
-    return false;
-  }
-  const transient=relationship.currentServerSourceTreeSha256===null
-    || relationship.companionAvailabilityState==='UNAVAILABLE'
-    || relationship.conversationCurrentness==='UNAVAILABLE';
-  if(!transient){resetAutomaticInterfaceReobserve();return false;}
-  if(automaticInterfaceReobserveTimer!==null||automaticInterfaceReobserveAttempts>=AUTOMATIC_INTERFACE_REOBSERVE_MAX_ATTEMPTS)return false;
-  automaticInterfaceReobserveAttempts+=1;
-  automaticInterfaceReobserveTimer=globalThis.setTimeout(()=>{
-    automaticInterfaceReobserveTimer=null;
-    void requestInterfaceObservation('bounded-service-recovery');
-  },AUTOMATIC_INTERFACE_REOBSERVE_INTERVAL_MS);
-  return true;
-}
 async function maybeAutomaticCompanionRecovery(relationship){
   if(relationship?.kind==='READY'){automaticCompanionRecoveryBindingRef=null;return false;}
   if(relationship?.kind!=='RECOVERABLE'||automaticCompanionRecoveryInFlight)return false;
@@ -391,9 +365,8 @@ interfaceCurrentness=createInterfaceCurrentnessController({
   },
   onCurrentState:(projection)=>{
     chat.setInterfaceCurrentness(projection.relationship);
-    const reloading=reloadCurrentInterfaceSource(projection.relationship);
+    reloadCurrentInterfaceSource(projection.relationship);
     void maybeAutomaticCompanionRecovery(projection.relationship);
-    if(!reloading)maybeScheduleAutomaticInterfaceReobserve(projection.relationship);
   }
 });
 const initialInterfaceObservation=await interfaceCurrentness.observe('startup');
