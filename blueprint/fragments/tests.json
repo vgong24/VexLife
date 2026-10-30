@@ -1190,5 +1190,9 @@
   {
     "testRef": "test.lived-companion.thread-writer-currentness-held-unverifiable",
     "brief": "Malformed, hash-invalid, identity-invalid, non-regular, symlink, or unreadable writer evidence projects HELD_UNVERIFIABLE with attention routing while preserving the evidence and performing no mutation."
+  },
+  {
+    "testRef": "test.interface-currentness.browser-realization",
+    "brief": "Browser Interface currentness proves server/document Source Manifest identity, current-generation stale-result rejection, exact selected Conversation READY gating, relationship-before-effect sequencing, focus/pageshow/visibility re-observation, Chat session-draft carriage, and source-addressed Open Vex without granting the relationship Send/recovery/navigation authority."
   }
 ]

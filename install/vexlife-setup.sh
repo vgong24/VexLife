@@ -7,7 +7,7 @@ if [ "$#" -gt 0 ] && [[ "$1" != --* ]]; then
   REPO_ROOT="$1"
   shift
 fi
-INSTALL_URL="http://127.0.0.1:18110/reference/browser/?open=vex"
+INSTALL_URL_BASE="http://127.0.0.1:18110/reference/browser/?open=vex"
 DEFAULT_HOME="${VEXLIFE_HOME:-$HOME/.vexlife}"
 CONTROLLER_MODE=false
 CONTROLLER_HOME=""
@@ -377,9 +377,29 @@ run_lifecycle() {
   /bin/cat "$result_file"
   /bin/rm -f -- "$result_file"
 }
+source_addressed_install_url() {
+  node --input-type=module - "$INSTALL_URL_BASE" <<'NODE'
+const base = process.argv[2];
+const response = await fetch('http://127.0.0.1:18110/api/v1/interface/source-currentness', { cache: 'no-store' });
+const body = await response.json().catch(() => null);
+if (!response.ok || body?.schemaVersion !== 'vexlife.browser-interface-source-currentness/v1'
+    || body?.truthClass !== 'CURRENT_SERVER_SOURCE_IDENTITY'
+    || !/^[0-9a-f]{64}$/u.test(body?.treeSha256 ?? '')
+    || body?.effectsPerformed !== false) {
+  throw new Error('current browser source identity is unavailable');
+}
+const url = new URL(base);
+url.searchParams.set('source', body.treeSha256);
+process.stdout.write(url.href);
+NODE
+}
 open_vex() {
-  /usr/bin/open "$INSTALL_URL" >/dev/null 2>&1 || true
-  say "VexLife is ready. Your browser should open at $INSTALL_URL"
+  local source_url
+  if ! source_url="$(source_addressed_install_url)"; then
+    fail "the current browser server did not expose an exact Source Manifest identity; Open Vex was held."
+  fi
+  /usr/bin/open "$source_url" >/dev/null 2>&1 || true
+  say "VexLife is ready. Your browser should open at $source_url"
 }
 canonicalize_home() {
   local raw="$1"

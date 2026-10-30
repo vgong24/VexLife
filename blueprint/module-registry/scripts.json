@@ -76,7 +76,7 @@
   {
     "moduleRef": "module.vexlife.script.serve-browser",
     "path": "scripts/serve-browser.mjs",
-    "role": "Dependency-free loopback browser server with current server-owned runtime routes plus E0-B pre-boot projection selection that preserves Reference default and admits Evolution only by explicit local/dev request.",
+    "role": "Dependency-free loopback browser server with current server-owned runtime routes, exact serving Source Manifest identity/document binding, and E0-B pre-boot projection selection that preserves Reference default and admits Evolution only by explicit local/dev request.",
     "platformScope": "BROWSER",
     "reads": [
       "reference/browser/**",
@@ -89,7 +89,8 @@
       "module.vexlife.core.model-connection-turn-composer",
       "module.vexlife.core.browser-prompt-context-runtime",
       "blueprint/ux-evolution-registry.json",
-      "module.vexlife.core.ux-evolution"
+      "module.vexlife.core.ux-evolution",
+      "module.vexlife.core.source-manifest"
     ],
     "writes": [],
     "loadedBy": [
@@ -102,7 +103,8 @@
       "test/p4-typed-local-effect.test.mjs",
       "test/browser-model-connection-server-composition.test.mjs",
       "test/browser-prompt-context-runtime.test.mjs",
-      "test/ux-evolution-host.test.mjs"
+      "test/ux-evolution-host.test.mjs",
+      "test/interface-currentness-browser.test.mjs"
     ],
     "changeMap": [
       "src/core/capability-assimilation-runtime.mjs",
@@ -113,7 +115,9 @@
       "blueprint/module-registry/model-connection.json",
       "docs/CAPABILITY-ASSIMILATION-RUNTIME.md",
       "reference/browser/evolution/index.html",
-      "reference/browser/evolution/projection-host.js"
+      "reference/browser/evolution/projection-host.js",
+      "reference/browser/modules/interface-currentness.js",
+      "install/vexlife-setup.sh"
     ]
   },
   {

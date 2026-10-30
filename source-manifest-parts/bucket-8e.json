@@ -19,6 +19,12 @@
       "mode": "100644",
       "bytes": 28748,
       "sha256": "d5a7c4aa6d7450a89be46efe017df49ff3e9d6faab86aa259b125986ae43d7e0"
+    },
+    {
+      "path": "test/interface-currentness-browser.test.mjs",
+      "mode": "100644",
+      "bytes": 9493,
+      "sha256": "5850781e98793f183f2077414df71a0eb0176c58108d3663ca67a418b8f344ca"
     }
   ]
 }

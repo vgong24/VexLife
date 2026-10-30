@@ -29,5 +29,60 @@ test('contextual projection binding rejects non-allowlisted target',async()=>{co
 test('contextual projection binding rejects caller execution fields',async()=>{const out=fs.mkdtempSync(path.join(os.tmpdir(),'rkc-x-')),a=adapter({browserType:contextualBrowser(),settleMs:0}),e=await a.captureTasks(contextualPlan({operation:{kind:'CLICK_CONTEXTUAL_PROJECTION_TARGET',selector:'body',script:'alert(1)'}}),out);assert.equal(e[0].captureState,'FAILED_SAFE');assert.match(e[0].adapterReceipt.deviations[0],/accepts only the binding kind/)});
 test('contextual projection binding fails safe before reveal when renderer is not ready',async()=>{const out=fs.mkdtempSync(path.join(os.tmpdir(),'rkc-ready-')),a=adapter({browserType:contextualBrowser({rendererReady:false}),settleMs:0}),e=await a.captureTasks(contextualPlan(),out);assert.equal(e[0].captureState,'FAILED_SAFE');assert.match(e[0].adapterReceipt.deviations[0],/renderer did not become ready/)});
 test('contextual projection binding fails safe when fixed reveal is missing',async()=>{const out=fs.mkdtempSync(path.join(os.tmpdir(),'rkc-r-')),a=adapter({browserType:contextualBrowser({revealCount:0}),settleMs:0}),e=await a.captureTasks(contextualPlan(),out);assert.equal(e[0].captureState,'FAILED_SAFE');assert.match(e[0].adapterReceipt.deviations[0],/reveal control was unavailable/)});
-test('current browser contextual route replays from Terrain through stable thread and channel targets',async(t)=>{const server=createVexLifeBrowserServer();await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve)});t.after(()=>new Promise((resolve)=>server.close(()=>resolve())));const address=server.address();assert.equal(typeof address,'object');const pageUrl=`http://127.0.0.1:${address.port}/reference/browser/`;const chat={reviewStepRef:'review-step.test.chat',sequence:0,actionRef:'action.view.select',targetNodeRef:'element.nav.chat',expectedStateRef:'state.navigation'},thread={...structuredClone(s),reviewStepRef:'review-step.test.thread',sequence:1},channel={reviewStepRef:'review-step.test.channel',sequence:2,actionRef:'action.channel.select',targetNodeRef:'element.channel.group',expectedStateRef:'state.selection'},x=f();x.reviewCases[0].reviewStepRefs=[chat.reviewStepRef,thread.reviewStepRef,channel.reviewStepRef];x.captureRequests[0].steps=[chat,thread,channel];x.captureRequests[0].captureAtStepRefs=[channel.reviewStepRef];const binding={captureRequestRef:'capture.test',pageUrl,viewport:{width:1440,height:900},stepBindings:{[chat.reviewStepRef]:{kind:'CLICK_CONTEXTUAL_PROJECTION_TARGET'},[thread.reviewStepRef]:{kind:'CLICK_STABLE_TARGET'},[channel.reviewStepRef]:{kind:'CLICK_STABLE_TARGET'}},artifactSlugs:{[channel.reviewStepRef]:'vexlife-test-contextual-route'}},tasks=sparse(x,[binding]).tasks,out=fs.mkdtempSync(path.join(os.tmpdir(),'rkc-real-')),a=adapter({browserType:chromium,settleMs:0}),e=await a.captureTasks(tasks,out);assert.equal(tasks.length,1);assert.equal(e[0].captureState,'CAPTURED',JSON.stringify(e[0].adapterReceipt.deviations));assert.deepEqual(e[0].adapterReceipt.deviations,[]);assert.ok(fs.existsSync(path.join(out,tasks[0].artifactFileName)))});
+const INTERFACE_REVIEW_SOURCE = 'c'.repeat(64);
+const INTERFACE_REVIEW_AVAILABILITY = Object.freeze({
+  schemaVersion: 'vexlife.companion-availability/v1',
+  truthClass: 'SOURCE_BOUND_COMPANION_AVAILABILITY',
+  availabilityState: 'HELD',
+  registryRef: 'registry.test.interface-currentness',
+  bindingRef: 'binding.test.interface-currentness',
+  homeRef: 'home.test.interface-currentness',
+  companionLineageRef: 'lineage.test.interface-currentness',
+  runtimeAdapterRef: 'adapter.test.interface-currentness',
+  runtimeObservationRef: 'observation.test.interface-currentness',
+  recoveryClass: 'NONE',
+  reasonCode: 'TEST_FIXTURE_HELD',
+  bindingState: 'CURRENT',
+  runtimeOwnershipState: 'CURRENT',
+  runtimeState: 'HELD',
+  qualificationState: 'HELD',
+  projectionRef: 'projection.test.interface-currentness',
+  projectionSha256: 'c'.repeat(64),
+  modelRefOrNull: null,
+  generationRefOrNull: null,
+  sourceRefs: ['source.test.interface-currentness'],
+  effectAuthorityGranted: false,
+  rendererAuthorityGranted: false,
+  modelIdentityAuthorityGranted: false,
+  processAuthorityGranted: false,
+  conversationAuthorityGranted: false
+});
+function interfaceReviewConversationCurrentness(scope) {
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-companion-conversation-currentness/v1',
+    state: 'EMPTY',
+    truthClass: 'CURRENT_LOCAL_CONVERSATION_IDENTITY',
+    projectRef: scope.projectRef,
+    threadRef: scope.threadRef,
+    channelRef: scope.channelRef,
+    channelSha256: null,
+    channelRecordSha256: null,
+    headMessageRefOrNull: null,
+    headSequenceOrNull: null,
+    canonicalConversationHeadSha256: null,
+    headUpdatedAtOrNull: null,
+    effectsPerformed: false
+  });
+}
+function createInterfaceCurrentnessReviewServer() {
+  return createVexLifeBrowserServer({
+    servingSourceTreeSha256: INTERFACE_REVIEW_SOURCE,
+    companionBridge: Object.freeze({ conversationCurrentness: interfaceReviewConversationCurrentness }),
+    resolveCompanionBinding: async () => Object.freeze({}),
+    resolveCompanionRuntimeObservation: async () => Object.freeze({}),
+    companionAvailabilityCompiler: () => INTERFACE_REVIEW_AVAILABILITY
+  });
+}
+
+test('current browser contextual route replays from Terrain through stable thread and channel targets',async(t)=>{const server=createInterfaceCurrentnessReviewServer();await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve)});t.after(()=>new Promise((resolve)=>server.close(()=>resolve())));const address=server.address();assert.equal(typeof address,'object');const pageUrl=`http://127.0.0.1:${address.port}/reference/browser/`;const chat={reviewStepRef:'review-step.test.chat',sequence:0,actionRef:'action.view.select',targetNodeRef:'element.nav.chat',expectedStateRef:'state.navigation'},thread={...structuredClone(s),reviewStepRef:'review-step.test.thread',sequence:1},channel={reviewStepRef:'review-step.test.channel',sequence:2,actionRef:'action.channel.select',targetNodeRef:'element.channel.group',expectedStateRef:'state.selection'},x=f();x.reviewCases[0].reviewStepRefs=[chat.reviewStepRef,thread.reviewStepRef,channel.reviewStepRef];x.captureRequests[0].steps=[chat,thread,channel];x.captureRequests[0].captureAtStepRefs=[channel.reviewStepRef];const binding={captureRequestRef:'capture.test',pageUrl,viewport:{width:1440,height:900},stepBindings:{[chat.reviewStepRef]:{kind:'CLICK_CONTEXTUAL_PROJECTION_TARGET'},[thread.reviewStepRef]:{kind:'CLICK_STABLE_TARGET'},[channel.reviewStepRef]:{kind:'CLICK_STABLE_TARGET'}},artifactSlugs:{[channel.reviewStepRef]:'vexlife-test-contextual-route'}},tasks=sparse(x,[binding]).tasks,out=fs.mkdtempSync(path.join(os.tmpdir(),'rkc-real-')),a=adapter({browserType:chromium,settleMs:0}),e=await a.captureTasks(tasks,out);assert.equal(tasks.length,1);assert.equal(e[0].captureState,'CAPTURED',JSON.stringify(e[0].adapterReceipt.deviations));assert.deepEqual(e[0].adapterReceipt.deviations,[]);assert.ok(fs.existsSync(path.join(out,tasks[0].artifactFileName)))});
 // [VXG RealForever]

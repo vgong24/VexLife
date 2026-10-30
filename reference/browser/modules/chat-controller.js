@@ -24,6 +24,67 @@ export const BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH = '/api/v1/companio
 export const BROWSER_COMPANION_CONVERSATION_PROJECTION_PATH = '/api/v1/companion/conversation';
 export const BROWSER_COMPANION_STREAM_API_PATH = '/api/v1/companion/turn/stream';
 export const BROWSER_COMPANION_STREAM_FRAME_SCHEMA = 'vexlife.browser-companion-turn-stream-frame/v1';
+export const BROWSER_SESSION_DRAFT_SCHEMA = 'vexlife.browser-session-draft/v1';
+const BROWSER_SESSION_DRAFT_PREFIX = 'vexlife.browser-session-draft.v1:';
+
+function exactDraftScope(scope) {
+  if (!scope || typeof scope !== 'object' || Array.isArray(scope)) throw new TypeError('Session draft scope must be one object');
+  const value = { projectRef: scope.projectRef, threadRef: scope.threadRef, channelRef: scope.channelRef };
+  if (Object.values(value).some((entry) => typeof entry !== 'string' || entry.length === 0)) {
+    throw new TypeError('Session draft scope requires projectRef/threadRef/channelRef');
+  }
+  return Object.freeze(value);
+}
+
+export function browserSessionDraftKey(scope) {
+  const exact = exactDraftScope(scope);
+  return BROWSER_SESSION_DRAFT_PREFIX + [exact.projectRef, exact.threadRef, exact.channelRef]
+    .map((value) => encodeURIComponent(value)).join(':');
+}
+
+export function readBrowserSessionDraft(storage, scope) {
+  if (!storage || typeof storage.getItem !== 'function') return null;
+  const exact = exactDraftScope(scope);
+  const raw = storage.getItem(browserSessionDraftKey(exact));
+  if (raw === null) return null;
+  try {
+    const value = JSON.parse(raw);
+    if (value?.schemaVersion !== BROWSER_SESSION_DRAFT_SCHEMA
+        || value?.state !== 'UNSENT_LOCAL_DRAFT'
+        || value?.projectRef !== exact.projectRef
+        || value?.threadRef !== exact.threadRef
+        || value?.channelRef !== exact.channelRef
+        || typeof value?.content !== 'string'
+        || value.content.length === 0
+        || typeof value?.updatedAt !== 'string'
+        || value.queued !== false
+        || value.accepted !== false) return null;
+    return Object.freeze(structuredClone(value));
+  } catch {
+    return null;
+  }
+}
+
+export function writeBrowserSessionDraft(storage, scope, content, { now = () => new Date().toISOString() } = {}) {
+  if (!storage || typeof storage.setItem !== 'function' || typeof storage.removeItem !== 'function') return null;
+  const exact = exactDraftScope(scope);
+  const key = browserSessionDraftKey(exact);
+  if (typeof content !== 'string' || content.length === 0) {
+    storage.removeItem(key);
+    return null;
+  }
+  const value = Object.freeze({
+    schemaVersion: BROWSER_SESSION_DRAFT_SCHEMA,
+    state: 'UNSENT_LOCAL_DRAFT',
+    ...exact,
+    content,
+    updatedAt: now(),
+    queued: false,
+    accepted: false
+  });
+  storage.setItem(key, JSON.stringify(value));
+  return value;
+}
 
 const BROWSER_COMPANION_REVEAL_FRAME_MS = 1000 / 60;
 const BROWSER_COMPANION_REVEAL_DEFAULT_RATE_PER_MS = 1 / 18;
@@ -445,7 +506,7 @@ export function normalizeBrowserCompanionConversationProjection(value, { project
   return Object.freeze(structuredClone(value));
 }
 
-export function createChatController({ state, projects, roles, channels, messages, createMessage, conversationKey, t, navigation, experienceFoundation, capabilityRegistry, onCompanionTurnCompleted = null }) {
+export function createChatController({ state, projects, roles, channels, messages, createMessage, conversationKey, t, navigation, experienceFoundation, capabilityRegistry, onCompanionTurnCompleted = null, onInterfaceObservationRequested = null }) {
   const currentProject = () => projects.find((project) => project.projectRef === state.projectRef) || projects[0];
   const currentThread = () => currentProject().threads.find((thread) => thread.threadRef === state.threadRef) || currentProject().threads[0];
   const channelsForThread = (projectRef = state.projectRef, threadRef = state.threadRef) =>
@@ -465,6 +526,14 @@ export function createChatController({ state, projects, roles, channels, message
   let companionRecoveryFailure = false;
   let companionVesselProjectionState = 'UNBOUND';
   const conversationCurrentnessByKey = new Map();
+  const sessionDraftStorage = typeof globalThis.sessionStorage === 'object' ? globalThis.sessionStorage : null;
+  let interfaceCurrentness = Object.freeze({ kind: 'UNOBSERVED' });
+  if (onInterfaceObservationRequested !== null && typeof onInterfaceObservationRequested !== 'function') {
+    throw new TypeError('onInterfaceObservationRequested must be null or one function');
+  }
+  const requestInterfaceObservation = async (reason) => onInterfaceObservationRequested
+    ? onInterfaceObservationRequested(reason)
+    : null;
 
   function canonicalConversationIdentity(channel = currentChannel()) {
     if (!channel) {
@@ -503,64 +572,88 @@ export function createChatController({ state, projects, roles, channels, message
     return canonicalConversationIdentity(channel);
   }
 
-  async function refreshConversationCurrentness(channel = currentChannel()) {
-    if (!channel || channel.roleKey !== 'companion') {
-      return canonicalConversationIdentity(channel);
-    }
+  function channelForScope(scope) {
+    return channels.find((channel) => channel.projectRef === scope?.projectRef
+      && channel.threadRef === scope?.threadRef
+      && channel.channelRef === scope?.channelRef) ?? null;
+  }
+
+  async function readConversationCurrentness(scopeOrChannel = currentChannel()) {
+    const channel = scopeOrChannel?.roleKey ? scopeOrChannel : channelForScope(scopeOrChannel);
+    if (!channel || channel.roleKey !== 'companion') throw new Error('Canonical Conversation currentness requires one exact Companion scope');
     const query = new URLSearchParams({
       projectRef: channel.projectRef,
       threadRef: channel.threadRef,
       channelRef: channel.channelRef
     });
-    try {
-      const response = await fetch(`${BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH}?${query.toString()}`, {
-        method: 'GET',
-        cache: 'no-store'
-      });
-      const body = await response.json();
-      const exactState = ['ABSENT', 'EMPTY', 'CURRENT'].includes(body?.state);
-      const exactIdentity = body?.schemaVersion === 'vexlife.browser-companion-conversation-currentness/v1'
-        && body?.truthClass === 'CURRENT_LOCAL_CONVERSATION_IDENTITY'
-        && body?.projectRef === channel.projectRef
-        && body?.threadRef === channel.threadRef
-        && body?.channelRef === channel.channelRef
-        && body?.effectsPerformed === false;
-      const headValid = body?.state === 'CURRENT'
-        ? typeof body.canonicalConversationHeadSha256 === 'string'
-          && /^[0-9a-f]{64}$/u.test(body.canonicalConversationHeadSha256)
-          && typeof body.headMessageRefOrNull === 'string'
-          && Number.isInteger(body.headSequenceOrNull)
-        : body?.canonicalConversationHeadSha256 === null
-          && body?.headMessageRefOrNull === null
-          && body?.headSequenceOrNull === null;
-      if (!response.ok || !exactState || !exactIdentity || !headValid) {
-        throw new Error('Canonical Conversation currentness projection is invalid');
-      }
-      return rememberConversationCurrentness(channel, {
-        state: body.state,
-        headMessageRefOrNull: body.headMessageRefOrNull,
-        headSequenceOrNull: body.headSequenceOrNull,
-        canonicalConversationHeadSha256: body.canonicalConversationHeadSha256,
-        headUpdatedAtOrNull: body.headUpdatedAtOrNull ?? null
-      });
-    } catch {
-      return rememberConversationCurrentness(channel, {
-        state: 'UNAVAILABLE',
-        headMessageRefOrNull: null,
-        headSequenceOrNull: null,
-        canonicalConversationHeadSha256: null,
-        headUpdatedAtOrNull: null
-      });
+    const response = await fetch(`${BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH}?${query.toString()}`, {
+      method: 'GET',
+      cache: 'no-store'
+    });
+    const body = await response.json();
+    const exactState = ['ABSENT', 'EMPTY', 'CURRENT'].includes(body?.state);
+    const exactIdentity = body?.schemaVersion === 'vexlife.browser-companion-conversation-currentness/v1'
+      && body?.truthClass === 'CURRENT_LOCAL_CONVERSATION_IDENTITY'
+      && body?.projectRef === channel.projectRef
+      && body?.threadRef === channel.threadRef
+      && body?.channelRef === channel.channelRef
+      && body?.effectsPerformed === false;
+    const headValid = body?.state === 'CURRENT'
+      ? typeof body.canonicalConversationHeadSha256 === 'string'
+        && /^[0-9a-f]{64}$/u.test(body.canonicalConversationHeadSha256)
+        && typeof body.headMessageRefOrNull === 'string'
+        && Number.isInteger(body.headSequenceOrNull)
+      : body?.canonicalConversationHeadSha256 === null
+        && body?.headMessageRefOrNull === null
+        && body?.headSequenceOrNull === null;
+    if (!response.ok || !exactState || !exactIdentity || !headValid) {
+      throw new Error('Canonical Conversation currentness projection is invalid');
     }
+    return Object.freeze({
+      projectRef: channel.projectRef,
+      threadRef: channel.threadRef,
+      channelRef: channel.channelRef,
+      state: body.state,
+      currentness: body.state,
+      headMessageRefOrNull: body.headMessageRefOrNull,
+      headSequenceOrNull: body.headSequenceOrNull,
+      canonicalConversationHeadSha256: body.canonicalConversationHeadSha256,
+      headUpdatedAtOrNull: body.headUpdatedAtOrNull ?? null,
+      effectsPerformed: false
+    });
   }
 
-  async function refreshConversationProjection(channel = currentChannel()) {
+  function adoptConversationCurrentness(scopeOrChannel, value) {
+    const channel = scopeOrChannel?.roleKey ? scopeOrChannel : channelForScope(scopeOrChannel);
+    if (!channel || channel.roleKey !== 'companion') return canonicalConversationIdentity(channel);
+    return rememberConversationCurrentness(channel, {
+      state: value?.currentness ?? value?.state ?? 'UNAVAILABLE',
+      headMessageRefOrNull: value?.headMessageRefOrNull ?? null,
+      headSequenceOrNull: value?.headSequenceOrNull ?? null,
+      canonicalConversationHeadSha256: value?.canonicalConversationHeadSha256 ?? null,
+      headUpdatedAtOrNull: value?.headUpdatedAtOrNull ?? null
+    });
+  }
+
+  async function refreshConversationCurrentness(channel = currentChannel()) {
+    try {
+      const observed = await readConversationCurrentness(channel);
+      adoptConversationCurrentness(channel, observed);
+    } catch {
+      adoptConversationCurrentness(channel, { currentness: 'UNAVAILABLE' });
+    }
+    await requestInterfaceObservation('conversation-currentness-refresh');
+    return canonicalConversationIdentity(channel);
+  }
+
+  async function refreshConversationProjection(channel = currentChannel(), { acceptIf = () => true } = {}) {
     if (!channel || channel.roleKey !== 'companion') return canonicalConversationIdentity(channel);
     const query=new URLSearchParams({projectRef:channel.projectRef,threadRef:channel.threadRef,channelRef:channel.channelRef});
     try {
       const response=await fetch(`${BROWSER_COMPANION_CONVERSATION_PROJECTION_PATH}?${query.toString()}`,{method:'GET',cache:'no-store'});
       const body=normalizeBrowserCompanionConversationProjection(await response.json(),{projectRef:channel.projectRef,threadRef:channel.threadRef,channelRef:channel.channelRef});
       if(!response.ok)throw new Error('Canonical Conversation projection HTTP failure');
+      if(typeof acceptIf!=='function'||acceptIf()!==true)return Object.freeze({state:'STALE_PROJECTION_REJECTED',...canonicalConversationIdentity(channel)});
       const list=listForChannel(channel);
       list.splice(0,list.length,...body.messages.map((message)=>({
         messageRef:message.messageRef,projectRef:channel.projectRef,threadRef:channel.threadRef,channelRef:channel.channelRef,
@@ -574,6 +667,7 @@ export function createChatController({ state, projects, roles, channels, message
       if(currentChannel()?.channelRef===channel.channelRef){renderMessages(true);renderContext();}
       return canonicalConversationIdentity(channel);
     } catch {
+      if(typeof acceptIf!=='function'||acceptIf()!==true)return Object.freeze({state:'STALE_PROJECTION_REJECTED',...canonicalConversationIdentity(channel)});
       rememberConversationCurrentness(channel,{state:'UNAVAILABLE',headMessageRefOrNull:null,headSequenceOrNull:null,canonicalConversationHeadSha256:null,headUpdatedAtOrNull:null});
       return canonicalConversationIdentity(channel);
     }
@@ -866,6 +960,15 @@ export function createChatController({ state, projects, roles, channels, message
   }
 
   const isVexAvailable = () => state.vexAvailability === 'AVAILABLE';
+  const interfaceCurrentnessSnapshot = () => structuredClone(interfaceCurrentness);
+  function setInterfaceCurrentness(value) {
+    if (!value || typeof value !== 'object' || typeof value.kind !== 'string') {
+      throw new TypeError('Interface currentness must be one semantic State projection');
+    }
+    interfaceCurrentness = Object.freeze(structuredClone(value));
+    updateComposer();
+    return interfaceCurrentnessSnapshot();
+  }
   const companionAvailabilitySnapshot = () => companionAvailability
     ? structuredClone(companionAvailability)
     : null;
@@ -873,10 +976,21 @@ export function createChatController({ state, projects, roles, channels, message
     companionAvailability?.availabilityState ?? companionAvailabilityReadState;
   const channelIsAvailable = (channel = currentChannel()) =>
     channel.roleKey === 'companion'
-      ? browserCompanionAvailabilityAllowsTurn(companionAvailability) && !companionTurnPending
+      ? interfaceCurrentness.kind === 'READY' && !companionTurnPending
       : isVexAvailable();
-  const draftForChannel = (channel = currentChannel()) =>
-    state.unsentLocalDraft?.channelRef === channel.channelRef ? state.unsentLocalDraft : null;
+  const draftScope = (channel = currentChannel()) => Object.freeze({
+    projectRef: channel.projectRef,
+    threadRef: channel.threadRef,
+    channelRef: channel.channelRef
+  });
+  const draftForChannel = (channel = currentChannel()) => {
+    if (state.unsentLocalDraft?.channelRef === channel.channelRef
+        && state.unsentLocalDraft?.projectRef === channel.projectRef
+        && state.unsentLocalDraft?.threadRef === channel.threadRef) return state.unsentLocalDraft;
+    const restored = readBrowserSessionDraft(sessionDraftStorage, draftScope(channel));
+    if (restored) state.unsentLocalDraft = restored;
+    return restored;
+  };
   const semanticRelayScope = (channel = currentChannel()) => Object.freeze({
     projectRef: channel.projectRef,
     threadRef: channel.threadRef,
@@ -888,18 +1002,13 @@ export function createChatController({ state, projects, roles, channels, message
     && scope.channelRef === channel.channelRef;
 
   function setLocalDraft(channel, content) {
-    if (!content) {
+    const stored = writeBrowserSessionDraft(sessionDraftStorage, draftScope(channel), content);
+    if (stored === null) {
       if (state.unsentLocalDraft?.channelRef === channel.channelRef) state.unsentLocalDraft = null;
-      return;
+      return null;
     }
-    state.unsentLocalDraft = {
-      state: 'UNSENT_LOCAL_DRAFT',
-      channelRef: channel.channelRef,
-      content,
-      updatedAt: new Date().toISOString(),
-      queued: false,
-      accepted: false
-    };
+    state.unsentLocalDraft = stored;
+    return stored;
   }
 
   function cancelPendingReplies() {
@@ -972,6 +1081,7 @@ export function createChatController({ state, projects, roles, channels, message
     updateComposer();
     renderContext();
     if (refreshRail) renderProjectRail();
+    void requestInterfaceObservation('conversation-scope-change');
   }
 
   function renderChannels() {
@@ -1016,6 +1126,7 @@ export function createChatController({ state, projects, roles, channels, message
     renderMessages(true);
     updateComposer();
     renderContext();
+    void requestInterfaceObservation('conversation-scope-change');
   }
 
   function renderPresence() {
@@ -1135,7 +1246,7 @@ export function createChatController({ state, projects, roles, channels, message
     const message = createMessage(channel.channelRef, 'victor', recipients, pending.content, nextPresentationMessageSequence(channel));
     list.push(message);
     appendMessageNode(message);
-    if (state.unsentLocalDraft?.channelRef === channel.channelRef) state.unsentLocalDraft = null;
+    setLocalDraft(channel, '');
     const input = $('#messageInput');
     if (input) input.value = '';
     renderComposerTruth();
@@ -1298,6 +1409,7 @@ export function createChatController({ state, projects, roles, channels, message
     });
     const available = channelIsAvailable(channel);
     const recoveryAvailable = channel.roleKey === 'companion'
+      && ['RECOVERABLE', 'ACTION_REQUIRED'].includes(interfaceCurrentness.kind)
       && browserCompanionRecoveryAvailable(companionAvailability);
     const slashCandidate = input.value.trim().startsWith('/');
     const commandStatus = composerCommandStatusText();
@@ -1329,12 +1441,14 @@ export function createChatController({ state, projects, roles, channels, message
       form.dataset.companionRecoveryAvailable = String(recoveryAvailable);
       form.dataset.companionRecoveryPending = String(companionRecoveryPending);
       form.dataset.companionTurnPending = String(companionTurnPending);
+      form.dataset.interfaceCurrentnessState = interfaceCurrentness.kind;
     } else {
       delete form.dataset.companionBindingState;
       delete form.dataset.companionAvailabilityState;
       delete form.dataset.companionRecoveryAvailable;
       delete form.dataset.companionRecoveryPending;
       delete form.dataset.companionTurnPending;
+      delete form.dataset.interfaceCurrentnessState;
     }
     recoveryActionButton.hidden = !recoveryAvailable || slashCandidate;
     recoveryActionButton.disabled = companionRecoveryPending;
@@ -1344,7 +1458,7 @@ export function createChatController({ state, projects, roles, channels, message
       : 'composer.recovery.action');
     form.dataset.draftState = draft?.state ?? 'NONE';
     input.dataset.draftState = draft?.state ?? 'NONE';
-    const submitAvailable = slashCandidate || (channel.roleKey === 'companion' ? !companionTurnPending : available);
+    const submitAvailable = slashCandidate || (channel.roleKey === 'companion' ? available && !companionTurnPending : available);
     sendButton.disabled = !submitAvailable;
     sendButton.setAttribute('aria-disabled', String(!submitAvailable));
     renderSemanticRelayAttention();
@@ -1418,21 +1532,30 @@ export function createChatController({ state, projects, roles, channels, message
     return true;
   }
 
+  async function readCompanionAvailability() {
+    const response = await fetch(BROWSER_COMPANION_AVAILABILITY_PATH, { method: 'GET', cache: 'no-store' });
+    if (!response.ok) throw new Error(`Companion availability HTTP ${response.status}`);
+    return normalizeBrowserCompanionAvailability(await response.json());
+  }
+
+  function adoptCompanionAvailability(value) {
+    companionAvailability = value ? normalizeBrowserCompanionAvailability(value) : null;
+    companionAvailabilityReadState = companionAvailability?.availabilityState ?? 'UNAVAILABLE';
+    if (companionAvailability?.availabilityState === 'READY') companionRecoveryFailure = false;
+    updateComposer();
+    return companionAvailabilitySnapshot();
+  }
+
   async function refreshCompanionAvailability() {
     if (currentChannel()?.roleKey !== 'companion') return companionAvailabilitySnapshot();
     companionAvailabilityReadState = 'LOADING';
     updateComposer();
     try {
-      const response = await fetch(BROWSER_COMPANION_AVAILABILITY_PATH, { method: 'GET', cache: 'no-store' });
-      if (!response.ok) throw new Error(`Companion availability HTTP ${response.status}`);
-      companionAvailability = normalizeBrowserCompanionAvailability(await response.json());
-      companionAvailabilityReadState = companionAvailability.availabilityState;
-      if (companionAvailability.availabilityState === 'READY') companionRecoveryFailure = false;
+      adoptCompanionAvailability(await readCompanionAvailability());
     } catch {
-      companionAvailability = null;
-      companionAvailabilityReadState = 'UNAVAILABLE';
+      adoptCompanionAvailability(null);
     }
-    updateComposer();
+    await requestInterfaceObservation('companion-availability-refresh');
     return companionAvailabilitySnapshot();
   }
 
@@ -1440,9 +1563,6 @@ export function createChatController({ state, projects, roles, channels, message
     const channel = currentChannel();
     if (channel?.roleKey !== 'companion' || companionRecoveryPending) return false;
 
-    if (!browserCompanionRecoveryAvailable(companionAvailability)) {
-      await refreshCompanionAvailability();
-    }
     if (!browserCompanionRecoveryAvailable(companionAvailability)) return false;
 
     const input = $('#messageInput');
@@ -1462,7 +1582,7 @@ export function createChatController({ state, projects, roles, channels, message
       return false;
     } finally {
       companionRecoveryPending = false;
-      await refreshCompanionAvailability();
+      await requestInterfaceObservation('post-recovery');
     }
   }
 
@@ -1610,7 +1730,7 @@ export function createChatController({ state, projects, roles, channels, message
       companionStreamReveal?.cancel();
       clearCompanionStreamProgress(channel);
       companionTurnPending = false;
-      await refreshCompanionAvailability();
+      await requestInterfaceObservation('post-turn');
     }
   }
 
@@ -1621,9 +1741,6 @@ export function createChatController({ state, projects, roles, channels, message
     if (!channel || channel.roleKey !== 'companion') {
       return Object.freeze({ state: 'CURRENT_CHANNEL_NOT_COMPANION' });
     }
-    if (!channelIsAvailable(channel) && !companionTurnPending) {
-      await refreshCompanionAvailability();
-    }
     if (!channelIsAvailable(channel) || companionTurnPending) {
       return Object.freeze({ state: 'COMPANION_NOT_READY' });
     }
@@ -1633,7 +1750,7 @@ export function createChatController({ state, projects, roles, channels, message
     message.sendIdempotencyKey = `browser-send.${globalThis.crypto.randomUUID()}`;
     list.push(message);
     appendMessageNode(message);
-    if (state.unsentLocalDraft?.channelRef === channel.channelRef) state.unsentLocalDraft = null;
+    setLocalDraft(channel, '');
     renderComposerTruth();
     const completed = await requestRealCompanionReply(channel, text, frameAtSend, { sourceMessage: message });
     return Object.freeze({
@@ -1665,7 +1782,7 @@ export function createChatController({ state, projects, roles, channels, message
     const slashCandidate = event.target.value.trim().startsWith('/');
     resetComposerCommandState();
     if (slashCandidate) {
-      if (existing) state.unsentLocalDraft = null;
+      if (existing) setLocalDraft(channel, '');
     } else if (!channelIsAvailable(channel) || existing) {
       setLocalDraft(channel, event.target.value);
     }
@@ -1697,9 +1814,6 @@ export function createChatController({ state, projects, roles, channels, message
     }
     resetComposerCommandState();
     const channel = currentChannel();
-    if (channel.roleKey === 'companion' && !channelIsAvailable(channel) && !companionTurnPending) {
-      await refreshCompanionAvailability();
-    }
     if (!channelIsAvailable(channel)) {
       setLocalDraft(channel, input.value);
       renderComposerTruth();
@@ -1712,7 +1826,7 @@ export function createChatController({ state, projects, roles, channels, message
     list.push(message);
     appendMessageNode(message);
     input.value = '';
-    if (state.unsentLocalDraft?.channelRef === channel.channelRef) state.unsentLocalDraft = null;
+    setLocalDraft(channel, '');
     renderComposerTruth();
     const frameAtSend = navigation.semanticFrame();
     const consumePendingSemanticRelay = pendingSemanticRelayInput !== null && semanticRelayScopeMatches(pendingSemanticRelayScope, channel);
@@ -1759,7 +1873,13 @@ export function createChatController({ state, projects, roles, channels, message
     updateComposer,
     renderContext,
     setVexAvailability,
+    setInterfaceCurrentness,
+    interfaceCurrentness: interfaceCurrentnessSnapshot,
+    readCompanionAvailability,
+    adoptCompanionAvailability,
     refreshCompanionAvailability,
+    readConversationCurrentness,
+    adoptConversationCurrentness,
     refreshConversationCurrentness,
     refreshConversationProjection,
     canonicalConversationIdentity,
