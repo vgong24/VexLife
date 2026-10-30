@@ -201,7 +201,7 @@ function seedCanonicalConversation(home) {
 }
 
 async function withReferenceBrowser(viewport, run, { initialObservation = runtimeObservation(), seedConversation = false, recoveryFailure = false } = {}) {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'vr06-presentation-browser-home-'));
+  const home = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), 'vr06-presentation-browser-home-'));
   initializeLivedCompanionHome({
     home,
     homeRef: 'home.vr06.presentation',
