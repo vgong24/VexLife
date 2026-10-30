@@ -25,6 +25,7 @@ import {
 } from '../src/core/heretic-runtime-link.mjs';
 import {
   formMacUserLaunchdProcess,
+  observeMacUserLaunchdProcess,
   retireMacUserLaunchdProcess,
   startMacUserLaunchdProcess,
 } from '../src/core/macos-user-launchd-process.mjs';
@@ -950,9 +951,62 @@ test('MAC06G launchd substrate keeps process lifetime explicit without becoming 
   }
 });
 
+test('MAC06G2 launchd KeepAlive browser service survives PID rotation without widening semantic ownership', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-mac-launchd-keepalive-'));
+  let job = null;
+  const livePids = new Set();
+  const launchctl = (args) => {
+    if (args[0] === 'print') {
+      return job
+        ? { status: 0, stdout: `pid = ${job.pid}\n`, stderr: '', error: null }
+        : { status: 113, stdout: '', stderr: 'Could not find service', error: null };
+    }
+    if (args[0] === 'bootstrap') { job = { pid: 4343 }; livePids.add(job.pid); return { status: 0, stdout: '', stderr: '', error: null }; }
+    if (args[0] === 'bootout') { if (job) livePids.delete(job.pid); job = null; return { status: 0, stdout: '', stderr: '', error: null }; }
+    throw new Error(`unexpected launchctl args ${args.join(' ')}`);
+  };
+  try {
+    const spec = formMacUserLaunchdProcess({
+      label: 'com.vexlife.browser.test-keepalive',
+      plistPath: path.join(root, 'browser.plist'),
+      programPath: '/usr/bin/node',
+      programArguments: ['serve-browser.mjs', '--vexlife-home', '/tmp/Vex Home'],
+      workingDirectory: root,
+      stdoutPath: path.join(root, 'browser.out.log'),
+      stderrPath: path.join(root, 'browser.err.log'),
+      environment: { HOME: '/tmp/home' },
+      keepAlive: true,
+      uid: 501,
+    });
+    const started = await startMacUserLaunchdProcess(spec, { launchctl, sleep: async () => {}, nowMs: (() => { let value = 0; return () => (value += 10); })() });
+    assert.equal(started.pid, 4343);
+    assert.equal(started.keepAlive, true);
+    assert.match(fs.readFileSync(spec.plistPath, 'utf8'), /<key>KeepAlive<\/key>\s*<true\/>/u);
+
+    livePids.delete(4343);
+    job = { pid: 4545 };
+    livePids.add(4545);
+    assert.deepEqual(observeMacUserLaunchdProcess(started, { launchctl }), { state: 'RUNNING', pid: 4545 });
+
+    const retired = await retireMacUserLaunchdProcess(started, {
+      expectedPid: 4343,
+      launchctl,
+      processAlive: (pid) => livePids.has(pid),
+      sleep: async () => {},
+      nowMs: (() => { let value = 0; return () => (value += 10); })(),
+    });
+    assert.equal(retired.state, 'RETIRED_VERIFIED');
+    assert.equal(retired.signalSent, 'LAUNCHD_BOOTOUT');
+    assert.equal(livePids.has(4545), false);
+    assert.equal(fs.existsSync(spec.plistPath), false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+
 test('MAC06H Browser start/stop uses launchd lifetime substrate while existing lifecycle remains the semantic owner', () => {
   const lifecycleSource = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
   assert.match(lifecycleSource, /startMacUserLaunchdProcess\(\{/u);
+  assert.match(lifecycleSource, /keepAlive:\s*true/u);
   assert.match(lifecycleSource, /processSubstrate/u);
   assert.match(lifecycleSource, /retireMacUserLaunchdProcess/u);
   assert.doesNotMatch(lifecycleSource, /spawn\(process\.execPath, args, \{[\s\S]*?detached:\s*true/u);

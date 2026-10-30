@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-export const MACOS_USER_LAUNCHD_PROCESS_SCHEMA = 'vexlife.macos-user-launchd-process/v1';
+export const MACOS_USER_LAUNCHD_PROCESS_SCHEMA = 'vexlife.macos-user-launchd-process/v2';
+export const MACOS_USER_LAUNCHD_PROCESS_LEGACY_SCHEMA = 'vexlife.macos-user-launchd-process/v1';
 export const MACOS_USER_LAUNCHD_SUBSTRATE_REF = 'substrate.vexlife.macos-user-launchd-process.001';
 
 const LAUNCHCTL = '/bin/launchctl';
@@ -71,7 +72,7 @@ function renderPlist(spec) {
   const environmentBlock = environmentEntries
     ? `  <key>EnvironmentVariables</key>\n  <dict>\n${environmentEntries}\n  </dict>\n`
     : '';
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n  <key>Label</key>\n  <string>${xml(spec.label)}</string>\n  <key>ProgramArguments</key>\n  <array>\n${argumentsXml}\n  </array>\n  <key>WorkingDirectory</key>\n  <string>${xml(spec.workingDirectory)}</string>\n  <key>StandardOutPath</key>\n  <string>${xml(spec.stdoutPath)}</string>\n  <key>StandardErrorPath</key>\n  <string>${xml(spec.stderrPath)}</string>\n${environmentBlock}  <key>RunAtLoad</key>\n  <true/>\n  <key>KeepAlive</key>\n  <false/>\n  <key>ProcessType</key>\n  <string>Background</string>\n</dict>\n</plist>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n  <key>Label</key>\n  <string>${xml(spec.label)}</string>\n  <key>ProgramArguments</key>\n  <array>\n${argumentsXml}\n  </array>\n  <key>WorkingDirectory</key>\n  <string>${xml(spec.workingDirectory)}</string>\n  <key>StandardOutPath</key>\n  <string>${xml(spec.stdoutPath)}</string>\n  <key>StandardErrorPath</key>\n  <string>${xml(spec.stderrPath)}</string>\n${environmentBlock}  <key>RunAtLoad</key>\n  <true/>\n  <key>KeepAlive</key>\n  <${spec.keepAlive ? 'true' : 'false'}/>\n  <key>ProcessType</key>\n  <string>Background</string>\n</dict>\n</plist>\n`;
 }
 function writePlist(spec) {
   fs.mkdirSync(path.dirname(spec.plistPath), { recursive: true, mode: 0o700 });
@@ -97,7 +98,7 @@ function receiptFromSpec(spec, pid) {
     workingDirectory: spec.workingDirectory,
     stdoutPath: spec.stdoutPath,
     stderrPath: spec.stderrPath,
-    keepAlive: false,
+    keepAlive: spec.keepAlive,
     pid,
   });
 }
@@ -111,6 +112,7 @@ export function formMacUserLaunchdProcess({
   stdoutPath,
   stderrPath,
   environment = {},
+  keepAlive = false,
   uid = currentUid(),
 } = {}) {
   nonempty(label, 'launchd label');
@@ -119,6 +121,7 @@ export function formMacUserLaunchdProcess({
     throw new TypeError('launchd programArguments must be strings');
   }
   object(environment, 'launchd environment');
+  if (typeof keepAlive !== 'boolean') throw new TypeError('launchd keepAlive must be boolean');
   const normalizedEnvironment = {};
   for (const [key, value] of Object.entries(environment)) {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/u.test(key) || typeof value !== 'string') {
@@ -138,17 +141,20 @@ export function formMacUserLaunchdProcess({
     stdoutPath: absolute(stdoutPath, 'launchd stdoutPath'),
     stderrPath: absolute(stderrPath, 'launchd stderrPath'),
     environment: Object.freeze(normalizedEnvironment),
-    keepAlive: false,
+    keepAlive,
   });
 }
 
 export function validateMacUserLaunchdProcess(value) {
   object(value, 'launchd process');
-  if (value.schemaVersion !== MACOS_USER_LAUNCHD_PROCESS_SCHEMA || value.substrateRef !== MACOS_USER_LAUNCHD_SUBSTRATE_REF) {
-    throw new TypeError('launchd process schema/substrate is not current');
+  const legacy = value.schemaVersion === MACOS_USER_LAUNCHD_PROCESS_LEGACY_SCHEMA;
+  if ((!legacy && value.schemaVersion !== MACOS_USER_LAUNCHD_PROCESS_SCHEMA) || value.substrateRef !== MACOS_USER_LAUNCHD_SUBSTRATE_REF) {
+    throw new TypeError('launchd process schema/substrate is not current or compatible');
   }
   const [kind, uidRaw] = String(value.domainTarget ?? '').split('/');
   if (kind !== 'gui' || !/^\d+$/u.test(uidRaw ?? '')) throw new TypeError('launchd process domainTarget is invalid');
+  if (legacy && value.keepAlive !== false) throw new TypeError('legacy launchd process KeepAlive must remain false');
+  if (!legacy && typeof value.keepAlive !== 'boolean') throw new TypeError('launchd process KeepAlive must be boolean');
   const spec = formMacUserLaunchdProcess({
     label: value.label,
     plistPath: value.plistPath,
@@ -158,9 +164,9 @@ export function validateMacUserLaunchdProcess(value) {
     stdoutPath: value.stdoutPath,
     stderrPath: value.stderrPath,
     environment: value.environment ?? {},
+    keepAlive: legacy ? false : value.keepAlive,
     uid: Number(uidRaw),
   });
-  if (value.keepAlive !== false) throw new TypeError('launchd process KeepAlive must remain false');
   if (value.pid !== undefined && (!Number.isInteger(value.pid) || value.pid <= 0)) throw new TypeError('launchd process pid is invalid');
   return Object.freeze({ ...spec, ...(value.pid === undefined ? {} : { pid: value.pid }) });
 }
@@ -229,9 +235,12 @@ export async function retireMacUserLaunchdProcess(value, {
   const spec = validateMacUserLaunchdProcess(value);
   const before = observeMacUserLaunchdProcess(spec, { launchctl });
   if (before.state === 'UNKNOWN') throw new Error(`launchd job ownership is unknown: ${before.detail ?? before.error ?? 'UNKNOWN'}`);
-  if (before.state === 'RUNNING' && expectedPid !== null && before.pid !== expectedPid) {
+  if (before.state === 'RUNNING' && expectedPid !== null && before.pid !== expectedPid && !spec.keepAlive) {
     throw new Error(`launchd job pid mismatch: expected ${expectedPid}, observed ${before.pid}`);
   }
+  const retirementPid = before.state === 'RUNNING'
+    ? before.pid
+    : spec.keepAlive ? null : expectedPid;
   if (before.state !== 'ABSENT') {
     const bootout = launchctl(['bootout', jobTarget(spec)]);
     if (bootout.error || bootout.status !== 0) {
@@ -241,7 +250,7 @@ export async function retireMacUserLaunchdProcess(value, {
   const deadline = nowMs() + timeoutMs;
   for (;;) {
     const observed = observeMacUserLaunchdProcess(spec, { launchctl });
-    const pidLive = expectedPid !== null && processAlive(expectedPid);
+    const pidLive = retirementPid !== null && processAlive(retirementPid);
     if (observed.state === 'ABSENT' && !pidLive) {
       removePlist(spec.plistPath);
       return Object.freeze({

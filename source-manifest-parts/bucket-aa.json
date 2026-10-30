@@ -17,8 +17,8 @@
     {
       "path": "src/core/macos-user-launchd-process.mjs",
       "mode": "100644",
-      "bytes": 11720,
-      "sha256": "7be76f93d2d6ea5fcb66e2dcbe1be1d72e389c9cf3c24bded6fa08052d5c7ba4"
+      "bytes": 12398,
+      "sha256": "611ec8e78eba584b053b7f070d69e15338c9291e0ae41305c1156b395b688db4"
     }
   ]
 }

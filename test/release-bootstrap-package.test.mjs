@@ -61,6 +61,9 @@ function syntheticTar(name, content = Buffer.from('x')) {
 test('frozen source identity is exact and remains unsigned/local-only input', () => {
   assert.deepEqual(FROZEN_RELEASE_SOURCE, {
     releaseCandidateFreezeRef: 'freeze.onb-dist.vexlife.release-candidate.20260921.6a73b49f',
+    evidenceClass: 'HISTORICAL_UNSIGNED_RELEASE_CANDIDATE',
+    currentProductEntryAuthority: false,
+    ordinaryMacCurrentEntryPath: 'setup-vexlife.command',
     sourceCommit: '6a73b49fad78711261fc50aeae8e8cbe62c11da9',
     sourceTree: '8cdb1e0c1f54ae526a3012c6e5c4feae9ba2be5f',
     sourceTarFilename: 'vexlife-source-6a73b49fad78711261fc50aeae8e8cbe62c11da9.tar',
@@ -104,6 +107,9 @@ test('platform plans bind exact accepted setup owners and preserve all protected
   };
   for (const platform of ['windows', 'macos']) {
     const plan = buildPlatformPackagePlan(platform, verified, FIXTURE_PACKAGING_SOURCE_IDENTITY);
+    assert.equal(plan.source.currentProductEntryAuthority, false);
+    assert.equal(plan.source.ordinaryMacCurrentEntryPath, 'setup-vexlife.command');
+    assert.equal(plan.source.evidenceClass, 'HISTORICAL_UNSIGNED_RELEASE_CANDIDATE');
     assert.equal(plan.source.sourceCommit, FROZEN_RELEASE_SOURCE.sourceCommit);
     assert.equal(plan.source.sourceTree, FROZEN_RELEASE_SOURCE.sourceTree);
     assert.equal(plan.source.sourceTarSha256, FROZEN_RELEASE_SOURCE.sourceTarSha256);
