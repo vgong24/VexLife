@@ -352,12 +352,35 @@ test('VR06 Reference composer automatically re-enters one exact recoverable bind
 test('automatic same-binding recovery failure does not retry and leaves draft plus manual fallback intact', async () => {
   await withReferenceBrowser({ width: 1440, height: 900 }, async ({ page, serverUrl, recoveryRequests }) => {
     let recoveryPosts = 0, turnCalls = 0;
+    const draft = 'Keep this exact unsent draft through failed automatic recovery';
+    await page.addInitScript((content) => {
+      const scope = {
+        projectRef: 'project.self-development',
+        threadRef: 'thread.self-development.open-conversation',
+        channelRef: 'channel.self-development.companion',
+      };
+      const key = 'vexlife.browser-session-draft.v1:' + [scope.projectRef, scope.threadRef, scope.channelRef].map(encodeURIComponent).join(':');
+      sessionStorage.setItem(key, JSON.stringify({
+        schemaVersion: 'vexlife.browser-session-draft/v1',
+        state: 'UNSENT_LOCAL_DRAFT',
+        ...scope,
+        content,
+        updatedAt: '2026-10-30T00:00:00.000Z',
+        queued: false,
+        accepted: false,
+      }));
+    }, draft);
     page.on('request', (request) => { const url = new URL(request.url()); if (url.pathname === BROWSER_COMPANION_RECOVERY_ACTION_PATH && request.method() === 'POST') recoveryPosts += 1; if (url.pathname === '/api/v1/companion/turn') turnCalls += 1; });
     await page.goto(serverUrl + '/reference/browser/?open=vex', { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForFunction(() => globalThis.__VEXLIFE_APP__?.chat?.companionAvailabilityState?.() === 'RECOVERABLE', null, { timeout: 5000 });
     await page.waitForTimeout(100); assert.equal(recoveryPosts, 1); assert.equal(recoveryRequests.length, 1);
-    const draft = 'Keep this exact unsent draft through failed automatic recovery';
-    await page.locator('#messageInput').fill(draft); await page.locator('#messageInput').dispatchEvent('input'); await page.waitForTimeout(100); assert.equal(recoveryPosts, 1);
+    const preservedBeforeManual = await page.evaluate(() => ({
+      draft: globalThis.__VEXLIFE_APP__.state.unsentLocalDraft,
+      input: document.querySelector('#messageInput')?.value,
+    }));
+    assert.equal(preservedBeforeManual.draft?.content, draft);
+    assert.equal(preservedBeforeManual.input, draft);
+    await page.waitForTimeout(100); assert.equal(recoveryPosts, 1);
     const recoverButton = page.locator('#companionRecoveryButton'); await recoverButton.waitFor({ state: 'visible', timeout: 5000 }); assert.equal(await recoverButton.isEnabled(), true);
     await recoverButton.click(); await page.waitForTimeout(100); assert.equal(recoveryPosts, 2); assert.equal(recoveryRequests.length, 2);
     const after = await page.evaluate(() => ({ draft: globalThis.__VEXLIFE_APP__.state.unsentLocalDraft, input: document.querySelector('#messageInput')?.value, availabilityState: globalThis.__VEXLIFE_APP__.chat.companionAvailabilityState(), recoveryVisible: !document.querySelector('#companionRecoveryButton')?.hidden, sendDisabled: document.querySelector('#composer button[type="submit"]')?.disabled ?? null }));
