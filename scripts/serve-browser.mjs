@@ -14,8 +14,11 @@ import {
 import { loadBrowserCompanionHomeIdentity } from '../src/core/browser-companion-bridge.mjs';
 import { createCompanionRecoveryOwner } from '../src/core/browser-companion-recovery-owner.mjs';
 import {
+  HERETIC_MODEL_CONFIGURATION_SCHEMA,
   formHereticPersistentRuntimeLink,
   formHereticPersistentRuntimeObservedLink,
+  isBoundHereticModelConfiguration,
+  validateHereticModelConfiguration,
   validateHereticPersistentRuntimeReceipt,
 } from '../src/core/heretic-runtime-link.mjs';
 import { observeHereticPersistentRuntimeResource } from '../src/core/heretic-persistent-runtime-owner.mjs';
@@ -340,11 +343,38 @@ function readHereticPersistentRuntimeReceipt(runtimeReceiptPath) {
   return Object.freeze({ receiptPath, receipt });
 }
 
+export function resolveHereticPersistentRuntimeReceiptPath({
+  runtimeReceiptPath = process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH ?? null,
+  runtimeHome = home,
+} = {}) {
+  if (typeof runtimeReceiptPath === 'string' && runtimeReceiptPath.length > 0) {
+    return path.resolve(runtimeReceiptPath);
+  }
+  if (runtimeReceiptPath !== null && runtimeReceiptPath !== '') {
+    throw new TypeError('Heretic runtime receipt path must be null or one non-empty path');
+  }
+  const homePath = path.resolve(runtimeHome);
+  const modelPath = path.join(homePath, 'config', 'model.json');
+  if (!fs.existsSync(homePath) || !fs.existsSync(modelPath)) return null;
+  const homeIdentity = loadBrowserCompanionHomeIdentity(homePath);
+  let model;
+  try {
+    model = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
+  } catch (error) {
+    throw new Error(`Heretic model configuration is not valid JSON: ${error.message}`);
+  }
+  if (model?.schemaVersion !== HERETIC_MODEL_CONFIGURATION_SCHEMA) return null;
+  const configuration = validateHereticModelConfiguration(model, { homeIdentity });
+  if (!isBoundHereticModelConfiguration(configuration)) return null;
+  return path.resolve(homeIdentity.home, ...configuration.runtimeReceiptPath.split('/'));
+}
+
 export function resolveHereticPersistentRuntimeLink({
   runtimeReceiptPath = process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH ?? null,
   runtimeHome = home,
 } = {}) {
-  const record = readHereticPersistentRuntimeReceipt(runtimeReceiptPath);
+  const selectedRuntimeReceiptPath = resolveHereticPersistentRuntimeReceiptPath({ runtimeReceiptPath, runtimeHome });
+  const record = readHereticPersistentRuntimeReceipt(selectedRuntimeReceiptPath);
   if (record === null) return null;
   const homeIdentity = loadBrowserCompanionHomeIdentity(runtimeHome);
   return formHereticPersistentRuntimeLink({ receipt: record.receipt, homeIdentity });
@@ -358,7 +388,8 @@ export function resolveHereticPersistentRuntimeCurrentLink({
   if (typeof resourceObserver !== 'function') {
     throw new TypeError('Heretic current runtime resolver requires one resource observer');
   }
-  const record = readHereticPersistentRuntimeReceipt(runtimeReceiptPath);
+  const selectedRuntimeReceiptPath = resolveHereticPersistentRuntimeReceiptPath({ runtimeReceiptPath, runtimeHome });
+  const record = readHereticPersistentRuntimeReceipt(selectedRuntimeReceiptPath);
   if (record === null) return null;
   const homeIdentity = loadBrowserCompanionHomeIdentity(runtimeHome);
   const resourceObservation = resourceObserver({ receiptPath: record.receiptPath });
@@ -447,6 +478,19 @@ export function hereticRuntimeBrowserOptions(runtimeLink, {
     companionBridge,
     resolveCompanionBinding: async () => (await currentRuntimeLink()).companionBinding,
     resolveCompanionRuntimeObservation: async () => (await currentRuntimeLink()).runtimeObservation,
+  });
+}
+
+export function createProductionHereticRuntimeBrowserOptions(runtimeHome = home) {
+  const runtimeLink = resolveHereticPersistentRuntimeLink({ runtimeHome });
+  return hereticRuntimeBrowserOptions(runtimeLink, {
+    companionHome: runtimeHome,
+    resolveCurrentRuntimeLink: runtimeLink === null
+      ? null
+      : () => resolveHereticPersistentRuntimeCurrentLink({ runtimeHome }),
+    recoverPersistentHereticRuntime: runtimeLink === null
+      ? null
+      : () => recoverHereticPersistentRuntimeFromCurrentHome({ runtimeHome }),
   });
 }
 
@@ -605,18 +649,7 @@ export function createVexLifeBrowserServer(options = {}) {
   });
 }
 
-const hereticRuntimeLink = resolveHereticPersistentRuntimeLink();
-const server = createVexLifeBrowserServer(
-  hereticRuntimeBrowserOptions(hereticRuntimeLink, {
-    companionHome: home,
-    resolveCurrentRuntimeLink: hereticRuntimeLink === null
-      ? null
-      : () => resolveHereticPersistentRuntimeCurrentLink({ runtimeHome: home }),
-    recoverPersistentHereticRuntime: hereticRuntimeLink === null
-      ? null
-      : () => recoverHereticPersistentRuntimeFromCurrentHome({ runtimeHome: home }),
-  }),
-);
+const server = createVexLifeBrowserServer(createProductionHereticRuntimeBrowserOptions(home));
 
 if (path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
   server.listen(port, '127.0.0.1', () => {
