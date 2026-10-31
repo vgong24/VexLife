@@ -160,3 +160,7 @@ html[data-theme="light"]{--bg:#f2f2f0;--surface:#fff;--raised:#f5f5f3;--overlay:
 .companion-work-trace.durable{margin-top:8px}
 @keyframes vex-companion-sparkle-pulse{0%,100%{opacity:.42;transform:scale(.88);filter:drop-shadow(0 0 0 rgba(255,255,255,0))}50%{opacity:1;transform:scale(1.08);filter:drop-shadow(0 0 7px rgba(255,255,255,.72))}}
 @media(prefers-reduced-motion:reduce){.companion-work-progress .companion-work-sparkle{animation:none;opacity:1;transform:none}}
+
+.companion-work-live-trace{margin-top:6px;padding-left:2px;color:color-mix(in srgb,var(--muted) 76%,#c8c3ff);font-size:10px;opacity:.82}
+.companion-work-live-trace>span{font:700 9px var(--mono);letter-spacing:.04em}
+.companion-work-live-trace ol{margin:5px 0 0;padding-left:18px;display:grid;gap:3px}

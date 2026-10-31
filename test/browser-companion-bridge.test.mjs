@@ -432,6 +432,8 @@ test('browser source never routes companion channel through simulatedReply', () 
   assert.match(server, /writeCompanionStreamFrame\(response, 'PROGRESS'/u);
   assert.match(chat, /hiddenReasoningIncluded !== false/u);
   assert.match(chat, /companion-work-sparkle/u);
+  assert.match(chat, /companion-work-live-trace/u);
+  assert.match(chat, /&lt;Thinking&gt;/u);
   assert.match(chat, /View work trace/u);
   assert.match(chat, /const interfaceCurrentnessMatchesChannel = \(channel = currentChannel\(\)\) => Boolean/u);
   assert.match(chat, /interfaceCurrentness\.scope\?\.projectRef === channel\.projectRef[\s\S]*interfaceCurrentness\.scope\?\.threadRef === channel\.threadRef[\s\S]*interfaceCurrentness\.scope\?\.channelRef === channel\.channelRef/u);

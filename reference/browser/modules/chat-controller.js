@@ -1357,7 +1357,7 @@ export function createChatController({ state, projects, roles, channels, message
     article.dataset.instanceRef = 'instance.message-row.ephemeral-companion-stream';
     article.dataset.truthClass = 'EPHEMERAL_LOCAL_MODEL_PROGRESS';
     const thread = currentThread();
-    article.innerHTML = `<div class="avatar companion-work-sparkle" aria-hidden="true">✦</div><div><div class="message-header"><strong>${escapeHtml(roleLabel('companion'))} → ${escapeHtml(roleLabel('victor'))}</strong><span>${escapeHtml(thread ? t(thread.topicRef) : channel.threadRef)}</span><span class="message-index">[…]</span></div><div class="companion-work-phase" role="status" aria-live="polite">Vex is working…</div><details class="companion-work-trace"><summary>View work trace</summary><ol></ol></details><div class="message-body"></div></div>`;
+    article.innerHTML = `<div class="avatar companion-work-sparkle" aria-hidden="true">✦</div><div><div class="message-header"><strong>${escapeHtml(roleLabel('companion'))} → ${escapeHtml(roleLabel('victor'))}</strong><span>${escapeHtml(thread ? t(thread.topicRef) : channel.threadRef)}</span><span class="message-index">[…]</span></div><div class="companion-work-phase" role="status" aria-live="polite">Vex is working…</div><div class="companion-work-live-trace"><span>&lt;Thinking&gt;</span><ol></ol></div><div class="message-body"></div></div>`;
     feed.append(article);
     return article;
   }
@@ -1377,7 +1377,7 @@ export function createChatController({ state, projects, roles, channels, message
     const article = currentCompanionProgressArticle(channel);
     const label = companionWorkPhaseLabel(progress.state);
     $('.companion-work-phase', article).textContent = label;
-    const trace = $('.companion-work-trace ol', article);
+    const trace = $('.companion-work-live-trace ol', article);
     const item = document.createElement('li');
     item.textContent = label;
     item.dataset.progressState = progress.state;
