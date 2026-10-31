@@ -262,11 +262,12 @@ export function createBrowserCompanionAdaptiveReveal({
   return Object.freeze({ push, finish, cancel, snapshot });
 }
 
-export async function readBrowserCompanionTurnStream(response, { onDelta = null, onProgress = null } = {}) {
+export async function readBrowserCompanionTurnStream(response, { onDelta = null, onProgress = null, onReasoning = null } = {}) {
   if (!response?.ok) return response.json();
   if (!response.body || typeof response.body.getReader !== 'function') throw new Error('Companion streaming response has no readable body');
   if (onDelta !== null && typeof onDelta !== 'function') throw new TypeError('Companion onDelta must be null or one function');
   if (onProgress !== null && typeof onProgress !== 'function') throw new TypeError('Companion onProgress must be null or one function');
+  if (onReasoning !== null && typeof onReasoning !== 'function') throw new TypeError('Companion onReasoning must be null or one function');
   const reader = response.body.getReader(), decoder = new TextDecoder();
   let buffer = '', terminal = null;
   for (;;) {
@@ -285,6 +286,17 @@ export async function readBrowserCompanionTurnStream(response, { onDelta = null,
             || typeof frame.payload.state !== 'string'
             || frame.payload.hiddenReasoningIncluded !== false) throw new Error('Companion stream progress contract is invalid');
         if (onProgress) await onProgress(frame.payload);
+      } else if (frame.frameType === 'REASONING') {
+        if (frame.payload?.schemaVersion !== 'vexlife.lived-companion-reasoning-delta/v1'
+            || frame.payload.truthClass !== 'EPHEMERAL_MODEL_EMITTED_REASONING'
+            || typeof frame.payload.reasoningDelta !== 'string'
+            || frame.payload.reasoningDelta.length === 0
+            || !Number.isSafeInteger(frame.payload.accumulatedReasoningCharacters)
+            || frame.payload.accumulatedReasoningCharacters < 1
+            || frame.payload.humanProjection !== 'SEALED_EXPLICIT_OPEN_ONLY'
+            || frame.payload.rawPersisted !== false
+            || frame.payload.effectsPerformed !== false) throw new Error('Companion stream reasoning contract is invalid');
+        if (onReasoning) await onReasoning(frame.payload);
       } else if (frame.frameType === 'DELTA') {
         if (frame.payload?.truthClass !== 'EPHEMERAL_LOCAL_MODEL_PROGRESS' || typeof frame.payload.contentDelta !== 'string' || frame.payload.effectsPerformed !== false) throw new Error('Companion stream delta contract is invalid');
         if (onDelta) await onDelta(frame.payload);
@@ -529,6 +541,7 @@ export function createChatController({ state, projects, roles, channels, message
   let companionAvailabilityReadState = 'UNKNOWN';
   let companionTurnPending = false;
   let companionWorkTrace = null;
+  let companionModelReasoning = null;
   let companionRecoveryPending = false;
   let companionRecoveryFailure = false;
   let companionVesselProjectionState = 'UNBOUND';
@@ -1357,7 +1370,7 @@ export function createChatController({ state, projects, roles, channels, message
     article.dataset.instanceRef = 'instance.message-row.ephemeral-companion-stream';
     article.dataset.truthClass = 'EPHEMERAL_LOCAL_MODEL_PROGRESS';
     const thread = currentThread();
-    article.innerHTML = `<div class="avatar companion-work-sparkle" aria-hidden="true">✦</div><div><div class="message-header"><strong>${escapeHtml(roleLabel('companion'))} → ${escapeHtml(roleLabel('victor'))}</strong><span>${escapeHtml(thread ? t(thread.topicRef) : channel.threadRef)}</span><span class="message-index">[…]</span></div><div class="companion-work-phase" role="status" aria-live="polite">Vex is working…</div><div class="companion-work-live-trace"><span>&lt;Thinking&gt;</span><ol></ol></div><div class="message-body"></div></div>`;
+    article.innerHTML = `<div class="avatar companion-work-sparkle" aria-hidden="true">✦</div><div><div class="message-header"><strong>${escapeHtml(roleLabel('companion'))} → ${escapeHtml(roleLabel('victor'))}</strong><span>${escapeHtml(thread ? t(thread.topicRef) : channel.threadRef)}</span><span class="message-index">[…]</span></div><div class="companion-work-phase" role="status" aria-live="polite">Vex is working…</div><div class="companion-work-live-trace"><span>Work trace</span><ol></ol></div><div class="message-body"></div></div>`;
     feed.append(article);
     return article;
   }
@@ -1386,6 +1399,32 @@ export function createChatController({ state, projects, roles, channels, message
     companionWorkTrace.push(Object.freeze({ state: progress.state, label }));
     if (wasNearBottom) feed.scrollTop = feed.scrollHeight;
     return true;
+  }
+
+  function renderCompanionModelReasoning(article, reasoning) {
+    if (!article || typeof reasoning !== 'string' || reasoning.length === 0) return false;
+    let details = $('.companion-model-reasoning', article);
+    if (!details) {
+      details = document.createElement('details');
+      details.className = 'companion-work-trace companion-model-reasoning';
+      details.dataset.truthClass = 'EPHEMERAL_MODEL_EMITTED_REASONING';
+      const summary = document.createElement('summary');
+      summary.textContent = 'Model reasoning';
+      const content = document.createElement('pre');
+      details.append(summary, content);
+      const anchor = $('.companion-work-live-trace', article)
+        ?? $('.companion-work-trace.durable', article)
+        ?? $('.message-body', article);
+      anchor?.after(details);
+    }
+    $('pre', details).textContent = reasoning;
+    return true;
+  }
+
+  function renderCompanionModelReasoningDelta(channel, delta) {
+    if (keyForChannel(channel) !== keyForChannel(currentChannel())) return false;
+    companionModelReasoning = (companionModelReasoning ?? '') + delta.reasoningDelta;
+    return renderCompanionModelReasoning(currentCompanionProgressArticle(channel), companionModelReasoning);
   }
 
   function renderCompanionStreamProgress(channel, content) {
@@ -1474,6 +1513,7 @@ export function createChatController({ state, projects, roles, channels, message
     article.innerHTML = `<div class="avatar" aria-hidden="true">${escapeHtml(roles[message.speakerKey].avatar)}</div><div><div class="message-header"><strong>${escapeHtml(speaker)} → ${escapeHtml(recipients)}</strong><span>${escapeHtml(thread ? t(thread.topicRef) : message.threadRef)}</span><span class="message-index">[${String(message.sequence).padStart(2, '0')}]</span></div><div class="message-body"></div></div>`;
     $('.message-body', article).textContent = message.contentRef ? t(message.contentRef, message.contentParams) : message.content;
     renderCompanionWorkTrace(article, message.companionWorkTrace);
+    renderCompanionModelReasoning(article, message.companionModelReasoning);
     renderCompanionFailureDisclosure(article, message.companionFailure);
     renderSemanticRelayDisclosure(article, message);
     if (message.modelTurnFormation) {
@@ -1719,6 +1759,7 @@ export function createChatController({ state, projects, roles, channels, message
     if (channel.roleKey !== 'companion') return false;
     companionTurnPending = true;
     companionWorkTrace = [];
+    companionModelReasoning = '';
     updateComposer();
     renderCompanionWorkPlaceholder(channel);
     const sendIdempotencyKey = sourceMessage?.sendIdempotencyKey ?? `browser-send.${globalThis.crypto.randomUUID()}`;
@@ -1749,6 +1790,9 @@ export function createChatController({ state, projects, roles, channels, message
       const body = await readBrowserCompanionTurnStream(response, {
         onProgress(progress) {
           renderCompanionWorkProgress(channel, progress);
+        },
+        onReasoning(reasoning) {
+          renderCompanionModelReasoningDelta(channel, reasoning);
         },
         onDelta(delta) {
           companionStreamReveal.push(delta.contentDelta);
@@ -1822,6 +1866,7 @@ export function createChatController({ state, projects, roles, channels, message
       });
       message.modelNameOrBoundedTestProfileRef = body.modelNameOrBoundedTestProfileRef;
       message.companionWorkTrace = companionWorkTrace?.length ? [...companionWorkTrace] : null;
+      message.companionModelReasoning = companionModelReasoning?.length ? companionModelReasoning : null;
       message.modelTurnFormation = projectBrowserModelTurnFormation({
         modelTurnWitness: body.modelTurnWitness ?? null,
         capabilityRuntime: body.capabilityRuntime ?? null,
@@ -1858,6 +1903,7 @@ export function createChatController({ state, projects, roles, channels, message
       clearCompanionStreamProgress(channel);
       companionTurnPending = false;
       companionWorkTrace = null;
+      companionModelReasoning = null;
       await requestInterfaceObservation('post-turn');
     }
   }

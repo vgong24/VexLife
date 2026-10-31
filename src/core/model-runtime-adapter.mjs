@@ -3,6 +3,7 @@ import { semanticHash } from './utils.mjs';
 
 export const MODEL_RUNTIME_OBSERVATION_SCHEMA = 'vexlife.model-runtime-observation/v1';
 export const MODEL_EMITTED_REASONING_TRACE = 'MODEL_EMITTED_REASONING_TRACE';
+export const MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE = 'MODEL_EMITTED_REASONING_EXPLICIT_OPEN';
 
 const HEX64 = /^[0-9a-f]{64}$/u;
 const PATH_LIKE = /(?:^[A-Za-z]:[\\/]|[\\/])/u;

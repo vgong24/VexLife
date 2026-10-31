@@ -1859,6 +1859,8 @@ export async function requestLivedCompanionInference({
   familyPromptContextMaterializationReceipt = undefined,
   supplementalRequestContent = null,
   responseDeltaObserver = null,
+  reasoningDeltaObserver = null,
+  reasoningMode = null,
   inMemoryAuthorization = null,
   timeoutMs = 5000
 }) {
@@ -1871,6 +1873,12 @@ export async function requestLivedCompanionInference({
   }
   if (responseDeltaObserver !== null && typeof responseDeltaObserver !== 'function') {
     fail('ENDPOINT_PROFILE_NOT_ADMITTED', 'responseDeltaObserver must be null or one server-owned function');
+  }
+  if (reasoningDeltaObserver !== null && typeof reasoningDeltaObserver !== 'function') {
+    fail('ENDPOINT_PROFILE_NOT_ADMITTED', 'reasoningDeltaObserver must be null or one server-owned function');
+  }
+  if (reasoningMode !== null && typeof reasoningMode !== 'string') {
+    fail('ENDPOINT_PROFILE_NOT_ADMITTED', 'reasoningMode must be null or one server-owned mode');
   }
   try {
     validateLivedCompanionEndpointProfile(endpointProfile);
@@ -1905,6 +1913,8 @@ export async function requestLivedCompanionInference({
       endpointProfile,
       messages: outboundMessages,
       responseDeltaObserver,
+      reasoningDeltaObserver,
+      reasoningMode,
       inMemoryAuthorization,
       timeoutMs
     });

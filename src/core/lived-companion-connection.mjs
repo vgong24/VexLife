@@ -1,6 +1,9 @@
 import crypto from 'node:crypto';
 
-import { normalizeModelRuntimeResponse } from './model-runtime-adapter.mjs';
+import {
+  MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE,
+  normalizeModelRuntimeResponse
+} from './model-runtime-adapter.mjs';
 import { formModelRuntimeInvocationEvidence } from './model-turn-witness.mjs';
 
 export const LIVED_COMPANION_CONNECTION_FAILURE_CODES = Object.freeze([
@@ -16,6 +19,7 @@ const CONNECTION_FAILURE_CODE_SET = new Set(LIVED_COMPANION_CONNECTION_FAILURE_C
 
 export const LIVED_COMPANION_OUTPUT_TOKEN_LIMIT = 16_000;
 export const LIVED_COMPANION_RESPONSE_DELTA_SCHEMA = 'vexlife.lived-companion-response-delta/v1';
+export const LIVED_COMPANION_REASONING_DELTA_SCHEMA = 'vexlife.lived-companion-reasoning-delta/v1';
 
 export class LivedCompanionConnectionError extends Error {
   constructor(code, message, details = null) {
@@ -114,12 +118,24 @@ function validateResponseDeltaObserver(value) {
   return value;
 }
 
-async function readStreamingCompletion(response, endpointProfile, responseDeltaObserver) {
+function validateReasoningDeltaObserver(value) {
+  if (value !== null && typeof value !== 'function') throw new TypeError('Lived Companion reasoningDeltaObserver must be null or one function');
+  return value;
+}
+
+function validateReasoningMode(value) {
+  if (value !== null && value !== MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE) {
+    throw new TypeError('Lived Companion reasoningMode is not admitted');
+  }
+  return value;
+}
+
+async function readStreamingCompletion(response, endpointProfile, responseDeltaObserver, reasoningDeltaObserver) {
   if (!response.body || typeof response.body[Symbol.asyncIterator] !== 'function') {
     fail('ENDPOINT_RESPONSE_INVALID', 'streaming endpoint response did not expose a readable body');
   }
   const decoder = new TextDecoder();
-  let buffer = '', content = '', reasoning = '', reasoningContent = '', accumulatedContentCharacters = 0;
+  let buffer = '', content = '', reasoning = '', reasoningContent = '', accumulatedContentCharacters = 0, accumulatedReasoningCharacters = 0;
   let observedModel = endpointProfile.model ?? null, responseId = null, created = null, finishReason = null, usage = null, done = false;
   const consumeEvent = async (raw) => {
     const lines = raw.split(/\r?\n/u);
@@ -140,8 +156,34 @@ async function readStreamingCompletion(response, endpointProfile, responseDeltaO
     if (typeof choice?.finish_reason === 'string') finishReason = choice.finish_reason;
     const mlxReasoningDelta = choice?.delta?.reasoning;
     const compatibilityReasoningDelta = choice?.delta?.reasoning_content;
-    if (typeof mlxReasoningDelta === 'string' && mlxReasoningDelta.length > 0) reasoning += mlxReasoningDelta;
-    if (typeof compatibilityReasoningDelta === 'string' && compatibilityReasoningDelta.length > 0) reasoningContent += compatibilityReasoningDelta;
+    const mlxReasoningPresent = typeof mlxReasoningDelta === 'string' && mlxReasoningDelta.length > 0;
+    const compatibilityReasoningPresent = typeof compatibilityReasoningDelta === 'string' && compatibilityReasoningDelta.length > 0;
+    if (mlxReasoningPresent && compatibilityReasoningPresent && mlxReasoningDelta !== compatibilityReasoningDelta) {
+      fail('ENDPOINT_RESPONSE_INVALID', 'streaming endpoint exposed conflicting model reasoning fields');
+    }
+    const reasoningDelta = mlxReasoningPresent
+      ? mlxReasoningDelta
+      : compatibilityReasoningPresent
+        ? compatibilityReasoningDelta
+        : null;
+    if (reasoningDelta !== null) {
+      if (mlxReasoningPresent) reasoning += reasoningDelta;
+      if (compatibilityReasoningPresent) reasoningContent += reasoningDelta;
+      accumulatedReasoningCharacters += [...reasoningDelta].length;
+      if (reasoningDeltaObserver) {
+        try {
+          await reasoningDeltaObserver(Object.freeze({
+            schemaVersion: LIVED_COMPANION_REASONING_DELTA_SCHEMA,
+            truthClass: 'EPHEMERAL_MODEL_EMITTED_REASONING',
+            reasoningDelta,
+            accumulatedReasoningCharacters,
+            humanProjection: 'SEALED_EXPLICIT_OPEN_ONLY',
+            rawPersisted: false,
+            effectsPerformed: false
+          }));
+        } catch {}
+      }
+    }
     const delta = choice?.delta?.content;
     if (typeof delta === 'string' && delta.length > 0) {
       content += delta;
@@ -194,19 +236,26 @@ export async function invokeLivedCompanionEndpoint({
   inMemoryAuthorization = null,
   timeoutMs = 5000,
   responseDeltaObserver = null,
+  reasoningDeltaObserver = null,
+  reasoningMode = null,
   fetchImpl = globalThis.fetch,
   now = () => new Date().toISOString()
 } = {}) {
   validateLivedCompanionEndpointProfile(endpointProfile);
   validateProviderReadyMessages(messages);
   validateResponseDeltaObserver(responseDeltaObserver);
+  validateReasoningDeltaObserver(reasoningDeltaObserver);
+  validateReasoningMode(reasoningMode);
   if (typeof fetchImpl !== 'function') throw new TypeError('Lived Companion connection requires fetch');
   if (typeof now !== 'function') throw new TypeError('Lived Companion connection requires a clock function');
-  const streaming = responseDeltaObserver !== null;
+  const streaming = responseDeltaObserver !== null || reasoningDeltaObserver !== null;
   const requestPayload = {
     model: endpointProfile.model || 'bounded-loopback-proof',
     messages,
     max_tokens: LIVED_COMPANION_OUTPUT_TOKEN_LIMIT,
+    ...(reasoningMode === MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE
+      ? { chat_template_kwargs: { enable_thinking: true } }
+      : {}),
     ...(streaming ? { stream: true, stream_options: { include_usage: true } } : {})
   };
   const requestBody = JSON.stringify(requestPayload);
@@ -219,7 +268,7 @@ export async function invokeLivedCompanionEndpoint({
     if (response.status >= 300 && response.status < 400) fail('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'G01 rejects endpoint redirects because the redirected destination is not part of the admitted loopback effect', { status: response.status });
     if (!response.ok) fail('ENDPOINT_HTTP_ERROR', `endpoint returned HTTP ${response.status}`, { status: response.status });
     let body;
-    if (streaming) body = await readStreamingCompletion(response, endpointProfile, responseDeltaObserver);
+    if (streaming) body = await readStreamingCompletion(response, endpointProfile, responseDeltaObserver, reasoningDeltaObserver);
     else {
       try { body = await response.json(); } catch { fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response was not valid JSON'); }
     }

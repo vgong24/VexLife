@@ -1166,6 +1166,8 @@ export function createCapabilityAssimilationRuntime({
     inference,
     endpointProfile,
     responseDeltaObserver = null,
+    reasoningDeltaObserver = null,
+    reasoningMode = null,
     progressObserver = null,
     inMemoryAuthorization = null,
     timeoutMs = 5000,
@@ -1174,6 +1176,8 @@ export function createCapabilityAssimilationRuntime({
     if (typeof taskIntent !== 'string' || !taskIntent.trim()) throw new Error('taskIntent must be non-empty');
     if (typeof inference !== 'function') throw new Error('capability runtime requires one admitted inference function');
     if (responseDeltaObserver !== null && typeof responseDeltaObserver !== 'function') throw new Error('capability runtime responseDeltaObserver must be null or one function');
+    if (reasoningDeltaObserver !== null && typeof reasoningDeltaObserver !== 'function') throw new Error('capability runtime reasoningDeltaObserver must be null or one function');
+    if (reasoningMode !== null && typeof reasoningMode !== 'string') throw new Error('capability runtime reasoningMode must be null or one server-owned mode');
     if (progressObserver !== null && typeof progressObserver !== 'function') throw new Error('capability runtime progressObserver must be null or one function');
     assertNoCallerSchedulerEvidence(context);
     const progress = [];
@@ -1197,7 +1201,9 @@ export function createCapabilityAssimilationRuntime({
           requestContent: taskIntent,
           inMemoryAuthorization,
           timeoutMs,
-          ...(responseDeltaObserver ? { responseDeltaObserver } : {})
+          ...(responseDeltaObserver ? { responseDeltaObserver } : {}),
+          ...(reasoningDeltaObserver ? { reasoningDeltaObserver } : {}),
+          ...(reasoningMode ? { reasoningMode } : {})
         },
         label: 'direct'
       });
@@ -1294,7 +1300,9 @@ export function createCapabilityAssimilationRuntime({
           requestContent: synthesisPrompt(taskIntent, [], [], frontier, currentContext),
           inMemoryAuthorization,
           timeoutMs,
-          ...(responseDeltaObserver ? { responseDeltaObserver } : {})
+          ...(responseDeltaObserver ? { responseDeltaObserver } : {}),
+          ...(reasoningDeltaObserver ? { reasoningDeltaObserver } : {}),
+          ...(reasoningMode ? { reasoningMode } : {})
         },
         label: 'synthesis-no-read'
       });
@@ -1662,7 +1670,9 @@ export function createCapabilityAssimilationRuntime({
         requestContent: synthesisPrompt(taskIntent, observations, held, frontier, currentContext),
         inMemoryAuthorization,
         timeoutMs,
-        ...(responseDeltaObserver ? { responseDeltaObserver } : {})
+        ...(responseDeltaObserver ? { responseDeltaObserver } : {}),
+        ...(reasoningDeltaObserver ? { reasoningDeltaObserver } : {}),
+        ...(reasoningMode ? { reasoningMode } : {})
       },
       label: 'synthesis'
     });

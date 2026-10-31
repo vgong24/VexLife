@@ -11,7 +11,10 @@ import {
   sanitizeEndpointOrigin,
   validateLivedCompanionEndpointProfile
 } from '../src/core/lived-companion-connection.mjs';
-import { verifyModelRuntimeObservation } from '../src/core/model-runtime-adapter.mjs';
+import {
+  MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE,
+  verifyModelRuntimeObservation
+} from '../src/core/model-runtime-adapter.mjs';
 import { verifyModelRuntimeInvocationEvidence } from '../src/core/model-turn-witness.mjs';
 
 async function withServer(handler, run) {
@@ -81,6 +84,7 @@ test('Connection performs one admitted loopback call and returns closed runtime 
     assert.deepEqual(observed[0].body.messages, [{ role: 'user', content: 'Hello' }]);
     assert.equal(observed[0].body.max_tokens, LIVED_COMPANION_OUTPUT_TOKEN_LIMIT);
     assert.equal(Object.hasOwn(observed[0].body, 'stream'), false);
+    assert.equal(Object.hasOwn(observed[0].body, 'chat_template_kwargs'), false);
     assert.equal(JSON.stringify(result).includes('ephemeral-fixture'), false);
   });
 });
@@ -185,10 +189,13 @@ test('Connection streams visible content while retaining MLX reasoning only in t
     response.end('data: [DONE]\n\n');
   }, async (endpoint) => {
     const deltas = [];
+    const reasoningDeltas = [];
     const result = await invokeLivedCompanionEndpoint({
       endpointProfile: profile(endpoint),
       messages: [{ role:'user', content:'Hello' }],
       responseDeltaObserver: async (delta) => { deltas.push(delta); },
+      reasoningDeltaObserver: async (delta) => { reasoningDeltas.push(delta); },
+      reasoningMode: MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE,
       timeoutMs: 1000
     });
     assert.equal(result.content, 'Hello stream.');
@@ -199,12 +206,37 @@ test('Connection streams visible content while retaining MLX reasoning only in t
     assert.equal(result.runtimeObservation.reasoningTrace.rawPersisted, false);
     assert.deepEqual(deltas.map((delta) => delta.contentDelta), ['Hello ', 'stream.']);
     assert.ok(deltas.every((delta) => delta.truthClass === 'EPHEMERAL_LOCAL_MODEL_PROGRESS' && delta.effectsPerformed === false));
+    assert.deepEqual(reasoningDeltas.map((delta) => delta.reasoningDelta), ['private ', 'reasoning trace']);
+    assert.ok(reasoningDeltas.every((delta) =>
+      delta.schemaVersion === 'vexlife.lived-companion-reasoning-delta/v1'
+      && delta.truthClass === 'EPHEMERAL_MODEL_EMITTED_REASONING'
+      && delta.humanProjection === 'SEALED_EXPLICIT_OPEN_ONLY'
+      && delta.rawPersisted === false
+      && delta.effectsPerformed === false));
+    assert.equal(reasoningDeltas.at(-1).accumulatedReasoningCharacters, [...'private reasoning trace'].length);
     assert.equal(JSON.stringify(deltas).includes('private reasoning trace'), false);
     assert.equal(JSON.stringify(result).includes('private reasoning trace'), false);
     assert.equal(observed[0].stream, true);
     assert.equal(observed[0].stream_options.include_usage, true);
+    assert.deepEqual(observed[0].chat_template_kwargs, { enable_thinking: true });
     assert.equal(observed[0].max_tokens, LIVED_COMPANION_OUTPUT_TOKEN_LIMIT);
   });
 });
+
+
+test('Connection rejects an unadmitted reasoning mode before network use', async () => {
+  let called = false;
+  await assert.rejects(
+    invokeLivedCompanionEndpoint({
+      endpointProfile: profile('http://127.0.0.1:9'),
+      messages: [{ role:'user', content:'Hello' }],
+      reasoningMode: 'UNCLASSIFIED_REASONING_MODE',
+      fetchImpl: async () => { called = true; throw new Error('must not run'); }
+    }),
+    /reasoningMode is not admitted/u
+  );
+  assert.equal(called, false);
+});
+
 
 // [VXG RealForever]

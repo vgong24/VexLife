@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE } from './model-runtime-adapter.mjs';
 
 export const HERETIC_RUNTIME_LINK_SCHEMA = 'vexlife.heretic-persistent-runtime-link/v1';
 // Historical accepted P1/P4 receipts remain readable. New ordinary product
@@ -181,6 +182,41 @@ export function validateHereticPersistentRuntimeReceipt(value) {
   }
 
   return freezeDeep(structuredClone(value));
+}
+
+
+export function admitHereticModelReasoningMode({ receipt, endpoint, requestModel }) {
+  const runtimeReceipt = validateHereticPersistentRuntimeReceipt(receipt);
+  if (runtimeReceipt.schemaVersion !== HERETIC_VEXLIFE_RUNTIME_RECEIPT_SCHEMA) {
+    fail('HERETIC_RUNTIME_REASONING_NOT_ADMITTED', 'model reasoning requires the current VexLife-owned Heretic runtime receipt');
+  }
+  const canonicalEndpoint = validateEndpoint(endpoint);
+  if (canonicalEndpoint !== endpoint) {
+    fail('HERETIC_RUNTIME_REASONING_NOT_ADMITTED', 'model reasoning endpoint must already be canonical');
+  }
+  exact(runtimeReceipt.endpoint, endpoint, 'reasoning.endpoint');
+  exact(requestModel, HERETIC_REQUEST_MODEL, 'reasoning.requestModel');
+  exact(runtimeReceipt.requestModel, requestModel, 'reasoning.runtimeRequestModel');
+  const args = runtimeReceipt.runtime.args;
+  const chatTemplateIndex = args.indexOf('--chat-template-args');
+  if (
+    chatTemplateIndex < 0
+    || args[chatTemplateIndex + 1] !== '{"enable_thinking":false}'
+  ) {
+    fail(
+      'HERETIC_RUNTIME_REASONING_NOT_ADMITTED',
+      'model reasoning requires the exact ordinary Heretic server binding with request-local thinking disabled by default'
+    );
+  }
+  return freezeDeep({
+    state: 'ADMITTED',
+    reasoningMode: MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE,
+    runtimeReceiptRef: runtimeReceipt.receiptRef,
+    endpoint: runtimeReceipt.endpoint,
+    requestModel: runtimeReceipt.requestModel,
+    humanProjection: 'SEALED_EXPLICIT_OPEN_ONLY',
+    rawPersisted: false
+  });
 }
 
 export function formHereticPersistentRuntimeBindingRef(homeIdentity) {

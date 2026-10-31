@@ -70,6 +70,9 @@ function projectMessage(binding, channel, message) {
     truthClass: message.truthClass ?? 'CURRENT_SYNTHETIC_REFERENCE',
     semanticRelay: clone(message.semanticRelay ?? null),
     companionWorkTrace: clone(message.companionWorkTrace ?? null),
+    companionModelReasoning: typeof message.companionModelReasoning === 'string' && message.companionModelReasoning.length > 0
+      ? message.companionModelReasoning
+      : null,
     conversationHeadSha256: message.conversationHeadSha256 ?? null,
     canonicalConversationHeadSha256: message.canonicalConversationHeadSha256 ?? null,
     modelNameOrBoundedTestProfileRef: message.modelNameOrBoundedTestProfileRef ?? null
@@ -207,6 +210,13 @@ function renderMessage(document, message, { relationshipDirect = false } = {}) {
     details.append(list);
     article.append(details);
   }
+  if (typeof message.companionModelReasoning === 'string' && message.companionModelReasoning.length > 0) {
+    const details = el(document, 'details', 'conversation-evolution__work-trace conversation-evolution__model-reasoning');
+    details.dataset.truthClass = 'EPHEMERAL_MODEL_EMITTED_REASONING';
+    details.append(el(document, 'summary', null, 'Model reasoning'));
+    details.append(el(document, 'pre', null, message.companionModelReasoning));
+    article.append(details);
+  }
   if (message.semanticRelay) {
     const details = el(document, 'details', 'conversation-evolution__relay');
     details.append(el(document, 'summary', null, 'Semantic relay'));
@@ -224,19 +234,21 @@ export function projectConversationEvolutionStreamProgress(referenceFeed, channe
   if (row.dataset.messageRef || row.dataset.conversationHeadSha256) return null;
   const phaseLabel = row.querySelector?.('.companion-work-phase')?.textContent?.trim() ?? '';
   const content = row.querySelector?.('.message-body')?.textContent ?? '';
+  const modelReasoning = row.querySelector?.('.companion-model-reasoning pre')?.textContent ?? '';
   const workTrace = [...(row.querySelectorAll?.('.companion-work-live-trace li') ?? [])]
     .map((item) => Object.freeze({
       state: item?.dataset?.progressState ?? null,
       label: item?.textContent?.trim() ?? ''
     }))
     .filter((item) => item.label.length > 0);
-  if (!phaseLabel && !content && workTrace.length === 0) return null;
+  if (!phaseLabel && !content && !modelReasoning && workTrace.length === 0) return null;
   return Object.freeze({
     schemaVersion: 'vexlife.ux-evolution.conversation-stream-progress/v1',
     truthClass: 'EPHEMERAL_LOCAL_MODEL_PROGRESS',
     channelRef,
     phaseLabel: phaseLabel || 'Vex is working…',
     workTrace: Object.freeze(workTrace),
+    modelReasoning,
     content,
     effectsPerformed: false
   });
@@ -265,7 +277,7 @@ function renderStreamProgress(document, binding, progress, { relationshipDirect 
     el(document, 'strong', 'conversation-evolution__work-phase', progress.phaseLabel)
   );
   const liveTrace = el(document, 'div', 'conversation-evolution__work-live-trace');
-  liveTrace.append(el(document, 'span', null, '<Thinking>'));
+  liveTrace.append(el(document, 'span', null, 'Work trace'));
   const traceList = el(document, 'ol');
   for (const entry of progress.workTrace) {
     const item = el(document, 'li', null, entry.label);
@@ -274,6 +286,13 @@ function renderStreamProgress(document, binding, progress, { relationshipDirect 
   }
   liveTrace.append(traceList);
   body.before(status, liveTrace);
+  if (progress.modelReasoning) {
+    const details = el(document, 'details', 'conversation-evolution__work-trace conversation-evolution__model-reasoning');
+    details.dataset.truthClass = 'EPHEMERAL_MODEL_EMITTED_REASONING';
+    details.append(el(document, 'summary', null, 'Model reasoning'));
+    details.append(el(document, 'pre', null, progress.modelReasoning));
+    liveTrace.after(details);
+  }
   body.hidden = progress.content.length === 0;
   return article;
 }
@@ -295,6 +314,20 @@ export function syncConversationEvolutionStreamProgress(body, referenceFeed, cha
   const followedEnd = root ? root.scrollHeight - root.clientHeight - root.scrollTop < 24 : false;
   if (messageBody.textContent !== progress.content) messageBody.textContent = progress.content;
   messageBody.hidden = progress.content.length === 0;
+  let reasoning = mounted.querySelector?.('.conversation-evolution__model-reasoning') ?? null;
+  if (progress.modelReasoning) {
+    if (!reasoning) {
+      reasoning = el(mounted.ownerDocument, 'details', 'conversation-evolution__work-trace conversation-evolution__model-reasoning');
+      reasoning.dataset.truthClass = 'EPHEMERAL_MODEL_EMITTED_REASONING';
+      reasoning.append(el(mounted.ownerDocument, 'summary', null, 'Model reasoning'));
+      reasoning.append(el(mounted.ownerDocument, 'pre'));
+      mounted.querySelector?.('.conversation-evolution__work-live-trace')?.after(reasoning);
+    }
+    const reasoningBody = reasoning.querySelector?.('pre') ?? null;
+    if (reasoningBody && reasoningBody.textContent !== progress.modelReasoning) reasoningBody.textContent = progress.modelReasoning;
+  } else if (reasoning) {
+    reasoning.remove();
+  }
   if (followedEnd && root) root.scrollTop = root.scrollHeight;
   return true;
 }

@@ -303,6 +303,27 @@ test('generic runtime turn remains separate from durable Conversation Send while
 });
 
 
+
+test('browser Companion reasoning mode is closed to the exact admitted mode', () => {
+  const { root, home } = makeHome();
+  try {
+    assert.throws(
+      () => createBrowserCompanionBridge({
+        home,
+        endpoint: 'http://127.0.0.1:8765',
+        model: 'default_model',
+        reasoningMode: 'UNCLASSIFIED_REASONING_MODE',
+        instanceRef: 'instance.vexlife.browser-reasoning-invalid'
+      }),
+      (error) => error instanceof BrowserCompanionBridgeError
+        && error.code === 'COMPANION_REASONING_MODE_INVALID'
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+
 test('Conversation projection reads the exact durable direct Companion lineage without model or mutation effect', async () => {
   const request = {
     projectRef: 'project.self-development',
@@ -431,10 +452,17 @@ test('browser source never routes companion channel through simulatedReply', () 
   assert.match(server, /application\/x-ndjson/u);
   assert.match(server, /frameType, sequence, payload/u);
   assert.match(server, /writeCompanionStreamFrame\(response, 'PROGRESS'/u);
+  assert.match(server, /writeCompanionStreamFrame\(response, 'REASONING'/u);
+  assert.match(server, /VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH/u);
+  assert.match(server, /admitHereticModelReasoningMode/u);
   assert.match(chat, /hiddenReasoningIncluded !== false/u);
+  assert.match(chat, /frame\.frameType === 'REASONING'/u);
   assert.match(chat, /companion-work-sparkle/u);
   assert.match(chat, /companion-work-live-trace/u);
-  assert.match(chat, /&lt;Thinking&gt;/u);
+  assert.match(chat, /Work trace/u);
+  assert.doesNotMatch(chat, /&lt;Thinking&gt;/u);
+  assert.match(chat, /Model reasoning/u);
+  assert.match(chat, /companionModelReasoning/u);
   assert.match(chat, /View work trace/u);
   assert.match(chat, /renderCompanionFailureDisclosure/u);
   assert.match(chat, /companionFailure = Object\.freeze/u);

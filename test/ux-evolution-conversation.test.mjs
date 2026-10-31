@@ -69,6 +69,7 @@ function fixture({availabilityState='READY',group=false,family=false,securitySta
 test('Evolution projection mirrors the full canonical Companion work presentation without acquiring durable message truth',()=>{
   const body={textContent:'partial Vex response'};
   const phase={textContent:'Vex is responding…'};
+  const reasoning={textContent:'actual model-emitted reasoning'};
   const trace=[
     {dataset:{progressState:'TASK_RECEIVED'},textContent:'Vex is thinking…'},
     {dataset:{progressState:'RESPONDING'},textContent:'Vex is responding…'}
@@ -79,7 +80,7 @@ test('Evolution projection mirrors the full canonical Companion work presentatio
       channelRef:'channel.self-development.companion',
       truthClass:'EPHEMERAL_LOCAL_MODEL_PROGRESS'
     },
-    querySelector:(selector)=>selector==='.message-body'?body:selector==='.companion-work-phase'?phase:null,
+    querySelector:(selector)=>selector==='.message-body'?body:selector==='.companion-work-phase'?phase:selector==='.companion-model-reasoning pre'?reasoning:null,
     querySelectorAll:(selector)=>selector==='.companion-work-live-trace li'?trace:[]
   };
   const feed={querySelectorAll:(selector)=>selector==='[data-companion-stream-progress="true"]'?[row]:[]};
@@ -92,6 +93,7 @@ test('Evolution projection mirrors the full canonical Companion work presentatio
       {state:'TASK_RECEIVED',label:'Vex is thinking…'},
       {state:'RESPONDING',label:'Vex is responding…'}
     ],
+    modelReasoning:'actual model-emitted reasoning',
     content:'partial Vex response',
     effectsPerformed:false
   });
@@ -117,6 +119,7 @@ test('Evolution projects the immediate Companion placeholder before any response
   const projected=projectConversationEvolutionStreamProgress(feed,row.dataset.channelRef);
   assert.equal(projected.phaseLabel,'Vex is thinking…');
   assert.equal(projected.content,'');
+  assert.equal(projected.modelReasoning,'');
   assert.deepEqual(projected.workTrace,[]);
 });
 
@@ -152,8 +155,12 @@ test('Evolution stream progress fast path patches body only when phase and trace
 test('Evolution active Conversation keeps visible-work chrome instead of projecting only response body text',()=>{
   assert.match(source,/phaseLabel/);
   assert.match(source,/companionWorkTrace/);
+  assert.match(source,/companionModelReasoning/);
   assert.match(source,/conversation-evolution__work-sparkle/);
   assert.match(source,/conversation-evolution__work-live-trace/);
+  assert.match(source,/Work trace/);
+  assert.match(source,/Model reasoning/);
+  assert.doesNotMatch(source,/<Thinking>/u);
   assert.match(source,/View work trace/);
   assert.doesNotMatch(source,/if \(!content\) return null/);
   assert.match(css,/conversation-evolution__work-sparkle/);
@@ -190,13 +197,15 @@ test('Evolution durable message projection preserves the canonical Companion wor
     companionWorkTrace:[
       {state:'TASK_RECEIVED',label:'Vex is thinking…'},
       {state:'RESPONDING',label:'Vex is responding…'}
-    ]
+    ],
+    companionModelReasoning:'actual model-emitted reasoning'
   });
   const projected=projectConversationEvolutionState(value);
   assert.deepEqual(projected.messages[1].companionWorkTrace,[
     {state:'TASK_RECEIVED',label:'Vex is thinking…'},
     {state:'RESPONDING',label:'Vex is responding…'}
   ]);
+  assert.equal(projected.messages[1].companionModelReasoning,'actual model-emitted reasoning');
 });
 
 test('Conversation projection preserves canonical direct addressing and unsent draft truth',()=>{

@@ -120,19 +120,27 @@ test('runtime executes independent reads concurrently, uses ToolResultRelay exac
   let maximumActiveReads = 0;
   const sequence = [];
   const visibleDeltas = [];
+  const visibleReasoning = [];
   const visibleProgress = [];
   const responseDeltaObserver = async (delta) => { visibleDeltas.push(delta); };
+  const reasoningDeltaObserver = async (delta) => { visibleReasoning.push(delta); };
+  const reasoningMode = 'MODEL_EMITTED_REASONING_EXPLICIT_OPEN';
   const progressObserver = async (progress) => { visibleProgress.push(progress); };
   const inference = async (input) => {
     inferenceCount += 1;
     if (inferenceCount === 1) {
       assert.equal(Object.hasOwn(input, 'responseDeltaObserver'), false);
+      assert.equal(Object.hasOwn(input, 'reasoningDeltaObserver'), false);
+      assert.equal(Object.hasOwn(input, 'reasoningMode'), false);
       return requestResult([
       { requestRef: 'read.search', capabilityRef: 'capability.search', arguments: { query: 'capability' }, dependencyRefs: [] },
       { requestRef: 'read.context', capabilityRef: 'context.where', arguments: {}, dependencyRefs: [] }
       ]);
     }
     assert.equal(input.responseDeltaObserver, responseDeltaObserver);
+    assert.equal(input.reasoningDeltaObserver, reasoningDeltaObserver);
+    assert.equal(input.reasoningMode, reasoningMode);
+    await input.reasoningDeltaObserver({ reasoningDelta: 'model-emitted reasoning' });
     await input.responseDeltaObserver({ contentDelta: 'Synthesized' });
     return { content: 'Synthesized from two current observations.', model: 'model.test.synthesis' };
   };
@@ -166,6 +174,8 @@ test('runtime executes independent reads concurrently, uses ToolResultRelay exac
     taskIntent: 'Find current capability and context information.',
     inference,
     responseDeltaObserver,
+    reasoningDeltaObserver,
+    reasoningMode,
     progressObserver,
     endpointProfile: { profileRef: 'profile.test', admitted: true, endpoint: 'http://127.0.0.1:1', model: 'test' },
     context: { taskRef: 'task.test.parallel', threadRef: 'thread.test.parallel' }
@@ -173,6 +183,7 @@ test('runtime executes independent reads concurrently, uses ToolResultRelay exac
   assert.equal(result.response.content, 'Synthesized from two current observations.');
   assert.equal(inferenceCount, 2);
   assert.deepEqual(visibleDeltas, [{ contentDelta: 'Synthesized' }]);
+  assert.deepEqual(visibleReasoning, [{ reasoningDelta: 'model-emitted reasoning' }]);
   assert.deepEqual(visibleProgress.map((item) => item.state), result.runtimeProjection.progress.map((item) => item.state));
   assert.ok(visibleProgress.length > 0);
   assert.ok(visibleProgress.every((item) => item.hiddenReasoningIncluded === false));

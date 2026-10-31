@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  HERETIC_PRODUCT_ENDPOINT,
   HERETIC_REQUEST_MODEL,
   HERETIC_RUNTIME_ADAPTER_REF,
   HERETIC_RUNTIME_CLASS,
@@ -8,6 +9,9 @@ import {
   HERETIC_RUNTIME_LINK_SCHEMA,
   HERETIC_RUNTIME_RECEIPT_SCHEMA,
   HERETIC_TRANSPORT_CLASS,
+  HERETIC_VEXLIFE_HOST_EXECUTION_PROFILE_REF,
+  HERETIC_VEXLIFE_RUNTIME_RECEIPT_SCHEMA,
+  admitHereticModelReasoningMode,
   formHereticPersistentRuntimeBindingRef,
   formHereticPersistentRuntimeLink,
   formHereticPersistentRuntimeObservedLink,
@@ -63,9 +67,81 @@ function receipt(overrides = {}) {
   return { ...base, ...overrides };
 }
 
+
+function vexLifeReceipt(overrides = {}) {
+  const base = receipt({
+    schemaVersion: HERETIC_VEXLIFE_RUNTIME_RECEIPT_SCHEMA,
+    hostExecutionProfileRef: HERETIC_VEXLIFE_HOST_EXECUTION_PROFILE_REF,
+    endpoint: HERETIC_PRODUCT_ENDPOINT,
+    sourceIdentity: {
+      repository: 'vgong24/VexLife',
+      modulePath: 'src/core/heretic-persistent-runtime-owner.mjs',
+      moduleSha256: '4'.repeat(64),
+    },
+    runtime: {
+      pid: 52001,
+      processGroupId: 52001,
+      exactOwnedDetachedGroup: true,
+      args: [
+        '-m','mlx_lm.server',
+        '--model','/private/heretic/model',
+        '--host','127.0.0.1',
+        '--port','8765',
+        '--chat-template-args','{"enable_thinking":false}',
+      ],
+    },
+  });
+  return { ...base, ...overrides };
+}
+
 const homeIdentity = Object.freeze({
   homeRef: 'vex-home.heretic-initial-boot.test',
   companionLineageRef: 'companion-lineage.heretic-initial-boot.test',
+});
+
+
+test('current VexLife Heretic receipt admits request-local model reasoning without changing the persistent default', () => {
+  const current = vexLifeReceipt();
+  const admission = admitHereticModelReasoningMode({
+    receipt: current,
+    endpoint: HERETIC_PRODUCT_ENDPOINT,
+    requestModel: HERETIC_REQUEST_MODEL,
+  });
+  assert.equal(admission.state, 'ADMITTED');
+  assert.equal(admission.reasoningMode, 'MODEL_EMITTED_REASONING_EXPLICIT_OPEN');
+  assert.equal(admission.runtimeReceiptRef, current.receiptRef);
+  assert.equal(admission.humanProjection, 'SEALED_EXPLICIT_OPEN_ONLY');
+  assert.equal(admission.rawPersisted, false);
+
+  assert.throws(
+    () => admitHereticModelReasoningMode({
+      receipt: receipt(),
+      endpoint: receipt().endpoint,
+      requestModel: HERETIC_REQUEST_MODEL,
+    }),
+    /current VexLife-owned Heretic runtime receipt/u,
+  );
+  assert.throws(
+    () => admitHereticModelReasoningMode({
+      receipt: current,
+      endpoint: 'http://127.0.0.1:8766',
+      requestModel: HERETIC_REQUEST_MODEL,
+    }),
+    /reasoning.endpoint/u,
+  );
+  assert.throws(
+    () => admitHereticModelReasoningMode({
+      receipt: vexLifeReceipt({
+        runtime: {
+          ...current.runtime,
+          args: current.runtime.args.map((value) => value === '{"enable_thinking":false}' ? '{"enable_thinking":true}' : value),
+        },
+      }),
+      endpoint: HERETIC_PRODUCT_ENDPOINT,
+      requestModel: HERETIC_REQUEST_MODEL,
+    }),
+    /request-local thinking disabled by default/u,
+  );
 });
 
 test('exact accepted Heretic persistent receipt forms one Browser/Home runtime link', () => {

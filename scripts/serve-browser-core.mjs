@@ -32,6 +32,10 @@ import {
 import {
   createVexAssemblyCapabilityDomainSupport
 } from '../src/core/vex-assembly-capability-domains.mjs';
+import {
+  HERETIC_RUNTIME_RECEIPT_RELATIVE_PATH,
+  admitHereticModelReasoningMode
+} from '../src/core/heretic-runtime-link.mjs';
 import { createTypedCommandEffectSupport } from '../src/core/typed-command-runtime.mjs';
 import { loadBlueprint } from '../src/core/blueprint.mjs';
 import { compileRegistryPack } from '../src/core/registry.mjs';
@@ -659,11 +663,84 @@ export function createServerOwnedCompanionRecoveryActionResolver({
   });
 }
 
+function serverOwnedCompanionReasoningMode({
+  companionHome,
+  endpoint,
+  model,
+  runtimeReceiptPath
+}) {
+  if (runtimeReceiptPath === null || runtimeReceiptPath === undefined || runtimeReceiptPath === '') return null;
+  if (typeof endpoint !== 'string' || endpoint.length === 0 || typeof model !== 'string' || model.length === 0) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_REASONING_BINDING_INVALID',
+      'Heretic reasoning receipt requires one exact Companion endpoint/model binding',
+      500
+    );
+  }
+  const identity = loadBrowserCompanionHomeIdentity(companionHome);
+  const expectedReceiptPath = path.resolve(
+    identity.home,
+    ...HERETIC_RUNTIME_RECEIPT_RELATIVE_PATH.split('/')
+  );
+  const observedReceiptPath = path.resolve(String(runtimeReceiptPath));
+  if (observedReceiptPath !== expectedReceiptPath) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_REASONING_BINDING_INVALID',
+      'Heretic reasoning receipt path does not belong to the selected Vex Home',
+      500
+    );
+  }
+  let stat;
+  try {
+    stat = fs.lstatSync(observedReceiptPath);
+  } catch (error) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_REASONING_BINDING_INVALID',
+      'Heretic reasoning receipt is unavailable',
+      500,
+      error.message
+    );
+  }
+  if (stat.isSymbolicLink() || !stat.isFile()) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_REASONING_BINDING_INVALID',
+      'Heretic reasoning receipt must be one regular non-link file',
+      500
+    );
+  }
+  let receipt;
+  try {
+    receipt = JSON.parse(fs.readFileSync(observedReceiptPath, 'utf8'));
+  } catch (error) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_REASONING_BINDING_INVALID',
+      'Heretic reasoning receipt is not valid JSON',
+      500,
+      error.message
+    );
+  }
+  try {
+    return admitHereticModelReasoningMode({
+      receipt,
+      endpoint,
+      requestModel: model
+    }).reasoningMode;
+  } catch (error) {
+    throw new BrowserCompanionBridgeError(
+      'COMPANION_REASONING_BINDING_INVALID',
+      'Heretic reasoning mode could not be admitted from the exact runtime receipt',
+      500,
+      error.message
+    );
+  }
+}
+
 export function createServerOwnedBrowserCompanionBridge({
   sourceRoot = root,
   companionHome = home,
   endpoint = process.env.VEXLIFE_COMPANION_ENDPOINT ?? null,
   model = process.env.VEXLIFE_COMPANION_MODEL ?? null,
+  runtimeReceiptPath = process.env.VEXLIFE_HERETIC_RUNTIME_RECEIPT_PATH ?? null,
   runtimeMode = process.env.VEXLIFE_CAPABILITY_RUNTIME_MODE ??
     CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY,
   typedCommandAuthorityPath = process.env.VEXLIFE_TYPED_COMMAND_AUTHORITY_PATH ?? null,
@@ -683,6 +760,12 @@ export function createServerOwnedBrowserCompanionBridge({
   if (typeof recoveryOwnerFactory !== 'function') {
     throw new TypeError('Browser Companion recovery-owner factory must be one function');
   }
+  const reasoningMode = serverOwnedCompanionReasoningMode({
+    companionHome,
+    endpoint,
+    model,
+    runtimeReceiptPath
+  });
   const capabilityRuntimeBundle = runtimeMode === CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN
     ? null
     : loadBlueprint(sourceRoot);
@@ -768,7 +851,8 @@ export function createServerOwnedBrowserCompanionBridge({
     modelConnectionComposer,
     promptContextResolver,
     promptContextAuthorityVerifier,
-    recoveryOwner
+    recoveryOwner,
+    reasoningMode
   });
 }
 
@@ -2103,6 +2187,10 @@ export function createVexLifeBrowserServer({
             responseDeltaObserver: async (delta) => {
               frameSequence += 1;
               writeCompanionStreamFrame(response, 'DELTA', frameSequence, delta);
+            },
+            reasoningDeltaObserver: async (delta) => {
+              frameSequence += 1;
+              writeCompanionStreamFrame(response, 'REASONING', frameSequence, delta);
             }
           });
           result = await attachResourceContextPressure(result, input);
