@@ -167,6 +167,7 @@ test('browser Companion adaptive reveal bypasses animation for reduced motion', 
 test('browser source consumes provider deltas without waiting for paint and fast-drains before durable projection', () => {
   const source = fs.readFileSync(path.join(ROOT, 'reference/browser/modules/chat-controller.js'), 'utf8');
   assert.match(source, /companionStreamReveal = createBrowserCompanionAdaptiveReveal/u);
+  assert.match(source, /onProgress\(progress\) \{\s*renderCompanionWorkProgress\(channel, progress\);\s*\}/u);
   assert.match(source, /onDelta\(delta\) \{\s*companionStreamReveal\.push\(delta\.contentDelta\);\s*\}/u);
   assert.doesNotMatch(source, /async\s+onDelta\(delta\)/u);
   assert.match(source, /await companionStreamReveal\.finish\(\);\s*clearCompanionStreamProgress\(channel\);/u);
@@ -427,6 +428,10 @@ test('browser source never routes companion channel through simulatedReply', () 
   assert.match(server, /BROWSER_COMPANION_STREAM_API_PATH/u);
   assert.match(server, /application\/x-ndjson/u);
   assert.match(server, /frameType, sequence, payload/u);
+  assert.match(server, /writeCompanionStreamFrame\(response, 'PROGRESS'/u);
+  assert.match(chat, /hiddenReasoningIncluded !== false/u);
+  assert.match(chat, /companion-work-sparkle/u);
+  assert.match(chat, /View work trace/u);
   assert.match(chat, /const interfaceCurrentnessMatchesChannel = \(channel = currentChannel\(\)\) => Boolean/u);
   assert.match(chat, /interfaceCurrentness\.scope\?\.projectRef === channel\.projectRef[\s\S]*interfaceCurrentness\.scope\?\.threadRef === channel\.threadRef[\s\S]*interfaceCurrentness\.scope\?\.channelRef === channel\.channelRef/u);
   assert.match(chat, /channel\?\.roleKey === 'companion'[\s\S]*interfaceCurrentnessMatchesChannel\(channel\) && !companionTurnPending[\s\S]*isVexAvailable\(\)/u);
