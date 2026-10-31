@@ -72,6 +72,38 @@ This entry point owns VexLife runtime/Browser lifecycle behavior. Callers should
 
 A startup command succeeding does not by itself prove the Conversation Refinement visual experience.
 
+## PROVEN — lived failure diagnosis for Evolution Conversation
+
+Victor's lived run proved that a real Send and Vex response can succeed while the active Evolution surface still hides visible-work presentation.
+
+Cause:
+
+~~~text
+canonical chat-controller placeholder:
+  phase exists
+  body initially empty
+
+old Evolution projection:
+  read body only
+  if body empty -> null
+
+result:
+  no immediate sparkle / <Thinking>
+
+canonical final message:
+  companionWorkTrace exists
+
+old Evolution projectMessage:
+  omitted companionWorkTrace
+
+result:
+  no View work trace
+~~~
+
+Do not diagnose this symptom as startup/source staleness unless exact Browser source-currentness evidence actually disagrees.
+
+After the projection repair, lived acceptance must be observed on the **Evolution · migrated surface** itself.
+
 ## CANDIDATE / NOT YET PROMOTED — full lived Conversation Refinement route
 
 The desired stable route is:
