@@ -469,7 +469,7 @@ function browserSourceTreeSha256(repo) {
   }
   const descriptor = JSON.parse(fs.readFileSync(descriptorPath, 'utf8'));
   const partEntries = fs.readdirSync(partsRoot)
-    .filter((name) => /^bucket-[0-9a-f]{2}\\.json$/u.test(name))
+    .filter((name) => /^bucket-[0-9a-f]{2}[.]json$/u.test(name))
     .sort((left, right) => Buffer.from(left).compare(Buffer.from(right)))
     .map((name) => ({
       ref: `source-manifest-parts/${name}`,

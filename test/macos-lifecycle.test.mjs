@@ -852,6 +852,10 @@ test('MAC06E browser reuse requires exact source tree and recoverable Companion 
   );
   assert.match(
     lifecycleSource,
+    /\^bucket-\[0-9a-f\]\{2\}\[\.\]json\$\/u/
+  );
+  assert.match(
+    lifecycleSource,
     /sourceCurrent:\s*receiptRepo === currentRepo && receipt\.sourceTreeSha256 === currentSourceTreeSha256/
   );
   assert.match(
