@@ -92,9 +92,48 @@ That repository proof must not be replayed merely because the outer A003 VexLoca
 
 The outer failure occurred after the inner canonical RETURN had already formed. The reusable defect is owned separately by Vextreme-SDK draft PR #1908.
 
+## Proven lived diagnosis — Evolution presentation loss
+
+Victor's lived run on the current Conversation path established:
+
+~~~text
+durable human Send                     WORKS
+real local Heretic response            WORKS
+Evolution · migrated surface           ACTIVE
+immediate visible-work placeholder     MISSING
+final View work trace                  MISSING
+~~~
+
+Source tracing found the cause in the Evolution presentation adapter, not in the startup pointer.
+
+The canonical interaction owner already formed:
+
+~~~text
+sparkle
+phase label
+<Thinking> list
+streamed body
+message.companionWorkTrace
+~~~
+
+The Evolution adapter then reduced the ephemeral projection to only `.message-body.textContent`, rejected the placeholder while that body was empty, and omitted `companionWorkTrace` from durable message projection.
+
+Required law:
+
+~~~text
+CANONICAL_VISIBLE_WORK
+-> EVOLUTION_PRESENTATION_PROJECTION
+-> SAME_HUMAN_MEANING
+
+CURRENT_SOURCE != COMPLETE_PRESENTATION_PARITY
+CANONICAL_REFERENCE_WORKS != EVOLUTION_SURFACE_WORKS
+~~~
+
+When Evolution is the lived surface, proof must observe Evolution itself rather than infer parity from the hidden/reference canonical DOM.
+
 ## What is not yet proved
 
-The remaining VexLife claim is lived perceptibility on the current Conversation Refinement source:
+The remaining VexLife claim is lived perceptibility on the corrected Conversation Refinement source:
 
 ~~~text
 current source actually serving the browser
