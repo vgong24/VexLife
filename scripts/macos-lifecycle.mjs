@@ -522,7 +522,8 @@ function browserReceiptMatchesInitialization(receipt, initialization) {
 export function getOwnedBrowser(home, repo, {
   allowRepoDrift = false,
   processEvidenceReader = readMacProcessEvidence,
-  processSubstrateObserver = observeMacUserLaunchdProcess
+  processSubstrateObserver = observeMacUserLaunchdProcess,
+  sourceTreeSha256Reader = browserSourceTreeSha256
 } = {}) {
   const receipt = jsonRead(browserReceiptPath(home));
   if (!receipt || receipt.state !== 'RUNNING') return null;
@@ -533,9 +534,14 @@ export function getOwnedBrowser(home, repo, {
   const receiptHome = path.resolve(receipt.vexHomePath);
   const receiptRepo = path.resolve(receipt.repoRootPath);
   const currentRepo = path.resolve(repo);
-  const currentSourceTreeSha256 = browserSourceTreeSha256(currentRepo);
   if (receiptHome !== home) throw new Error('browser process receipt Home identity mismatch');
   if (!allowRepoDrift && receiptRepo !== currentRepo) throw new Error('browser process receipt repo identity mismatch');
+  if (typeof sourceTreeSha256Reader !== 'function') {
+    throw new TypeError('browser source-tree currentness reader must be one function');
+  }
+  const currentSourceTreeSha256 = receiptRepo === currentRepo
+    ? sourceTreeSha256Reader(currentRepo)
+    : null;
   const pid = Number(receipt.pid);
   const evidence = processEvidenceReader(pid);
   if (!evidence) return null;
