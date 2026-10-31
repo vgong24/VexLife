@@ -11,8 +11,8 @@
     {
       "path": "src/core/model-runtime-adapter.mjs",
       "mode": "100644",
-      "bytes": 16260,
-      "sha256": "8383d42f450dd71b1ae4d0f1c8da0c02315b4d31ee14276101c8ad68b24c8050"
+      "bytes": 16359,
+      "sha256": "28286cb0a3e0b9320a5ebf007baf6d667d7339295baca4cf33aa266d7c50293c"
     },
     {
       "path": "test/ux-evolution-shell-scaffold.test.mjs",
