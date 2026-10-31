@@ -29,6 +29,7 @@ import {
   readCurrentLivedCompanionThreadWriterCurrentness,
   recoverAbandonedLivedCompanionThreadWriter
 } from '../src/core/lived-companion.mjs';
+import { hydrateStoredSourceManifest } from '../src/core/source-manifest.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const SOURCE_ROOT = path.resolve(HERE, '..');
@@ -460,6 +461,26 @@ async function stopPid(pid) {
 }
 function browserReceiptPath(home) { return path.join(home, 'recovery', 'browser-process.json'); }
 function lifecycleReceiptPath(home) { return path.join(home, 'recovery', 'macos-lifecycle-receipt.json'); }
+function browserSourceTreeSha256(repo) {
+  const descriptorPath = path.join(repo, 'SOURCE-MANIFEST.json');
+  const partsRoot = path.join(repo, 'source-manifest-parts');
+  if (!fs.existsSync(descriptorPath) || !fs.existsSync(partsRoot)) {
+    throw new Error('browser source identity requires current Source Manifest source');
+  }
+  const descriptor = JSON.parse(fs.readFileSync(descriptorPath, 'utf8'));
+  const partEntries = fs.readdirSync(partsRoot)
+    .filter((name) => /^bucket-[0-9a-f]{2}\\.json$/u.test(name))
+    .sort((left, right) => Buffer.from(left).compare(Buffer.from(right)))
+    .map((name) => ({
+      ref: `source-manifest-parts/${name}`,
+      value: JSON.parse(fs.readFileSync(path.join(partsRoot, name), 'utf8'))
+    }));
+  const hydrated = hydrateStoredSourceManifest(descriptor, partEntries);
+  if (!/^[0-9a-f]{64}$/u.test(hydrated.treeSha256 ?? '')) {
+    throw new Error('browser Source Manifest tree identity is invalid');
+  }
+  return hydrated.treeSha256;
+}
 
 function expectedBrowserArgs(repo, home, receipt) {
   return [
@@ -512,6 +533,7 @@ export function getOwnedBrowser(home, repo, {
   const receiptHome = path.resolve(receipt.vexHomePath);
   const receiptRepo = path.resolve(receipt.repoRootPath);
   const currentRepo = path.resolve(repo);
+  const currentSourceTreeSha256 = browserSourceTreeSha256(currentRepo);
   if (receiptHome !== home) throw new Error('browser process receipt Home identity mismatch');
   if (!allowRepoDrift && receiptRepo !== currentRepo) throw new Error('browser process receipt repo identity mismatch');
   const pid = Number(receipt.pid);
@@ -537,7 +559,9 @@ export function getOwnedBrowser(home, repo, {
     processSubstrate,
     receiptRepo,
     currentRepo,
-    sourceCurrent: receiptRepo === currentRepo
+    receiptSourceTreeSha256: typeof receipt.sourceTreeSha256 === 'string' ? receipt.sourceTreeSha256 : null,
+    currentSourceTreeSha256,
+    sourceCurrent: receiptRepo === currentRepo && receipt.sourceTreeSha256 === currentSourceTreeSha256
   };
 }
 export async function stopOwnedBrowser(home, repo, {
@@ -1303,6 +1327,7 @@ async function startBrowser(home, repo, initialization, { forceCurrentBrowserReb
     serverScriptPath: serverScript,
     vexHomePath: home,
     repoRootPath: repo,
+    sourceTreeSha256: browserSourceTreeSha256(repo),
     companionBinding: browserCompanionBindingForInitialization(initialization),
     processSubstrate,
     formedAtUtc: new Date().toISOString()
