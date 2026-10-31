@@ -1362,6 +1362,15 @@ export function createChatController({ state, projects, roles, channels, message
     return article;
   }
 
+  function renderCompanionWorkPlaceholder(channel) {
+    if (keyForChannel(channel) !== keyForChannel(currentChannel())) return false;
+    const feed = $('#messageFeed'), wasNearBottom = isNearBottom(feed);
+    const article = currentCompanionProgressArticle(channel);
+    $('.companion-work-phase', article).textContent = companionWorkPhaseLabel('TASK_RECEIVED');
+    if (wasNearBottom) feed.scrollTop = feed.scrollHeight;
+    return true;
+  }
+
   function renderCompanionWorkProgress(channel, progress) {
     if (keyForChannel(channel) !== keyForChannel(currentChannel())) return false;
     const feed = $('#messageFeed'), wasNearBottom = isNearBottom(feed);
@@ -1676,6 +1685,7 @@ export function createChatController({ state, projects, roles, channels, message
     companionTurnPending = true;
     companionWorkTrace = [];
     updateComposer();
+    renderCompanionWorkPlaceholder(channel);
     const sendIdempotencyKey = sourceMessage?.sendIdempotencyKey ?? `browser-send.${globalThis.crypto.randomUUID()}`;
     if (sourceMessage && !sourceMessage.sendIdempotencyKey) sourceMessage.sendIdempotencyKey = sendIdempotencyKey;
     let companionStreamReveal = null;

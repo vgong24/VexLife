@@ -167,6 +167,7 @@ test('browser Companion adaptive reveal bypasses animation for reduced motion', 
 test('browser source consumes provider deltas without waiting for paint and fast-drains before durable projection', () => {
   const source = fs.readFileSync(path.join(ROOT, 'reference/browser/modules/chat-controller.js'), 'utf8');
   assert.match(source, /companionStreamReveal = createBrowserCompanionAdaptiveReveal/u);
+  assert.match(source, /renderCompanionWorkPlaceholder\(channel\);\s*const sendIdempotencyKey/u);
   assert.match(source, /onProgress\(progress\) \{\s*renderCompanionWorkProgress\(channel, progress\);\s*\}/u);
   assert.match(source, /onDelta\(delta\) \{\s*companionStreamReveal\.push\(delta\.contentDelta\);\s*\}/u);
   assert.doesNotMatch(source, /async\s+onDelta\(delta\)/u);
