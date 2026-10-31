@@ -66,21 +66,32 @@ function fixture({availabilityState='READY',group=false,family=false,securitySta
   return {state,chat,roles,messages,conversationKey,t,familyRoom};
 }
 
-test('Evolution projection mirrors canonical ephemeral Companion stream progress without acquiring durable message truth',()=>{
+test('Evolution projection mirrors the full canonical Companion work presentation without acquiring durable message truth',()=>{
   const body={textContent:'partial Vex response'};
+  const phase={textContent:'Vex is responding…'};
+  const trace=[
+    {dataset:{progressState:'TASK_RECEIVED'},textContent:'Vex is thinking…'},
+    {dataset:{progressState:'RESPONDING'},textContent:'Vex is responding…'}
+  ];
   const row={
     dataset:{
       companionStreamProgress:'true',
       channelRef:'channel.self-development.companion',
       truthClass:'EPHEMERAL_LOCAL_MODEL_PROGRESS'
     },
-    querySelector:(selector)=>selector==='.message-body'?body:null
+    querySelector:(selector)=>selector==='.message-body'?body:selector==='.companion-work-phase'?phase:null,
+    querySelectorAll:(selector)=>selector==='.companion-work-live-trace li'?trace:[]
   };
   const feed={querySelectorAll:(selector)=>selector==='[data-companion-stream-progress="true"]'?[row]:[]};
   assert.deepEqual(projectConversationEvolutionStreamProgress(feed,row.dataset.channelRef),{
     schemaVersion:'vexlife.ux-evolution.conversation-stream-progress/v1',
     truthClass:'EPHEMERAL_LOCAL_MODEL_PROGRESS',
     channelRef:'channel.self-development.companion',
+    phaseLabel:'Vex is responding…',
+    workTrace:[
+      {state:'TASK_RECEIVED',label:'Vex is thinking…'},
+      {state:'RESPONDING',label:'Vex is responding…'}
+    ],
     content:'partial Vex response',
     effectsPerformed:false
   });
@@ -91,25 +102,63 @@ test('Evolution projection mirrors canonical ephemeral Companion stream progress
   assert.equal(projectConversationEvolutionStreamProgress(feed,row.dataset.channelRef),null);
 });
 
-test('Evolution stream progress fast path patches only the mounted ephemeral body',()=>{
+test('Evolution projects the immediate Companion placeholder before any response body exists',()=>{
+  const phase={textContent:'Vex is thinking…'};
+  const row={
+    dataset:{
+      companionStreamProgress:'true',
+      channelRef:'channel.self-development.companion',
+      truthClass:'EPHEMERAL_LOCAL_MODEL_PROGRESS'
+    },
+    querySelector:(selector)=>selector==='.message-body'?{textContent:''}:selector==='.companion-work-phase'?phase:null,
+    querySelectorAll:(selector)=>selector==='.companion-work-live-trace li'?[]:[]
+  };
+  const feed={querySelectorAll:(selector)=>selector==='[data-companion-stream-progress="true"]'?[row]:[]};
+  const projected=projectConversationEvolutionStreamProgress(feed,row.dataset.channelRef);
+  assert.equal(projected.phaseLabel,'Vex is thinking…');
+  assert.equal(projected.content,'');
+  assert.deepEqual(projected.workTrace,[]);
+});
+
+test('Evolution stream progress fast path patches body only when phase and trace structure are unchanged',()=>{
   const channelRef='channel.self-development.companion';
   const sourceBody={textContent:'The response is now smoother.'};
+  const sourcePhase={textContent:'Vex is responding…'};
+  const sourceTrace=[{dataset:{progressState:'RESPONDING'},textContent:'Vex is responding…'}];
   const sourceRow={
     dataset:{companionStreamProgress:'true',channelRef,truthClass:'EPHEMERAL_LOCAL_MODEL_PROGRESS'},
-    querySelector:(selector)=>selector==='.message-body'?sourceBody:null
+    querySelector:(selector)=>selector==='.message-body'?sourceBody:selector==='.companion-work-phase'?sourcePhase:null,
+    querySelectorAll:(selector)=>selector==='.companion-work-live-trace li'?sourceTrace:[]
   };
   const referenceFeed={querySelectorAll:(selector)=>selector==='[data-companion-stream-progress="true"]'?[sourceRow]:[],contains:()=>true};
-  const mountedBody={textContent:'The response'};
+  const mountedBody={textContent:'The response',hidden:false};
+  const mountedPhase={textContent:'Vex is responding…'};
+  const mountedTrace=[{dataset:{progressState:'RESPONDING'},textContent:'Vex is responding…'}];
   const root={scrollHeight:200,clientHeight:100,scrollTop:100};
   const mounted={
     dataset:{channelRef},
-    querySelector:(selector)=>selector==='.conversation-evolution__message-body'?mountedBody:null,
+    querySelector:(selector)=>selector==='.conversation-evolution__message-body'?mountedBody:selector==='.conversation-evolution__work-phase'?mountedPhase:null,
+    querySelectorAll:(selector)=>selector==='.conversation-evolution__work-live-trace li'?mountedTrace:[],
     closest:(selector)=>selector==='.conversation-evolution'?root:null
   };
   const body={querySelector:(selector)=>selector==='[data-companion-stream-progress="true"]'?mounted:selector==='.conversation-evolution'?root:null};
   assert.equal(syncConversationEvolutionStreamProgress(body,referenceFeed,channelRef),true);
   assert.equal(mountedBody.textContent,'The response is now smoother.');
   assert.equal(root.scrollTop,root.scrollHeight);
+  mountedPhase.textContent='Vex is thinking…';
+  assert.equal(syncConversationEvolutionStreamProgress(body,referenceFeed,channelRef),false);
+});
+
+test('Evolution active Conversation keeps visible-work chrome instead of projecting only response body text',()=>{
+  assert.match(source,/phaseLabel/);
+  assert.match(source,/companionWorkTrace/);
+  assert.match(source,/conversation-evolution__work-sparkle/);
+  assert.match(source,/conversation-evolution__work-live-trace/);
+  assert.match(source,/View work trace/);
+  assert.doesNotMatch(source,/if \(!content\) return null/);
+  assert.match(css,/conversation-evolution__work-sparkle/);
+  assert.match(css,/conversation-evolution-work-pulse/);
+  assert.match(css,/conversation-evolution__work-trace/);
 });
 
 test('Evolution active Conversation renders presentation-only stream progress alongside durable canonical messages',()=>{
@@ -122,6 +171,32 @@ test('Evolution active Conversation renders presentation-only stream progress al
   assert.match(source,/const streamOnly = mutations\.every/);
   assert.match(source,/syncConversationEvolutionStreamProgress\(body, referenceFeed, activeChannelRef\)/);
   assert.doesNotMatch(source,/snapshot\.messages\.push\(streamProgress/);
+});
+
+test('Evolution durable message projection preserves the canonical Companion work trace',()=>{
+  const value=fixture();
+  const channel=value.chat.currentChannel();
+  const key=value.conversationKey(channel.projectRef,channel.threadRef,channel.channelRef);
+  value.messages.get(key).push({
+    messageRef:'message.direct.1',
+    projectRef:channel.projectRef,
+    threadRef:channel.threadRef,
+    channelRef:channel.channelRef,
+    speakerKey:'companion',
+    recipientKeys:['victor'],
+    content:'Current local response',
+    sequence:1,
+    truthClass:'CURRENT_LOCAL_MODEL',
+    companionWorkTrace:[
+      {state:'TASK_RECEIVED',label:'Vex is thinking…'},
+      {state:'RESPONDING',label:'Vex is responding…'}
+    ]
+  });
+  const projected=projectConversationEvolutionState(value);
+  assert.deepEqual(projected.messages[1].companionWorkTrace,[
+    {state:'TASK_RECEIVED',label:'Vex is thinking…'},
+    {state:'RESPONDING',label:'Vex is responding…'}
+  ]);
 });
 
 test('Conversation projection preserves canonical direct addressing and unsent draft truth',()=>{
