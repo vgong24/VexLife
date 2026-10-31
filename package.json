@@ -66,7 +66,8 @@
     "scheduled-daily-autonomy:proof": "node scripts/scheduled-daily-autonomy.mjs proof",
     "g05-runtime-authority-substrate:proof": "node scripts/g05-runtime-authority-substrate.mjs proof",
     "presentation:health": "node scripts/presentation-health.mjs",
-    "project:reconcile": "node scripts/project-reconciliation.mjs"
+    "project:reconcile": "node scripts/project-reconciliation.mjs",
+    "architecture:family-example": "node examples/vex-architecture-family-circuit.mjs"
   },
   "devDependencies": {
     "playwright": "1.61.1"
