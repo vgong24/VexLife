@@ -150,3 +150,21 @@ html[data-theme="light"]{--bg:#f2f2f0;--surface:#fff;--raised:#f5f5f3;--overlay:
   .uxe-active-surface-heading h1{overflow:visible;text-overflow:clip}
 }
 /* [VXG RealForever] */
+
+/* Companion visible work trace: public progress only; never hidden model reasoning. */
+.companion-work-progress .companion-work-sparkle{color:#fff;background:transparent;border:1px solid color-mix(in srgb,#fff 26%,transparent);box-shadow:0 0 18px color-mix(in srgb,#fff 18%,transparent);animation:vex-companion-sparkle-pulse 1.15s ease-in-out infinite}
+.companion-work-progress .companion-work-phase{margin-top:4px;color:var(--muted);font-size:11px;font-style:italic}
+.companion-work-trace{margin-top:6px;color:var(--faint);font-size:10px}
+.companion-work-trace summary{cursor:pointer;color:var(--muted);user-select:none}
+.companion-work-trace ol{margin:6px 0 0;padding-left:18px;display:grid;gap:3px}
+.companion-work-trace.durable{margin-top:8px}
+@keyframes vex-companion-sparkle-pulse{0%,100%{opacity:.42;transform:scale(.88);filter:drop-shadow(0 0 0 rgba(255,255,255,0))}50%{opacity:1;transform:scale(1.08);filter:drop-shadow(0 0 7px rgba(255,255,255,.72))}}
+@media(prefers-reduced-motion:reduce){.companion-work-progress .companion-work-sparkle{animation:none;opacity:1;transform:none}}
+
+.companion-work-live-trace{margin-top:6px;padding-left:2px;color:color-mix(in srgb,var(--muted) 76%,#c8c3ff);font-size:10px;opacity:.82}
+.companion-work-live-trace>span{font:700 9px var(--mono);letter-spacing:.04em}
+.companion-work-live-trace ol{margin:5px 0 0;padding-left:18px;display:grid;gap:3px}
+
+.companion-turn-failure{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;display:grid;gap:4px;color:var(--muted);font-size:11px}
+.companion-turn-failure strong{font-size:12px}
+.companion-turn-failure code{font:700 9px var(--mono);color:var(--faint);overflow-wrap:anywhere}

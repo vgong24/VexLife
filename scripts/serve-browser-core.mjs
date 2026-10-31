@@ -2096,6 +2096,10 @@ export function createVexLifeBrowserServer({
         let frameSequence = 0;
         try {
           let result = await companionBridge.performConversationTurn(input, {
+            progressObserver: async (progress) => {
+              frameSequence += 1;
+              writeCompanionStreamFrame(response, 'PROGRESS', frameSequence, progress);
+            },
             responseDeltaObserver: async (delta) => {
               frameSequence += 1;
               writeCompanionStreamFrame(response, 'DELTA', frameSequence, delta);

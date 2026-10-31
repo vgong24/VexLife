@@ -828,7 +828,7 @@ test('MAC07C protected continuity hashes model files incrementally without whole
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-test('MAC06E recoverable Companion start pre-rotates an exact current browser while healthy start preserves legacy reuse', () => {
+test('MAC06E browser reuse requires exact source tree and recoverable Companion start still pre-rotates current source', () => {
   const lifecycleSource = fs.readFileSync(path.join(ROOT, 'scripts', 'macos-lifecycle.mjs'), 'utf8');
   assert.match(
     lifecycleSource,
@@ -845,6 +845,18 @@ test('MAC06E recoverable Companion start pre-rotates an exact current browser wh
   assert.match(
     lifecycleSource,
     /ownedForRebind\.sourceCurrent[\s\S]*?const rebind = await stopOwnedBrowser\(home, repo\)[\s\S]*?rebind\.sourceDisposition !== 'CURRENT_SOURCE'/
+  );
+  assert.match(
+    lifecycleSource,
+    /\^bucket-\[0-9a-f\]\{2\}\[\.\]json\$\/u/
+  );
+  assert.match(
+    lifecycleSource,
+    /sourceCurrent:\s*receiptRepo === currentRepo && receipt\.sourceTreeSha256 === currentSourceTreeSha256/
+  );
+  assert.match(
+    lifecycleSource,
+    /sourceTreeSha256:\s*browserSourceTreeSha256\(repo\)/
   );
   assert.match(
     lifecycleSource,
