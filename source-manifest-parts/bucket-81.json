@@ -21,6 +21,12 @@
       "sha256": "f49b19750884f22f70476f2349b40f448eb588bb2d78a281e99175fa9bbf9e50"
     },
     {
+      "path": "docs/vexlife-assortment/practicum-candidates/conversation-refinement-startup-sequence-01/RUNBOOK.md",
+      "mode": "100644",
+      "bytes": 5840,
+      "sha256": "5e630ad500fd1b1e852c9a1ff25ec86f84ec651656306b5310809c7fba7f7957"
+    },
+    {
       "path": "platform/android/app/src/main/kotlin/vexlife/android/presentation/AndroidHomeLoopbackSurface.kt",
       "mode": "100644",
       "bytes": 1235,
