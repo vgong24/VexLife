@@ -119,7 +119,7 @@ async function readStreamingCompletion(response, endpointProfile, responseDeltaO
     fail('ENDPOINT_RESPONSE_INVALID', 'streaming endpoint response did not expose a readable body');
   }
   const decoder = new TextDecoder();
-  let buffer = '', content = '', accumulatedContentCharacters = 0;
+  let buffer = '', content = '', reasoning = '', reasoningContent = '', accumulatedContentCharacters = 0;
   let observedModel = endpointProfile.model ?? null, responseId = null, created = null, finishReason = null, usage = null, done = false;
   const consumeEvent = async (raw) => {
     const lines = raw.split(/\r?\n/u);
@@ -138,6 +138,10 @@ async function readStreamingCompletion(response, endpointProfile, responseDeltaO
     if (event?.usage && typeof event.usage === 'object' && !Array.isArray(event.usage)) usage = event.usage;
     const choice = event?.choices?.[0] ?? null;
     if (typeof choice?.finish_reason === 'string') finishReason = choice.finish_reason;
+    const mlxReasoningDelta = choice?.delta?.reasoning;
+    const compatibilityReasoningDelta = choice?.delta?.reasoning_content;
+    if (typeof mlxReasoningDelta === 'string' && mlxReasoningDelta.length > 0) reasoning += mlxReasoningDelta;
+    if (typeof compatibilityReasoningDelta === 'string' && compatibilityReasoningDelta.length > 0) reasoningContent += compatibilityReasoningDelta;
     const delta = choice?.delta?.content;
     if (typeof delta === 'string' && delta.length > 0) {
       content += delta;
@@ -168,12 +172,18 @@ async function readStreamingCompletion(response, endpointProfile, responseDeltaO
   buffer += decoder.decode();
   if (buffer.trim()) await consumeEvent(buffer);
   if (!done) fail('ENDPOINT_RESPONSE_INVALID', 'streaming endpoint closed before the terminal [DONE] frame');
+  const message = {
+    role: 'assistant',
+    content,
+    ...(reasoning ? { reasoning } : {}),
+    ...(reasoningContent ? { reasoning_content: reasoningContent } : {})
+  };
   return {
     ...(responseId ? { id: responseId } : {}),
     object: 'chat.completion',
     model: observedModel ?? endpointProfile.model ?? 'bounded-loopback-proof',
     ...(created === null ? {} : { created }),
-    choices: [{ index: 0, finish_reason: finishReason, message: { role: 'assistant', content } }],
+    choices: [{ index: 0, finish_reason: finishReason, message }],
     ...(usage ? { usage } : {})
   };
 }

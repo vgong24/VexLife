@@ -167,7 +167,7 @@ test('Connection timeout remains a typed endpoint failure and does not widen the
   ]);
 });
 
-test('Connection streams visible content deltas while closing one final runtime observation', async () => {
+test('Connection streams visible content while retaining MLX reasoning only in the sealed final observation', async () => {
   const observed = [];
   await withServer(async (request, response) => {
     const chunks = [];
@@ -175,8 +175,10 @@ test('Connection streams visible content deltas while closing one final runtime 
     observed.push(JSON.parse(Buffer.concat(chunks).toString('utf8')));
     response.writeHead(200, { 'content-type': 'text/event-stream' });
     for (const frame of [
-      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{role:'assistant',content:'Hello '}}] },
-      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{role:'assistant',content:'stream.'}}] },
+      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{role:'assistant',reasoning:'private '}}] },
+      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{reasoning:'reasoning trace'}}] },
+      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{content:'Hello '}}] },
+      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{content:'stream.'}}] },
       { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:'stop',delta:{role:'assistant'}}] },
       { id:'fixture-stream', object:'chat.completion', model:'fixture-model', created:1, choices:[], usage:{prompt_tokens:3,completion_tokens:2,total_tokens:5} }
     ]) response.write(`data: ${JSON.stringify(frame)}\n\n`);
@@ -192,8 +194,13 @@ test('Connection streams visible content deltas while closing one final runtime 
     assert.equal(result.content, 'Hello stream.');
     assert.equal(verifyModelRuntimeObservation(result.runtimeObservation), true);
     assert.equal(verifyModelRuntimeInvocationEvidence(result.invocationEvidence), true);
+    assert.equal(result.runtimeObservation.reasoningTrace.present, true);
+    assert.equal(result.runtimeObservation.reasoningTrace.characterCount, [...'private reasoning trace'].length);
+    assert.equal(result.runtimeObservation.reasoningTrace.rawPersisted, false);
     assert.deepEqual(deltas.map((delta) => delta.contentDelta), ['Hello ', 'stream.']);
     assert.ok(deltas.every((delta) => delta.truthClass === 'EPHEMERAL_LOCAL_MODEL_PROGRESS' && delta.effectsPerformed === false));
+    assert.equal(JSON.stringify(deltas).includes('private reasoning trace'), false);
+    assert.equal(JSON.stringify(result).includes('private reasoning trace'), false);
     assert.equal(observed[0].stream, true);
     assert.equal(observed[0].stream_options.include_usage, true);
     assert.equal(observed[0].max_tokens, LIVED_COMPANION_OUTPUT_TOKEN_LIMIT);
