@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 14522,
       "sha256": "60e4398cd0c35a86a1e7b6797ca085fc41cd2e32341cfb0ec5446df252f3854e"
+    },
+    {
+      "path": "examples/vex-architecture-family-circuit.mjs",
+      "mode": "100644",
+      "bytes": 7890,
+      "sha256": "cd2badb007a3e98b59b3d4cf0135796650baac93f9298bd27e30eb7a1dbcb126"
     }
   ]
 }

@@ -451,7 +451,17 @@ test('automatic same-binding recovery failure does not retry and leaves draft pl
     assert.equal(preservedBeforeManual.draft?.content, draft);
     assert.equal(preservedBeforeManual.input, draft);
     await page.waitForTimeout(100); assert.equal(recoveryPosts, 1);
-    const recoverButton = page.locator('#companionRecoveryButton'); await recoverButton.waitFor({ state: 'visible', timeout: 5000 }); assert.equal(await recoverButton.isEnabled(), true);
+    const recoverButton = page.locator('#companionRecoveryButton');
+    await page.waitForFunction(
+      () => {
+        const button = document.querySelector('#companionRecoveryButton');
+        return Boolean(button && !button.hidden && !button.disabled);
+      },
+      null,
+      { timeout: 5000 }
+    );
+    assert.equal(await recoverButton.isVisible(), true);
+    assert.equal(await recoverButton.isEnabled(), true);
     await recoverButton.click(); await page.waitForTimeout(100); assert.equal(recoveryPosts, 2); assert.equal(recoveryRequests.length, 2);
     const after = await page.evaluate(() => ({ draft: globalThis.__VEXLIFE_APP__.state.unsentLocalDraft, input: document.querySelector('#messageInput')?.value, availabilityState: globalThis.__VEXLIFE_APP__.chat.companionAvailabilityState(), recoveryVisible: !document.querySelector('#companionRecoveryButton')?.hidden, sendDisabled: document.querySelector('#composer button[type="submit"]')?.disabled ?? null }));
     assert.equal(after.draft?.content, draft); assert.equal(after.input, draft); assert.equal(after.availabilityState, 'RECOVERABLE'); assert.equal(after.recoveryVisible, true); assert.equal(after.sendDisabled, true); assert.equal(turnCalls, 0);

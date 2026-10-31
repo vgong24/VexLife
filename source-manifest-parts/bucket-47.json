@@ -5,8 +5,8 @@
     {
       "path": "test/model-runtime-adapter.test.mjs",
       "mode": "100644",
-      "bytes": 6135,
-      "sha256": "4170ced78e1984c1dad72c5df2d1f1045a4e437860c4155b952ae65e12d57516"
+      "bytes": 7459,
+      "sha256": "b73d5515dec19be3d7dffdae68f0f4b5b8ada9556c7ff56075a7a3ce4b51d1b6"
     },
     {
       "path": "test/p0b-b06-vexlife-tocompletion-project.test.mjs",

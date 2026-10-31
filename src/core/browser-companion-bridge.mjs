@@ -21,6 +21,7 @@ import {
   formConversationSendAdmission
 } from './conversation-send-admission.mjs';
 import { projectActiveTurnCurrentness } from './interaction-control.mjs';
+import { MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE } from './model-runtime-adapter.mjs';
 import { semanticHash } from './utils.mjs';
 
 export const BROWSER_COMPANION_API_PATH = '/api/v1/companion/turn';
@@ -802,6 +803,7 @@ export function createBrowserCompanionBridge({
   promptContextResolver = null,
   promptContextAuthorityVerifier = null,
   recoveryOwner = null,
+  reasoningMode = null,
   instanceRef = ref('instance.vexlife.browser-companion')
 }) {
   if (!safePortableRef(instanceRef)) {
@@ -822,6 +824,9 @@ export function createBrowserCompanionBridge({
   }
   if (recoveryOwner !== null && typeof recoveryOwner?.recover !== 'function') {
     throw new BrowserCompanionBridgeError('COMPANION_RECOVERY_OWNER_INVALID', 'Companion recovery owner must expose recover(request)', 500);
+  }
+  if (reasoningMode !== null && reasoningMode !== MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE) {
+    throw new BrowserCompanionBridgeError('COMPANION_REASONING_MODE_INVALID', 'Companion reasoning mode is not admitted', 500);
   }
 
   const activeTurnObservations = new Map();
@@ -1300,9 +1305,15 @@ export function createBrowserCompanionBridge({
     }
   }
 
-async function performConversationTurn(input, { responseDeltaObserver = null } = {}) {
+async function performConversationTurn(input, { responseDeltaObserver = null, reasoningDeltaObserver = null, progressObserver = null } = {}) {
     if (responseDeltaObserver !== null && typeof responseDeltaObserver !== 'function') {
       throw new BrowserCompanionBridgeError('COMPANION_STREAM_OBSERVER_INVALID', 'Companion stream observer must be null or one server-owned function', 500);
+    }
+    if (reasoningDeltaObserver !== null && typeof reasoningDeltaObserver !== 'function') {
+      throw new BrowserCompanionBridgeError('COMPANION_REASONING_OBSERVER_INVALID', 'Companion reasoning observer must be null or one server-owned function', 500);
+    }
+    if (progressObserver !== null && typeof progressObserver !== 'function') {
+      throw new BrowserCompanionBridgeError('COMPANION_PROGRESS_OBSERVER_INVALID', 'Companion progress observer must be null or one server-owned function', 500);
     }
     if (binding.state !== 'BOUND') {
       throw new BrowserCompanionBridgeError(
@@ -1318,6 +1329,14 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
     const turnRef = ref('turn.vexlife.browser-companion');
     const visibleResponseDeltaObserver = responseDeltaObserver === null ? null : async (delta) => responseDeltaObserver(Object.freeze({
       ...delta, turnRef, projectRef: request.projectRef, threadRef: request.threadRef, channelRef: request.channelRef
+    }));
+    const visibleReasoningDeltaObserver = reasoningMode === MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE && reasoningDeltaObserver !== null
+      ? async (delta) => reasoningDeltaObserver(Object.freeze({
+          ...delta, turnRef, projectRef: request.projectRef, threadRef: request.threadRef, channelRef: request.channelRef
+        }))
+      : null;
+    const visibleProgressObserver = progressObserver === null ? null : async (progress) => progressObserver(Object.freeze({
+      ...progress, turnRef, projectRef: request.projectRef, threadRef: request.threadRef, channelRef: request.channelRef
     }));
     const relayProjection = composeBrowserRequestSemanticRelay({
       relayInput: request.semanticRelayInput,
@@ -1419,7 +1438,7 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
           endpoint: binding.endpoint,
           model: binding.model
         },
-        responseResolver: capabilityRuntime || promptContextResolver || visibleResponseDeltaObserver
+        responseResolver: capabilityRuntime || promptContextResolver || visibleResponseDeltaObserver || visibleReasoningDeltaObserver || visibleProgressObserver || reasoningMode
           ? async (resolverInput) => {
               const livedInference = resolverInput?.inference;
               const captureInferenceEvidence = resolverInput?.captureInferenceEvidence;
@@ -1546,6 +1565,9 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
                   taskIntent: request.content,
                   inference: contextualInference,
                   responseDeltaObserver: visibleResponseDeltaObserver,
+                  reasoningDeltaObserver: visibleReasoningDeltaObserver,
+                  reasoningMode,
+                  progressObserver: visibleProgressObserver,
                   context: runtimeContext
                 });
                 const acceptedSynthesisLast = resolved?.runtimeProjection?.schemaVersion === 'vexlife.capability-assimilation-runtime/v1';
@@ -1569,7 +1591,9 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
               }
               const response = await contextualInference({
                 ...resolverPublicInput,
-                ...(visibleResponseDeltaObserver ? { responseDeltaObserver: visibleResponseDeltaObserver } : {})
+                ...(visibleResponseDeltaObserver ? { responseDeltaObserver: visibleResponseDeltaObserver } : {}),
+                ...(visibleReasoningDeltaObserver ? { reasoningDeltaObserver: visibleReasoningDeltaObserver } : {}),
+                ...(reasoningMode ? { reasoningMode } : {})
               });
               const evidenceToken = bindVisibleResponseEvidence(response);
               const receipt = materializationConsumed ? consumedMaterializationReceipt : null;

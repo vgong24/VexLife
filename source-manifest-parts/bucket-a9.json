@@ -29,8 +29,8 @@
     {
       "path": "src/core/capability-assimilation-runtime.mjs",
       "mode": "100644",
-      "bytes": 75867,
-      "sha256": "f5fd178c5f3418dde8fe348b8fac2e0be2904655c38442525ea8f049a5c263e6"
+      "bytes": 77147,
+      "sha256": "2d48f0910e87e085ddd90d8136d19ab5ac9c009c79faba63348dd20dd1550fb6"
     }
   ]
 }
