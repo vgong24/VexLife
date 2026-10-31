@@ -28,6 +28,7 @@ import {
 } from '../reference/browser/modules/chat-controller.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const TEST_TEMP_ROOT = fs.realpathSync.native(os.tmpdir());
 
 async function startModelServer() {
   const calls = [];
@@ -53,7 +54,7 @@ async function startModelServer() {
 }
 
 function makeHome() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-browser-companion-'));
+  const root = fs.mkdtempSync(path.join(TEST_TEMP_ROOT, 'vexlife-browser-companion-'));
   const home = path.join(root, 'home');
   initializeLivedCompanionHome({
     home,
