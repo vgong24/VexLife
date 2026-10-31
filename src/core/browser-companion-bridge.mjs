@@ -1300,9 +1300,12 @@ export function createBrowserCompanionBridge({
     }
   }
 
-async function performConversationTurn(input, { responseDeltaObserver = null } = {}) {
+async function performConversationTurn(input, { responseDeltaObserver = null, progressObserver = null } = {}) {
     if (responseDeltaObserver !== null && typeof responseDeltaObserver !== 'function') {
       throw new BrowserCompanionBridgeError('COMPANION_STREAM_OBSERVER_INVALID', 'Companion stream observer must be null or one server-owned function', 500);
+    }
+    if (progressObserver !== null && typeof progressObserver !== 'function') {
+      throw new BrowserCompanionBridgeError('COMPANION_PROGRESS_OBSERVER_INVALID', 'Companion progress observer must be null or one server-owned function', 500);
     }
     if (binding.state !== 'BOUND') {
       throw new BrowserCompanionBridgeError(
@@ -1318,6 +1321,9 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
     const turnRef = ref('turn.vexlife.browser-companion');
     const visibleResponseDeltaObserver = responseDeltaObserver === null ? null : async (delta) => responseDeltaObserver(Object.freeze({
       ...delta, turnRef, projectRef: request.projectRef, threadRef: request.threadRef, channelRef: request.channelRef
+    }));
+    const visibleProgressObserver = progressObserver === null ? null : async (progress) => progressObserver(Object.freeze({
+      ...progress, turnRef, projectRef: request.projectRef, threadRef: request.threadRef, channelRef: request.channelRef
     }));
     const relayProjection = composeBrowserRequestSemanticRelay({
       relayInput: request.semanticRelayInput,
@@ -1419,7 +1425,7 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
           endpoint: binding.endpoint,
           model: binding.model
         },
-        responseResolver: capabilityRuntime || promptContextResolver || visibleResponseDeltaObserver
+        responseResolver: capabilityRuntime || promptContextResolver || visibleResponseDeltaObserver || visibleProgressObserver
           ? async (resolverInput) => {
               const livedInference = resolverInput?.inference;
               const captureInferenceEvidence = resolverInput?.captureInferenceEvidence;
@@ -1546,6 +1552,7 @@ async function performConversationTurn(input, { responseDeltaObserver = null } =
                   taskIntent: request.content,
                   inference: contextualInference,
                   responseDeltaObserver: visibleResponseDeltaObserver,
+                  progressObserver: visibleProgressObserver,
                   context: runtimeContext
                 });
                 const acceptedSynthesisLast = resolved?.runtimeProjection?.schemaVersion === 'vexlife.capability-assimilation-runtime/v1';

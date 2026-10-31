@@ -1166,6 +1166,7 @@ export function createCapabilityAssimilationRuntime({
     inference,
     endpointProfile,
     responseDeltaObserver = null,
+    progressObserver = null,
     inMemoryAuthorization = null,
     timeoutMs = 5000,
     context = {}
@@ -1173,8 +1174,17 @@ export function createCapabilityAssimilationRuntime({
     if (typeof taskIntent !== 'string' || !taskIntent.trim()) throw new Error('taskIntent must be non-empty');
     if (typeof inference !== 'function') throw new Error('capability runtime requires one admitted inference function');
     if (responseDeltaObserver !== null && typeof responseDeltaObserver !== 'function') throw new Error('capability runtime responseDeltaObserver must be null or one function');
+    if (progressObserver !== null && typeof progressObserver !== 'function') throw new Error('capability runtime progressObserver must be null or one function');
     assertNoCallerSchedulerEvidence(context);
-    const progress = [progressEvent('TASK_RECEIVED', { taskRef: context.taskRef ?? null })];
+    const progress = [];
+    const recordProgress = async (event) => {
+      progress.push(event);
+      if (progressObserver) {
+        try { await progressObserver(freeze(clone(event))); } catch {}
+      }
+      return event;
+    };
+    await recordProgress(progressEvent('TASK_RECEIVED', { taskRef: context.taskRef ?? null }));
     const modelSequenceReceipts = [];
 
     if (mode === CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN ||
@@ -1192,7 +1202,7 @@ export function createCapabilityAssimilationRuntime({
         label: 'direct'
       });
       modelSequenceReceipts.push(direct.receipt);
-      progress.push(progressEvent('DIRECT_TOOL_FREE_INFERENCE_COMPLETED', {
+      await recordProgress(progressEvent('DIRECT_TOOL_FREE_INFERENCE_COMPLETED', {
         mode,
         inferenceCount: 1,
         toolRequestCount: 0
@@ -1244,7 +1254,7 @@ export function createCapabilityAssimilationRuntime({
         ? TYPED_COMMAND_CAPABILITY_REF
         : context.activeCapabilityRef ?? null
     });
-    progress.push(progressEvent('CAPABILITY_FRONTIER_PROJECTED', {
+    await recordProgress(progressEvent('CAPABILITY_FRONTIER_PROJECTED', {
       visibleCapabilityCount: frontier.entries.length,
       rootKernelCount: frontier.rootCapabilityKernel.length
     }));
@@ -1268,12 +1278,12 @@ export function createCapabilityAssimilationRuntime({
     modelSequenceReceipts.push(requestPhase.receipt);
     const requestInference = requestPhase.normalized;
     const requestProjection = requestContract(exactJson(requestInference.content, 'request-formation'), frame, { authorizedEffect: admittedAuthorizedEffect });
-    progress.push(progressEvent('READ_ONLY_REQUESTS_FORMED', {
+    await recordProgress(progressEvent('READ_ONLY_REQUESTS_FORMED', {
       requestCount: requestProjection.requests.length
     }));
 
     if (requestProjection.requests.length === 0) {
-      progress.push(progressEvent('NO_READ_ONLY_FUNCTION_NEEDED', {
+      await recordProgress(progressEvent('NO_READ_ONLY_FUNCTION_NEEDED', {
         requestCount: 0
       }));
       const synthesisPhase = await gatedInference({
@@ -1290,7 +1300,7 @@ export function createCapabilityAssimilationRuntime({
       });
       modelSequenceReceipts.push(synthesisPhase.receipt);
       const synthesis = synthesisPhase.normalized;
-      progress.push(progressEvent('LATER_SYNTHESIS_COMPLETED', {
+      await recordProgress(progressEvent('LATER_SYNTHESIS_COMPLETED', {
         inferenceCount: 2,
         acceptedObservationCount: 0
       }));
@@ -1335,7 +1345,7 @@ export function createCapabilityAssimilationRuntime({
       throw new Error(`capability process did not compile: ${compiled.state}:${compiled.reason ?? ''}`);
     }
     const dag = compiled.plan.dependencyDag;
-    progress.push(progressEvent('DEPENDENCY_DAG_COMPILED', {
+    await recordProgress(progressEvent('DEPENDENCY_DAG_COMPILED', {
       nodeCount: dag.nodes.length,
       dependencyGraphHash: dag.graphHash
     }));
@@ -1507,7 +1517,7 @@ export function createCapabilityAssimilationRuntime({
       if (decision.batch.length === 0) {
         throw new Error(`capability DAG cannot advance: ${JSON.stringify(decision.held)}`);
       }
-      progress.push(progressEvent(effectNode ? 'AUTHORIZED_EFFECT_STARTED' : 'READ_ONLY_BATCH_STARTED', {
+      await recordProgress(progressEvent(effectNode ? 'AUTHORIZED_EFFECT_STARTED' : 'READ_ONLY_BATCH_STARTED', {
         nodeRefs: decision.batch.map((node) => node.nodeRef),
         batchSize: decision.batch.length
       }));
@@ -1634,14 +1644,14 @@ export function createCapabilityAssimilationRuntime({
       for (const result of batchResults.sort((left, right) => left.nodeRef.localeCompare(right.nodeRef))) {
         completed.add(result.nodeRef);
         observations.push(result.observation);
-        progress.push(progressEvent('OBSERVATION_ACCEPTED_AND_REINJECTED', {
+        await recordProgress(progressEvent('OBSERVATION_ACCEPTED_AND_REINJECTED', {
           nodeRef: result.nodeRef,
           observationRef: result.observation.observationRef
         }));
       }
     }
 
-    progress.push(progressEvent('LATER_SYNTHESIS_STARTED', {
+    await recordProgress(progressEvent('LATER_SYNTHESIS_STARTED', {
       acceptedObservationCount: observations.length
     }));
     const synthesisPhase = await gatedInference({
@@ -1658,7 +1668,7 @@ export function createCapabilityAssimilationRuntime({
     });
     modelSequenceReceipts.push(synthesisPhase.receipt);
     const synthesis = synthesisPhase.normalized;
-    progress.push(progressEvent('LATER_SYNTHESIS_COMPLETED', {
+    await recordProgress(progressEvent('LATER_SYNTHESIS_COMPLETED', {
       inferenceCount: 2,
       acceptedObservationCount: observations.length
     }));

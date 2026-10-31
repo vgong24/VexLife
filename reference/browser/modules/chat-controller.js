@@ -262,10 +262,11 @@ export function createBrowserCompanionAdaptiveReveal({
   return Object.freeze({ push, finish, cancel, snapshot });
 }
 
-export async function readBrowserCompanionTurnStream(response, { onDelta = null } = {}) {
+export async function readBrowserCompanionTurnStream(response, { onDelta = null, onProgress = null } = {}) {
   if (!response?.ok) return response.json();
   if (!response.body || typeof response.body.getReader !== 'function') throw new Error('Companion streaming response has no readable body');
   if (onDelta !== null && typeof onDelta !== 'function') throw new TypeError('Companion onDelta must be null or one function');
+  if (onProgress !== null && typeof onProgress !== 'function') throw new TypeError('Companion onProgress must be null or one function');
   const reader = response.body.getReader(), decoder = new TextDecoder();
   let buffer = '', terminal = null;
   for (;;) {
@@ -279,7 +280,12 @@ export async function readBrowserCompanionTurnStream(response, { onDelta = null 
       if (!line) continue;
       const frame = JSON.parse(line);
       if (frame?.schemaVersion !== BROWSER_COMPANION_STREAM_FRAME_SCHEMA || !Number.isSafeInteger(frame.sequence) || frame.sequence < 1) throw new Error('Companion stream frame contract is invalid');
-      if (frame.frameType === 'DELTA') {
+      if (frame.frameType === 'PROGRESS') {
+        if (frame.payload?.schemaVersion !== 'vexlife.capability-assimilation-progress/v1'
+            || typeof frame.payload.state !== 'string'
+            || frame.payload.hiddenReasoningIncluded !== false) throw new Error('Companion stream progress contract is invalid');
+        if (onProgress) await onProgress(frame.payload);
+      } else if (frame.frameType === 'DELTA') {
         if (frame.payload?.truthClass !== 'EPHEMERAL_LOCAL_MODEL_PROGRESS' || typeof frame.payload.contentDelta !== 'string' || frame.payload.effectsPerformed !== false) throw new Error('Companion stream delta contract is invalid');
         if (onDelta) await onDelta(frame.payload);
       } else if (frame.frameType === 'FINAL' || frame.frameType === 'FAILURE') terminal = frame.payload;
@@ -522,6 +528,7 @@ export function createChatController({ state, projects, roles, channels, message
   let companionAvailability = null;
   let companionAvailabilityReadState = 'UNKNOWN';
   let companionTurnPending = false;
+  let companionWorkTrace = null;
   let companionRecoveryPending = false;
   let companionRecoveryFailure = false;
   let companionVesselProjectionState = 'UNBOUND';
@@ -1315,33 +1322,131 @@ export function createChatController({ state, projects, roles, channels, message
     updateNewMessageButton();
   }
 
+  const companionWorkPhaseLabel = (state) => ({
+    TASK_RECEIVED: 'Vex is thinking…',
+    CAPABILITY_FRONTIER_PROJECTED: 'Checking available capabilities…',
+    READ_ONLY_REQUESTS_FORMED: 'Choosing what to inspect…',
+    NO_READ_ONLY_FUNCTION_NEEDED: 'No tool needed · preparing response…',
+    DEPENDENCY_DAG_COMPILED: 'Planning current reads…',
+    READ_ONLY_BATCH_STARTED: 'Reading current information…',
+    AUTHORIZED_EFFECT_STARTED: 'Running an authorized action…',
+    OBSERVATION_ACCEPTED_AND_REINJECTED: 'Using current observations…',
+    LATER_SYNTHESIS_STARTED: 'Preparing response…',
+    DIRECT_TOOL_FREE_INFERENCE_COMPLETED: 'Preparing response…',
+    LATER_SYNTHESIS_COMPLETED: 'Response ready…',
+    RESPONDING: 'Vex is responding…'
+  }[state] ?? 'Vex is working…');
+
   function clearCompanionStreamProgress(channel) {
     const feed = $('#messageFeed');
     for (const article of feed.querySelectorAll('[data-companion-stream-progress="true"]')) if (article.dataset.channelRef === channel.channelRef) article.remove();
   }
 
+  function currentCompanionProgressArticle(channel) {
+    const feed = $('#messageFeed');
+    let article = [...feed.querySelectorAll('[data-companion-stream-progress="true"]')].find((candidate) => candidate.dataset.channelRef === channel.channelRef) ?? null;
+    if (article) return article;
+    article = document.createElement('article');
+    article.className = 'message companion-work-progress';
+    article.dataset.companionStreamProgress = 'true';
+    article.dataset.projectRef = channel.projectRef;
+    article.dataset.threadRef = channel.threadRef;
+    article.dataset.channelRef = channel.channelRef;
+    article.dataset.speaker = roles.companion.actorRef;
+    article.dataset.componentRef = 'component.vexlife.message-row';
+    article.dataset.instanceRef = 'instance.message-row.ephemeral-companion-stream';
+    article.dataset.truthClass = 'EPHEMERAL_LOCAL_MODEL_PROGRESS';
+    const thread = currentThread();
+    article.innerHTML = `<div class="avatar companion-work-sparkle" aria-hidden="true">✦</div><div><div class="message-header"><strong>${escapeHtml(roleLabel('companion'))} → ${escapeHtml(roleLabel('victor'))}</strong><span>${escapeHtml(thread ? t(thread.topicRef) : channel.threadRef)}</span><span class="message-index">[…]</span></div><div class="companion-work-phase" role="status" aria-live="polite">Vex is working…</div><div class="companion-work-live-trace"><span>&lt;Thinking&gt;</span><ol></ol></div><div class="message-body"></div></div>`;
+    feed.append(article);
+    return article;
+  }
+
+  function renderCompanionWorkPlaceholder(channel) {
+    if (keyForChannel(channel) !== keyForChannel(currentChannel())) return false;
+    const feed = $('#messageFeed'), wasNearBottom = isNearBottom(feed);
+    const article = currentCompanionProgressArticle(channel);
+    $('.companion-work-phase', article).textContent = companionWorkPhaseLabel('TASK_RECEIVED');
+    if (wasNearBottom) feed.scrollTop = feed.scrollHeight;
+    return true;
+  }
+
+  function renderCompanionWorkProgress(channel, progress) {
+    if (keyForChannel(channel) !== keyForChannel(currentChannel())) return false;
+    const feed = $('#messageFeed'), wasNearBottom = isNearBottom(feed);
+    const article = currentCompanionProgressArticle(channel);
+    const label = companionWorkPhaseLabel(progress.state);
+    $('.companion-work-phase', article).textContent = label;
+    const trace = $('.companion-work-live-trace ol', article);
+    const item = document.createElement('li');
+    item.textContent = label;
+    item.dataset.progressState = progress.state;
+    trace.append(item);
+    companionWorkTrace ??= [];
+    companionWorkTrace.push(Object.freeze({ state: progress.state, label }));
+    if (wasNearBottom) feed.scrollTop = feed.scrollHeight;
+    return true;
+  }
+
   function renderCompanionStreamProgress(channel, content) {
     if (keyForChannel(channel) !== keyForChannel(currentChannel())) return false;
     const feed = $('#messageFeed'), wasNearBottom = isNearBottom(feed);
-    let article = [...feed.querySelectorAll('[data-companion-stream-progress="true"]')].find((candidate) => candidate.dataset.channelRef === channel.channelRef) ?? null;
-    if (!article) {
-      article = document.createElement('article');
-      article.className = 'message';
-      article.dataset.companionStreamProgress = 'true';
-      article.dataset.projectRef = channel.projectRef;
-      article.dataset.threadRef = channel.threadRef;
-      article.dataset.channelRef = channel.channelRef;
-      article.dataset.speaker = roles.companion.actorRef;
-      article.dataset.componentRef = 'component.vexlife.message-row';
-      article.dataset.instanceRef = 'instance.message-row.ephemeral-companion-stream';
-      article.dataset.truthClass = 'EPHEMERAL_LOCAL_MODEL_PROGRESS';
-      const thread = currentThread();
-      article.innerHTML = `<div class="avatar" aria-hidden="true">${escapeHtml(roles.companion.avatar)}</div><div><div class="message-header"><strong>${escapeHtml(roleLabel('companion'))} → ${escapeHtml(roleLabel('victor'))}</strong><span>${escapeHtml(thread ? t(thread.topicRef) : channel.threadRef)}</span><span class="message-index">[…]</span></div><div class="message-body"></div></div>`;
-      feed.append(article);
-    }
+    const article = currentCompanionProgressArticle(channel);
+    $('.companion-work-phase', article).textContent = companionWorkPhaseLabel('RESPONDING');
     $('.message-body', article).textContent = content;
     if (wasNearBottom) feed.scrollTop = feed.scrollHeight;
     return true;
+  }
+
+  function renderCompanionWorkTrace(article, trace) {
+    if (!Array.isArray(trace) || trace.length === 0) return;
+    const details = document.createElement('details');
+    details.className = 'companion-work-trace durable';
+    const summary = document.createElement('summary');
+    summary.textContent = 'View work trace';
+    const list = document.createElement('ol');
+    for (const entry of trace) {
+      const item = document.createElement('li');
+      item.textContent = entry.label;
+      item.dataset.progressState = entry.state;
+      list.append(item);
+    }
+    details.append(summary, list);
+    $('.message-body', article)?.after(details);
+  }
+
+  function renderCompanionFailureDisclosure(article, failure) {
+    if (!failure || typeof failure.failureCode !== 'string' || failure.failureCode.length === 0) return;
+    const panel = document.createElement('div');
+    panel.className = 'companion-turn-failure';
+    panel.dataset.truthClass = 'EPHEMERAL_LOCAL_MODEL_FAILURE';
+    panel.setAttribute('role', 'status');
+    panel.setAttribute('aria-live', 'polite');
+    const title = document.createElement('strong');
+    title.textContent = 'Vex could not complete this response.';
+    const detail = document.createElement('span');
+    detail.textContent = typeof failure.message === 'string' && failure.message
+      ? failure.message
+      : 'The local companion turn stopped after your message was saved.';
+    const code = document.createElement('code');
+    code.textContent = failure.failureCode;
+    panel.append(title, detail, code);
+    if (Array.isArray(failure.workTrace) && failure.workTrace.length > 0) {
+      const details = document.createElement('details');
+      details.className = 'companion-work-trace durable';
+      const summary = document.createElement('summary');
+      summary.textContent = 'View work trace';
+      const list = document.createElement('ol');
+      for (const entry of failure.workTrace) {
+        const item = document.createElement('li');
+        item.textContent = entry.label;
+        item.dataset.progressState = entry.state;
+        list.append(item);
+      }
+      details.append(summary, list);
+      panel.append(details);
+    }
+    $('.message-body', article)?.after(panel);
   }
 
   function appendMessageNode(message, considerScroll = true) {
@@ -1368,6 +1473,8 @@ export function createChatController({ state, projects, roles, channels, message
     const thread = threadForMessage(message);
     article.innerHTML = `<div class="avatar" aria-hidden="true">${escapeHtml(roles[message.speakerKey].avatar)}</div><div><div class="message-header"><strong>${escapeHtml(speaker)} → ${escapeHtml(recipients)}</strong><span>${escapeHtml(thread ? t(thread.topicRef) : message.threadRef)}</span><span class="message-index">[${String(message.sequence).padStart(2, '0')}]</span></div><div class="message-body"></div></div>`;
     $('.message-body', article).textContent = message.contentRef ? t(message.contentRef, message.contentParams) : message.content;
+    renderCompanionWorkTrace(article, message.companionWorkTrace);
+    renderCompanionFailureDisclosure(article, message.companionFailure);
     renderSemanticRelayDisclosure(article, message);
     if (message.modelTurnFormation) {
       void renderModelTurnFormationDisclosure(article, message.modelTurnFormation, { language: state.language }).catch(() => {});
@@ -1611,7 +1718,9 @@ export function createChatController({ state, projects, roles, channels, message
   async function requestRealCompanionReply(channel, content, frameAtSend, { sourceMessage = null, semanticRelayInput = null, semanticRelayAction = null } = {}) {
     if (channel.roleKey !== 'companion') return false;
     companionTurnPending = true;
+    companionWorkTrace = [];
     updateComposer();
+    renderCompanionWorkPlaceholder(channel);
     const sendIdempotencyKey = sourceMessage?.sendIdempotencyKey ?? `browser-send.${globalThis.crypto.randomUUID()}`;
     if (sourceMessage && !sourceMessage.sendIdempotencyKey) sourceMessage.sendIdempotencyKey = sendIdempotencyKey;
     let companionStreamReveal = null;
@@ -1638,6 +1747,9 @@ export function createChatController({ state, projects, roles, channels, message
         render: (visibleContent) => { renderCompanionStreamProgress(channel, visibleContent); }
       });
       const body = await readBrowserCompanionTurnStream(response, {
+        onProgress(progress) {
+          renderCompanionWorkProgress(channel, progress);
+        },
         onDelta(delta) {
           companionStreamReveal.push(delta.contentDelta);
         }
@@ -1670,6 +1782,11 @@ export function createChatController({ state, projects, roles, channels, message
           sourceMessage.truthClass = 'DURABLE_CONVERSATION_HUMAN';
           sourceMessage.canonicalConversationHeadSha256 = body.canonicalConversationHeadSha256 ?? null;
           sourceMessage.companionAttentionState = 'FAILED_AFTER_DURABLE_SEND';
+          sourceMessage.companionFailure = Object.freeze({
+            failureCode: typeof body.failureCode === 'string' && body.failureCode ? body.failureCode : 'COMPANION_TURN_FAILED',
+            message: typeof body.message === 'string' ? body.message : '',
+            workTrace: companionWorkTrace?.length ? [...companionWorkTrace] : []
+          });
           bindCanonicalConversationHead(channel, {
             headSha256: body.canonicalConversationHeadSha256,
             messageRef: body.requestMessageRef,
@@ -1688,6 +1805,7 @@ export function createChatController({ state, projects, roles, channels, message
         sourceMessage.truthClass = 'DURABLE_CONVERSATION_HUMAN';
         sourceMessage.canonicalConversationHeadSha256 = body.humanConversationHeadSha256 ?? null;
         sourceMessage.companionAttentionState = 'COMPLETED';
+        sourceMessage.companionFailure = null;
       }
       if (sourceMessage && body.requestSemanticRelay) { sourceMessage.semanticRelay = body.requestSemanticRelay; renderMessages(); }
       const message = createMessage(channel.channelRef, 'companion', ['victor'], body.content, list.length);
@@ -1703,6 +1821,7 @@ export function createChatController({ state, projects, roles, channels, message
         sequence: body.companionMessageSequence
       });
       message.modelNameOrBoundedTestProfileRef = body.modelNameOrBoundedTestProfileRef;
+      message.companionWorkTrace = companionWorkTrace?.length ? [...companionWorkTrace] : null;
       message.modelTurnFormation = projectBrowserModelTurnFormation({
         modelTurnWitness: body.modelTurnWitness ?? null,
         capabilityRuntime: body.capabilityRuntime ?? null,
@@ -1738,6 +1857,7 @@ export function createChatController({ state, projects, roles, channels, message
       companionStreamReveal?.cancel();
       clearCompanionStreamProgress(channel);
       companionTurnPending = false;
+      companionWorkTrace = null;
       await requestInterfaceObservation('post-turn');
     }
   }

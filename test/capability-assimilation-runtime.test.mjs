@@ -120,7 +120,9 @@ test('runtime executes independent reads concurrently, uses ToolResultRelay exac
   let maximumActiveReads = 0;
   const sequence = [];
   const visibleDeltas = [];
+  const visibleProgress = [];
   const responseDeltaObserver = async (delta) => { visibleDeltas.push(delta); };
+  const progressObserver = async (progress) => { visibleProgress.push(progress); };
   const inference = async (input) => {
     inferenceCount += 1;
     if (inferenceCount === 1) {
@@ -164,12 +166,16 @@ test('runtime executes independent reads concurrently, uses ToolResultRelay exac
     taskIntent: 'Find current capability and context information.',
     inference,
     responseDeltaObserver,
+    progressObserver,
     endpointProfile: { profileRef: 'profile.test', admitted: true, endpoint: 'http://127.0.0.1:1', model: 'test' },
     context: { taskRef: 'task.test.parallel', threadRef: 'thread.test.parallel' }
   });
   assert.equal(result.response.content, 'Synthesized from two current observations.');
   assert.equal(inferenceCount, 2);
   assert.deepEqual(visibleDeltas, [{ contentDelta: 'Synthesized' }]);
+  assert.deepEqual(visibleProgress.map((item) => item.state), result.runtimeProjection.progress.map((item) => item.state));
+  assert.ok(visibleProgress.length > 0);
+  assert.ok(visibleProgress.every((item) => item.hiddenReasoningIncluded === false));
   assert.equal(maximumActiveReads, 2);
   assert.equal(result.runtimeProjection.toolRequestCount, 2);
   assert.equal(result.runtimeProjection.observationRefs.length, 2);

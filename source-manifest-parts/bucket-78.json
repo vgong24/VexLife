@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 2991,
       "sha256": "7422edc1bbf79dec7b376765273deb3b05c022e2214bdc92ac5e570306de2682"
+    },
+    {
+      "path": "test/architecture-family-circuit-example.test.mjs",
+      "mode": "100644",
+      "bytes": 5497,
+      "sha256": "6be9e3387c9489910d56e696d13add650c95449a81aa0e4d16bfcc56424f88be"
     }
   ]
 }
