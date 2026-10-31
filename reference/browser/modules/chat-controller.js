@@ -1415,6 +1415,40 @@ export function createChatController({ state, projects, roles, channels, message
     $('.message-body', article)?.after(details);
   }
 
+  function renderCompanionFailureDisclosure(article, failure) {
+    if (!failure || typeof failure.failureCode !== 'string' || failure.failureCode.length === 0) return;
+    const panel = document.createElement('div');
+    panel.className = 'companion-turn-failure';
+    panel.dataset.truthClass = 'EPHEMERAL_LOCAL_MODEL_FAILURE';
+    panel.setAttribute('role', 'status');
+    panel.setAttribute('aria-live', 'polite');
+    const title = document.createElement('strong');
+    title.textContent = 'Vex could not complete this response.';
+    const detail = document.createElement('span');
+    detail.textContent = typeof failure.message === 'string' && failure.message
+      ? failure.message
+      : 'The local companion turn stopped after your message was saved.';
+    const code = document.createElement('code');
+    code.textContent = failure.failureCode;
+    panel.append(title, detail, code);
+    if (Array.isArray(failure.workTrace) && failure.workTrace.length > 0) {
+      const details = document.createElement('details');
+      details.className = 'companion-work-trace durable';
+      const summary = document.createElement('summary');
+      summary.textContent = 'View work trace';
+      const list = document.createElement('ol');
+      for (const entry of failure.workTrace) {
+        const item = document.createElement('li');
+        item.textContent = entry.label;
+        item.dataset.progressState = entry.state;
+        list.append(item);
+      }
+      details.append(summary, list);
+      panel.append(details);
+    }
+    $('.message-body', article)?.after(panel);
+  }
+
   function appendMessageNode(message, considerScroll = true) {
     const selectedKey = keyForChannel(currentChannel());
     const messageKey = conversationKey(message.projectRef, message.threadRef, message.channelRef);
@@ -1440,6 +1474,7 @@ export function createChatController({ state, projects, roles, channels, message
     article.innerHTML = `<div class="avatar" aria-hidden="true">${escapeHtml(roles[message.speakerKey].avatar)}</div><div><div class="message-header"><strong>${escapeHtml(speaker)} → ${escapeHtml(recipients)}</strong><span>${escapeHtml(thread ? t(thread.topicRef) : message.threadRef)}</span><span class="message-index">[${String(message.sequence).padStart(2, '0')}]</span></div><div class="message-body"></div></div>`;
     $('.message-body', article).textContent = message.contentRef ? t(message.contentRef, message.contentParams) : message.content;
     renderCompanionWorkTrace(article, message.companionWorkTrace);
+    renderCompanionFailureDisclosure(article, message.companionFailure);
     renderSemanticRelayDisclosure(article, message);
     if (message.modelTurnFormation) {
       void renderModelTurnFormationDisclosure(article, message.modelTurnFormation, { language: state.language }).catch(() => {});
@@ -1747,6 +1782,11 @@ export function createChatController({ state, projects, roles, channels, message
           sourceMessage.truthClass = 'DURABLE_CONVERSATION_HUMAN';
           sourceMessage.canonicalConversationHeadSha256 = body.canonicalConversationHeadSha256 ?? null;
           sourceMessage.companionAttentionState = 'FAILED_AFTER_DURABLE_SEND';
+          sourceMessage.companionFailure = Object.freeze({
+            failureCode: typeof body.failureCode === 'string' && body.failureCode ? body.failureCode : 'COMPANION_TURN_FAILED',
+            message: typeof body.message === 'string' ? body.message : '',
+            workTrace: companionWorkTrace?.length ? [...companionWorkTrace] : []
+          });
           bindCanonicalConversationHead(channel, {
             headSha256: body.canonicalConversationHeadSha256,
             messageRef: body.requestMessageRef,
@@ -1765,6 +1805,7 @@ export function createChatController({ state, projects, roles, channels, message
         sourceMessage.truthClass = 'DURABLE_CONVERSATION_HUMAN';
         sourceMessage.canonicalConversationHeadSha256 = body.humanConversationHeadSha256 ?? null;
         sourceMessage.companionAttentionState = 'COMPLETED';
+        sourceMessage.companionFailure = null;
       }
       if (sourceMessage && body.requestSemanticRelay) { sourceMessage.semanticRelay = body.requestSemanticRelay; renderMessages(); }
       const message = createMessage(channel.channelRef, 'companion', ['victor'], body.content, list.length);
