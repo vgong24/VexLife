@@ -132,6 +132,50 @@ VexRelay / VexLocalBridge
     Conversation truth
 ~~~
 
+## Projection-owner boundary
+
+One semantic owner can have more than one presentation projection.
+
+Current Conversation relationship:
+
+~~~text
+Conversation / chat-controller
+  = interaction owner
+  = forms ephemeral visible-work presentation state
+
+Reference DOM
+  = canonical browser presentation seam
+
+Evolution Conversation adapter
+  = migrated presentation projection
+  = must preserve human-visible meaning
+  = must not silently reduce visible-work state to response text only
+~~~
+
+Failure learned here:
+
+~~~text
+canonical immediate placeholder exists
++ Evolution reads only .message-body
++ placeholder body is initially empty
+-> Evolution returns null
+-> human sees no activity
+
+canonical durable message has companionWorkTrace
++ Evolution projectMessage omits companionWorkTrace
+-> human sees no View work trace
+~~~
+
+Therefore:
+
+~~~text
+SOURCE_CURRENTNESS != PROJECTION_PARITY
+INTERACTION_OWNER_CORRECT != ACTIVE_SURFACE_CORRECT
+HIDDEN_REFERENCE_DOM_PROOF != LIVED_EVOLUTION_PROOF
+~~~
+
+The active human surface must consume every presentation field required for the intended experience while leaving semantic ownership with the canonical interaction owner.
+
 ## Host/test boundary
 
 Host adaptation belongs outside the semantic owner.
