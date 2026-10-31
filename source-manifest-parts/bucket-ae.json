@@ -5,8 +5,8 @@
     {
       "path": "docs/vexlife-assortment/practicum-candidates/conversation-refinement-startup-sequence-01/README.md",
       "mode": "100644",
-      "bytes": 4901,
-      "sha256": "ba2be6139d6564156f2ee5ccc9b647ed99c5bffd003ede6e413ff1eec078ba95"
+      "bytes": 6077,
+      "sha256": "3d83e53ecc51428228ec583fe13b3d2412c48b71167eec2330385f40ab549fd8"
     },
     {
       "path": "release/windows/build-vexlife-bootstrap.ps1",
