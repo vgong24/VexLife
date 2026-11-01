@@ -171,6 +171,71 @@ test('Connection timeout remains a typed endpoint failure and does not widen the
   ]);
 });
 
+test('Connection streaming timeout measures provider inactivity rather than total active generation time', async () => {
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  await withServer(async (request, response) => {
+    for await (const _chunk of request) {}
+    response.writeHead(200, { 'content-type': 'text/event-stream' });
+    const frames = [
+      { id:'fixture-liveness', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{reasoning:'still '}}] },
+      { id:'fixture-liveness', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{reasoning:'thinking'}}] },
+      { id:'fixture-liveness', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{content:'final '}}] },
+      { id:'fixture-liveness', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{content:'answer'}}] },
+      { id:'fixture-liveness', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:'stop',delta:{role:'assistant'}}] }
+    ];
+    for (const frame of frames) {
+      response.write(`data: ${JSON.stringify(frame)}\n\n`);
+      await wait(60);
+    }
+    response.end('data: [DONE]\n\n');
+  }, async (endpoint) => {
+    const reasoningDeltas = [];
+    const contentDeltas = [];
+    const result = await invokeLivedCompanionEndpoint({
+      endpointProfile: profile(endpoint),
+      messages: [{ role:'user', content:'Take enough time to finish.' }],
+      responseDeltaObserver: async (delta) => { contentDeltas.push(delta.contentDelta); },
+      reasoningDeltaObserver: async (delta) => { reasoningDeltas.push(delta.reasoningDelta); },
+      reasoningMode: MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE,
+      timeoutMs: 150
+    });
+    assert.deepEqual(reasoningDeltas, ['still ', 'thinking']);
+    assert.deepEqual(contentDeltas, ['final ', 'answer']);
+    assert.equal(result.content, 'final answer');
+    assert.equal(result.runtimeObservation.reasoningTrace.present, true);
+  });
+});
+
+test('Connection streaming liveness still fails closed after provider activity stops', async () => {
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  await withServer(async (request, response) => {
+    for await (const _chunk of request) {}
+    response.writeHead(200, { 'content-type': 'text/event-stream' });
+    response.write(`data: ${JSON.stringify({
+      id:'fixture-idle',
+      object:'chat.completion.chunk',
+      model:'fixture-model',
+      created:1,
+      choices:[{index:0,finish_reason:null,delta:{reasoning:'started'}}]
+    })}\n\n`);
+    await wait(180);
+    if (!response.destroyed) response.end('data: [DONE]\n\n');
+  }, async (endpoint) => {
+    await assert.rejects(
+      invokeLivedCompanionEndpoint({
+        endpointProfile: profile(endpoint),
+        messages: [{ role:'user', content:'Do not hang forever.' }],
+        reasoningDeltaObserver: async () => {},
+        reasoningMode: MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE,
+        timeoutMs: 80
+      }),
+      (error) => error instanceof LivedCompanionConnectionError
+        && error.code === 'ENDPOINT_TIMEOUT'
+        && /became inactive/u.test(error.message)
+    );
+  });
+});
+
 test('Connection streams visible content while retaining MLX reasoning only in the sealed final observation', async () => {
   const observed = [];
   await withServer(async (request, response) => {
