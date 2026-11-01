@@ -180,8 +180,10 @@ export const globalizationSemanticRelaySuite = Object.freeze({
     panel = document.querySelector('.semantic-relay-attention');
 
     globalThis.fetch = async (url, options = {}) => {
-      if (String(url).includes('/api/v1/companion/availability')) return canonicalReadyAvailabilityResponse();
-      decisionFetchCalls.push({ url:String(url), body: options.body ? JSON.parse(String(options.body)) : null });
+      const requestUrl = String(url);
+      if (requestUrl.includes('/api/v1/companion/availability')) return canonicalReadyAvailabilityResponse();
+      if (!requestUrl.includes('/api/v1/companion/turn')) return originalFetch(url, options);
+      decisionFetchCalls.push({ url:requestUrl, body: options.body ? JSON.parse(String(options.body)) : null });
       return new Response(JSON.stringify({ state:'FAILED', truthClass:'CURRENT_LOCAL_RUNTIME_FAILURE', failureCode:'PROOF_STOP', message:'bounded proof stop' }), { status:503, headers:{'content-type':'application/json'} });
     };
     decisionFetchCalls.length = 0;
@@ -209,8 +211,10 @@ export const globalizationSemanticRelaySuite = Object.freeze({
     assert(decisionFetchCalls.length === 0, 'GPT-03 CORRECT crossed the companion send boundary before explicit human resubmit');
 
     globalThis.fetch = async (url, options = {}) => {
-      if (String(url).includes('/api/v1/companion/availability')) return canonicalReadyAvailabilityResponse();
-      decisionFetchCalls.push({ url:String(url), body: options.body ? JSON.parse(String(options.body)) : null });
+      const requestUrl = String(url);
+      if (requestUrl.includes('/api/v1/companion/availability')) return canonicalReadyAvailabilityResponse();
+      if (!requestUrl.includes('/api/v1/companion/turn')) return originalFetch(url, options);
+      decisionFetchCalls.push({ url:requestUrl, body: options.body ? JSON.parse(String(options.body)) : null });
       return new Response(JSON.stringify({ state:'FAILED', truthClass:'CURRENT_LOCAL_RUNTIME_FAILURE', failureCode:'PROOF_STOP', message:'bounded proof stop' }), { status:503, headers:{'content-type':'application/json'} });
     };
 
