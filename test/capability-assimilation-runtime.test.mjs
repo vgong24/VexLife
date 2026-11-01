@@ -243,14 +243,19 @@ test('ADOPTED_READ_ONLY permits ordinary conversation without fabricating a tool
         assert.match(requestContent, /NO_READ_ONLY_FUNCTION_NEEDED/u);
         return noReadResult();
       }
-      assert.match(requestContent, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
+      assert.match(requestContent, /VEXLIFE_CONVERSATION_RESPONSE\/v1/u);
+      assert.match(requestContent, /Respond directly and naturally to the human/u);
+      assert.match(requestContent, /Do not turn that absence into an audit, status report, capability explanation, or proof recital/u);
+      assert.match(requestContent, /Curiosity, uncertainty, reflection, warmth, humor, and ordinary conversation are valid/u);
       assert.match(requestContent, /Provider model reasoning may use its separate admitted reasoning channel/u);
       assert.match(requestContent, /Always finish by emitting one non-empty human-facing answer in normal content/u);
       assert.match(requestContent, /reasoning-only completion is invalid/iu);
-      assert.match(requestContent, /SOURCE_BOUND_OBSERVATIONS=\[\]/u);
       assert.match(requestContent, /FRESH_COMPANION_FOUNDATION_FRAME=/u);
       assert.match(requestContent, /CURRENT_CONTEXT=.*"threadRef":"thread\.self-development\.open-conversation"/u);
-      assert.match(requestContent, /COMPACT_CAPABILITY_FRONTIER=.*"capabilityRef":"capability\.search"/u);
+      assert.doesNotMatch(requestContent, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
+      assert.doesNotMatch(requestContent, /COMPACT_CAPABILITY_FRONTIER=/u);
+      assert.doesNotMatch(requestContent, /SOURCE_BOUND_OBSERVATIONS=/u);
+      assert.doesNotMatch(requestContent, /HELD_OR_UNKNOWN_NODES=/u);
       assert.doesNotMatch(requestContent, /source\.must-not-project-into-current-context/u);
       return {
         content: 'Hello. I can talk without inventing a tool read.',

@@ -950,6 +950,21 @@ function requestPrompt(taskIntent, frontier, currentContext, authorizedEffectCue
   ].join('\n');
 }
 
+function noReadConversationPrompt(taskIntent, currentContext) {
+  return [
+    'VEXLIFE_CONVERSATION_RESPONSE/v1',
+    'Respond directly and naturally to the human from the current local Companion relationship.',
+    'No current read or admitted effect was needed for this turn. Do not turn that absence into an audit, status report, capability explanation, or proof recital unless the human actually asked for one.',
+    'Keep the human intent central. Curiosity, uncertainty, reflection, warmth, humor, and ordinary conversation are valid when they fit what the human invited.',
+    'Stay truthful: do not invent external observations, effects, source facts, continuity, authority, or lived experience that is not present in the supplied current context.',
+    'Provider model reasoning may use its separate admitted reasoning channel; never copy that reasoning into normal answer content.',
+    'Always finish by emitting one non-empty human-facing answer in normal content after any provider reasoning. A reasoning-only completion is invalid.',
+    `FRESH_COMPANION_FOUNDATION_FRAME=${JSON.stringify(FRESH_COMPANION_FOUNDATION_FRAME)}`,
+    `CURRENT_CONTEXT=${JSON.stringify(currentContext)}`,
+    `TASK_INTENT=${JSON.stringify(taskIntent)}`
+  ].join('\n');
+}
+
 function synthesisPrompt(taskIntent, observations, held, frontier, currentContext) {
   const bounded = observations.map((observation) => ({
     observationRef: observation.observationRef,
@@ -1298,7 +1313,7 @@ export function createCapabilityAssimilationRuntime({
         inference,
         input: {
           endpointProfile,
-          requestContent: synthesisPrompt(taskIntent, [], [], frontier, currentContext),
+          requestContent: noReadConversationPrompt(taskIntent, currentContext),
           inMemoryAuthorization,
           timeoutMs,
           ...(responseDeltaObserver ? { responseDeltaObserver } : {}),
