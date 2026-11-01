@@ -3,12 +3,13 @@ import { semanticHash } from './utils.mjs';
 
 export const MODEL_RUNTIME_OBSERVATION_SCHEMA = 'vexlife.model-runtime-observation/v1';
 export const MODEL_EMITTED_REASONING_TRACE = 'MODEL_EMITTED_REASONING_TRACE';
+export const MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE = 'MODEL_EMITTED_REASONING_EXPLICIT_OPEN';
 
 const HEX64 = /^[0-9a-f]{64}$/u;
 const PATH_LIKE = /(?:^[A-Za-z]:[\\/]|[\\/])/u;
 const KNOWN_TOP_LEVEL = new Set(['choices', 'created', 'id', 'model', 'object', 'system_fingerprint', 'timings', 'usage']);
 const KNOWN_CHOICE = new Set(['finish_reason', 'index', 'message']);
-const KNOWN_MESSAGE = new Set(['content', 'reasoning_content', 'refusal', 'role', 'tool_calls']);
+const KNOWN_MESSAGE = new Set(['content', 'reasoning', 'reasoning_content', 'refusal', 'role', 'tool_calls']);
 const KNOWN_USAGE = new Set(['completion_tokens', 'prompt_tokens', 'prompt_tokens_details', 'total_tokens']);
 const KNOWN_PROMPT_DETAILS = new Set(['cached_tokens']);
 const KNOWN_TIMINGS = new Set([
@@ -84,8 +85,13 @@ function timingSummary(timings) {
 }
 
 function reasoningTrace(message) {
-  const value = message?.reasoning_content;
-  if (typeof value !== 'string' || value.length === 0) {
+  const mlxReasoning = nonempty(message?.reasoning) ? message.reasoning : null;
+  const compatibilityReasoning = nonempty(message?.reasoning_content) ? message.reasoning_content : null;
+  if (mlxReasoning && compatibilityReasoning && mlxReasoning !== compatibilityReasoning) {
+    throw new TypeError('runtime response exposed conflicting model reasoning fields');
+  }
+  const value = mlxReasoning ?? compatibilityReasoning;
+  if (!value) {
     return frozen({ type: MODEL_EMITTED_REASONING_TRACE, present: false, contentSha256: null, characterCount: 0, rawState: 'EPHEMERAL', rawPersisted: false, humanProjection: 'SEALED_EXPLICIT_OPEN_ONLY', modelProjection: 'NONE', trainingProjection: 'NONE' });
   }
   return frozen({ type: MODEL_EMITTED_REASONING_TRACE, present: true, contentSha256: sha256Bytes(Buffer.from(value, 'utf8')), characterCount: [...value].length, rawState: 'EPHEMERAL', rawPersisted: false, humanProjection: 'SEALED_EXPLICIT_OPEN_ONLY', modelProjection: 'NONE', trainingProjection: 'NONE' });

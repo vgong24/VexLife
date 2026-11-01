@@ -11,8 +11,8 @@
     {
       "path": "reference/browser/evolution/conversation.css",
       "mode": "100644",
-      "bytes": 6941,
-      "sha256": "c50c253a8668d5a2df8b95ffb2695994dcc6a26697b7058e0cc21c831e8a7c2b"
+      "bytes": 8828,
+      "sha256": "d292ae3e6f9794396cc68cd8fd6643a2c03991126a95efa3b627718d26538c83"
     },
     {
       "path": "scripts/intent-plan.mjs",

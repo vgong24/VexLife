@@ -69,6 +69,11 @@ function projectMessage(binding, channel, message) {
     content,
     truthClass: message.truthClass ?? 'CURRENT_SYNTHETIC_REFERENCE',
     semanticRelay: clone(message.semanticRelay ?? null),
+    companionWorkTrace: clone(message.companionWorkTrace ?? null),
+    companionModelReasoning: typeof message.companionModelReasoning === 'string' && message.companionModelReasoning.length > 0
+      ? message.companionModelReasoning
+      : null,
+    companionFailure: clone(message.companionFailure ?? null),
     conversationHeadSha256: message.conversationHeadSha256 ?? null,
     canonicalConversationHeadSha256: message.canonicalConversationHeadSha256 ?? null,
     modelNameOrBoundedTestProfileRef: message.modelNameOrBoundedTestProfileRef ?? null
@@ -194,6 +199,60 @@ function renderMessage(document, message, { relationshipDirect = false } = {}) {
     el(document, 'span', null, message.sequence === null ? '' : `[${String(message.sequence).padStart(2, '0')}]`)
   );
   article.append(heading, el(document, 'p', 'conversation-evolution__message-body', message.content));
+  if (Array.isArray(message.companionWorkTrace) && message.companionWorkTrace.length > 0) {
+    const details = el(document, 'details', 'conversation-evolution__work-trace');
+    details.append(el(document, 'summary', null, 'View work trace'));
+    const list = el(document, 'ol');
+    for (const entry of message.companionWorkTrace) {
+      const item = el(document, 'li', null, entry.label ?? entry.state ?? 'Vex worked');
+      if (entry.state) item.dataset.progressState = entry.state;
+      list.append(item);
+    }
+    details.append(list);
+    article.append(details);
+  }
+  if (typeof message.companionModelReasoning === 'string' && message.companionModelReasoning.length > 0) {
+    const details = el(document, 'details', 'conversation-evolution__work-trace conversation-evolution__model-reasoning');
+    details.dataset.truthClass = 'EPHEMERAL_MODEL_EMITTED_REASONING';
+    details.append(el(document, 'summary', null, 'Model reasoning'));
+    details.append(el(document, 'pre', null, message.companionModelReasoning));
+    article.append(details);
+  }
+  if (message.companionFailure && typeof message.companionFailure.failureCode === 'string') {
+    const failure = message.companionFailure;
+    const hasModelReasoning = typeof failure.modelReasoning === 'string' && failure.modelReasoning.length > 0;
+    const panel = el(document, 'section', 'conversation-evolution__failure');
+    panel.dataset.truthClass = 'EPHEMERAL_LOCAL_MODEL_FAILURE';
+    panel.append(
+      el(document, 'strong', null, hasModelReasoning
+        ? 'Vex reasoned, but this turn did not commit a final answer.'
+        : 'Vex could not complete this response.'),
+      el(document, 'p', null, hasModelReasoning
+        ? 'The model reasoning from this attempt remains available only in this browser session.'
+        : (failure.message || 'The local companion turn stopped after your message was saved.')),
+      el(document, 'code', null, failure.failureCode)
+    );
+    if (Array.isArray(failure.workTrace) && failure.workTrace.length > 0) {
+      const details = el(document, 'details', 'conversation-evolution__work-trace');
+      details.append(el(document, 'summary', null, 'View work trace'));
+      const list = el(document, 'ol');
+      for (const entry of failure.workTrace) {
+        const item = el(document, 'li', null, entry.label ?? entry.state ?? 'Vex worked');
+        if (entry.state) item.dataset.progressState = entry.state;
+        list.append(item);
+      }
+      details.append(list);
+      panel.append(details);
+    }
+    if (hasModelReasoning) {
+      const details = el(document, 'details', 'conversation-evolution__work-trace conversation-evolution__model-reasoning');
+      details.dataset.truthClass = 'EPHEMERAL_MODEL_EMITTED_REASONING';
+      details.append(el(document, 'summary', null, 'Model reasoning'));
+      details.append(el(document, 'pre', null, failure.modelReasoning));
+      panel.append(details);
+    }
+    article.append(panel);
+  }
   if (message.semanticRelay) {
     const details = el(document, 'details', 'conversation-evolution__relay');
     details.append(el(document, 'summary', null, 'Semantic relay'));
@@ -209,12 +268,23 @@ export function projectConversationEvolutionStreamProgress(referenceFeed, channe
     .find((candidate) => candidate?.dataset?.channelRef === channelRef) ?? null;
   if (!row || row.dataset.truthClass !== 'EPHEMERAL_LOCAL_MODEL_PROGRESS') return null;
   if (row.dataset.messageRef || row.dataset.conversationHeadSha256) return null;
+  const phaseLabel = row.querySelector?.('.companion-work-phase')?.textContent?.trim() ?? '';
   const content = row.querySelector?.('.message-body')?.textContent ?? '';
-  if (!content) return null;
+  const modelReasoning = row.querySelector?.('.companion-model-reasoning pre')?.textContent ?? '';
+  const workTrace = [...(row.querySelectorAll?.('.companion-work-live-trace li') ?? [])]
+    .map((item) => Object.freeze({
+      state: item?.dataset?.progressState ?? null,
+      label: item?.textContent?.trim() ?? ''
+    }))
+    .filter((item) => item.label.length > 0);
+  if (!phaseLabel && !content && !modelReasoning && workTrace.length === 0) return null;
   return Object.freeze({
     schemaVersion: 'vexlife.ux-evolution.conversation-stream-progress/v1',
     truthClass: 'EPHEMERAL_LOCAL_MODEL_PROGRESS',
     channelRef,
+    phaseLabel: phaseLabel || 'Vex is working…',
+    workTrace: Object.freeze(workTrace),
+    modelReasoning,
     content,
     effectsPerformed: false
   });
@@ -230,9 +300,36 @@ function renderStreamProgress(document, binding, progress, { relationshipDirect 
     truthClass: progress.truthClass,
     semanticRelay: null
   }, { relationshipDirect });
+  article.classList.add('conversation-evolution__work-progress');
   article.dataset.companionStreamProgress = 'true';
   article.dataset.channelRef = progress.channelRef;
   article.dataset.effectsPerformed = 'false';
+  const body = article.querySelector('.conversation-evolution__message-body');
+  const status = el(document, 'div', 'conversation-evolution__work-status');
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  status.append(
+    el(document, 'span', 'conversation-evolution__work-sparkle', '✦'),
+    el(document, 'strong', 'conversation-evolution__work-phase', progress.phaseLabel)
+  );
+  const liveTrace = el(document, 'div', 'conversation-evolution__work-live-trace');
+  liveTrace.append(el(document, 'span', null, 'Work trace'));
+  const traceList = el(document, 'ol');
+  for (const entry of progress.workTrace) {
+    const item = el(document, 'li', null, entry.label);
+    if (entry.state) item.dataset.progressState = entry.state;
+    traceList.append(item);
+  }
+  liveTrace.append(traceList);
+  body.before(status, liveTrace);
+  if (progress.modelReasoning) {
+    const details = el(document, 'details', 'conversation-evolution__work-trace conversation-evolution__model-reasoning');
+    details.dataset.truthClass = 'EPHEMERAL_MODEL_EMITTED_REASONING';
+    details.append(el(document, 'summary', null, 'Model reasoning'));
+    details.append(el(document, 'pre', null, progress.modelReasoning));
+    liveTrace.after(details);
+  }
+  body.hidden = progress.content.length === 0;
   return article;
 }
 
@@ -240,11 +337,33 @@ export function syncConversationEvolutionStreamProgress(body, referenceFeed, cha
   const progress = projectConversationEvolutionStreamProgress(referenceFeed, channelRef);
   const mounted = body?.querySelector?.('[data-companion-stream-progress="true"]') ?? null;
   if (!progress || !mounted || mounted.dataset.channelRef !== channelRef) return false;
+  const mountedPhase = mounted.querySelector?.('.conversation-evolution__work-phase')?.textContent ?? '';
+  const mountedTrace = [...(mounted.querySelectorAll?.('.conversation-evolution__work-live-trace li') ?? [])]
+    .map((item) => Object.freeze({
+      state: item?.dataset?.progressState ?? null,
+      label: item?.textContent ?? ''
+    }));
+  if (mountedPhase !== progress.phaseLabel || JSON.stringify(mountedTrace) !== JSON.stringify(progress.workTrace)) return false;
   const messageBody = mounted.querySelector?.('.conversation-evolution__message-body') ?? null;
   if (!messageBody) return false;
   const root = mounted.closest?.('.conversation-evolution') ?? body.querySelector?.('.conversation-evolution') ?? null;
   const followedEnd = root ? root.scrollHeight - root.clientHeight - root.scrollTop < 24 : false;
   if (messageBody.textContent !== progress.content) messageBody.textContent = progress.content;
+  messageBody.hidden = progress.content.length === 0;
+  let reasoning = mounted.querySelector?.('.conversation-evolution__model-reasoning') ?? null;
+  if (progress.modelReasoning) {
+    if (!reasoning) {
+      reasoning = el(mounted.ownerDocument, 'details', 'conversation-evolution__work-trace conversation-evolution__model-reasoning');
+      reasoning.dataset.truthClass = 'EPHEMERAL_MODEL_EMITTED_REASONING';
+      reasoning.append(el(mounted.ownerDocument, 'summary', null, 'Model reasoning'));
+      reasoning.append(el(mounted.ownerDocument, 'pre'));
+      mounted.querySelector?.('.conversation-evolution__work-live-trace')?.after(reasoning);
+    }
+    const reasoningBody = reasoning.querySelector?.('pre') ?? null;
+    if (reasoningBody && reasoningBody.textContent !== progress.modelReasoning) reasoningBody.textContent = progress.modelReasoning;
+  } else if (reasoning) {
+    reasoning.remove();
+  }
   if (followedEnd && root) root.scrollTop = root.scrollHeight;
   return true;
 }

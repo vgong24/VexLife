@@ -11,7 +11,10 @@ import {
   sanitizeEndpointOrigin,
   validateLivedCompanionEndpointProfile
 } from '../src/core/lived-companion-connection.mjs';
-import { verifyModelRuntimeObservation } from '../src/core/model-runtime-adapter.mjs';
+import {
+  MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE,
+  verifyModelRuntimeObservation
+} from '../src/core/model-runtime-adapter.mjs';
 import { verifyModelRuntimeInvocationEvidence } from '../src/core/model-turn-witness.mjs';
 
 async function withServer(handler, run) {
@@ -81,6 +84,7 @@ test('Connection performs one admitted loopback call and returns closed runtime 
     assert.deepEqual(observed[0].body.messages, [{ role: 'user', content: 'Hello' }]);
     assert.equal(observed[0].body.max_tokens, LIVED_COMPANION_OUTPUT_TOKEN_LIMIT);
     assert.equal(Object.hasOwn(observed[0].body, 'stream'), false);
+    assert.equal(Object.hasOwn(observed[0].body, 'chat_template_kwargs'), false);
     assert.equal(JSON.stringify(result).includes('ephemeral-fixture'), false);
   });
 });
@@ -167,7 +171,7 @@ test('Connection timeout remains a typed endpoint failure and does not widen the
   ]);
 });
 
-test('Connection streams visible content deltas while closing one final runtime observation', async () => {
+test('Connection streams visible content while retaining MLX reasoning only in the sealed final observation', async () => {
   const observed = [];
   await withServer(async (request, response) => {
     const chunks = [];
@@ -175,29 +179,64 @@ test('Connection streams visible content deltas while closing one final runtime 
     observed.push(JSON.parse(Buffer.concat(chunks).toString('utf8')));
     response.writeHead(200, { 'content-type': 'text/event-stream' });
     for (const frame of [
-      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{role:'assistant',content:'Hello '}}] },
-      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{role:'assistant',content:'stream.'}}] },
+      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{role:'assistant',reasoning:'private '}}] },
+      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{reasoning:'reasoning trace'}}] },
+      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{content:'Hello '}}] },
+      { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:null,delta:{content:'stream.'}}] },
       { id:'fixture-stream', object:'chat.completion.chunk', model:'fixture-model', created:1, choices:[{index:0,finish_reason:'stop',delta:{role:'assistant'}}] },
       { id:'fixture-stream', object:'chat.completion', model:'fixture-model', created:1, choices:[], usage:{prompt_tokens:3,completion_tokens:2,total_tokens:5} }
     ]) response.write(`data: ${JSON.stringify(frame)}\n\n`);
     response.end('data: [DONE]\n\n');
   }, async (endpoint) => {
     const deltas = [];
+    const reasoningDeltas = [];
     const result = await invokeLivedCompanionEndpoint({
       endpointProfile: profile(endpoint),
       messages: [{ role:'user', content:'Hello' }],
       responseDeltaObserver: async (delta) => { deltas.push(delta); },
+      reasoningDeltaObserver: async (delta) => { reasoningDeltas.push(delta); },
+      reasoningMode: MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE,
       timeoutMs: 1000
     });
     assert.equal(result.content, 'Hello stream.');
     assert.equal(verifyModelRuntimeObservation(result.runtimeObservation), true);
     assert.equal(verifyModelRuntimeInvocationEvidence(result.invocationEvidence), true);
+    assert.equal(result.runtimeObservation.reasoningTrace.present, true);
+    assert.equal(result.runtimeObservation.reasoningTrace.characterCount, [...'private reasoning trace'].length);
+    assert.equal(result.runtimeObservation.reasoningTrace.rawPersisted, false);
     assert.deepEqual(deltas.map((delta) => delta.contentDelta), ['Hello ', 'stream.']);
     assert.ok(deltas.every((delta) => delta.truthClass === 'EPHEMERAL_LOCAL_MODEL_PROGRESS' && delta.effectsPerformed === false));
+    assert.deepEqual(reasoningDeltas.map((delta) => delta.reasoningDelta), ['private ', 'reasoning trace']);
+    assert.ok(reasoningDeltas.every((delta) =>
+      delta.schemaVersion === 'vexlife.lived-companion-reasoning-delta/v1'
+      && delta.truthClass === 'EPHEMERAL_MODEL_EMITTED_REASONING'
+      && delta.humanProjection === 'SEALED_EXPLICIT_OPEN_ONLY'
+      && delta.rawPersisted === false
+      && delta.effectsPerformed === false));
+    assert.equal(reasoningDeltas.at(-1).accumulatedReasoningCharacters, [...'private reasoning trace'].length);
+    assert.equal(JSON.stringify(deltas).includes('private reasoning trace'), false);
+    assert.equal(JSON.stringify(result).includes('private reasoning trace'), false);
     assert.equal(observed[0].stream, true);
     assert.equal(observed[0].stream_options.include_usage, true);
+    assert.deepEqual(observed[0].chat_template_kwargs, { enable_thinking: true });
     assert.equal(observed[0].max_tokens, LIVED_COMPANION_OUTPUT_TOKEN_LIMIT);
   });
 });
+
+
+test('Connection rejects an unadmitted reasoning mode before network use', async () => {
+  let called = false;
+  await assert.rejects(
+    invokeLivedCompanionEndpoint({
+      endpointProfile: profile('http://127.0.0.1:9'),
+      messages: [{ role:'user', content:'Hello' }],
+      reasoningMode: 'UNCLASSIFIED_REASONING_MODE',
+      fetchImpl: async () => { called = true; throw new Error('must not run'); }
+    }),
+    /reasoningMode is not admitted/u
+  );
+  assert.equal(called, false);
+});
+
 
 // [VXG RealForever]

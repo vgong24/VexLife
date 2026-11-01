@@ -41,6 +41,7 @@ test('MACUPDATE01 prior exact source can prove its browser for stop while repo s
 
   const nodeExecutablePath = path.join(root, 'node');
   const ownerToken = 'browser-owner-test-token';
+  const sourceTreeSha256 = 'a'.repeat(64);
   const receiptPath = path.join(recovery, 'browser-process.json');
   const receipt = {
     schemaVersion: MAC_BROWSER_RECEIPT_SCHEMA,
@@ -52,6 +53,7 @@ test('MACUPDATE01 prior exact source can prove its browser for stop while repo s
     serverScriptPath: path.join(oldRepo, 'scripts', 'serve-browser.mjs'),
     vexHomePath: home,
     repoRootPath: oldRepo,
+    sourceTreeSha256,
     formedAtUtc: '2026-08-26T07:32:00.000Z'
   };
   fs.writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`);
@@ -100,8 +102,21 @@ test('MACUPDATE01 prior exact source can prove its browser for stop while repo s
     serverScriptPath: path.join(currentRepo, 'scripts', 'serve-browser.mjs')
   }, null, 2)}\n`);
   const currentSourceEvidence = browserEvidence({ nodeExecutablePath, repo: currentRepo, home, ownerToken });
-  const current = getOwnedBrowser(home, currentRepo, { processEvidenceReader: () => currentSourceEvidence });
+  const staleSamePath = getOwnedBrowser(home, currentRepo, {
+    processEvidenceReader: () => currentSourceEvidence,
+    sourceTreeSha256Reader: () => 'b'.repeat(64)
+  });
+  assert.equal(staleSamePath?.sourceCurrent, false);
+  assert.equal(staleSamePath?.receiptSourceTreeSha256, sourceTreeSha256);
+  assert.equal(staleSamePath?.currentSourceTreeSha256, 'b'.repeat(64));
+
+  const current = getOwnedBrowser(home, currentRepo, {
+    processEvidenceReader: () => currentSourceEvidence,
+    sourceTreeSha256Reader: () => sourceTreeSha256
+  });
   assert.equal(current?.sourceCurrent, true);
+  assert.equal(current?.receiptSourceTreeSha256, sourceTreeSha256);
+  assert.equal(current?.currentSourceTreeSha256, sourceTreeSha256);
 
   fs.rmSync(root, { recursive: true, force: true });
 });

@@ -950,6 +950,21 @@ function requestPrompt(taskIntent, frontier, currentContext, authorizedEffectCue
   ].join('\n');
 }
 
+function noReadConversationPrompt(taskIntent, currentContext) {
+  return [
+    'VEXLIFE_CONVERSATION_RESPONSE/v1',
+    'Respond directly and naturally to the human from the current local Companion relationship.',
+    'No current read or admitted effect was needed for this turn. Do not turn that absence into an audit, status report, capability explanation, or proof recital unless the human actually asked for one.',
+    'Keep the human intent central. Curiosity, uncertainty, reflection, warmth, humor, and ordinary conversation are valid when they fit what the human invited.',
+    'Stay truthful: do not invent external observations, effects, source facts, continuity, authority, or lived experience that is not present in the supplied current context.',
+    'Provider model reasoning may use its separate admitted reasoning channel; never copy that reasoning into normal answer content.',
+    'Always finish by emitting one non-empty human-facing answer in normal content after any provider reasoning. A reasoning-only completion is invalid.',
+    `FRESH_COMPANION_FOUNDATION_FRAME=${JSON.stringify(FRESH_COMPANION_FOUNDATION_FRAME)}`,
+    `CURRENT_CONTEXT=${JSON.stringify(currentContext)}`,
+    `TASK_INTENT=${JSON.stringify(taskIntent)}`
+  ].join('\n');
+}
+
 function synthesisPrompt(taskIntent, observations, held, frontier, currentContext) {
   const bounded = observations.map((observation) => ({
     observationRef: observation.observationRef,
@@ -963,7 +978,8 @@ function synthesisPrompt(taskIntent, observations, held, frontier, currentContex
     'VEXLIFE_CAPABILITY_SYNTHESIS/v1',
     'Synthesize the human answer from the original task and exact accepted observations.',
     'Do not claim effects, sources, competence, currentness, or authority beyond the supplied evidence.',
-    'Do not reveal hidden reasoning. Return only the final human-facing answer.',
+    'Provider model reasoning may use its separate admitted reasoning channel; never copy that reasoning into normal answer content.',
+    'Always finish by emitting one non-empty human-facing answer in normal content after any provider reasoning. A reasoning-only completion is invalid.',
     `FRESH_COMPANION_FOUNDATION_FRAME=${JSON.stringify(FRESH_COMPANION_FOUNDATION_FRAME)}`,
     `CURRENT_CONTEXT=${JSON.stringify(currentContext)}`,
     `TASK_INTENT=${JSON.stringify(taskIntent)}`,
@@ -1166,6 +1182,9 @@ export function createCapabilityAssimilationRuntime({
     inference,
     endpointProfile,
     responseDeltaObserver = null,
+    reasoningDeltaObserver = null,
+    reasoningMode = null,
+    progressObserver = null,
     inMemoryAuthorization = null,
     timeoutMs = 5000,
     context = {}
@@ -1173,8 +1192,19 @@ export function createCapabilityAssimilationRuntime({
     if (typeof taskIntent !== 'string' || !taskIntent.trim()) throw new Error('taskIntent must be non-empty');
     if (typeof inference !== 'function') throw new Error('capability runtime requires one admitted inference function');
     if (responseDeltaObserver !== null && typeof responseDeltaObserver !== 'function') throw new Error('capability runtime responseDeltaObserver must be null or one function');
+    if (reasoningDeltaObserver !== null && typeof reasoningDeltaObserver !== 'function') throw new Error('capability runtime reasoningDeltaObserver must be null or one function');
+    if (reasoningMode !== null && typeof reasoningMode !== 'string') throw new Error('capability runtime reasoningMode must be null or one server-owned mode');
+    if (progressObserver !== null && typeof progressObserver !== 'function') throw new Error('capability runtime progressObserver must be null or one function');
     assertNoCallerSchedulerEvidence(context);
-    const progress = [progressEvent('TASK_RECEIVED', { taskRef: context.taskRef ?? null })];
+    const progress = [];
+    const recordProgress = async (event) => {
+      progress.push(event);
+      if (progressObserver) {
+        try { await progressObserver(freeze(clone(event))); } catch {}
+      }
+      return event;
+    };
+    await recordProgress(progressEvent('TASK_RECEIVED', { taskRef: context.taskRef ?? null }));
     const modelSequenceReceipts = [];
 
     if (mode === CAPABILITY_ASSIMILATION_MODES.DIRECT_SINGLE_TURN ||
@@ -1187,12 +1217,14 @@ export function createCapabilityAssimilationRuntime({
           requestContent: taskIntent,
           inMemoryAuthorization,
           timeoutMs,
-          ...(responseDeltaObserver ? { responseDeltaObserver } : {})
+          ...(responseDeltaObserver ? { responseDeltaObserver } : {}),
+          ...(reasoningDeltaObserver ? { reasoningDeltaObserver } : {}),
+          ...(reasoningMode ? { reasoningMode } : {})
         },
         label: 'direct'
       });
       modelSequenceReceipts.push(direct.receipt);
-      progress.push(progressEvent('DIRECT_TOOL_FREE_INFERENCE_COMPLETED', {
+      await recordProgress(progressEvent('DIRECT_TOOL_FREE_INFERENCE_COMPLETED', {
         mode,
         inferenceCount: 1,
         toolRequestCount: 0
@@ -1244,7 +1276,7 @@ export function createCapabilityAssimilationRuntime({
         ? TYPED_COMMAND_CAPABILITY_REF
         : context.activeCapabilityRef ?? null
     });
-    progress.push(progressEvent('CAPABILITY_FRONTIER_PROJECTED', {
+    await recordProgress(progressEvent('CAPABILITY_FRONTIER_PROJECTED', {
       visibleCapabilityCount: frontier.entries.length,
       rootKernelCount: frontier.rootCapabilityKernel.length
     }));
@@ -1268,12 +1300,12 @@ export function createCapabilityAssimilationRuntime({
     modelSequenceReceipts.push(requestPhase.receipt);
     const requestInference = requestPhase.normalized;
     const requestProjection = requestContract(exactJson(requestInference.content, 'request-formation'), frame, { authorizedEffect: admittedAuthorizedEffect });
-    progress.push(progressEvent('READ_ONLY_REQUESTS_FORMED', {
+    await recordProgress(progressEvent('READ_ONLY_REQUESTS_FORMED', {
       requestCount: requestProjection.requests.length
     }));
 
     if (requestProjection.requests.length === 0) {
-      progress.push(progressEvent('NO_READ_ONLY_FUNCTION_NEEDED', {
+      await recordProgress(progressEvent('NO_READ_ONLY_FUNCTION_NEEDED', {
         requestCount: 0
       }));
       const synthesisPhase = await gatedInference({
@@ -1281,16 +1313,18 @@ export function createCapabilityAssimilationRuntime({
         inference,
         input: {
           endpointProfile,
-          requestContent: synthesisPrompt(taskIntent, [], [], frontier, currentContext),
+          requestContent: noReadConversationPrompt(taskIntent, currentContext),
           inMemoryAuthorization,
           timeoutMs,
-          ...(responseDeltaObserver ? { responseDeltaObserver } : {})
+          ...(responseDeltaObserver ? { responseDeltaObserver } : {}),
+          ...(reasoningDeltaObserver ? { reasoningDeltaObserver } : {}),
+          ...(reasoningMode ? { reasoningMode } : {})
         },
         label: 'synthesis-no-read'
       });
       modelSequenceReceipts.push(synthesisPhase.receipt);
       const synthesis = synthesisPhase.normalized;
-      progress.push(progressEvent('LATER_SYNTHESIS_COMPLETED', {
+      await recordProgress(progressEvent('LATER_SYNTHESIS_COMPLETED', {
         inferenceCount: 2,
         acceptedObservationCount: 0
       }));
@@ -1335,7 +1369,7 @@ export function createCapabilityAssimilationRuntime({
       throw new Error(`capability process did not compile: ${compiled.state}:${compiled.reason ?? ''}`);
     }
     const dag = compiled.plan.dependencyDag;
-    progress.push(progressEvent('DEPENDENCY_DAG_COMPILED', {
+    await recordProgress(progressEvent('DEPENDENCY_DAG_COMPILED', {
       nodeCount: dag.nodes.length,
       dependencyGraphHash: dag.graphHash
     }));
@@ -1507,7 +1541,7 @@ export function createCapabilityAssimilationRuntime({
       if (decision.batch.length === 0) {
         throw new Error(`capability DAG cannot advance: ${JSON.stringify(decision.held)}`);
       }
-      progress.push(progressEvent(effectNode ? 'AUTHORIZED_EFFECT_STARTED' : 'READ_ONLY_BATCH_STARTED', {
+      await recordProgress(progressEvent(effectNode ? 'AUTHORIZED_EFFECT_STARTED' : 'READ_ONLY_BATCH_STARTED', {
         nodeRefs: decision.batch.map((node) => node.nodeRef),
         batchSize: decision.batch.length
       }));
@@ -1634,14 +1668,14 @@ export function createCapabilityAssimilationRuntime({
       for (const result of batchResults.sort((left, right) => left.nodeRef.localeCompare(right.nodeRef))) {
         completed.add(result.nodeRef);
         observations.push(result.observation);
-        progress.push(progressEvent('OBSERVATION_ACCEPTED_AND_REINJECTED', {
+        await recordProgress(progressEvent('OBSERVATION_ACCEPTED_AND_REINJECTED', {
           nodeRef: result.nodeRef,
           observationRef: result.observation.observationRef
         }));
       }
     }
 
-    progress.push(progressEvent('LATER_SYNTHESIS_STARTED', {
+    await recordProgress(progressEvent('LATER_SYNTHESIS_STARTED', {
       acceptedObservationCount: observations.length
     }));
     const synthesisPhase = await gatedInference({
@@ -1652,13 +1686,15 @@ export function createCapabilityAssimilationRuntime({
         requestContent: synthesisPrompt(taskIntent, observations, held, frontier, currentContext),
         inMemoryAuthorization,
         timeoutMs,
-        ...(responseDeltaObserver ? { responseDeltaObserver } : {})
+        ...(responseDeltaObserver ? { responseDeltaObserver } : {}),
+        ...(reasoningDeltaObserver ? { reasoningDeltaObserver } : {}),
+        ...(reasoningMode ? { reasoningMode } : {})
       },
       label: 'synthesis'
     });
     modelSequenceReceipts.push(synthesisPhase.receipt);
     const synthesis = synthesisPhase.normalized;
-    progress.push(progressEvent('LATER_SYNTHESIS_COMPLETED', {
+    await recordProgress(progressEvent('LATER_SYNTHESIS_COMPLETED', {
       inferenceCount: 2,
       acceptedObservationCount: observations.length
     }));

@@ -40,6 +40,32 @@ test('normalizes observed llama.cpp response without persisting raw reasoning or
   assert.equal(verifyModelRuntimeObservation(value.runtimeObservation), true);
 });
 
+test('normalizes exact MLX reasoning field without persisting raw reasoning', () => {
+  const value = normalizeModelRuntimeResponse({
+    endpointProfile, ...refs,
+    responseBody: {
+      model: 'safe-model',
+      choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: 'visible', reasoning: 'mlx model-emitted trace' } }]
+    }
+  });
+  assert.equal(value.runtimeObservation.reasoningTrace.present, true);
+  assert.equal(value.runtimeObservation.reasoningTrace.characterCount, [...'mlx model-emitted trace'].length);
+  assert.equal(value.runtimeObservation.reasoningTrace.rawPersisted, false);
+  assert.deepEqual(value.runtimeObservation.unknownUpstreamFields, []);
+  assert.equal(JSON.stringify(value.runtimeObservation).includes('mlx model-emitted trace'), false);
+  assert.equal(verifyModelRuntimeObservation(value.runtimeObservation), true);
+});
+
+test('conflicting provider reasoning fields fail closed rather than choosing one', () => {
+  assert.throws(() => normalizeModelRuntimeResponse({
+    endpointProfile, ...refs,
+    responseBody: {
+      model: 'safe-model',
+      choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: 'visible', reasoning: 'mlx trace', reasoning_content: 'other trace' } }]
+    }
+  }), /conflicting model reasoning fields/u);
+});
+
 test('known container nodes are not fabricated as unknown upstream fields', () => {
   const value = normalizeModelRuntimeResponse({
     endpointProfile, ...refs,

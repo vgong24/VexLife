@@ -120,17 +120,27 @@ test('runtime executes independent reads concurrently, uses ToolResultRelay exac
   let maximumActiveReads = 0;
   const sequence = [];
   const visibleDeltas = [];
+  const visibleReasoning = [];
+  const visibleProgress = [];
   const responseDeltaObserver = async (delta) => { visibleDeltas.push(delta); };
+  const reasoningDeltaObserver = async (delta) => { visibleReasoning.push(delta); };
+  const reasoningMode = 'MODEL_EMITTED_REASONING_EXPLICIT_OPEN';
+  const progressObserver = async (progress) => { visibleProgress.push(progress); };
   const inference = async (input) => {
     inferenceCount += 1;
     if (inferenceCount === 1) {
       assert.equal(Object.hasOwn(input, 'responseDeltaObserver'), false);
+      assert.equal(Object.hasOwn(input, 'reasoningDeltaObserver'), false);
+      assert.equal(Object.hasOwn(input, 'reasoningMode'), false);
       return requestResult([
       { requestRef: 'read.search', capabilityRef: 'capability.search', arguments: { query: 'capability' }, dependencyRefs: [] },
       { requestRef: 'read.context', capabilityRef: 'context.where', arguments: {}, dependencyRefs: [] }
       ]);
     }
     assert.equal(input.responseDeltaObserver, responseDeltaObserver);
+    assert.equal(input.reasoningDeltaObserver, reasoningDeltaObserver);
+    assert.equal(input.reasoningMode, reasoningMode);
+    await input.reasoningDeltaObserver({ reasoningDelta: 'model-emitted reasoning' });
     await input.responseDeltaObserver({ contentDelta: 'Synthesized' });
     return { content: 'Synthesized from two current observations.', model: 'model.test.synthesis' };
   };
@@ -164,12 +174,19 @@ test('runtime executes independent reads concurrently, uses ToolResultRelay exac
     taskIntent: 'Find current capability and context information.',
     inference,
     responseDeltaObserver,
+    reasoningDeltaObserver,
+    reasoningMode,
+    progressObserver,
     endpointProfile: { profileRef: 'profile.test', admitted: true, endpoint: 'http://127.0.0.1:1', model: 'test' },
     context: { taskRef: 'task.test.parallel', threadRef: 'thread.test.parallel' }
   });
   assert.equal(result.response.content, 'Synthesized from two current observations.');
   assert.equal(inferenceCount, 2);
   assert.deepEqual(visibleDeltas, [{ contentDelta: 'Synthesized' }]);
+  assert.deepEqual(visibleReasoning, [{ reasoningDelta: 'model-emitted reasoning' }]);
+  assert.deepEqual(visibleProgress.map((item) => item.state), result.runtimeProjection.progress.map((item) => item.state));
+  assert.ok(visibleProgress.length > 0);
+  assert.ok(visibleProgress.every((item) => item.hiddenReasoningIncluded === false));
   assert.equal(maximumActiveReads, 2);
   assert.equal(result.runtimeProjection.toolRequestCount, 2);
   assert.equal(result.runtimeProjection.observationRefs.length, 2);
@@ -226,11 +243,19 @@ test('ADOPTED_READ_ONLY permits ordinary conversation without fabricating a tool
         assert.match(requestContent, /NO_READ_ONLY_FUNCTION_NEEDED/u);
         return noReadResult();
       }
-      assert.match(requestContent, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
-      assert.match(requestContent, /SOURCE_BOUND_OBSERVATIONS=\[\]/u);
+      assert.match(requestContent, /VEXLIFE_CONVERSATION_RESPONSE\/v1/u);
+      assert.match(requestContent, /Respond directly and naturally to the human/u);
+      assert.match(requestContent, /Do not turn that absence into an audit, status report, capability explanation, or proof recital/u);
+      assert.match(requestContent, /Curiosity, uncertainty, reflection, warmth, humor, and ordinary conversation are valid/u);
+      assert.match(requestContent, /Provider model reasoning may use its separate admitted reasoning channel/u);
+      assert.match(requestContent, /Always finish by emitting one non-empty human-facing answer in normal content/u);
+      assert.match(requestContent, /reasoning-only completion is invalid/iu);
       assert.match(requestContent, /FRESH_COMPANION_FOUNDATION_FRAME=/u);
       assert.match(requestContent, /CURRENT_CONTEXT=.*"threadRef":"thread\.self-development\.open-conversation"/u);
-      assert.match(requestContent, /COMPACT_CAPABILITY_FRONTIER=.*"capabilityRef":"capability\.search"/u);
+      assert.doesNotMatch(requestContent, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
+      assert.doesNotMatch(requestContent, /COMPACT_CAPABILITY_FRONTIER=/u);
+      assert.doesNotMatch(requestContent, /SOURCE_BOUND_OBSERVATIONS=/u);
+      assert.doesNotMatch(requestContent, /HELD_OR_UNKNOWN_NODES=/u);
       assert.doesNotMatch(requestContent, /source\.must-not-project-into-current-context/u);
       return {
         content: 'Hello. I can talk without inventing a tool read.',
