@@ -236,6 +236,32 @@ test('Connection streaming liveness still fails closed after provider activity s
   });
 });
 
+test('Connection does not let transport keepalive comments impersonate model-generation progress', async () => {
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  await withServer(async (request, response) => {
+    for await (const _chunk of request) {}
+    response.writeHead(200, { 'content-type': 'text/event-stream' });
+    for (let index = 0; index < 8 && !response.destroyed; index += 1) {
+      response.write(': keep-alive\n\n');
+      await wait(25);
+    }
+    if (!response.destroyed) response.end('data: [DONE]\n\n');
+  }, async (endpoint) => {
+    await assert.rejects(
+      invokeLivedCompanionEndpoint({
+        endpointProfile: profile(endpoint),
+        messages: [{ role:'user', content:'Keepalive bytes are not reasoning progress.' }],
+        reasoningDeltaObserver: async () => {},
+        reasoningMode: MODEL_EMITTED_REASONING_EXPLICIT_OPEN_MODE,
+        timeoutMs: 80
+      }),
+      (error) => error instanceof LivedCompanionConnectionError
+        && error.code === 'ENDPOINT_TIMEOUT'
+        && /became inactive/u.test(error.message)
+    );
+  });
+});
+
 test('Connection streams visible content while retaining MLX reasoning only in the sealed final observation', async () => {
   const observed = [];
   await withServer(async (request, response) => {

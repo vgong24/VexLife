@@ -145,6 +145,7 @@ async function readStreamingCompletion(response, endpointProfile, responseDeltaO
     if (data === '[DONE]') { done = true; return; }
     let event;
     try { event = JSON.parse(data); } catch { fail('ENDPOINT_RESPONSE_INVALID', 'streaming endpoint emitted invalid SSE JSON'); }
+    if (onProviderActivity) onProviderActivity();
     if (event?.model !== undefined && event?.model !== null) {
       if (!nonempty(event.model)) fail('ENDPOINT_RESPONSE_INVALID', 'streaming endpoint model provenance must be one non-empty string');
       observedModel = event.model;
@@ -202,7 +203,6 @@ async function readStreamingCompletion(response, endpointProfile, responseDeltaO
     }
   };
   for await (const chunk of response.body) {
-    if (onProviderActivity) onProviderActivity();
     buffer += decoder.decode(chunk, { stream: true });
     for (;;) {
       const boundary = buffer.match(/\r?\n\r?\n/u);
