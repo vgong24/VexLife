@@ -1462,11 +1462,16 @@ export function createChatController({ state, projects, roles, channels, message
     panel.setAttribute('role', 'status');
     panel.setAttribute('aria-live', 'polite');
     const title = document.createElement('strong');
-    title.textContent = 'Vex could not complete this response.';
+    const hasModelReasoning = typeof failure.modelReasoning === 'string' && failure.modelReasoning.length > 0;
+    title.textContent = hasModelReasoning
+      ? 'Vex reasoned, but this turn did not commit a final answer.'
+      : 'Vex could not complete this response.';
     const detail = document.createElement('span');
-    detail.textContent = typeof failure.message === 'string' && failure.message
-      ? failure.message
-      : 'The local companion turn stopped after your message was saved.';
+    detail.textContent = hasModelReasoning
+      ? 'The model reasoning from this attempt remains available only in this browser session.'
+      : typeof failure.message === 'string' && failure.message
+        ? failure.message
+        : 'The local companion turn stopped after your message was saved.';
     const code = document.createElement('code');
     code.textContent = failure.failureCode;
     panel.append(title, detail, code);
@@ -1484,6 +1489,17 @@ export function createChatController({ state, projects, roles, channels, message
       }
       details.append(summary, list);
       panel.append(details);
+    }
+    if (hasModelReasoning) {
+      const reasoning = document.createElement('details');
+      reasoning.className = 'companion-work-trace companion-model-reasoning';
+      reasoning.dataset.truthClass = 'EPHEMERAL_MODEL_EMITTED_REASONING';
+      const summary = document.createElement('summary');
+      summary.textContent = 'Model reasoning';
+      const content = document.createElement('pre');
+      content.textContent = failure.modelReasoning;
+      reasoning.append(summary, content);
+      panel.append(reasoning);
     }
     $('.message-body', article)?.after(panel);
   }
@@ -1829,7 +1845,8 @@ export function createChatController({ state, projects, roles, channels, message
           sourceMessage.companionFailure = Object.freeze({
             failureCode: typeof body.failureCode === 'string' && body.failureCode ? body.failureCode : 'COMPANION_TURN_FAILED',
             message: typeof body.message === 'string' ? body.message : '',
-            workTrace: companionWorkTrace?.length ? [...companionWorkTrace] : []
+            workTrace: companionWorkTrace?.length ? [...companionWorkTrace] : [],
+            modelReasoning: companionModelReasoning?.length ? companionModelReasoning : null
           });
           bindCanonicalConversationHead(channel, {
             headSha256: body.canonicalConversationHeadSha256,

@@ -73,6 +73,7 @@ function projectMessage(binding, channel, message) {
     companionModelReasoning: typeof message.companionModelReasoning === 'string' && message.companionModelReasoning.length > 0
       ? message.companionModelReasoning
       : null,
+    companionFailure: clone(message.companionFailure ?? null),
     conversationHeadSha256: message.conversationHeadSha256 ?? null,
     canonicalConversationHeadSha256: message.canonicalConversationHeadSha256 ?? null,
     modelNameOrBoundedTestProfileRef: message.modelNameOrBoundedTestProfileRef ?? null
@@ -216,6 +217,41 @@ function renderMessage(document, message, { relationshipDirect = false } = {}) {
     details.append(el(document, 'summary', null, 'Model reasoning'));
     details.append(el(document, 'pre', null, message.companionModelReasoning));
     article.append(details);
+  }
+  if (message.companionFailure && typeof message.companionFailure.failureCode === 'string') {
+    const failure = message.companionFailure;
+    const hasModelReasoning = typeof failure.modelReasoning === 'string' && failure.modelReasoning.length > 0;
+    const panel = el(document, 'section', 'conversation-evolution__failure');
+    panel.dataset.truthClass = 'EPHEMERAL_LOCAL_MODEL_FAILURE';
+    panel.append(
+      el(document, 'strong', null, hasModelReasoning
+        ? 'Vex reasoned, but this turn did not commit a final answer.'
+        : 'Vex could not complete this response.'),
+      el(document, 'p', null, hasModelReasoning
+        ? 'The model reasoning from this attempt remains available only in this browser session.'
+        : (failure.message || 'The local companion turn stopped after your message was saved.')),
+      el(document, 'code', null, failure.failureCode)
+    );
+    if (Array.isArray(failure.workTrace) && failure.workTrace.length > 0) {
+      const details = el(document, 'details', 'conversation-evolution__work-trace');
+      details.append(el(document, 'summary', null, 'View work trace'));
+      const list = el(document, 'ol');
+      for (const entry of failure.workTrace) {
+        const item = el(document, 'li', null, entry.label ?? entry.state ?? 'Vex worked');
+        if (entry.state) item.dataset.progressState = entry.state;
+        list.append(item);
+      }
+      details.append(list);
+      panel.append(details);
+    }
+    if (hasModelReasoning) {
+      const details = el(document, 'details', 'conversation-evolution__work-trace conversation-evolution__model-reasoning');
+      details.dataset.truthClass = 'EPHEMERAL_MODEL_EMITTED_REASONING';
+      details.append(el(document, 'summary', null, 'Model reasoning'));
+      details.append(el(document, 'pre', null, failure.modelReasoning));
+      panel.append(details);
+    }
+    article.append(panel);
   }
   if (message.semanticRelay) {
     const details = el(document, 'details', 'conversation-evolution__relay');

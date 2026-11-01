@@ -466,8 +466,11 @@ test('browser source never routes companion channel through simulatedReply', () 
   assert.match(chat, /View work trace/u);
   assert.match(chat, /renderCompanionFailureDisclosure/u);
   assert.match(chat, /companionFailure = Object\.freeze/u);
+  assert.match(chat, /modelReasoning: companionModelReasoning\?\.length \? companionModelReasoning : null/u);
   assert.match(chat, /body\.failureCode/u);
   assert.match(chat, /Vex could not complete this response\./u);
+  assert.match(chat, /Vex reasoned, but this turn did not commit a final answer\./u);
+  assert.match(chat, /remains available only in this browser session/u);
   assert.match(chat, /const interfaceCurrentnessMatchesChannel = \(channel = currentChannel\(\)\) => Boolean/u);
   assert.match(chat, /interfaceCurrentness\.scope\?\.projectRef === channel\.projectRef[\s\S]*interfaceCurrentness\.scope\?\.threadRef === channel\.threadRef[\s\S]*interfaceCurrentness\.scope\?\.channelRef === channel\.channelRef/u);
   assert.match(chat, /channel\?\.roleKey === 'companion'[\s\S]*interfaceCurrentnessMatchesChannel\(channel\) && !companionTurnPending[\s\S]*isVexAvailable\(\)/u);

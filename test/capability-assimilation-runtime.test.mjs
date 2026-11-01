@@ -244,6 +244,9 @@ test('ADOPTED_READ_ONLY permits ordinary conversation without fabricating a tool
         return noReadResult();
       }
       assert.match(requestContent, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
+      assert.match(requestContent, /Provider model reasoning may use its separate admitted reasoning channel/u);
+      assert.match(requestContent, /Always finish by emitting one non-empty human-facing answer in normal content/u);
+      assert.match(requestContent, /reasoning-only completion is invalid/iu);
       assert.match(requestContent, /SOURCE_BOUND_OBSERVATIONS=\[\]/u);
       assert.match(requestContent, /FRESH_COMPANION_FOUNDATION_FRAME=/u);
       assert.match(requestContent, /CURRENT_CONTEXT=.*"threadRef":"thread\.self-development\.open-conversation"/u);

@@ -208,6 +208,31 @@ test('Evolution durable message projection preserves the canonical Companion wor
   assert.equal(projected.messages[1].companionModelReasoning,'actual model-emitted reasoning');
 });
 
+test('Evolution preserves failed-after-durable-Send reasoning as session-only presentation truth',()=>{
+  const value=fixture();
+  const channel=value.chat.currentChannel();
+  const key=value.conversationKey(channel.projectRef,channel.threadRef,channel.channelRef);
+  const humanMessage=value.messages.get(key)[0];
+  humanMessage.companionFailure={
+    failureCode:'ENDPOINT_RESPONSE_INVALID',
+    message:'Local companion is unavailable for this turn; no synthetic reply was substituted',
+    workTrace:[
+      {state:'TASK_RECEIVED',label:'Vex is thinking…'},
+      {state:'NO_READ_ONLY_FUNCTION_NEEDED',label:'No tool needed · preparing response…'}
+    ],
+    modelReasoning:'completed model reasoning that did not produce normal answer content'
+  };
+  const projected=projectConversationEvolutionState(value);
+  assert.equal(projected.messages[0].companionFailure.failureCode,'ENDPOINT_RESPONSE_INVALID');
+  assert.equal(projected.messages[0].companionFailure.modelReasoning,'completed model reasoning that did not produce normal answer content');
+  assert.match(source,/companionFailure: clone\(message\.companionFailure \?\? null\)/u);
+  assert.match(source,/Vex reasoned, but this turn did not commit a final answer\./u);
+  assert.match(source,/remains available only in this browser session/u);
+  assert.match(source,/EPHEMERAL_LOCAL_MODEL_FAILURE/u);
+  assert.match(source,/EPHEMERAL_MODEL_EMITTED_REASONING/u);
+  assert.match(css,/conversation-evolution__failure/u);
+});
+
 test('Conversation projection preserves canonical direct addressing and unsent draft truth',()=>{
   const projected=projectConversationEvolutionState(fixture());
   assert.equal(projected.surfaceRef,CONVERSATION_EVOLUTION_SURFACE_REF);
