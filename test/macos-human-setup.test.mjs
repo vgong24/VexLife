@@ -383,4 +383,30 @@ test('MACHUMAN11 stable Mac front door delegates durable process lifetime below 
   assert.doesNotMatch(lifecycle, /spawn\(process\.execPath, args, \{/u);
 });
 
+test('MACHUMAN12 lifecycle readiness and reference-presentation opening are explicit separate setup completion effects', () => {
+  assert.match(setupCommand, /VEXLIFE_SETUP_COMPLETION:-open-reference/u);
+  assert.match(setupCommand, /open-reference\|return-ready/u);
+  assert.match(setupCommand, /VexLifeSetupCompletion/u);
+  assert.match(setupCommand, /--completion "\$SETUP_COMPLETION"/u);
+
+  assert.match(setup, /SETUP_COMPLETION="\$\{VEXLIFE_SETUP_COMPLETION:-open-reference\}"/u);
+  assert.match(setup, /--completion\)/u);
+  assert.match(setup, /complete_lifecycle_start\(\)/u);
+  const completionStart = setup.indexOf('complete_lifecycle_start()');
+  const completionEnd = setup.indexOf('\ncontroller_result_for_completion()', completionStart);
+  const completionSource = setup.slice(completionStart, completionEnd);
+  assert.match(completionSource, /SETUP_COMPLETION" = "open-reference"/u);
+  assert.match(completionSource, /open_vex/u);
+  assert.match(completionSource, /ready for the calling presentation/u);
+
+  assert.match(setup, /FIRST_SETUP_READY_FOR_CALLER/u);
+  assert.match(setup, /VEX_READY_FOR_CALLER/u);
+  assert.match(setup, /REPAIR_READY_FOR_CALLER/u);
+  assert.match(setup, /REBUILD_PRESERVE_READY_FOR_CALLER/u);
+
+  // The existing ordinary VexLife behavior remains the default.
+  assert.match(setupCommand, /SETUP_COMPLETION="\$\{VEXLIFE_SETUP_COMPLETION:-open-reference\}"/u);
+  assert.match(setup, /complete_lifecycle_start[\s\S]*open_vex/u);
+});
+
 // [VXG RealForever]
