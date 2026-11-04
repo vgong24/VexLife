@@ -14,11 +14,18 @@ property controllerPrefix : "VEXLIFE_CONTROLLER_STATE\t"
 property actionPrefix : "VEXLIFE_CONTROLLER_ACTIONS\t"
 property resultPrefix : "VEXLIFE_CONTROLLER_RESULT\t"
 property sourceRootInfoKey : "VexLifeSourceRoot"
+property completionInfoKey : "VexLifeSetupCompletion"
+property completionMode : "open-reference"
 
 on run
   set repoRoot to my resolveRepoRoot()
   if repoRoot is missing value then
     my showMessage("VexLife setup stopped", "The Mac setup window requires one exact source root.", "OK")
+    error number 2
+  end if
+  set completionMode to my resolveCompletionMode()
+  if completionMode is missing value then
+    my showMessage("VexLife setup stopped", "The Mac setup window received an invalid completion target.", "OK")
     error number 2
   end if
 
@@ -83,7 +90,11 @@ on run
       if (exitCode of setupResult) is not 0 then
         my handleBackendFailure(repoRoot, homePath, setupResult)
       else
-        my showMessage("VexLife is ready", "The accepted setup engine completed first setup and opened the local VexLife experience.", "Done")
+        if completionMode is "return-ready" then
+          my showMessage("VexLife is ready", "The accepted setup engine completed first setup and returned lifecycle readiness to the calling presentation.", "Done")
+        else
+          my showMessage("VexLife is ready", "The accepted setup engine completed first setup and opened the local VexLife experience.", "Done")
+        end if
       end if
       return
 
@@ -91,7 +102,7 @@ on run
       set openAllowed to my hasAction(actionsValue, "open")
       set recoveryAllowed to my hasAnyRecoveryAction(actionsValue)
       if openAllowed and recoveryAllowed then
-        set choice to my promptChoice("VexLife is ready", "This Home is healthy. You can open Vex now or choose a preservation-safe action admitted by the current lifecycle owner.", "Open Vex", "Recovery…", "Cancel")
+        set choice to my promptChoice("VexLife is ready", my healthyReadyDetail(), my primaryReadyActionTitle(), "Recovery…", "Cancel")
         if choice is NSAlertFirstButtonReturn then
           set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
           if (exitCode of actionResult) is not 0 then my handleBackendFailure(repoRoot, homePath, actionResult)
@@ -103,7 +114,7 @@ on run
           return
         end if
       else if openAllowed then
-        set choice to my promptChoice("VexLife is ready", "The current lifecycle owner admits opening this healthy Home.", "Open Vex", "Cancel", missing value)
+        set choice to my promptChoice("VexLife is ready", my healthyReadyDetail(), my primaryReadyActionTitle(), "Cancel", missing value)
         if choice is NSAlertFirstButtonReturn then
           set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
           if (exitCode of actionResult) is not 0 then my handleBackendFailure(repoRoot, homePath, actionResult)
@@ -121,7 +132,7 @@ on run
       set openAllowed to my hasAction(actionsValue, "open")
       set recoveryAllowed to my hasAnyRecoveryAction(actionsValue)
       if openAllowed and recoveryAllowed then
-        set choice to my promptChoice("VexLife can reconnect", "This Home is intact, but the accepted Companion runtime is not currently live/current. Open Vex will ask the lifecycle owner to re-enter the same accepted binding without changing Home or model selection.", "Open Vex", "Recovery…", "Cancel")
+        set choice to my promptChoice("VexLife can reconnect", my recoverableReadyDetail(), my primaryReadyActionTitle(), "Recovery…", "Cancel")
         if choice is NSAlertFirstButtonReturn then
           set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
           if (exitCode of actionResult) is not 0 then my handleBackendFailure(repoRoot, homePath, actionResult)
@@ -133,7 +144,7 @@ on run
           return
         end if
       else if openAllowed then
-        set choice to my promptChoice("VexLife can reconnect", "The current lifecycle owner can safely re-enter the accepted Companion binding for this Home.", "Open Vex", "Cancel", missing value)
+        set choice to my promptChoice("VexLife can reconnect", my recoverableReadyDetail(), my primaryReadyActionTitle(), "Cancel", missing value)
         if choice is NSAlertFirstButtonReturn then
           set actionResult to my runBackend(repoRoot, homePath, "open", "no", "no")
           if (exitCode of actionResult) is not 0 then my handleBackendFailure(repoRoot, homePath, actionResult)
@@ -173,6 +184,29 @@ on resolveRepoRoot()
   if boundRoot is "" then return missing value
   return boundRoot
 end resolveRepoRoot
+
+on resolveCompletionMode()
+  set bundledCompletion to current application's NSBundle's mainBundle()'s objectForInfoDictionaryKey:completionInfoKey
+  if bundledCompletion is missing value then return "open-reference"
+  set boundCompletion to bundledCompletion as text
+  if boundCompletion is "open-reference" or boundCompletion is "return-ready" then return boundCompletion
+  return missing value
+end resolveCompletionMode
+
+on primaryReadyActionTitle()
+  if completionMode is "return-ready" then return "Continue"
+  return "Open Vex"
+end primaryReadyActionTitle
+
+on healthyReadyDetail()
+  if completionMode is "return-ready" then return "This Home is healthy. Continue to return lifecycle readiness to the calling presentation, or choose a preservation-safe action admitted by the current lifecycle owner."
+  return "This Home is healthy. You can open Vex now or choose a preservation-safe action admitted by the current lifecycle owner."
+end healthyReadyDetail
+
+on recoverableReadyDetail()
+  if completionMode is "return-ready" then return "This Home is intact, but the accepted Companion runtime is not currently live/current. Continue to let the lifecycle owner re-enter the same accepted binding and return readiness to the calling presentation."
+  return "This Home is intact, but the accepted Companion runtime is not currently live/current. Open Vex will ask the lifecycle owner to re-enter the same accepted binding without changing Home or model selection."
+end recoverableReadyDetail
 
 on chooseHome(defaultHome)
   set alert to current application's NSAlert's alloc()'s init()
@@ -280,6 +314,7 @@ on progressText(actionName)
   if actionName is "repair" then return "Repairing VexLife under the accepted preservation boundary. Keep this window open."
   if actionName is "rebuild-preserve" then return "Rebuilding runtime state while preserving Home and durable data. Keep this window open."
   if actionName is "uninstall-preserve" then return "Removing runtime state while preserving Home and durable data. Keep this window open."
+  if completionMode is "return-ready" then return "Preparing VexLife for the calling presentation. Keep this window open."
   return "Opening VexLife. Keep this window open."
 end progressText
 
@@ -344,7 +379,7 @@ on runBackend(repoRoot, homePath, actionName, nodeConsent, runtimeConsent)
 
   set task to current application's NSTask's alloc()'s init()
   task's setLaunchPath:"/bin/bash"
-  task's setArguments:{repoRoot & "/install/vexlife-setup.sh", repoRoot, "--controller", "--home", homePath, "--action", actionName, "--session-token", token, "--node-install-consent", nodeConsent, "--runtime-acquisition-consent", runtimeConsent}
+  task's setArguments:{repoRoot & "/install/vexlife-setup.sh", repoRoot, "--controller", "--home", homePath, "--action", actionName, "--session-token", token, "--node-install-consent", nodeConsent, "--runtime-acquisition-consent", runtimeConsent, "--completion", completionMode}
   task's setStandardOutput:outHandle
   task's setStandardError:errHandle
   set launchErrorText to ""
