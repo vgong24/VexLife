@@ -14,6 +14,7 @@ CONTROLLER_HOME=""
 CONTROLLER_ACTION=""
 NODE_INSTALL_CONSENT="no"
 RUNTIME_ACQUISITION_CONSENT="no"
+SETUP_COMPLETION="${VEXLIFE_SETUP_COMPLETION:-open-reference}"
 SESSION_TOKEN=""
 SETUP_SESSION_DIR=""
 SETUP_SESSION_OWNED="no"
@@ -55,9 +56,19 @@ while [ "$#" -gt 0 ]; do
       RUNTIME_ACQUISITION_CONSENT="$2"
       shift 2
       ;;
+    --completion)
+      [ "$#" -ge 2 ] || fail "--completion requires open-reference or return-ready."
+      SETUP_COMPLETION="$2"
+      shift 2
+      ;;
     *) fail "unknown setup argument: $1" ;;
   esac
 done
+
+case "$SETUP_COMPLETION" in
+  open-reference|return-ready) ;;
+  *) fail "setup completion must be open-reference or return-ready." ;;
+esac
 
 if [ "$CONTROLLER_MODE" = true ]; then
   [ -n "$CONTROLLER_ACTION" ] || fail "controller mode requires --action."
@@ -401,6 +412,21 @@ open_vex() {
   /usr/bin/open "$source_url" >/dev/null 2>&1 || true
   say "VexLife is ready. Your browser should open at $source_url"
 }
+complete_lifecycle_start() {
+  if [ "$SETUP_COMPLETION" = "open-reference" ]; then
+    open_vex
+  else
+    say "VexLife is ready for the calling presentation."
+  fi
+}
+controller_result_for_completion() {
+  local opened_result="$1" ready_result="$2"
+  if [ "$SETUP_COMPLETION" = "open-reference" ]; then
+    controller_result "$opened_result"
+  else
+    controller_result "$ready_result"
+  fi
+}
 canonicalize_home() {
   local raw="$1"
   case "$raw" in
@@ -557,25 +583,25 @@ controller_run() {
         fail "setup stopped safely before the accepted Heretic runtime was ready."
       fi
       run_lifecycle start >/dev/null
-      open_vex
-      controller_result "FIRST_SETUP_COMPLETE"
+      complete_lifecycle_start
+      controller_result_for_completion "FIRST_SETUP_COMPLETE" "FIRST_SETUP_READY_FOR_CALLER"
       ;;
     EXISTING_HEALTHY:open|EXISTING_RECOVERABLE:open)
       run_lifecycle start >/dev/null
-      open_vex
-      controller_result "VEX_OPENED"
+      complete_lifecycle_start
+      controller_result_for_completion "VEX_OPENED" "VEX_READY_FOR_CALLER"
       ;;
     EXISTING_HEALTHY:repair|EXISTING_RECOVERABLE:repair|EXISTING_DEGRADED_REPAIRABLE:repair)
       [ "$RUNTIME_ACQUISITION_CONSENT" = "yes" ] || fail "repair was not authorized to verify or reacquire required runtime files."
       run_lifecycle repair yes >/dev/null
-      open_vex
-      controller_result "REPAIR_COMPLETE"
+      complete_lifecycle_start
+      controller_result_for_completion "REPAIR_COMPLETE" "REPAIR_READY_FOR_CALLER"
       ;;
     EXISTING_HEALTHY:rebuild-preserve|EXISTING_RECOVERABLE:rebuild-preserve|EXISTING_DEGRADED_REPAIRABLE:rebuild-preserve)
       [ "$RUNTIME_ACQUISITION_CONSENT" = "yes" ] || fail "rebuild-preserve was not authorized to reacquire required runtime files."
       run_lifecycle rebuild-preserve yes >/dev/null
-      open_vex
-      controller_result "REBUILD_PRESERVE_COMPLETE"
+      complete_lifecycle_start
+      controller_result_for_completion "REBUILD_PRESERVE_COMPLETE" "REBUILD_PRESERVE_READY_FOR_CALLER"
       ;;
     EXISTING_HEALTHY:uninstall-preserve|EXISTING_RECOVERABLE:uninstall-preserve|EXISTING_DEGRADED_REPAIRABLE:uninstall-preserve)
       run_lifecycle uninstall-preserve >/dev/null
@@ -641,6 +667,13 @@ printf 'Vex Home: %s\n' "$VEX_HOME"
 
 STATUS_JSON="$(node "$REPO_ROOT/scripts/macos-lifecycle.mjs" --operation status --repo "$REPO_ROOT" --home "$VEX_HOME")"
 STATE="$(printf '%s' "$STATUS_JSON" | parse_json_state)"
+if [ "$SETUP_COMPLETION" = "open-reference" ]; then
+  PRIMARY_START_COPY="open Vex"
+  RECOVERABLE_START_COPY="reconnect and open Vex"
+else
+  PRIMARY_START_COPY="continue with the calling presentation"
+  RECOVERABLE_START_COPY="reconnect Vex and continue with the calling presentation"
+fi
 
 case "$STATE" in
   ABSENT)
@@ -675,23 +708,23 @@ case "$STATE" in
     fi
 
     run_lifecycle start >/dev/null
-    open_vex
+    complete_lifecycle_start
     ;;
 
   EXISTING_HEALTHY)
     say "VexLife is already set up and healthy here."
-    printf 'Press [Enter] to open Vex, [r] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, or [q] quit: '
+    printf 'Press [Enter] to %s, [r] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, or [q] quit: ' "$PRIMARY_START_COPY"
     read -r CHOICE || true
     CHOICE="$(printf '%s' "$CHOICE" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
     case "$CHOICE" in
-      '' ) begin_setup_action "open"; run_lifecycle start >/dev/null; open_vex ;;
+      '' ) begin_setup_action "open"; run_lifecycle start >/dev/null; complete_lifecycle_start ;;
       r )
         ask_yes_no "Repair may verify or reacquire required runtime files. Continue?" n || { say "Stopped. No repair was performed."; exit 0; }
-        begin_setup_action "repair"; run_lifecycle repair yes >/dev/null; open_vex
+        begin_setup_action "repair"; run_lifecycle repair yes >/dev/null; complete_lifecycle_start
         ;;
       b )
         ask_yes_no "Rebuild-preserve removes only runtime/transient state, preserves Home/Memory/model cache, and may reacquire runtime files. Continue?" n || { say "Stopped. No rebuild was performed."; exit 0; }
-        begin_setup_action "rebuild-preserve"; run_lifecycle rebuild-preserve yes >/dev/null; open_vex
+        begin_setup_action "rebuild-preserve"; run_lifecycle rebuild-preserve yes >/dev/null; complete_lifecycle_start
         ;;
       u )
         ask_yes_no "Uninstall-preserve stops owned processes and removes runtime/transient state while preserving Home, Memory, conversations, and verified model files. Continue?" n || { say "Stopped. Nothing was uninstalled."; exit 0; }
@@ -705,18 +738,18 @@ case "$STATE" in
 
   EXISTING_RECOVERABLE)
     say "VexLife found your existing Home and can safely reconnect the accepted Companion binding."
-    printf 'Press [Enter] to reconnect and open Vex, [r] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, or [q] quit: '
+    printf 'Press [Enter] to %s, [r] repair, [b] rebuild while preserving Home, [u] uninstall-preserve, or [q] quit: ' "$RECOVERABLE_START_COPY"
     read -r CHOICE || true
     CHOICE="$(printf '%s' "$CHOICE" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
     case "$CHOICE" in
-      '' ) begin_setup_action "open"; run_lifecycle start >/dev/null; open_vex ;;
+      '' ) begin_setup_action "open"; run_lifecycle start >/dev/null; complete_lifecycle_start ;;
       r )
         ask_yes_no "Repair may verify or reacquire required runtime files. Continue?" n || { say "Stopped. No repair was performed."; exit 0; }
-        begin_setup_action "repair"; run_lifecycle repair yes >/dev/null; open_vex
+        begin_setup_action "repair"; run_lifecycle repair yes >/dev/null; complete_lifecycle_start
         ;;
       b )
         ask_yes_no "Rebuild-preserve keeps Home, Memory, conversations, and verified model cache while rebuilding runtime state. Continue?" n || { say "Stopped. No rebuild was performed."; exit 0; }
-        begin_setup_action "rebuild-preserve"; run_lifecycle rebuild-preserve yes >/dev/null; open_vex
+        begin_setup_action "rebuild-preserve"; run_lifecycle rebuild-preserve yes >/dev/null; complete_lifecycle_start
         ;;
       u )
         ask_yes_no "Uninstall-preserve keeps Home, Memory, conversations, and verified model files. Continue?" n || { say "Stopped. Nothing was uninstalled."; exit 0; }
@@ -736,11 +769,11 @@ case "$STATE" in
     case "$CHOICE" in
       ''|r )
         ask_yes_no "Repair may verify or reacquire required runtime files. Continue?" n || { say "Stopped. No repair was performed."; exit 0; }
-        begin_setup_action "repair"; run_lifecycle repair yes >/dev/null; open_vex
+        begin_setup_action "repair"; run_lifecycle repair yes >/dev/null; complete_lifecycle_start
         ;;
       b )
         ask_yes_no "Rebuild-preserve keeps Home, Memory, conversations, and verified model cache while rebuilding runtime state. Continue?" n || { say "Stopped. No rebuild was performed."; exit 0; }
-        begin_setup_action "rebuild-preserve"; run_lifecycle rebuild-preserve yes >/dev/null; open_vex
+        begin_setup_action "rebuild-preserve"; run_lifecycle rebuild-preserve yes >/dev/null; complete_lifecycle_start
         ;;
       u )
         ask_yes_no "Uninstall-preserve keeps Home, Memory, conversations, and verified model files. Continue?" n || { say "Stopped. Nothing was uninstalled."; exit 0; }
