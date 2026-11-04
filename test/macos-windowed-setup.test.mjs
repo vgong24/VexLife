@@ -466,6 +466,39 @@ test('MAC-WIN-13B cleanup is presented as preservation-safe stop-and-clean rathe
   assert.doesNotMatch(windowSource, /killall|rm -rf/u);
 });
 
+test('MAC-WIN-16A return-ready executes the same admitted healthy lifecycle start without opening the reference presentation', () => {
+  const ready = runController([
+    '--action', 'open',
+    '--node-install-consent', 'no',
+    '--runtime-acquisition-consent', 'no',
+    '--completion', 'return-ready'
+  ], {
+    state: 'EXISTING_HEALTHY',
+    choices: ['start']
+  });
+  assert.equal(ready.status, 0, ready.stderr || ready.stdout);
+  assert.match(ready.stdout, /VEXLIFE_CONTROLLER_RESULT\tVEX_READY_FOR_CALLER/u);
+  assert.match(ready.stdout, /VexLife is ready for the calling presentation\./u);
+  assert.doesNotMatch(ready.stdout, /Your browser should open at/u);
+
+  const lifecycleCalls = fs.readFileSync(ready.lifecycleArgsLog, 'utf8').trim().split(/\r?\n/u);
+  assert.ok(lifecycleCalls.some((line) => /--operation start/u.test(line)));
+});
+
+test('MAC-WIN-16B ordinary open-reference remains the default completion behavior', () => {
+  const opened = runController([
+    '--action', 'open',
+    '--node-install-consent', 'no',
+    '--runtime-acquisition-consent', 'no'
+  ], {
+    state: 'EXISTING_HEALTHY',
+    choices: ['start']
+  });
+  assert.equal(opened.status, 0, opened.stderr || opened.stdout);
+  assert.match(opened.stdout, /VEXLIFE_CONTROLLER_RESULT\tVEX_OPENED/u);
+  assert.match(opened.stdout, /Your browser should open at/u);
+});
+
 test('MAC-WIN-16 windowed setup preserves the human UI while carrying an explicit caller completion target', () => {
   assert.match(bootstrap, /VEXLIFE_SETUP_COMPLETION:-open-reference/u);
   assert.match(bootstrap, /VexLifeSetupCompletion/u);
