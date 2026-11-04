@@ -1220,4 +1220,78 @@ test('browser server composes V3 pressure into the accepted effect-free V4 rollo
   assert.doesNotMatch(serverCore, /continuityRolloverPlan[\s\S]{0,180}(?:process\.kill|memoryPromot|successorContextAuthorization)/u);
 });
 
+
+test('browser Companion promptContextMode is closed and defaults to CONTINUE', () => {
+  const conversation = {
+    projectRef: 'project.self-development',
+    threadRef: 'thread.self-development.open-conversation',
+    channelRef: 'channel.self-development.companion',
+    content: 'Bounded request.',
+    idempotencyKey: 'browser-send.clean-context-contract',
+    messageCreatedAt: '2026-11-03T23:30:00.000Z',
+    originalLanguage: 'en'
+  };
+  assert.equal(validateBrowserCompanionConversationRequest(conversation).promptContextMode, 'CONTINUE');
+  assert.equal(validateBrowserCompanionConversationRequest({ ...conversation, promptContextMode: 'CLEAN_START' }).promptContextMode, 'CLEAN_START');
+  assert.throws(
+    () => validateBrowserCompanionConversationRequest({ ...conversation, promptContextMode: 'DELETE_HISTORY' }),
+    (error) => error instanceof BrowserCompanionBridgeError && error.code === 'COMPANION_REQUEST_NOT_ADMITTED'
+  );
+  const runtimeRequest = {
+    threadRef: 'thread.self-development.open-conversation',
+    channelRef: 'channel.self-development.companion',
+    content: 'Bounded runtime request.'
+  };
+  assert.equal(validateBrowserCompanionRequest(runtimeRequest).promptContextMode, 'CONTINUE');
+  assert.equal(validateBrowserCompanionRequest({ ...runtimeRequest, promptContextMode: 'CLEAN_START' }).promptContextMode, 'CLEAN_START');
+});
+
+test('canonical Conversation clean-start Send preserves durable history while provider receives no prior turn', async () => {
+  const { root, home } = makeHome();
+  const model = await startModelServer();
+  try {
+    const promptRuntime = createBrowserPromptContextRuntime({
+      home,
+      homeRef: 'vex-home.browser-companion-test',
+      deviceRef: 'device.vexlife.browser-companion-test',
+      companionLineageRef: 'companion-lineage.vexlife.browser-companion-test'
+    });
+    const bridge = createBrowserCompanionBridge({
+      home,
+      endpoint: model.endpoint,
+      model: 'Qwen3.5-4B-Q4_K_M',
+      instanceRef: 'instance.vexlife.browser-companion-clean-start',
+      promptContextResolver: promptRuntime.promptContextResolver,
+      promptContextAuthorityVerifier: promptRuntime.promptContextAuthorityVerifier
+    });
+    const scope = {
+      projectRef: 'project.self-development',
+      threadRef: 'thread.self-development.open-conversation',
+      channelRef: 'channel.self-development.companion'
+    };
+    await browserTurn(bridge, { ...scope, content: 'Prior durable turn.' });
+    const clean = await browserTurn(bridge, {
+      ...scope,
+      content: 'Start this turn with clean conversational context.',
+      promptContextMode: 'CLEAN_START'
+    });
+    assert.equal(model.calls.length, 2);
+    assert.deepEqual(model.calls[1].body.messages, [{ role: 'user', content: 'Start this turn with clean conversational context.' }]);
+    assert.deepEqual(clean.promptContextMaterialization.selectedConversationEventRefs, []);
+    assert.equal(clean.promptContextMaterialization.wholeHistoryEventEnumerationPerformed, false);
+    assert.equal(clean.promptContextMaterialization.hiddenReasoningIncluded, false);
+    const projection = bridge.conversationProjection(scope);
+    assert.equal(projection.state, 'CURRENT');
+    assert.deepEqual(projection.messages.map((message) => message.content), [
+      'Prior durable turn.',
+      'Real local bridge reply.',
+      'Start this turn with clean conversational context.',
+      'Real local bridge reply.'
+    ]);
+  } finally {
+    await model.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 // [VXG RealForever]

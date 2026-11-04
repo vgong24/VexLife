@@ -118,4 +118,37 @@ test/lived-companion.test.mjs
 No provider, Home, Memory, model, training, publication, or lifecycle effect is
 performed by the source proof itself.
 
+
+## Clean-start Send mode
+
+The browser Companion admits one explicit prompt-context mode on a Send:
+
+```text
+CONTINUE
+  -> current request
+  -> immediate prior completed turn, unless an earned working-continuity successor owns that edge
+  -> current attributed Memory when admitted
+
+CLEAN_START
+  -> current request
+  -> zero prior Conversation events
+  -> current attributed Memory when admitted
+  -> same canonical Conversation thread and immutable history
+```
+
+`CLEAN_START` is a prompt-selection boundary, not deletion, archival, a new
+Conversation identity, Memory erasure, or permission widening. The human message
+is still appended to the same canonical Conversation before inference. The exact
+prior Conversation head remains a currentness binding while its request/response
+content is not selected into the provider prompt.
+
+A clean start is held when an earned working-continuity successor is pending.
+The prompt owner must not silently discard that bounded successor context merely
+because a presentation requested a clean conversational turn.
+
+The canonical prompt materialization receipt proves the effect: a successful
+clean-start turn has `selectedConversationEventRefs=[]` while independently
+reporting whether current Memory was included. Whole-history enumeration and
+hidden-reasoning inclusion remain false.
+
 <!-- [VEXLIFE-CORE][VC02B][FAMILY-COMPANION-PROMPT-CONTEXT][VXG RealForever] -->
