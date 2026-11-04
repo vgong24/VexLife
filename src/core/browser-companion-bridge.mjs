@@ -35,6 +35,8 @@ export const BROWSER_COMPANION_RECOVERY_PATH = '/api/v1/companion/recovery';
 export const BROWSER_COMPANION_RECOVERY_MAX_BODY_BYTES = 16 * 1024;
 export const BROWSER_COMPANION_PROFILE_REF = 'model-profile.vexlife.browser-companion.local';
 export const BROWSER_COMPANION_MAX_CONTENT_CHARS = 32 * 1024;
+export const BROWSER_COMPANION_PROMPT_CONTEXT_MODES = Object.freeze(['CONTINUE', 'CLEAN_START']);
+const BROWSER_COMPANION_PROMPT_CONTEXT_MODE_SET = new Set(BROWSER_COMPANION_PROMPT_CONTEXT_MODES);
 
 const RUNTIME_REQUEST_KEYS = new Set([
   'projectRef',
@@ -44,7 +46,8 @@ const RUNTIME_REQUEST_KEYS = new Set([
   'selectedNodeRef',
   'screenRef',
   'semanticRelayInput',
-  'semanticRelayAction'
+  'semanticRelayAction',
+  'promptContextMode'
 ]);
 const CONVERSATION_REQUEST_KEYS = new Set([
   'projectRef',
@@ -55,6 +58,7 @@ const CONVERSATION_REQUEST_KEYS = new Set([
   'screenRef',
   'semanticRelayInput',
   'semanticRelayAction',
+  'promptContextMode',
   'idempotencyKey',
   'messageCreatedAt',
   'originalLanguage'
@@ -93,6 +97,14 @@ function nonempty(value) {
 
 function safePortableRef(value) {
   return nonempty(value) && PORTABLE_REF_PATTERN.test(value);
+}
+
+function normalizePromptContextMode(value) {
+  const mode = value ?? 'CONTINUE';
+  if (!BROWSER_COMPANION_PROMPT_CONTEXT_MODE_SET.has(mode)) {
+    throw new BrowserCompanionBridgeError('COMPANION_REQUEST_NOT_ADMITTED', 'promptContextMode is not admitted', 400);
+  }
+  return mode;
 }
 
 function sameCanonicalPath(left, right) {
@@ -340,7 +352,8 @@ export function validateBrowserCompanionRequest(value) {
     selectedNodeRef: value.selectedNodeRef ?? null,
     screenRef: value.screenRef ?? null,
     semanticRelayInput: value.semanticRelayInput ? structuredClone(value.semanticRelayInput) : null,
-    semanticRelayAction
+    semanticRelayAction,
+    promptContextMode: normalizePromptContextMode(value.promptContextMode)
   });
 }
 
@@ -403,6 +416,7 @@ export function validateBrowserCompanionConversationRequest(value) {
     screenRef: value.screenRef ?? null,
     semanticRelayInput: value.semanticRelayInput ? structuredClone(value.semanticRelayInput) : null,
     semanticRelayAction,
+    promptContextMode: normalizePromptContextMode(value.promptContextMode),
     idempotencyKey: value.idempotencyKey,
     messageCreatedAt: value.messageCreatedAt,
     originalLanguage: value.originalLanguage
@@ -1127,6 +1141,7 @@ export function createBrowserCompanionBridge({
                 projectRef: request.projectRef,
                 screenRef: request.screenRef,
                 selectedNodeRef: request.selectedNodeRef,
+                promptContextMode: request.promptContextMode,
                 sourceRefs: contextSourceRefs
               };
               const evidenceTokens = [];
@@ -1451,6 +1466,7 @@ async function performConversationTurn(input, { responseDeltaObserver = null, re
                 projectRef: request.projectRef,
                 screenRef: request.screenRef,
                 selectedNodeRef: request.selectedNodeRef,
+                promptContextMode: request.promptContextMode,
                 sourceRefs: contextSourceRefs
               };
               const evidenceTokens = [];

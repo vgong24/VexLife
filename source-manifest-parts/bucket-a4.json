@@ -11,8 +11,8 @@
     {
       "path": "test/browser-prompt-context-runtime.test.mjs",
       "mode": "100644",
-      "bytes": 48941,
-      "sha256": "ad397ababd3069b323ad97bf41977f007527ba4846f7683de9d72430ef47023e"
+      "bytes": 52965,
+      "sha256": "2f76f4ea38a4773daf565dcf21281b826d860f9614ab9f68638e7db5e177d686"
     }
   ]
 }

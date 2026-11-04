@@ -45,6 +45,7 @@ const CONTEXT_RESERVED_OUTPUT_TOKENS = LIVED_COMPANION_OUTPUT_TOKEN_LIMIT;
 const CONTEXT_HARD_TOKEN_LIMIT = 208_000;
 const MEMORY_PACKET_SCHEMA = 'vexlife.prompt-context-memory-packet/v1';
 const MEMORY_TRUTH_CLASS = 'CURRENT_ATTRIBUTED_MEMORY_CONTEXT';
+const PROMPT_CONTEXT_MODE_SET = new Set(['CONTINUE', 'CLEAN_START']);
 
 function estimatedMessageTokens(content) {
   return Math.max(1, Math.ceil(Buffer.byteLength(content, 'utf8') / 4)) + 4;
@@ -181,6 +182,12 @@ function fail(message, details = null) {
   throw new LivedCompanionError('CONTEXT_HASH_MISMATCH', message, details);
 }
 
+function exactPromptContextMode(context) {
+  const mode = context?.promptContextMode ?? 'CONTINUE';
+  if (!PROMPT_CONTEXT_MODE_SET.has(mode)) fail('promptContextMode is not admitted');
+  return mode;
+}
+
 function canonicalTimestamp(value, label) {
   const ms = Date.parse(value);
   if (!Number.isFinite(ms) || new Date(ms).toISOString() !== value) fail(`${label} is not one canonical timestamp`);
@@ -253,6 +260,39 @@ function selectionCore(prior, current, memoryContext, currentRequestInputTokenEs
         completedHeadSha256: prior.conversationHeadSha256
       })
     ]),
+    wholeHistoryEventEnumerationPerformed: false,
+    memorySelectionPerformed: memoryContext.included,
+    trainingSelectionPerformed: false
+  });
+}
+
+function cleanSelectionCore(prior, current, memoryContext, currentRequestInputTokenEstimate) {
+  if (!Number.isSafeInteger(currentRequestInputTokenEstimate) || currentRequestInputTokenEstimate <= 0) fail('current request input token estimate is invalid');
+  return Object.freeze({
+    schemaVersion: 'vexlife.browser-prompt-context-runtime-selection/v3',
+    contextMode: 'CLEAN_START',
+    homeRef: prior.homeRef,
+    deviceRef: prior.deviceRef,
+    lineageRef: prior.companionLineageRef,
+    threadRef: prior.threadRef,
+    priorConversationHeadSha256: prior.conversationHeadSha256,
+    priorHeadSequence: prior.headSequence,
+    priorInputTokenEstimate: 0,
+    currentRequestInputTokenEstimate,
+    currentRequestEventBinding: current,
+    memoryContextRef: memoryContext.memoryContextRef,
+    memoryContextFingerprint: memoryContext.semanticFingerprint,
+    memorySourceRefs: memoryContext.sourceRefs,
+    memoryIncluded: memoryContext.included,
+    workingCheckpointRefOrNull: null,
+    workingCheckpointFingerprintOrNull: null,
+    workingCommitReceiptRefOrNull: null,
+    workingCommitReceiptFingerprintOrNull: null,
+    successorClaimRefOrNull: null,
+    successorClaimFingerprintOrNull: null,
+    workingSetOrNull: null,
+    workingSourceRefs: Object.freeze([]),
+    selectedEventBindings: Object.freeze([]),
     wholeHistoryEventEnumerationPerformed: false,
     memorySelectionPerformed: memoryContext.included,
     trainingSelectionPerformed: false
@@ -359,7 +399,9 @@ function leaseInput(selection, observedAt, ttlMs) {
       class: 'CAPABILITY_LEASE',
       capability: selection.contextMode === 'WORKING_CHECKPOINT_SUCCESSOR'
         ? 'WORKING_CHECKPOINT_PLUS_CURRENT_MEMORY'
-        : 'IMMEDIATE_PRIOR_PLUS_CURRENT_MEMORY'
+        : selection.contextMode === 'CLEAN_START'
+          ? 'CURRENT_MEMORY_CLEAN_START'
+          : 'IMMEDIATE_PRIOR_PLUS_CURRENT_MEMORY'
     }),
     effectLeaseFingerprint: semanticHash({ ...policy, class: 'EFFECT_LEASE', effects: EFFECTS }),
     cancellationTokenRef: `cancellation.vexlife.browser-prompt-context.${currentHash.slice(0, 32)}`,
@@ -583,6 +625,7 @@ export function createBrowserPromptContextRuntime({
       fail('prompt-context resolver requires the exact current request content for token budgeting');
     }
     const current = exactCurrentRequestBinding(context);
+    const requestedContextMode = exactPromptContextMode(context);
     const threadRef = safeRef(context.threadRef, 'threadRef');
     const priorHeadSha256 = context.priorConversationHeadSha256 ?? null;
     if (priorHeadSha256 === null) {
@@ -608,10 +651,12 @@ export function createBrowserPromptContextRuntime({
       fail('current request does not immediately follow the selected completed turn');
     }
     const currentRequestInputTokenEstimate = estimatedMessageTokens(taskIntent);
+    const cleanStart = requestedContextMode === 'CLEAN_START';
     let rolloverBinding = null;
     if (rolloverOwner) {
       const working = rolloverOwner.readCurrent({ threadRef });
       if (workingRolloverEligible(working, prior)) {
+        if (cleanStart) fail('clean-start prompt context is held while working-continuity successor context is pending');
         const claimResult = rolloverOwner.claimSuccessorContext({
           threadRef,
           priorConversationHeadSha256: prior.conversationHeadSha256,
@@ -624,7 +669,7 @@ export function createBrowserPromptContextRuntime({
         });
       }
     }
-    const priorInputTokenEstimate = rolloverBinding
+    const priorInputTokenEstimate = rolloverBinding || cleanStart
       ? 0
       : prior.requestInputTokenEstimate + prior.responseInputTokenEstimate;
     const remainingInputTokens = Math.max(
@@ -648,7 +693,9 @@ export function createBrowserPromptContextRuntime({
           rolloverBinding.working,
           rolloverBinding.successorClaim
         )
-      : selectionCore(prior, current, memoryContext, currentRequestInputTokenEstimate);
+      : cleanStart
+        ? cleanSelectionCore(prior, current, memoryContext, currentRequestInputTokenEstimate)
+        : selectionCore(prior, current, memoryContext, currentRequestInputTokenEstimate);
     const observedAt = now();
     canonicalTimestamp(observedAt, 'resolver observedAt');
     const lease = createContextLease(leaseInput(selection, observedAt, leaseTtlMs)).lease;
@@ -725,8 +772,13 @@ export function createBrowserPromptContextRuntime({
         expectedConversationHeadSha256: query.priorConversationHeadSha256
       });
       const rolloverMode = formed.selection.contextMode === 'WORKING_CHECKPOINT_SUCCESSOR';
+      const cleanStartMode = formed.selection.contextMode === 'CLEAN_START';
       let working = null;
       let successorState = null;
+      if (cleanStartMode && rolloverOwner) {
+        const pendingWorking = rolloverOwner.readCurrent({ threadRef: query.threadRef });
+        if (workingRolloverEligible(pendingWorking, prior)) fail('clean-start prompt context is held while working-continuity successor context is pending');
+      }
       if (rolloverMode) {
         if (!rolloverOwner) fail('working rollover owner is unavailable during authority revalidation');
         working = rolloverOwner.readCurrent({ threadRef: query.threadRef });
@@ -740,7 +792,7 @@ export function createBrowserPromptContextRuntime({
           successorState.issuanceReceipt.successorReceiptRef !== formed.successorContextReceipt?.successorReceiptRef
         ) fail('working rollover successor claim/receipt is no longer exact-current');
       }
-      const reboundPriorInputTokenEstimate = rolloverMode
+      const reboundPriorInputTokenEstimate = rolloverMode || cleanStartMode
         ? 0
         : prior.requestInputTokenEstimate + prior.responseInputTokenEstimate;
       const reboundRemainingInputTokens = Math.max(
@@ -766,12 +818,9 @@ export function createBrowserPromptContextRuntime({
             working,
             successorState.successorClaim
           )
-        : selectionCore(
-            prior,
-            current,
-            reboundMemoryContext,
-            formed.selection.currentRequestInputTokenEstimate
-          );
+        : cleanStartMode
+          ? cleanSelectionCore(prior, current, reboundMemoryContext, formed.selection.currentRequestInputTokenEstimate)
+          : selectionCore(prior, current, reboundMemoryContext, formed.selection.currentRequestInputTokenEstimate);
       if (selectionFingerprint(reboundSelection) !== formed.selectionFingerprint) {
         fail('prompt-context prior-turn/working-checkpoint selection is no longer current');
       }

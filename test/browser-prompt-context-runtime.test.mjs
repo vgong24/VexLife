@@ -320,8 +320,9 @@ test('capability-aware Companion revalidates and carries current Memory plus pri
       return JSON.stringify({ intentDisposition: 'NO_READ_ONLY_FUNCTION_NEEDED', requests: [] });
     }
     assert.equal(callIndex, 1);
-    assert.match(body.messages[4].content, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
-    assert.match(body.messages[4].content, /SOURCE_BOUND_OBSERVATIONS=\[\]/u);
+    assert.match(body.messages[4].content, /VEXLIFE_CONVERSATION_RESPONSE\/v1/u);
+    assert.doesNotMatch(body.messages[4].content, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
+    assert.doesNotMatch(body.messages[4].content, /SOURCE_BOUND_OBSERVATIONS=/u);
     return 'Capability-aware current Memory reply.';
   });
   try {
@@ -1032,6 +1033,87 @@ test('two adjacent checkpoint-pressure turns drive one checkpoint-backed success
     ]);
     assert.equal(later.promptContextMaterialization.selectedConversationEventRefs.length, 2);
     assert.notEqual(later.promptContextContinuityProjection.owners.context.checkpointReturnRef, rollover.checkpoint.checkpointRef);
+  } finally {
+    await model.close();
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+
+test('clean-start keeps current attributed Memory while selecting zero prior Conversation events', async () => {
+  const fixture = createDailyMemoryDreamFixture('browser-prompt-memory-clean-start');
+  const home = dailyFixtureHome(fixture);
+  commitFixtureDailyMemory(fixture);
+  const model = await startModelServer();
+  try {
+    const owner = runtime(home);
+    const result = await bridge(home, model, owner, 'instance.vexlife.browser-prompt-context-memory-clean-start').performTurn({
+      threadRef: fixture.ids.threadRef,
+      channelRef: 'channel.g03.fixture',
+      content: 'Start clean while keeping current Memory.',
+      promptContextMode: 'CLEAN_START'
+    });
+    assert.equal(result.state, 'TURN_COMPLETED');
+    assert.equal(model.calls.length, 1);
+    const messages = model.calls[0].body.messages;
+    assert.equal(messages.length, 2);
+    assert.equal(messages[0].role, 'system');
+    assert.match(messages[0].content, /VEXLIFE_CURRENT_MEMORY_CONTEXT\/v1/u);
+    assert.deepEqual(messages[1], { role: 'user', content: 'Start clean while keeping current Memory.' });
+    assert.equal(result.promptContextMaterialization.memoryContextIncluded, true);
+    assert.equal(result.promptContextMaterialization.memoryEstimatedSystemMessageTokens > 0, true);
+    assert.deepEqual(result.promptContextMaterialization.selectedConversationEventRefs, []);
+    assert.equal(result.promptContextMaterialization.exactEventFileReadCount, 1);
+    assert.equal(result.promptContextMaterialization.wholeHistoryEventEnumerationPerformed, false);
+    assert.equal(result.promptContextMaterialization.currentRequestIncludedExactlyOnce, true);
+  } finally {
+    await model.close();
+    fs.rmSync(home.root, { recursive: true, force: true });
+  }
+});
+
+test('clean-start fails closed rather than discarding an earned working-continuity successor', async () => {
+  const home = makeHome('clean-start-working-continuity');
+  const model = await startModelServer();
+  try {
+    const first = await firstTurn(home, model);
+    const prior = readCurrentLivedCompanionCompletedTurn({
+      home: home.home,
+      homeRef: home.homeRef,
+      deviceRef: home.deviceRef,
+      companionLineageRef: home.companionLineageRef,
+      threadRef: 'thread.vexlife.browser-prompt-context-runtime-test',
+      expectedConversationHeadSha256: first.conversationHeadSha256
+    });
+    const working = {
+      readCurrent() {
+        return {
+          state: 'CURRENT',
+          commitReceipt: { disposition: 'ROLLOVER_COMMITTED', successorContextRequired: true, effects: { successorContextLeaseIssued: false } },
+          checkpoint: { workingSet: { cursorEventRef: prior.requestEventBinding.eventRef } }
+        };
+      },
+      claimSuccessorContext() { throw new Error('CLEAN_START_MUST_HOLD_BEFORE_CLAIM'); },
+      recordSuccessorContextLease() { throw new Error('CLEAN_START_MUST_HOLD_BEFORE_RECORD'); },
+      readSuccessorContext() { return { state: 'READY' }; }
+    };
+    const owner = runtime(home, { workingContinuityOwner: working });
+    await assert.rejects(
+      () => owner.promptContextResolver({
+        taskIntent: 'Do not discard earned working continuity.',
+        context: {
+          threadRef: 'thread.vexlife.browser-prompt-context-runtime-test',
+          currentRequestEventRef: 'event.vexlife.request.clean-start-working-continuity',
+          currentRequestEventHash: 'b'.repeat(64),
+          currentRequestSequence: prior.headSequence + 1,
+          priorConversationHeadSha256: first.conversationHeadSha256,
+          promptContextMode: 'CLEAN_START'
+        }
+      }),
+      (error) => error instanceof LivedCompanionError && error.code === 'CONTEXT_HASH_MISMATCH' &&
+        /working-continuity successor context is pending/u.test(error.message)
+    );
+    assert.equal(owner.activeSelectionCount(), 0);
   } finally {
     await model.close();
     fs.rmSync(home.root, { recursive: true, force: true });
