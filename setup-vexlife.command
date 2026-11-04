@@ -5,6 +5,7 @@ REPOSITORY="vgong24/VexLife"
 SOURCE_REF="${VEXLIFE_SOURCE_REF:-main}"
 SOURCE_ROOT="${VEXLIFE_SOURCE_ROOT:-$HOME/Library/Application Support/VexLife/source}"
 SETUP_MODE="${VEXLIFE_SETUP_MODE:-window}"
+SETUP_COMPLETION="${VEXLIFE_SETUP_COMPLETION:-open-reference}"
 
 say() { printf '\n%s\n' "$1"; }
 fail() { printf '\nVexLife setup stopped: %s\n' "$1" >&2; exit 1; }
@@ -16,6 +17,10 @@ esac
 case "$SETUP_MODE" in
   window|terminal) ;;
   *) fail "VEXLIFE_SETUP_MODE must be 'window' or 'terminal'." ;;
+esac
+case "$SETUP_COMPLETION" in
+  open-reference|return-ready) ;;
+  *) fail "VEXLIFE_SETUP_COMPLETION must be 'open-reference' or 'return-ready'." ;;
 esac
 for tool in /usr/bin/curl /usr/bin/tar /usr/bin/plutil /usr/bin/mktemp; do
   [ -x "$tool" ] || fail "a required macOS system tool is unavailable: $tool"
@@ -76,7 +81,7 @@ TARGET="$RUN_PARENT/source"
 
 say "VexLife source is ready."
 if [ "$SETUP_MODE" = "terminal" ]; then
-  exec /bin/bash "$TARGET/install/vexlife-setup.sh" "$TARGET"
+  exec /bin/bash "$TARGET/install/vexlife-setup.sh" "$TARGET" --completion "$SETUP_COMPLETION"
 fi
 
 WINDOW="$TARGET/install/vexlife-setup-window.applescript"
@@ -95,14 +100,19 @@ INFO_PLIST="$WINDOW_APP/Contents/Info.plist"
 [ -f "$INFO_PLIST" ] || fail "the source-local Mac setup app is missing its bundle metadata."
 /usr/bin/plutil -insert VexLifeSourceRoot -string "$TARGET" "$INFO_PLIST" \
   || fail "the exact source root could not be bound to the source-local Mac setup app."
+/usr/bin/plutil -insert VexLifeSetupCompletion -string "$SETUP_COMPLETION" "$INFO_PLIST" \
+  || fail "the setup completion target could not be bound to the source-local Mac setup app."
 /usr/bin/plutil -replace CFBundleIdentifier -string "com.vextreme.vexlife.setup" "$INFO_PLIST" \
   || fail "the source-local Mac setup app could not bind its stable application identity."
 /usr/bin/plutil -insert LSMultipleInstancesProhibited -bool true "$INFO_PLIST" 2>/dev/null \
   || /usr/bin/plutil -replace LSMultipleInstancesProhibited -bool true "$INFO_PLIST" \
   || fail "the source-local Mac setup app could not prohibit duplicate app instances."
 BOUND_SOURCE_ROOT="$(/usr/bin/plutil -extract VexLifeSourceRoot raw -o - "$INFO_PLIST" 2>/dev/null || true)"
+BOUND_SETUP_COMPLETION="$(/usr/bin/plutil -extract VexLifeSetupCompletion raw -o - "$INFO_PLIST" 2>/dev/null || true)"
 [ "$BOUND_SOURCE_ROOT" = "$TARGET" ] \
   || fail "the source-local Mac setup app did not retain the exact source-root binding."
+[ "$BOUND_SETUP_COMPLETION" = "$SETUP_COMPLETION" ] \
+  || fail "the source-local Mac setup app did not retain the exact setup completion target."
 
 /usr/bin/open -W "$WINDOW_APP" \
   || fail "the source-local Mac setup app could not be opened. Run again with VEXLIFE_SETUP_MODE=terminal for the accepted Terminal route."
