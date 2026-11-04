@@ -466,6 +466,24 @@ test('MAC-WIN-13B cleanup is presented as preservation-safe stop-and-clean rathe
   assert.doesNotMatch(windowSource, /killall|rm -rf/u);
 });
 
+test('MAC-WIN-16 windowed setup preserves the human UI while carrying an explicit caller completion target', () => {
+  assert.match(bootstrap, /VEXLIFE_SETUP_COMPLETION:-open-reference/u);
+  assert.match(bootstrap, /VexLifeSetupCompletion/u);
+  assert.match(windowSource, /property completionInfoKey : "VexLifeSetupCompletion"/u);
+  assert.match(windowSource, /property completionMode : "open-reference"/u);
+  assert.match(windowSource, /resolveCompletionMode/u);
+  assert.match(windowSource, /primaryReadyActionTitle/u);
+  assert.match(windowSource, /return-ready/u);
+  assert.match(windowSource, /"--completion", completionMode/u);
+  assert.match(windowSource, /returned lifecycle readiness to the calling presentation/u);
+  assert.match(windowSource, /Preparing VexLife for the calling presentation/u);
+
+  // Window remains a projection over the same backend/lifecycle owner.
+  assert.doesNotMatch(windowSource, /macos-lifecycle\.mjs/u);
+  assert.doesNotMatch(windowSource, /\/usr\/bin\/open/u);
+  assert.doesNotMatch(windowSource, /127\.0\.0\.1:18110/u);
+});
+
 test('MAC-WIN-15 Bash sources are syntax-valid; AppleScript compile remains a qualified Mac host proof', () => {
   shellSyntax(backendPath);
   shellSyntax(bootstrapPath);
