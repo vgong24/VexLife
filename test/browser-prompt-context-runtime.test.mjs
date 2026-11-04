@@ -320,8 +320,9 @@ test('capability-aware Companion revalidates and carries current Memory plus pri
       return JSON.stringify({ intentDisposition: 'NO_READ_ONLY_FUNCTION_NEEDED', requests: [] });
     }
     assert.equal(callIndex, 1);
-    assert.match(body.messages[4].content, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
-    assert.match(body.messages[4].content, /SOURCE_BOUND_OBSERVATIONS=\[\]/u);
+    assert.match(body.messages[4].content, /VEXLIFE_CONVERSATION_RESPONSE\/v1/u);
+    assert.doesNotMatch(body.messages[4].content, /VEXLIFE_CAPABILITY_SYNTHESIS\/v1/u);
+    assert.doesNotMatch(body.messages[4].content, /SOURCE_BOUND_OBSERVATIONS=/u);
     return 'Capability-aware current Memory reply.';
   });
   try {
