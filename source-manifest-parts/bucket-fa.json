@@ -5,8 +5,8 @@
     {
       "path": "blueprint/global-announcement-contract.json",
       "mode": "100644",
-      "bytes": 9741,
-      "sha256": "041aa177d8b9b7b938bb6432d58f1ab1d0f4f76ba6de01d52faef144412f7bc5"
+      "bytes": 9880,
+      "sha256": "3d58b322d512105741843186ec4a56a4fc5fe397b040b525e136159392ff47eb"
     },
     {
       "path": "blueprint/module-registry/companion-availability-reentry.json",

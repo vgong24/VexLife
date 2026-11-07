@@ -11,8 +11,8 @@
     {
       "path": "docs/VEXLIFE-GLOBAL-ANNOUNCEMENT-CONTRACT.md",
       "mode": "100644",
-      "bytes": 9206,
-      "sha256": "0ef47e31492ba2cbe6288c57f1ca75824310249e46189c4b7f4287b777742aef"
+      "bytes": 9265,
+      "sha256": "03827b613d038c283129601f878eb8a730981864f7069b597ff4606079fe65bb"
     },
     {
       "path": "scripts/check-syntax.mjs",

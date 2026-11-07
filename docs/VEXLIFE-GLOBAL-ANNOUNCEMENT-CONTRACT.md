@@ -292,7 +292,7 @@ Global Announcement Poll
       +-> acknowledgementRequired?
 ```
 
-Every semantic request/record/observation field has a stable source-owned `fieldRef` and a named consumer. The artifact also owns the exact portable REF grammar, bounded-text control-character policy, and canonical UTC timestamp policy that platform validators consume. A VexBoard projector may later derive BoardGraph nodes/relationships/source refs from these identities without the contract importing VexBoard or owning layout.
+Every semantic request/record/observation field has a stable source-owned `fieldRef` and a named consumer. The artifact also owns the exact portable REF grammar, bounded-text control-character policy, canonical UTC timestamp policy, and canonical lexicographic ordering for source-evidence refs that platform validators consume. A VexBoard projector may later derive BoardGraph nodes/relationships/source refs from these identities without the contract importing VexBoard or owning layout.
 
 ~~~text
 PORTABLE POLICY

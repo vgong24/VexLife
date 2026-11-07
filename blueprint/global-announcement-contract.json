@@ -163,7 +163,8 @@
         "minItems": 1,
         "uniqueItems": true,
         "consumer": "Proof, source descent and VexBoard read-only projection",
-        "meaning": "Non-empty exact source-evidence references supporting this observation."
+        "meaning": "Non-empty unique exact source-evidence references supporting this observation; canonical order is lexicographic ASCII because admitted REF values are ASCII-only.",
+        "canonicalOrder": "LEXICOGRAPHIC_ASCII"
       }
     }
   },

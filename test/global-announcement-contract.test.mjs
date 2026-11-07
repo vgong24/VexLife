@@ -63,6 +63,7 @@ test('C0 portable artifact owns REF, text, timestamp, and observation field cons
   assert.equal(raw.observation.fields.requestRef.fieldRef, 'field.vexlife.global-announcement.observation.request-ref');
   assert.equal(raw.observation.fields.observedAt.policyRef, raw.portablePolicies.utcTimestamp.policyRef);
   assert.equal(raw.observation.fields.sourceRefs.itemPolicyRef, raw.portablePolicies.ref.policyRef);
+  assert.equal(raw.observation.fields.sourceRefs.canonicalOrder, 'LEXICOGRAPHIC_ASCII');
 });
 
 test('C0 exposes one specific Poll contract without generic service-framework authority', () => {
