@@ -11,8 +11,8 @@
     {
       "path": "test/browser-companion-availability-http-route.test.mjs",
       "mode": "100644",
-      "bytes": 21315,
-      "sha256": "c9e14be5fea5037a8715b1283417e4b3c1209f32c81cc28edfecb538ad814326"
+      "bytes": 24374,
+      "sha256": "661a8962818bcbb8f54207677a19b58a36d4f99cecc8141a7955ed71d9365ce5"
     }
   ]
 }
