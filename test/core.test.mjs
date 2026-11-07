@@ -40,9 +40,27 @@ test('state cells and combined projections suppress semantic no-ops', () => {
 test('Atlas uses bounded traversal and returns a coverage receipt', () => {
   const atlas = new Atlas(buildIdentityIndex(bundle));
   const result = atlas.query({ startRefs: ['element.chat.composer'], depthLimit: 2, resultLimit: 6, tokenBudget: 300 });
+  assert.equal(result.resolutionState, 'EXPLICIT_START');
   assert.ok(result.results.some((item) => item.ref === 'element.chat.composer'));
   assert.ok(result.results.some((item) => item.ref === 'action.message.send'));
   assert.ok(result.coverage.usedTokens <= 300);
+});
+
+test('Atlas preserves no-match instead of inventing zero-score search seeds', () => {
+  const atlas = new Atlas([
+    { ref: 'feature.chat', kind: 'FEATURE', brief: 'Chat conversation', edges: [] },
+    { ref: 'feature.music', kind: 'FEATURE', brief: 'Music playback', edges: [] }
+  ]);
+
+  const matched = atlas.query({ intent: 'chat', depthLimit: 2, resultLimit: 8, tokenBudget: 400 });
+  assert.equal(matched.resolutionState, 'MATCHED');
+  assert.deepEqual(matched.results.map((item) => item.ref), ['feature.chat']);
+
+  const missing = atlas.query({ intent: 'gardening', depthLimit: 2, resultLimit: 8, tokenBudget: 400 });
+  assert.equal(missing.resolutionState, 'NO_MATCH');
+  assert.deepEqual(missing.results, []);
+  assert.equal(missing.coverage.visitedCount, 0);
+  assert.equal(missing.coverage.truncated, false);
 });
 
 test('directional channels isolate sibling conversation context', () => {

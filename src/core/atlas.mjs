@@ -101,13 +101,16 @@ export class Atlas {
     let usedTokens = 0;
 
     for (const ref of startRefs) if (nodes.has(ref)) queue.push({ ref, depth: 0, via: 'START' });
+    let resolutionState = queue.length ? 'EXPLICIT_START' : 'NO_MATCH';
     if (queue.length === 0) {
       const scored = [...nodes.values()].map((node) => {
         const haystack = new Set(terms(`${node.ref} ${node.kind} ${node.brief}`));
         const score = [...wantedTerms].filter((term) => haystack.has(term)).length;
         return { node, score };
       }).sort((a, b) => b.score - a.score || a.node.ref.localeCompare(b.node.ref));
-      for (const item of scored.slice(0, Math.max(resultLimit, 1))) queue.push({ ref: item.node.ref, depth: 0, via: 'SEARCH' });
+      const matched = scored.filter((item) => item.score > 0);
+      if (matched.length) resolutionState = 'MATCHED';
+      for (const item of matched.slice(0, Math.max(resultLimit, 1))) queue.push({ ref: item.node.ref, depth: 0, via: 'SEARCH' });
     }
 
     let truncatedBy = null;
@@ -147,6 +150,7 @@ export class Atlas {
 
     return {
       intent,
+      resolutionState,
       results,
       coverage: {
         startRefs,
