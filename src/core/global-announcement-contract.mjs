@@ -20,23 +20,23 @@ function cloneFreeze(value) {
 }
 
 function loadContractArtifact() {
-  const value = JSON.parse(fs.readFileSync(GLOBAL_ANNOUNCEMEMENT_CONTRACT_PATH, 'utf8'));
+  const value = JSON.parse(fs.readFileSync(GLOBAL_ANNOUNCEMENT_CONTRACT_PATH, 'utf8'));
   if (value?.schemaVersion !== 'vexlife.global-announcement-contract/v1') {
-    throw new Error('GLOBAL_ANNOUNCEMEMENT_CONTRACT_ARTIFACT_SCHEMA_UNSUPPORTED');
+    throw new Error('GLOBAL_ANNOUNCEMENT_CONTRACT_ARTIFACT_SCHEMA_UNSUPPORTED');
   }
   if (value?.contractRef !== 'contract.vexlife.global-announcement.poll/v1') {
     throw new Error('GLOBAL_ANNOUNCEMENT_CONTRACT_ARTIFACT_REF_UNSUPPORTED');
   }
   if (value?.operation !== 'POLL' || value?.operationRef !== 'operation.vexlife.global-announcement.poll') {
-    throw new Error('GLOBAL_ANNOUNCEMEMENT_CONTRACT_ARTIFACT_OPERATION_INVALID');
+    throw new Error('GLOBAL_ANNOUNCEMENT_CONTRACT_ARTIFACT_OPERATION_INVALID');
   }
   return cloneFreeze(value);
 }
 
 export const GLOBAL_ANNOUNCEMENT_POLL_CONTRACT = loadContractArtifact();
-export const GLOBAL_ANNOUNCEMEMENT_CONTRACT_SCHEMA = GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.schemaVersion;
-export const GLOBAL_ANNOUNCEMEMENT_CONTRACT_REF = GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.contractRef;
-export const GLOBAL_ANNOUNCEMENT_SERVICE_REF = GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.serviceRef;
+export const GLOBAL_ANNOUNCEMENT_CONTRACT_SCHEMA = GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.schemaVersion;
+export const GLOBAL_ANNOUNCEMENT_CONTRACT_REF = GLOBAL_ANNOUNCEMEMENT_POLL_CONTRACT.contractRef;
+export const GLOBAL_ANNOUNCEMENT_SERVICE_REF = GLOBAL_ANNOUNCEMEMENT_POLL_CONTRACT.serviceRef;
 export const GLOBAL_ANNOUNCEMENT_FEATURE_REF = GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.featureRef;
 export const GLOBAL_ANNOUNCEMENT_POLL_REQUEST_SCHEMA = GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.request.schemaVersion;
 export const GLOBAL_ANNOUNCEMENT_RECORD_SCHEMA = GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.announcementRecord.schemaVersion;
@@ -126,18 +126,18 @@ function boundedText(value, label, maxCodePoints) {
     fail(
       'GLOBAL_ANNOUNCEMEMENT_TEXT_INVALID',
       `${label} must contain 1..${maxCodePoints} code points without disallowed control characters`
-    );
+   );
   }
   return value;
 }
 
 function canonicalTimestamp(value, label) {
   if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) {
-    fail('GLOBAL_ANNOUNCEMENT_TIMESTAMP_INVALID', `${label} must be one ISO timestamp`);
+    fail('GLOBAL_ANNOUNCEMEMENT_TIMESTAMP_INVALID', `${label} must be one ISO timestamp`);
   }
   const normalized = new Date(value).toISOString();
   if (normalized !== value) {
-    fail('GLOBAL_ANNOUNCEMENT_TIMESTAMP_INVALID', `${label} must be one canonical UTC ISO timestamp`);
+    fail('GLOBAL_ANNOUNCEMEMENT_TIMESTAMP_INVALID', `${label} must be one canonical UTC ISO timestamp`);
   }
   return value;
 }

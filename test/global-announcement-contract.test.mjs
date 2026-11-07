@@ -37,6 +37,7 @@ function expectCode(fn, code) {
 }
 
 
+
 test('C0 language-neutral artifact is the portable meaning owner consumed by the JS POC', () => {
   const raw = JSON.parse(fs.readFileSync(GLOBAL_ANNOUNCEMENT_CONTRACT_PATH, 'utf8'));
   assert.equal(raw.contractRef, GLOBAL_ANNOUNCEMENT_CONTRACT_REF);
@@ -49,11 +50,11 @@ test('C0 language-neutral artifact is the portable meaning owner consumed by the
   assert.deepEqual(raw.announcementRecord.minimumFields, ['announcementRef', 'title', 'body', 'severity']);
 });
 test('C0 exposes one specific Poll contract without generic service-framework authority', () => {
-  assert.equal(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.contractRef, GLOBAL_ANNOUNCEMEMENT_CONTRACT_REF);
-  assert.equal(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.operation, 'POLL');
+  assert.equal(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.contractRef, GLOBAL_ANNOUNCEMENT_CONTRACT_REF);
+  assert.equal(GLOBAL_ANNOUNCEMEMENT_POLL_CONTRACT.operation, 'POLL');
   assert.equal(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.request.outwardScopeApplicable, false);
   assert.deepEqual(
-    GLOBAL_ANNOUNCEMEMENT_POLL_CONTRACT.announcementRecord.minimumFields,
+    GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.announcementRecord.minimumFields,
     ['announcementRef', 'title', 'body', 'severity']
   );
   assert.deepEqual(
@@ -65,17 +66,17 @@ test('C0 exposes one specific Poll contract without generic service-framework au
       'severity',
       'effectiveAt',
       'expiresAt',
-      'acknowledgementRequired'
+     'acknowledgementRequired'
     ]
   );
-  assert.deepEqual(GLOBAL_ANNOUNCEMEMENT_POLL_CONTRACT.request.minimumFields, ['requestRef']);
+  assert.deepEqual(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.request.minimumFields, ['requestRef']);
   assert.deepEqual(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.request.envelopeFields, ['schemaVersion', 'contractRef']);
   assert.equal(
-    GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.announcementRecord.fields.severity.fieldRef,
+    GLOBAL_ANNOUNCEMEMENT_POLL_CONTRACT.announcementRecord.fields.severity.fieldRef,
     'field.vexlife.global-announcement.record.severity'
   );
   assert.match(
-    GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.announcementRecord.fields.severity.consumer,
+    GLOBAL_ANNOUNCEMEMENT_POLL_CONTRACT.announcementRecord.fields.severity.consumer,
     /semantic interpretation/u
   );
   assert.deepEqual(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.lawfulServiceErrorForms, []);
