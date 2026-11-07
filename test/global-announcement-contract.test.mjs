@@ -4,9 +4,9 @@ import test from 'node:test';
 
 import {
   GLOBAL_ANNOUNCEMENT_CONTRACT_PATH,
-  GLOBAL_ANNOUNCEMEMENT_CONTRACT_REF,
+  GLOBAL_ANNOUNCEMENT_CONTRACT_REF,
   GLOBAL_ANNOUNCEMENT_POLL_CONTRACT,
-  GLOBAL_ANNOUNCEMEMENT_POLL_OBSERVATION_SCHEMA,
+  GLOBAL_ANNOUNCEMENT_POLL_OBSERVATION_SCHEMA,
   GLOBAL_ANNOUNCEMENT_POLL_REQUEST_SCHEMA,
   GLOBAL_ANNOUNCEMENT_RECORD_SCHEMA,
   GlobalAnnouncementContractError,
@@ -17,7 +17,7 @@ import {
 
 const REQUEST = Object.freeze({
   schemaVersion: GLOBAL_ANNOUNCEMENT_POLL_REQUEST_SCHEMA,
-  contractRef: GLOBAL_ANNOUNCEMEMENT_CONTRACT_REF,
+  contractRef: GLOBAL_ANNOUNCEMENT_CONTRACT_REF,
   requestRef: 'request.vexlife.global-announcement.patient-zero.001'
 });
 
@@ -51,7 +51,7 @@ test('C0 language-neutral artifact is the portable meaning owner consumed by the
 });
 test('C0 exposes one specific Poll contract without generic service-framework authority', () => {
   assert.equal(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.contractRef, GLOBAL_ANNOUNCEMENT_CONTRACT_REF);
-  assert.equal(GLOBAL_ANNOUNCEMEMENT_POLL_CONTRACT.operation, 'POLL');
+  assert.equal(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.operation, 'POLL');
   assert.equal(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.request.outwardScopeApplicable, false);
   assert.deepEqual(
     GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.announcementRecord.minimumFields,
@@ -66,17 +66,17 @@ test('C0 exposes one specific Poll contract without generic service-framework au
       'severity',
       'effectiveAt',
       'expiresAt',
-     'acknowledgementRequired'
+      'acknowledgementRequired'
     ]
   );
   assert.deepEqual(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.request.minimumFields, ['requestRef']);
   assert.deepEqual(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.request.envelopeFields, ['schemaVersion', 'contractRef']);
   assert.equal(
-    GLOBAL_ANNOUNCEMEMENT_POLL_CONTRACT.announcementRecord.fields.severity.fieldRef,
+    GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.announcementRecord.fields.severity.fieldRef,
     'field.vexlife.global-announcement.record.severity'
   );
   assert.match(
-    GLOBAL_ANNOUNCEMEMENT_POLL_CONTRACT.announcementRecord.fields.severity.consumer,
+    GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.announcementRecord.fields.severity.consumer,
     /semantic interpretation/u
   );
   assert.deepEqual(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.lawfulServiceErrorForms, []);
@@ -93,13 +93,13 @@ test('C0 Poll request is closed, contract-bound, and carries no security or targ
   assert.deepEqual(accepted, REQUEST);
   for (const field of ['principalRef', 'deviceRef', 'leaseRef', 'targetRef', 'sessionRef']) {
     expectCode(
-     () => validateGlobalAnnouncementPollRequest({ ...REQUEST, [field]: 'forged' }),
+      () => validateGlobalAnnouncementPollRequest({ ...REQUEST, [field]: 'forged' }),
       'GLOBAL_ANNOUNCEMENT_UNREGISTERED_FIELD'
     );
   }
   expectCode(
     () => validateGlobalAnnouncementPollRequest({ ...REQUEST, contractRef: 'contract.other' }),
-    'GLOBAL_ANNOUNCEMEMENT_CONTRACT_MISMATCH'
+    'GLOBAL_ANNOUNCEMENT_CONTRACT_MISMATCH'
   );
 });
 
@@ -135,7 +135,7 @@ test('C0 rejects session-local field invention and free-text severity', () => {
 test('C0 rejects malformed text and contradictory optional timing', () => {
   expectCode(
     () => validateGlobalAnnouncementRecord({ ...MINIMUM_RECORD, title: '' }),
-    'GLOBAL_ANNOUNCEMEMENT_TEXT_INVALID'
+    'GLOBAL_ANNOUNCEMENT_TEXT_INVALID'
   );
   expectCode(
     () => validateGlobalAnnouncementRecord({
@@ -150,7 +150,7 @@ test('C0 rejects malformed text and contradictory optional timing', () => {
 test('C0 observation binds one Poll request to zero-or-one validated provider/domain record plus evidence', () => {
   const result = validateGlobalAnnouncementPollObservation({
     schemaVersion: GLOBAL_ANNOUNCEMENT_POLL_OBSERVATION_SCHEMA,
-    contractRef: GLOBAL_ANNOUNCEMEMENT_CONTRACT_REF,
+    contractRef: GLOBAL_ANNOUNCEMENT_CONTRACT_REF,
     requestRef: REQUEST.requestRef,
     observedAt: '2026-11-07T04:10:00.000Z',
     announcementOrNull: MINIMUM_RECORD,
@@ -161,7 +161,7 @@ test('C0 observation binds one Poll request to zero-or-one validated provider/do
 
   const empty = validateGlobalAnnouncementPollObservation({
     schemaVersion: GLOBAL_ANNOUNCEMENT_POLL_OBSERVATION_SCHEMA,
-    contractRef: GLOBAL_ANNOUNCEMEMENT_CONTRACT_REF,
+    contractRef: GLOBAL_ANNOUNCEMENT_CONTRACT_REF,
     requestRef: REQUEST.requestRef,
     observedAt: '2026-11-07T04:10:00.000Z',
     announcementOrNull: null,
@@ -188,7 +188,7 @@ test('C0 observation remains provider/domain truth and cannot smuggle Family or 
   ]) {
     expectCode(
       () => validateGlobalAnnouncementPollObservation({ ...base, [field]: value }),
-      'GLOBAL_ANNOUNCEMEMENT_UNREGISTERED_FIELD'
+      'GLOBAL_ANNOUNCEMENT_UNREGISTERED_FIELD'
     );
   }
 });
