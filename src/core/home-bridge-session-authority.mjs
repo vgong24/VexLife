@@ -44,6 +44,36 @@ const LEASE_KEYS = new Set([
   'leaseHash'
 ]);
 
+const AUTHORITY_KEYS = new Set([
+  'schemaVersion',
+  'state',
+  'authorityReceiptRef',
+  'stableSessionBindingRef',
+  'principalRef',
+  'deviceRef',
+  'membership',
+  'lease',
+  'currentRevocationGeneration',
+  'sourceReceiptRefs',
+  'currentnessRefs',
+  'effects'
+]);
+const AUTHORITY_EFFECT_KEYS = new Set([
+  'pairingMutation',
+  'principalRebinding',
+  'authenticationMutation',
+  'authorizationMutation',
+  'capabilityLeaseMutation',
+  'revocationMutation',
+  'HomePayloadReadOrWrite',
+  'networkMutation',
+  'MemoryMutation',
+  'RelationshipsMutation',
+  'modelRuntimeEffect',
+  'training',
+  'publication'
+]);
+
 export class HomeBridgeSessionAuthorityError extends Error {
   constructor(code, message) {
     super(message);
@@ -195,7 +225,7 @@ function membership(value, session) {
   return value;
 }
 
-function lease(value, session, currentMembership, now) {
+function validateLeaseProjection(value, session, currentMembership) {
   exactSourceObject(
     value,
     LEASE_KEYS,
@@ -230,13 +260,6 @@ function lease(value, session, currentMembership, now) {
   if (typeof value.expiresAt !== 'string' || !Number.isFinite(Date.parse(value.expiresAt))) {
     fail('HOME_BRIDGE_SESSION_LEASE_REQUIRED', 'lease expiry is invalid');
   }
-  const nowMs = typeof now === 'number' ? now : Date.parse(now);
-  if (!Number.isFinite(nowMs)) {
-    fail('HOME_BRIDGE_SESSION_INPUT_INVALID', 'current time is invalid');
-  }
-  if (nowMs >= Date.parse(value.expiresAt)) {
-    fail('HOME_BRIDGE_SESSION_LEASE_EXPIRED', 'Home Bridge capability lease is expired');
-  }
   ref(value.leaseRef, 'lease.leaseRef');
   ref(value.homeNodeRef, 'lease.homeNodeRef');
   ref(value.principalRef, 'lease.principalRef');
@@ -252,6 +275,18 @@ function lease(value, session, currentMembership, now) {
     'HOME_BRIDGE_SESSION_LEASE_REQUIRED'
   );
   return value;
+}
+
+function lease(value, session, currentMembership, now) {
+  const currentLease = validateLeaseProjection(value, session, currentMembership);
+  const nowMs = typeof now === 'number' ? now : Date.parse(now);
+  if (!Number.isFinite(nowMs)) {
+    fail('HOME_BRIDGE_SESSION_INPUT_INVALID', 'current time is invalid');
+  }
+  if (nowMs >= Date.parse(currentLease.expiresAt)) {
+    fail('HOME_BRIDGE_SESSION_LEASE_EXPIRED', 'Home Bridge capability lease is expired');
+  }
+  return currentLease;
 }
 
 function revocationGeneration(value) {
@@ -286,6 +321,79 @@ function deepFreeze(value) {
 
 function cloneFreeze(value) {
   return deepFreeze(structuredClone(value));
+}
+
+
+function validateAuthorityEffects(effects) {
+  exactKeys(effects, AUTHORITY_EFFECT_KEYS, 'sessionAuthority.effects');
+  if (Object.keys(effects).length !== AUTHORITY_EFFECT_KEYS.size) {
+    fail('HOME_BRIDGE_SESSION_AUTHORITY_INVALID', 'session authority effects are missing source-managed fields');
+  }
+  for (const [effect, value] of Object.entries(effects)) {
+    if (value !== false) {
+      fail(
+        'HOME_BRIDGE_SESSION_AUTHORITY_EFFECTFUL',
+        `session authority projection unexpectedly grants ${effect}`
+      );
+    }
+  }
+}
+
+export function validateHomeBridgeSessionAuthorityProjection(authority) {
+  exactKeys(authority, AUTHORITY_KEYS, 'sessionAuthority');
+  if (Object.keys(authority).length !== AUTHORITY_KEYS.size) {
+    fail('HOME_BRIDGE_SESSION_AUTHORITY_INVALID', 'session authority is missing source-managed fields');
+  }
+  if (authority.schemaVersion !== HOME_BRIDGE_SESSION_AUTHORITY_SCHEMA || authority.state !== 'CURRENT') {
+    fail('HOME_BRIDGE_SESSION_AUTHORITY_NOT_CURRENT', 'current Home Bridge session authority is required');
+  }
+
+  ref(authority.authorityReceiptRef, 'sessionAuthority.authorityReceiptRef');
+  const identity = Object.freeze({
+    stableSessionBindingRef: ref(
+      authority.stableSessionBindingRef,
+      'sessionAuthority.stableSessionBindingRef'
+    ),
+    principalRef: ref(authority.principalRef, 'sessionAuthority.principalRef'),
+    deviceRef: ref(authority.deviceRef, 'sessionAuthority.deviceRef')
+  });
+  const sourceReceiptRefs = refs(authority.sourceReceiptRefs, 'sessionAuthority.sourceReceiptRefs');
+  const currentnessRefs = refs(authority.currentnessRefs, 'sessionAuthority.currentnessRefs');
+  if (!Number.isSafeInteger(authority.currentRevocationGeneration)
+      || authority.currentRevocationGeneration < 0) {
+    fail(
+      'HOME_BRIDGE_SESSION_AUTHORITY_INVALID',
+      'session authority current revocation generation must be one non-negative integer'
+    );
+  }
+
+  validateAuthorityEffects(authority.effects);
+  const currentMembership = membership(authority.membership, identity);
+  const currentLease = validateLeaseProjection(authority.lease, identity, currentMembership);
+  if (
+    currentMembership.revocationGeneration !== authority.currentRevocationGeneration
+    || currentLease.revocationGeneration !== authority.currentRevocationGeneration
+  ) {
+    fail(
+      'HOME_BRIDGE_SESSION_REVOCATION_MISMATCH',
+      'session authority projection is stale against current revocation truth'
+    );
+  }
+
+  return cloneFreeze({
+    schemaVersion: authority.schemaVersion,
+    state: authority.state,
+    authorityReceiptRef: authority.authorityReceiptRef,
+    stableSessionBindingRef: identity.stableSessionBindingRef,
+    principalRef: identity.principalRef,
+    deviceRef: identity.deviceRef,
+    membership: currentMembership,
+    lease: currentLease,
+    currentRevocationGeneration: authority.currentRevocationGeneration,
+    sourceReceiptRefs,
+    currentnessRefs,
+    effects: authority.effects
+  });
 }
 
 export function createHomeBridgeSessionAuthorityResolver({
