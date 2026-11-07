@@ -3,6 +3,12 @@
   "bucketId": "fa",
   "files": [
     {
+      "path": "blueprint/global-announcement-contract.json",
+      "mode": "100644",
+      "bytes": 5812,
+      "sha256": "f4ffff5b4813963aa9bb953d261f752bb74cc7f8e2b6701a25a89651ffd4aac8"
+    },
+    {
       "path": "blueprint/module-registry/companion-availability-reentry.json",
       "mode": "100644",
       "bytes": 755,

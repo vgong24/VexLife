@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "vexlife.global-announcement-contract/v1",
+  "contractRef": "contract.vexlife.global-announcement.poll/v1",
+  "contractVersion": 1,
+  "purpose": "Own the language-neutral Global Announcement read/poll request, provider/domain record, observation vocabulary and non-collapse laws before any VexLife, VexLife-Prod, Android, transport, Security or UI realization.",
+  "serviceRef": "service.vexlife.global-announcement",
+  "featureRef": "service-feature.vexlife.global-announcement.poll",
+  "operationRef": "operation.vexlife.global-announcement.poll",
+  "operation": "POLL",
+  "question": "What current Global Announcement observation does the admitted service currently provide?",
+  "request": {
+    "schemaVersion": "vexlife.global-announcement-poll-request/v1",
+    "envelopeFields": ["schemaVersion", "contractRef"],
+    "minimumFields": ["requestRef"],
+    "richerFields": ["requestRef"],
+    "fields": {
+      "requestRef": {
+        "fieldRef": "field.vexlife.global-announcement.poll.request-ref",
+        "type": "REF",
+        "required": true,
+        "consumer": "Connected Services transport correlation and the feature service Poll operation",
+        "meaning": "Stable identity for this Poll request; it is not operation authority or semantic currentness."
+      }
+    },
+    "outwardScopeApplicable": false
+  },
+  "announcementRecord": {
+    "schemaVersion": "vexlife.global-announcement-record/v1",
+    "envelopeFields": ["schemaVersion"],
+    "minimumFields": ["announcementRef", "title", "body", "severity"],
+    "richerFields": ["announcementRef", "title", "body", "severity", "effectiveAt", "expiresAt", "acknowledgementRequired"],
+    "fields": {
+      "announcementRef": {
+        "fieldRef": "field.vexlife.global-announcement.record.announcement-ref",
+        "type": "REF",
+        "required": true,
+        "consumer": "Announcement semantic interpretation and later acknowledgement/currentness relationships",
+        "meaning": "Stable identity of one provider/domain announcement record."
+      },
+      "title": {
+        "fieldRef": "field.vexlife.global-announcement.record.title",
+        "type": "BOUNDED_STRING",
+        "required": true,
+        "maxCodePoints": 160,
+        "consumer": "Announcement semantic interpretation and human projection",
+        "meaning": "Human-readable announcement title."
+      },
+      "body": {
+        "fieldRef": "field.vexlife.global-announcement.record.body",
+        "type": "BOUNDED_STRING",
+        "required": true,
+        "maxCodePoints": 4000,
+        "consumer": "Announcement semantic interpretation and human projection",
+        "meaning": "Human-readable announcement body."
+      },
+      "severity": {
+        "fieldRef": "field.vexlife.global-announcement.record.severity",
+        "type": "ENUM",
+        "required": true,
+        "allowedValues": ["INFO", "WARNING", "CRITICAL"],
+        "consumer": "Announcement semantic interpretation, projection, and later attention relationships",
+        "meaning": "Closed provider/domain severity classification."
+      },
+      "effectiveAt": {
+        "fieldRef": "field.vexlife.global-announcement.record.effective-at",
+        "type": "UTC_TIMESTAMP",
+        "required": false,
+        "consumer": "Announcement semantic currentness interpretation",
+        "meaning": "Optional provider/domain effective-time coordinate; semantic currentness remains separately interpreted."
+      },
+      "expiresAt": {
+        "fieldRef": "field.vexlife.global-announcement.record.expires-at",
+        "type": "UTC_TIMESTAMP",
+        "required": false,
+        "consumer": "Announcement semantic currentness interpretation",
+        "meaning": "Optional provider/domain expiry coordinate; semantic currentness remains separately interpreted."
+      },
+      "acknowledgementRequired": {
+        "fieldRef": "field.vexlife.global-announcement.record.acknowledgement-required",
+        "type": "BOOLEAN",
+        "required": false,
+        "consumer": "Announcement semantic owner",
+        "meaning": "Whether the provider/domain record asks the product semantic owner to represent acknowledgement meaning."
+      }
+    }
+  },
+  "observation": {
+    "schemaVersion": "vexlife.global-announcement-poll-observation/v1",
+    "announcementCardinality": "ZERO_OR_ONE",
+    "sourceEvidenceRequired": true
+  },
+  "lawfulServiceErrorForms": [],
+  "heldContractEvolution": [
+    "OUTWARD_ANNOUNCEMENT_EXPRESSION",
+    "AUDIENCE_OR_DELIVERY_SCOPE",
+    "NOTIFICATION_DECISION",
+    "PAGINATION_OR_MULTI_RECORD_BREADTH",
+    "REMOTE_SERVICE_ERROR_VOCABULARY"
+  ],
+  "nonCollapse": [
+    "ANNOUNCEMENT_RECORD != POLL_OPERATION",
+    "POLL_OPERATION != OUTWARD_ANNOUNCEMENT_EXPRESSION",
+    "ANNOUNCEMENT_EXISTS != NOTIFICATION_SHOULD_FIRE",
+    "SCHEMA_VALID != CURRENTLY_AUTHORIZED",
+    "PROVIDER_OBSERVATION != FAMILY_STATE",
+    "CONTRACT_PROJECTION
+!= EFFECT_AUTHORITY",
+    "JAVASCRIPT_VALIDATOR != PORTABLE_CONTRACT_MEANING",
+    "KOTLIN_DATA_CLASS != PORTABLE_CONTRACT_MEANING",
+    "HTTP_ROUTE != CONTRACT_IDENTITY"
+  ],
+  "authority": {
+    "portableMeaningOwner": true,
+    "platformRealizationOwner": false,
+    "securityAuthority": false,
+    "networkAuthority": false,
+    "providerExecutionAuthority": false,
+    "homeMutationAuthority": false,
+    "notificationAuthority": false,
+    "publicationAuthority": false
+  },
+  "intendedConsumers": [
+    "VEXLIFE_JS_POC",
+    "VEXLIFE_PROD_COMMON_KOTLIN",
+    "VEXLIFE_ANDROID_NATIVE",
+    "VEXBOARD_READ_ONLY_PROJECTION"
+  ],
+  "heldRealizations": [
+    "HOME_ROUTED_POLL_ADMISSION",
+    "CONNECTED_SERVICES_TRANSPORT",
+    "FULL_SECURITY_ADMISSION",
+    "SYNTHETIC_PROVIDER_EXECUTION",
+    "ANNOUNCEMENT_FAMILY_STATE",
+    "NOTIFICATION_CONVERGENCE",
+    "ANDROID_REALIZATION",
+    "VEXLIFE_PROD_REALIZATION"
+  ]
+}

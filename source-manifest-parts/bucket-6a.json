@@ -13,6 +13,12 @@
       "mode": "100644",
       "bytes": 5865,
       "sha256": "0b86894f999d00fefe352ed85f1dbc5693899d5885634b99a70dd45c74d61555"
+    },
+    {
+      "path": "test/global-announcement-contract.test.mjs",
+      "mode": "100644",
+      "bytes": 7929,
+      "sha256": "40e249e4891349dd3da34576206cef79f133596f20c964224f7fd3730ee2a684"
     }
   ]
 }
