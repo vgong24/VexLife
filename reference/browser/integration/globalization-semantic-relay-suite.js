@@ -159,6 +159,43 @@ export const globalizationSemanticRelaySuite = Object.freeze({
       projectionRef:'projection.vexlife.companion-availability.globalization-proof',
       projectionSha256:'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
     }), { status:200, headers:{'content-type':'application/json'} });
+    const canonicalConversationCurrentnessResponse = (url) => {
+      const parsed = new URL(String(url), globalThis.location.href);
+      const scope = {
+        projectRef: parsed.searchParams.get('projectRef'),
+        threadRef: parsed.searchParams.get('threadRef'),
+        channelRef: parsed.searchParams.get('channelRef')
+      };
+      const scopedChannel = app.channels.find((item) =>
+        item.projectRef === scope.projectRef
+        && item.threadRef === scope.threadRef
+        && item.channelRef === scope.channelRef);
+      const identity = scopedChannel ? app.chat.canonicalConversationIdentity(scopedChannel) : null;
+      const exactCurrent = identity?.currentness === 'CURRENT'
+        && typeof identity.headMessageRefOrNull === 'string'
+        && Number.isSafeInteger(identity.headSequenceOrNull)
+        && /^[0-9a-f]{64}$/u.test(identity.canonicalConversationHeadSha256 ?? '');
+      const state = exactCurrent
+        ? 'CURRENT'
+        : ['EMPTY', 'ABSENT'].includes(identity?.currentness)
+          ? identity.currentness
+          : 'EMPTY';
+      return new Response(JSON.stringify({
+        schemaVersion:'vexlife.browser-companion-conversation-currentness/v1',
+        state,
+        truthClass:'CURRENT_LOCAL_CONVERSATION_IDENTITY',
+        projectRef:scope.projectRef,
+        threadRef:scope.threadRef,
+        channelRef:scope.channelRef,
+        channelSha256:null,
+        channelRecordSha256:null,
+        headMessageRefOrNull:exactCurrent ? identity.headMessageRefOrNull : null,
+        headSequenceOrNull:exactCurrent ? identity.headSequenceOrNull : null,
+        canonicalConversationHeadSha256:exactCurrent ? identity.canonicalConversationHeadSha256 : null,
+        headUpdatedAtOrNull:exactCurrent ? identity.headUpdatedAtOrNull : null,
+        effectsPerformed:false
+      }), { status:200, headers:{'content-type':'application/json'} });
+    };
     const originalFetch = globalThis.fetch;
     const decisionFetchCalls = [];
     globalThis.fetch = async (url, options = {}) => {
@@ -180,8 +217,11 @@ export const globalizationSemanticRelaySuite = Object.freeze({
     panel = document.querySelector('.semantic-relay-attention');
 
     globalThis.fetch = async (url, options = {}) => {
-      if (String(url).includes('/api/v1/companion/availability')) return canonicalReadyAvailabilityResponse();
-      decisionFetchCalls.push({ url:String(url), body: options.body ? JSON.parse(String(options.body)) : null });
+      const requestUrl = String(url);
+      if (requestUrl.includes('/api/v1/companion/availability')) return canonicalReadyAvailabilityResponse();
+      if (requestUrl.includes('/api/v1/companion/conversation/currentness')) return canonicalConversationCurrentnessResponse(requestUrl);
+      if (!requestUrl.includes('/api/v1/companion/turn')) return originalFetch(url, options);
+      decisionFetchCalls.push({ url:requestUrl, body: options.body ? JSON.parse(String(options.body)) : null });
       return new Response(JSON.stringify({ state:'FAILED', truthClass:'CURRENT_LOCAL_RUNTIME_FAILURE', failureCode:'PROOF_STOP', message:'bounded proof stop' }), { status:503, headers:{'content-type':'application/json'} });
     };
     decisionFetchCalls.length = 0;
@@ -209,8 +249,11 @@ export const globalizationSemanticRelaySuite = Object.freeze({
     assert(decisionFetchCalls.length === 0, 'GPT-03 CORRECT crossed the companion send boundary before explicit human resubmit');
 
     globalThis.fetch = async (url, options = {}) => {
-      if (String(url).includes('/api/v1/companion/availability')) return canonicalReadyAvailabilityResponse();
-      decisionFetchCalls.push({ url:String(url), body: options.body ? JSON.parse(String(options.body)) : null });
+      const requestUrl = String(url);
+      if (requestUrl.includes('/api/v1/companion/availability')) return canonicalReadyAvailabilityResponse();
+      if (requestUrl.includes('/api/v1/companion/conversation/currentness')) return canonicalConversationCurrentnessResponse(requestUrl);
+      if (!requestUrl.includes('/api/v1/companion/turn')) return originalFetch(url, options);
+      decisionFetchCalls.push({ url:requestUrl, body: options.body ? JSON.parse(String(options.body)) : null });
       return new Response(JSON.stringify({ state:'FAILED', truthClass:'CURRENT_LOCAL_RUNTIME_FAILURE', failureCode:'PROOF_STOP', message:'bounded proof stop' }), { status:503, headers:{'content-type':'application/json'} });
     };
 

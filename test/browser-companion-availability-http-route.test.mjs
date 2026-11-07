@@ -30,6 +30,7 @@ import {
 import { loadBrowserCompanionHomeIdentity } from '../src/core/browser-companion-bridge.mjs';
 import {
   BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH,
+  BROWSER_COMPANION_CONVERSATION_PROJECTION_PATH,
   BROWSER_COMPANION_STATUS_PATH
 } from '../src/core/browser-companion-bridge.mjs';
 
@@ -266,6 +267,65 @@ function writeProductionDiscoveryJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, JSON.stringify(value, null, 2) + '\n');
 }
+
+
+test('production browser without Heretic runtime preserves durable Conversation reads while availability remains held', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-production-no-runtime-conversation-'));
+  const deviceRef = 'device.production-no-runtime-conversation';
+  const lineageRef = 'lineage.production-no-runtime-conversation';
+  try {
+    writeProductionDiscoveryJson(path.join(home, 'config', 'home.json'), {
+      schemaVersion: 'vexlife.home/v0',
+      homeRef: 'home.production-no-runtime-conversation',
+      currentDeviceRef: deviceRef,
+      currentCompanionLineageRef: lineageRef,
+    });
+    writeProductionDiscoveryJson(path.join(home, 'devices', deviceRef + '.json'), {
+      deviceRef,
+      companionLineageRef: lineageRef,
+      personRef: 'person.production-no-runtime-conversation',
+      createdAt: '2026-11-07T00:00:00.000Z',
+    });
+
+    const options = createProductionHereticRuntimeBrowserOptions(home);
+    assert.equal(typeof options.companionBridge?.conversationCurrentness, 'function');
+    assert.equal(typeof options.companionBridge?.conversationProjection, 'function');
+    assert.equal(options.companionBridge.status().state, 'UNBOUND');
+    assert.equal(Object.hasOwn(options, 'resolveCompanionBinding'), false);
+    assert.equal(Object.hasOwn(options, 'resolveCompanionRuntimeObservation'), false);
+
+    await withServer(options, async (base) => {
+      const availability = await fetch(base + BROWSER_COMPANION_AVAILABILITY_PATH);
+      assert.equal(availability.status, 503);
+      const availabilityBody = await availability.json();
+      assert.equal(availabilityBody.failureCode, 'COMPANION_AVAILABILITY_PROVIDER_UNAVAILABLE');
+      assert.equal(Object.values(availabilityBody.effects).every((value) => value === false), true);
+
+      const query = new URLSearchParams({
+        projectRef: 'project.self-development',
+        threadRef: 'thread.self-development.open-conversation',
+        channelRef: 'channel.self-development.companion',
+      });
+
+      const currentness = await fetch(base + BROWSER_COMPANION_CONVERSATION_CURRENTNESS_PATH + '?' + query.toString());
+      assert.equal(currentness.status, 200);
+      const currentnessBody = await currentness.json();
+      assert.equal(currentnessBody.state, 'ABSENT');
+      assert.equal(currentnessBody.truthClass, 'CURRENT_LOCAL_CONVERSATION_IDENTITY');
+      assert.equal(currentnessBody.effectsPerformed, false);
+
+      const projection = await fetch(base + BROWSER_COMPANION_CONVERSATION_PROJECTION_PATH + '?' + query.toString());
+      assert.equal(projection.status, 200);
+      const projectionBody = await projection.json();
+      assert.equal(projectionBody.state, 'ABSENT');
+      assert.equal(projectionBody.truthClass, 'CURRENT_LOCAL_CONVERSATION_PROJECTION');
+      assert.deepEqual(projectionBody.messages, []);
+      assert.equal(projectionBody.effectsPerformed, false);
+    });
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
 
 test('production browser composition discovers current bound Heretic receipt from Home when launch-only receipt environment is absent', async () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'vexlife-production-heretic-discovery-'));
