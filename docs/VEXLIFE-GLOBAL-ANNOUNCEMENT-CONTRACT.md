@@ -292,7 +292,13 @@ Global Announcement Poll
       +-> acknowledgementRequired?
 ```
 
-Every field has a stable source-owned `fieldRef` and a named consumer. A VexBoard projector may later derive BoardGraph nodes/relationships/source refs from these identities without the contract importing VexBoard or owning layout.
+Every semantic request/record/observation field has a stable source-owned `fieldRef` and a named consumer. The artifact also owns the exact portable REF grammar, bounded-text control-character policy, and canonical UTC timestamp policy that platform validators consume. A VexBoard projector may later derive BoardGraph nodes/relationships/source refs from these identities without the contract importing VexBoard or owning layout.
+
+~~~text
+PORTABLE POLICY
+!= JAVASCRIPT VALIDATOR IMPLEMENTATION
+!= KOTLIN SERIALIZER IMPLEMENTATION
+~~~
 
 ```text
 SOURCE CONTRACT
@@ -318,6 +324,7 @@ Focused proof must establish:
 7. optional timing is internally coherent when both endpoints exist;
 8. provider/domain observation requires source evidence;
 9. observation cannot smuggle Family, Security, network, notification or publication authority.
+10. REF/text/timestamp constraints and observation field identities are source-owned by the portable artifact rather than reconstructed from JavaScript.
 
 C0 performs no network, Home, Security, provider, notification, publication, model, Memory or Android effect.
 

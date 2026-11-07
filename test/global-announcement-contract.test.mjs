@@ -49,6 +49,22 @@ test('C0 language-neutral artifact is the portable meaning owner consumed by the
   assert.ok(raw.nonCollapse.includes('KOTLIN_DATA_CLASS != PORTABLE_CONTRACT_MEANING'));
   assert.deepEqual(raw.announcementRecord.minimumFields, ['announcementRef', 'title', 'body', 'severity']);
 });
+test('C0 portable artifact owns REF, text, timestamp, and observation field constraints consumed by platform validators', () => {
+  const raw = JSON.parse(fs.readFileSync(GLOBAL_ANNOUNCEMENT_CONTRACT_PATH, 'utf8'));
+  assert.equal(raw.portablePolicies.ref.pattern, '^[A-Za-z0-9][A-Za-z0-9._:/#@+-]{0,511}$');
+  assert.equal(raw.portablePolicies.boundedText.allowEmpty, false);
+  assert.deepEqual(raw.portablePolicies.boundedText.disallowedCodePointRanges, [[0, 8], [11, 12], [14, 31], [127, 127]]);
+  assert.equal(raw.portablePolicies.utcTimestamp.canonicalFormat, 'UTC_ISO_8601_MILLISECONDS');
+  assert.equal(raw.portablePolicies.utcTimestamp.roundTripRequired, true);
+  assert.equal(raw.request.fields.requestRef.policyRef, raw.portablePolicies.ref.policyRef);
+  assert.equal(raw.announcementRecord.fields.announcementRef.policyRef, raw.portablePolicies.ref.policyRef);
+  assert.equal(raw.announcementRecord.fields.title.policyRef, raw.portablePolicies.boundedText.policyRef);
+  assert.equal(raw.announcementRecord.fields.effectiveAt.policyRef, raw.portablePolicies.utcTimestamp.policyRef);
+  assert.equal(raw.observation.fields.requestRef.fieldRef, 'field.vexlife.global-announcement.observation.request-ref');
+  assert.equal(raw.observation.fields.observedAt.policyRef, raw.portablePolicies.utcTimestamp.policyRef);
+  assert.equal(raw.observation.fields.sourceRefs.itemPolicyRef, raw.portablePolicies.ref.policyRef);
+});
+
 test('C0 exposes one specific Poll contract without generic service-framework authority', () => {
   assert.equal(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.contractRef, GLOBAL_ANNOUNCEMENT_CONTRACT_REF);
   assert.equal(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.operation, 'POLL');

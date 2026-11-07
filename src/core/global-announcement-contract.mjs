@@ -46,7 +46,10 @@ export const GLOBAL_ANNOUNCEMENT_SEVERITIES = Object.freeze([
 ]);
 
 const SEVERITY_SET = new Set(GLOBAL_ANNOUNCEMENT_SEVERITIES);
-const REF = /^[A-Za-z0-9][A-Za-z0-9._:/#@+-]{0,511}$/u;
+const REF_POLICY = GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.portablePolicies.ref;
+const TEXT_POLICY = GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.portablePolicies.boundedText;
+const TIMESTAMP_POLICY = GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.portablePolicies.utcTimestamp;
+const REF = new RegExp(REF_POLICY.pattern, 'u');
 const REQUEST_KEYS = new Set([
   ...GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.request.envelopeFields,
   ...GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.request.minimumFields
@@ -62,12 +65,8 @@ const RECORD_OPTIONAL_KEYS = Object.freeze(
 );
 const RECORD_KEYS = new Set([...RECORD_REQUIRED_KEYS, ...RECORD_OPTIONAL_KEYS]);
 const OBSERVATION_KEYS = new Set([
-  'schemaVersion',
-  'contractRef',
-  'requestRef',
-  'observedAt',
-  'announcementOrNull',
-  'sourceRefs'
+  ...GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.observation.envelopeFields,
+  ...Object.keys(GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.observation.fields)
 ]);
 
 const MAX_TITLE_CODE_POINTS = GLOBAL_ANNOUNCEMENT_POLL_CONTRACT.announcementRecord.fields.title.maxCodePoints;
@@ -117,27 +116,40 @@ function refs(values, label) {
   return Object.freeze([...normalized].sort());
 }
 
+function disallowedTextCodePoint(codePoint) {
+  return TEXT_POLICY.disallowedCodePointRanges.some(([start, end]) => codePoint >= start && codePoint <= end);
+}
+
 function boundedText(value, label, maxCodePoints) {
   if (typeof value !== 'string') {
     fail('GLOBAL_ANNOUNCEMENT_TEXT_INVALID', `${label} must be text`);
   }
-  const length = [...value].length;
-  if (length < 1 || length > maxCodePoints || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(value)) {
+  const codePoints = [...value];
+  if (
+    (TEXT_POLICY.allowEmpty === false && codePoints.length < 1)
+    || codePoints.length > maxCodePoints
+    || codePoints.some((value) => disallowedTextCodePoint(value.codePointAt(0)))
+  ) {
     fail(
       'GLOBAL_ANNOUNCEMENT_TEXT_INVALID',
-      `${label} must contain 1..${maxCodePoints} code points without disallowed control characters`
+      `${label} must satisfy ${TEXT_POLICY.policyRef} within ${maxCodePoints} code points`
     );
   }
   return value;
 }
 
 function canonicalTimestamp(value, label) {
-  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) {
-    fail('GLOBAL_ANNOUNCEMENT_TIMESTAMP_INVALID', `${label} must be one ISO timestamp`);
+  if (
+    TIMESTAMP_POLICY.canonicalFormat !== 'UTC_ISO_8601_MILLISECONDS'
+    || TIMESTAMP_POLICY.roundTripRequired !== true
+    || typeof value !== 'string'
+    || !Number.isFinite(Date.parse(value))
+  ) {
+    fail('GLOBAL_ANNOUNCEMENT_TIMESTAMP_INVALID', `${label} must satisfy ${TIMESTAMP_POLICY.policyRef}`);
   }
   const normalized = new Date(value).toISOString();
   if (normalized !== value) {
-    fail('GLOBAL_ANNOUNCEMENT_TIMESTAMP_INVALID', `${label} must be one canonical UTC ISO timestamp`);
+    fail('GLOBAL_ANNOUNCEMENT_TIMESTAMP_INVALID', `${label} must satisfy ${TIMESTAMP_POLICY.policyRef}`);
   }
   return value;
 }

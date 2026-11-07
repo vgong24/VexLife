@@ -10,32 +10,56 @@
   "question": "What current Global Announcement observation does the admitted service currently provide?",
   "request": {
     "schemaVersion": "vexlife.global-announcement-poll-request/v1",
-    "envelopeFields": ["schemaVersion", "contractRef"],
-    "minimumFields": ["requestRef"],
-    "richerFields": ["requestRef"],
+    "envelopeFields": [
+      "schemaVersion",
+      "contractRef"
+    ],
+    "minimumFields": [
+      "requestRef"
+    ],
+    "richerFields": [
+      "requestRef"
+    ],
     "fields": {
       "requestRef": {
         "fieldRef": "field.vexlife.global-announcement.poll.request-ref",
         "type": "REF",
         "required": true,
         "consumer": "Connected Services transport correlation and the feature service Poll operation",
-        "meaning": "Stable identity for this Poll request; it is not operation authority or semantic currentness."
+        "meaning": "Stable identity for this Poll request; it is not operation authority or semantic currentness.",
+        "policyRef": "policy.vexlife.global-announcement.ref.safe-opaque"
       }
     },
     "outwardScopeApplicable": false
   },
   "announcementRecord": {
     "schemaVersion": "vexlife.global-announcement-record/v1",
-    "envelopeFields": ["schemaVersion"],
-    "minimumFields": ["announcementRef", "title", "body", "severity"],
-    "richerFields": ["announcementRef", "title", "body", "severity", "effectiveAt", "expiresAt", "acknowledgementRequired"],
+    "envelopeFields": [
+      "schemaVersion"
+    ],
+    "minimumFields": [
+      "announcementRef",
+      "title",
+      "body",
+      "severity"
+    ],
+    "richerFields": [
+      "announcementRef",
+      "title",
+      "body",
+      "severity",
+      "effectiveAt",
+      "expiresAt",
+      "acknowledgementRequired"
+    ],
     "fields": {
       "announcementRef": {
         "fieldRef": "field.vexlife.global-announcement.record.announcement-ref",
         "type": "REF",
         "required": true,
         "consumer": "Announcement semantic interpretation and later acknowledgement/currentness relationships",
-        "meaning": "Stable identity of one provider/domain announcement record."
+        "meaning": "Stable identity of one provider/domain announcement record.",
+        "policyRef": "policy.vexlife.global-announcement.ref.safe-opaque"
       },
       "title": {
         "fieldRef": "field.vexlife.global-announcement.record.title",
@@ -43,7 +67,8 @@
         "required": true,
         "maxCodePoints": 160,
         "consumer": "Announcement semantic interpretation and human projection",
-        "meaning": "Human-readable announcement title."
+        "meaning": "Human-readable announcement title.",
+        "policyRef": "policy.vexlife.global-announcement.text.bounded-visible"
       },
       "body": {
         "fieldRef": "field.vexlife.global-announcement.record.body",
@@ -51,13 +76,18 @@
         "required": true,
         "maxCodePoints": 4000,
         "consumer": "Announcement semantic interpretation and human projection",
-        "meaning": "Human-readable announcement body."
+        "meaning": "Human-readable announcement body.",
+        "policyRef": "policy.vexlife.global-announcement.text.bounded-visible"
       },
       "severity": {
         "fieldRef": "field.vexlife.global-announcement.record.severity",
         "type": "ENUM",
         "required": true,
-        "allowedValues": ["INFO", "WARNING", "CRITICAL"],
+        "allowedValues": [
+          "INFO",
+          "WARNING",
+          "CRITICAL"
+        ],
         "consumer": "Announcement semantic interpretation, projection, and later attention relationships",
         "meaning": "Closed provider/domain severity classification."
       },
@@ -66,14 +96,16 @@
         "type": "UTC_TIMESTAMP",
         "required": false,
         "consumer": "Announcement semantic currentness interpretation",
-        "meaning": "Optional provider/domain effective-time coordinate; semantic currentness remains separately interpreted."
+        "meaning": "Optional provider/domain effective-time coordinate; semantic currentness remains separately interpreted.",
+        "policyRef": "policy.vexlife.global-announcement.timestamp.canonical-utc-milliseconds"
       },
       "expiresAt": {
         "fieldRef": "field.vexlife.global-announcement.record.expires-at",
         "type": "UTC_TIMESTAMP",
         "required": false,
         "consumer": "Announcement semantic currentness interpretation",
-        "meaning": "Optional provider/domain expiry coordinate; semantic currentness remains separately interpreted."
+        "meaning": "Optional provider/domain expiry coordinate; semantic currentness remains separately interpreted.",
+        "policyRef": "policy.vexlife.global-announcement.timestamp.canonical-utc-milliseconds"
       },
       "acknowledgementRequired": {
         "fieldRef": "field.vexlife.global-announcement.record.acknowledgement-required",
@@ -86,8 +118,54 @@
   },
   "observation": {
     "schemaVersion": "vexlife.global-announcement-poll-observation/v1",
+    "envelopeFields": [
+      "schemaVersion",
+      "contractRef"
+    ],
+    "minimumFields": [
+      "requestRef",
+      "observedAt",
+      "announcementOrNull",
+      "sourceRefs"
+    ],
     "announcementCardinality": "ZERO_OR_ONE",
-    "sourceEvidenceRequired": true
+    "sourceEvidenceRequired": true,
+    "fields": {
+      "requestRef": {
+        "fieldRef": "field.vexlife.global-announcement.observation.request-ref",
+        "type": "REF",
+        "policyRef": "policy.vexlife.global-announcement.ref.safe-opaque",
+        "required": true,
+        "consumer": "Connected Services correlation and Announcement semantic interpretation",
+        "meaning": "Exact Poll request identity to which this provider/domain observation responds."
+      },
+      "observedAt": {
+        "fieldRef": "field.vexlife.global-announcement.observation.observed-at",
+        "type": "UTC_TIMESTAMP",
+        "policyRef": "policy.vexlife.global-announcement.timestamp.canonical-utc-milliseconds",
+        "required": true,
+        "consumer": "Feature result currentness and later Announcement semantic interpretation",
+        "meaning": "Provider/domain observation time coordinate; it does not itself decide semantic currentness."
+      },
+      "announcementOrNull": {
+        "fieldRef": "field.vexlife.global-announcement.observation.announcement-or-null",
+        "type": "ANNOUNCEMENT_RECORD_OR_NULL",
+        "required": true,
+        "consumer": "Announcement semantic interpretation",
+        "meaning": "Zero-or-one provider/domain Announcement record under the same portable contract."
+      },
+      "sourceRefs": {
+        "fieldRef": "field.vexlife.global-announcement.observation.source-refs",
+        "type": "REF_ARRAY",
+        "itemType": "REF",
+        "itemPolicyRef": "policy.vexlife.global-announcement.ref.safe-opaque",
+        "required": true,
+        "minItems": 1,
+        "uniqueItems": true,
+        "consumer": "Proof, source descent and VexBoard read-only projection",
+        "meaning": "Non-empty exact source-evidence references supporting this observation."
+      }
+    }
   },
   "lawfulServiceErrorForms": [],
   "heldContractEvolution": [
@@ -105,6 +183,7 @@
     "PROVIDER_OBSERVATION != FAMILY_STATE",
     "CONTRACT_PROJECTION != EFFECT_AUTHORITY",
     "JAVASCRIPT_VALIDATOR != PORTABLE_CONTRACT_MEANING",
+    "PORTABLE_POLICY != PLATFORM_VALIDATOR_IMPLEMENTATION",
     "KOTLIN_DATA_CLASS != PORTABLE_CONTRACT_MEANING",
     "HTTP_ROUTE != CONTRACT_IDENTITY"
   ],
@@ -133,5 +212,42 @@
     "NOTIFICATION_CONVERGENCE",
     "ANDROID_REALIZATION",
     "VEXLIFE_PROD_REALIZATION"
-  ]
+  ],
+  "portablePolicies": {
+    "ref": {
+      "policyRef": "policy.vexlife.global-announcement.ref.safe-opaque",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/#@+-]{0,511}$",
+      "meaning": "One 1..512 code-unit safe opaque reference; the contract does not infer authority, currentness or naming hierarchy from its spelling."
+    },
+    "boundedText": {
+      "policyRef": "policy.vexlife.global-announcement.text.bounded-visible",
+      "allowEmpty": false,
+      "disallowedCodePointRanges": [
+        [
+          0,
+          8
+        ],
+        [
+          11,
+          12
+        ],
+        [
+          14,
+          31
+        ],
+        [
+          127,
+          127
+        ]
+      ],
+      "meaning": "Non-empty bounded Unicode text; TAB, LF and CR remain representable while other C0 controls and DEL are rejected."
+    },
+    "utcTimestamp": {
+      "policyRef": "policy.vexlife.global-announcement.timestamp.canonical-utc-milliseconds",
+      "canonicalFormat": "UTC_ISO_8601_MILLISECONDS",
+      "roundTripRequired": true,
+      "example": "2026-11-07T04:10:00.000Z",
+      "meaning": "One exact UTC instant rendered in canonical ISO-8601 form with millisecond precision and Z suffix."
+    }
+  }
 }
