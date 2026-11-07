@@ -48,6 +48,56 @@ function finish(receipt, exitCode) {
   process.exitCode = exitCode;
 }
 
+
+const EXPECTED_NO_RUNTIME_AVAILABILITY_HOLD = Object.freeze({
+  method: 'GET',
+  pathname: '/api/v1/companion/availability',
+  status: 503,
+});
+
+function recordFailedHttpResponse(target, response) {
+  const status = response.status();
+  if (status < 400) return;
+  const request = response.request();
+  const url = new URL(response.url());
+  target.push(Object.freeze({
+    method: request.method(),
+    pathname: url.pathname,
+    status,
+  }));
+}
+
+function classifyNoRuntimeBrowserFailures({ consoleErrors = [], pageErrors = [], responseFailures = [] } = {}) {
+  const expectedAvailabilityHolds = responseFailures.filter((failure) =>
+    failure.method === EXPECTED_NO_RUNTIME_AVAILABILITY_HOLD.method
+    && failure.pathname === EXPECTED_NO_RUNTIME_AVAILABILITY_HOLD.pathname
+    && failure.status === EXPECTED_NO_RUNTIME_AVAILABILITY_HOLD.status
+  );
+  const expectedSet = new Set(expectedAvailabilityHolds);
+  const unexpectedResponseFailures = responseFailures.filter((failure) => !expectedSet.has(failure));
+  const generic503ConsoleErrors = consoleErrors.filter((message) =>
+    message.includes('Failed to load resource:')
+    && message.includes('503 (Service Unavailable)')
+  );
+  const generic503Set = new Set(generic503ConsoleErrors);
+  const unrelatedConsoleErrors = consoleErrors.filter((message) => !generic503Set.has(message));
+  const accountedAvailabilityConsoleErrorCount = Math.min(
+    generic503ConsoleErrors.length,
+    expectedAvailabilityHolds.length
+  );
+  const unexpectedConsoleErrors = Object.freeze([
+    ...unrelatedConsoleErrors,
+    ...generic503ConsoleErrors.slice(accountedAvailabilityConsoleErrorCount),
+  ]);
+  return Object.freeze({
+    expectedAvailabilityHolds: Object.freeze(expectedAvailabilityHolds.map((item) => Object.freeze({ ...item }))),
+    unexpectedResponseFailures: Object.freeze(unexpectedResponseFailures.map((item) => Object.freeze({ ...item }))),
+    unexpectedConsoleErrors,
+    pageErrors: Object.freeze([...pageErrors]),
+    accountedAvailabilityConsoleErrorCount,
+  });
+}
+
 function formFcf03ProgressFixtureGraph() {
   const registry = sourceBundle.intentRegistry;
   const intent = createIntentEnvelope({
@@ -453,9 +503,21 @@ async function runConversationProductProof(page, viewport, errors) {
     await page.evaluate(async()=>globalThis.__VEXLIFE_APP__.uxProjectionShell.closeEvolutionActiveSurface('P4R2_CONVERSATION_PROOF_COMPLETE'));
     const after = await page.evaluate(()=>({frame:JSON.stringify(globalThis.__VEXLIFE_APP__.navigation.semanticFrame()),journey:JSON.stringify(globalThis.__VEXLIFE_APP__.navigation.fullJourney())}));
     assert(after.frame===before.frame&&after.journey===before.journey,'P4R2 presentation mutated Journey');
-    assert(errors.consoleErrors.length===0&&errors.pageErrors.length===0,'P4R2 Conversation browser errors');
+    const browserFailures = classifyNoRuntimeBrowserFailures(errors);
+    assert(browserFailures.expectedAvailabilityHolds.length > 0,'P4R2 no-runtime Conversation must observe explicit held availability');
+    assert(
+      browserFailures.unexpectedConsoleErrors.length===0
+      && browserFailures.pageErrors.length===0
+      && browserFailures.unexpectedResponseFailures.length===0,
+      'P4R2 Conversation browser errors'
+    );
+    checks.push({
+      name:'runtime-unavailable-availability-remains-explicit-held-truth',
+      expectedAvailabilityHolds:browserFailures.expectedAvailabilityHolds,
+      accountedAvailabilityConsoleErrorCount:browserFailures.accountedAvailabilityConsoleErrorCount
+    });
     assert(screenshots.length===3,'P4R2 Conversation screenshot matrix incomplete');
-    return {state:'PASS',...binding,checks,screenshots,realTurnExecuted:false};
+    return {state:'PASS',...binding,checks,screenshots,realTurnExecuted:false,expectedAvailabilityHolds:browserFailures.expectedAvailabilityHolds};
   } catch (error) {
     return {state:'FAILED',...binding,checks,screenshots,error:error instanceof Error?error.message:String(error)};
   } finally {
@@ -758,15 +820,17 @@ if (playwright) {
     const page = await browser.newPage();
     const consoleErrors = [];
     const pageErrors = [];
+    const responseFailures = [];
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text());
     });
     page.on('pageerror', (error) => pageErrors.push(error.message));
+    page.on('response', (response) => recordFailedHttpResponse(responseFailures, response));
     await page.goto(`${serverUrl}/reference/browser/?integration=1`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForFunction(() => Boolean(globalThis.__VEXLIFE_INTEGRATION_PROMISE__), null, { timeout: 30000 });
     const integration = await page.evaluate(async () => globalThis.__VEXLIFE_INTEGRATION_PROMISE__);
-    const compactConsoleErrors=[];const compactPageErrors=[];const compactPage=await browser.newPage({viewport:{width:390,height:844}});
-    compactPage.on('console',(message)=>{if(message.type()==='error')compactConsoleErrors.push(message.text());});compactPage.on('pageerror',(error)=>compactPageErrors.push(error.message));
+    const compactConsoleErrors=[];const compactPageErrors=[];const compactResponseFailures=[];const compactPage=await browser.newPage({viewport:{width:390,height:844}});
+    compactPage.on('console',(message)=>{if(message.type()==='error')compactConsoleErrors.push(message.text());});compactPage.on('pageerror',(error)=>compactPageErrors.push(error.message));compactPage.on('response',(response)=>recordFailedHttpResponse(compactResponseFailures,response));
     await compactPage.goto(serverUrl+'/reference/browser/',{waitUntil:'networkidle',timeout:30000});
     await compactPage.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__),null,{timeout:30000});
     const compactProof=await compactPage.evaluate(async()=>{
@@ -819,9 +883,10 @@ if (playwright) {
     const journalDesktop=await runJournalViewportProof({width:1440,height:1000},'DESKTOP');
     const journalCompact=await runJournalViewportProof({width:390,height:844},'COMPACT');
     const runConversationEvolutionViewportProof=async(viewport,viewportClass,reducedMotion)=>{
-      const proofConsoleErrors=[],proofPageErrors=[],proofPage=await browser.newPage({viewport});
+      const proofConsoleErrors=[],proofPageErrors=[],proofResponseFailures=[],proofPage=await browser.newPage({viewport});
       proofPage.on('console',(message)=>{if(message.type()==='error')proofConsoleErrors.push(message.text());});
       proofPage.on('pageerror',(error)=>proofPageErrors.push(error.message));
+      proofPage.on('response',(response)=>recordFailedHttpResponse(proofResponseFailures,response));
       try{
         await proofPage.emulateMedia({reducedMotion:reducedMotion?'reduce':'no-preference'});
         await proofPage.goto(serverUrl+'/reference/browser/?projection=evolution',{waitUntil:'networkidle',timeout:30000});
@@ -900,13 +965,21 @@ if (playwright) {
         let productExperience;
         productPage.on('console',(message)=>{if(message.type()==='error')proofConsoleErrors.push(message.text());});
         productPage.on('pageerror',(error)=>proofPageErrors.push(error.message));
+        productPage.on('response',(response)=>recordFailedHttpResponse(proofResponseFailures,response));
         try{
           await productPage.emulateMedia({reducedMotion:reducedMotion?'reduce':'no-preference'});
           await productPage.goto(serverUrl+'/reference/browser/?projection=evolution',{waitUntil:'networkidle',timeout:30000});
           await productPage.waitForFunction(()=>Boolean(globalThis.__VEXLIFE_APP__),null,{timeout:30000});
-          productExperience=await runConversationProductProof(productPage,viewport,{consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors});
+          productExperience=await runConversationProductProof(productPage,viewport,{consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors,responseFailures:proofResponseFailures});
         }finally{await productPage.close();}
-        return{viewport,viewportClass,proof,productExperience,consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors};
+        const browserFailures=classifyNoRuntimeBrowserFailures({consoleErrors:proofConsoleErrors,pageErrors:proofPageErrors,responseFailures:proofResponseFailures});
+        return{
+          viewport,viewportClass,proof,productExperience,
+          consoleErrors:browserFailures.unexpectedConsoleErrors,
+          pageErrors:browserFailures.pageErrors,
+          expectedAvailabilityHolds:browserFailures.expectedAvailabilityHolds,
+          unexpectedResponseFailures:browserFailures.unexpectedResponseFailures
+        };
       }finally{await proofPage.close();}
     };
     const conversationDesktop=await runConversationEvolutionViewportProof({width:1440,height:1000},'DESKTOP',false);
@@ -927,14 +1000,26 @@ if (playwright) {
     const vesselStudioPracticum=await runVesselStudioPracticumProof(browser,serverUrl);
     const structuralViewportProofs=[journalDesktop,journalCompact,conversationDesktop,conversationCompact];
     const viewportProofs=[...structuralViewportProofs,purposeWorkspaceDesktop,purposeWorkspaceCompact];
-    const allConsoleErrors = [...consoleErrors, ...compactConsoleErrors, ...viewportProofs.flatMap((item) => item.consoleErrors), ...vesselStudioPracticum.consoleErrors];
-    const allPageErrors = [...pageErrors, ...compactPageErrors, ...viewportProofs.flatMap((item) => item.pageErrors), ...vesselStudioPracticum.pageErrors];
+    const primaryBrowserFailures=classifyNoRuntimeBrowserFailures({consoleErrors,pageErrors,responseFailures});
+    const compactBrowserFailures=classifyNoRuntimeBrowserFailures({consoleErrors:compactConsoleErrors,pageErrors:compactPageErrors,responseFailures:compactResponseFailures});
+    const allConsoleErrors = [...primaryBrowserFailures.unexpectedConsoleErrors, ...compactBrowserFailures.unexpectedConsoleErrors, ...viewportProofs.flatMap((item) => item.consoleErrors), ...vesselStudioPracticum.consoleErrors];
+    const allPageErrors = [...primaryBrowserFailures.pageErrors, ...compactBrowserFailures.pageErrors, ...viewportProofs.flatMap((item) => item.pageErrors), ...vesselStudioPracticum.pageErrors];
+    const expectedHeldResponses = [
+      ...primaryBrowserFailures.expectedAvailabilityHolds,
+      ...compactBrowserFailures.expectedAvailabilityHolds,
+      ...viewportProofs.flatMap((item) => item.expectedAvailabilityHolds ?? [])
+    ];
+    const unexpectedResponseFailures = [
+      ...primaryBrowserFailures.unexpectedResponseFailures,
+      ...compactBrowserFailures.unexpectedResponseFailures,
+      ...viewportProofs.flatMap((item) => item.unexpectedResponseFailures ?? [])
+    ];
     const requiredProofs = [
       integration, livedDCompact, q2Compact, q2ViewportInverse, q5Compact, q5WorkspaceInverse,
       ...structuralViewportProofs.map((item) => item.proof),
       ...viewportProofs.map((item) => item.productExperience), vesselStudioPracticum
     ];
-    const state = requiredProofs.every((proof) => proof?.state === 'PASS') && allConsoleErrors.length === 0 && allPageErrors.length === 0 ? 'PASS' : 'FAILED';
+    const state = requiredProofs.every((proof) => proof?.state === 'PASS') && allConsoleErrors.length === 0 && allPageErrors.length === 0 && unexpectedResponseFailures.length === 0 ? 'PASS' : 'FAILED';
     finish({
       ...baseReceipt,
       state,
@@ -942,6 +1027,8 @@ if (playwright) {
       browser: { name: browser.browserType().name(), version: browser.version() },
       consoleErrors: allConsoleErrors,
       pageErrors: allPageErrors,
+      expectedHeldResponses,
+      unexpectedResponseFailures,
       integration,
       journalDesktop,
       journalCompact,
