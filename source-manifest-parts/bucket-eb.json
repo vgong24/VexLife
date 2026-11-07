@@ -9,6 +9,12 @@
       "sha256": "17e4ec4ae0e058f6703870c2b2c1d468acb3383b19c25f6999eb2912195a8123"
     },
     {
+      "path": "docs/VEXLIFE-GLOBAL-ANNOUNCEMENT-CONTRACT.md",
+      "mode": "100644",
+      "bytes": 9265,
+      "sha256": "03827b613d038c283129601f878eb8a730981864f7069b597ff4606079fe65bb"
+    },
+    {
       "path": "scripts/check-syntax.mjs",
       "mode": "100644",
       "bytes": 1187,

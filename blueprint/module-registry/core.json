@@ -1552,6 +1552,24 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.global-announcement-contract",
+    "path": "src/core/global-announcement-contract.mjs",
+    "role": "VexLife POC interpreter/validator for the language-neutral Global Announcement Poll contract artifact; preserves contract meaning without owning Security, transport, provider execution, notification, publication or product semantic State.",
+    "platformScope": "NODE_DESKTOP_HOST",
+    "reads": [
+      "blueprint/global-announcement-contract.json"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/global-announcement-contract.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/global-announcement-contract.json",
+      "docs/VEXLIFE-GLOBAL-ANNOUNCEMENT-CONTRACT.md"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.home-maps-place-search",
     "path": "src/core/home-maps-place-search.mjs",
     "role": "Deterministic provider-neutral Home-routed Maps place-search admission over current Home Bridge session authority and exact runtime capability scope; performs no provider request or Home write.",
