@@ -436,7 +436,19 @@ export function hereticRuntimeBrowserOptions(runtimeLink, {
   recoveryOwnerFactory = createCompanionRecoveryOwner,
   serverCompanionBridgeFactory = createServerOwnedBrowserCompanionBridge,
 } = {}) {
-  if (runtimeLink === null) return Object.freeze({});
+  if (typeof serverCompanionBridgeFactory !== 'function') {
+    throw new TypeError('Heretic runtime Browser Companion bridge factory must be one function');
+  }
+  if (runtimeLink === null) {
+    return Object.freeze({
+      companionBridge: serverCompanionBridgeFactory({
+        companionHome,
+        endpoint: null,
+        model: null,
+        runtimeMode: CAPABILITY_ASSIMILATION_MODES.ADOPTED_READ_ONLY,
+      }),
+    });
+  }
   if (!runtimeLink || runtimeLink.state !== 'BOUND_CURRENT') {
     throw new TypeError('Heretic runtime Browser options require one current runtime link');
   }
@@ -446,8 +458,8 @@ export function hereticRuntimeBrowserOptions(runtimeLink, {
   if (recoverPersistentHereticRuntime !== null && typeof recoverPersistentHereticRuntime !== 'function') {
     throw new TypeError('Heretic runtime Browser recovery effect must be null or one function');
   }
-  if (typeof recoveryOwnerFactory !== 'function' || typeof serverCompanionBridgeFactory !== 'function') {
-    throw new TypeError('Heretic runtime Browser composition factories must be functions');
+  if (typeof recoveryOwnerFactory !== 'function') {
+    throw new TypeError('Heretic runtime Browser recovery-owner factory must be one function');
   }
 
   const currentRuntimeLink = async () => {
