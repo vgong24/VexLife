@@ -37,6 +37,12 @@
       "mode": "100644",
       "bytes": 3828,
       "sha256": "78019043e1a0886a07499a7aaf3865ee391ea5450ff25945b214f95d8d891a4e"
+    },
+    {
+      "path": "test/server-home-maps-place-search-capability.test.mjs",
+      "mode": "100644",
+      "bytes": 10123,
+      "sha256": "f2770985746091c40233dcd794e43743c9f893fa9abbc0a0c2f73152f2e848ed"
     }
   ]
 }

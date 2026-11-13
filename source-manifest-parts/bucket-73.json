@@ -7,6 +7,12 @@
       "mode": "100644",
       "bytes": 25860,
       "sha256": "badc507eb2ec44b2ea61ffdc5f38e1770fd2d107f7a966e9123ad9b0eebde78d"
+    },
+    {
+      "path": "src/core/server-home-maps-place-search-capability.mjs",
+      "mode": "100644",
+      "bytes": 7623,
+      "sha256": "703eec2af3e039df363a458b1c2bb590f797f374e5099e55dc1cafb35823a87d"
     }
   ]
 }
