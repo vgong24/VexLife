@@ -1,5 +1,24 @@
 # Repository orientation
 
+## Current repository role
+
+```text
+VexGPT/VexLife-Prod
+= current VexLife product body
+
+vgong24/VexLife
+= predecessor / lineage / behavioral source
+!= default repository-level runtime parent
+```
+
+For current VexLife product work, enter `VexGPT/VexLife-Prod` first and consume its current
+foundation/VexWork trajectory. Descend into this repository when the task is about this repository
+itself or an exact current Prod foundation/bridge names a bounded predecessor owner here.
+
+Do not infer whole-product authority from this repository's age, complete quick-start, historical
+lived proof, or retained implementation. Conversely, do not erase or bypass an exact still-current
+owner/compatibility bridge merely because Prod is the current product body.
+
 Run `npm run orient` before broad reading. Then read every `requiredSources`
 returned by that orientation receipt before review, lifecycle approval, or any
 commit-producing effect. Treat the receipt's `heldBoundaries` as mandatory

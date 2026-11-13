@@ -3,6 +3,35 @@
 
 VexLife is a local-first, lifelong AI companion. It runs on your own computer, and its Home, conversation state, model binding, and recovery receipts stay local unless a separate capability explicitly says otherwise.
 
+## Current repository role
+
+The current VexLife product body is **`VexGPT/VexLife-Prod`**.
+
+This repository is the predecessor VexLife lineage/source. It remains important for behavioral
+provenance, accepted historical evidence, and any exact bounded owner or compatibility bridge that
+current VexLife-Prod foundation source explicitly names. It is **not** the default current product
+authority merely because it still contains a complete source-local setup/browser route.
+
+~~~text
+CURRENT PRODUCT WORK
+-> VexGPT/VexLife-Prod
+-> its current foundation + VexWork trajectory
+
+EXACT PREDECESSOR SOURCE / BRIDGE WORK
+-> this repository
+-> npm run orient
+-> exact current owner/source descent
+
+PREDECESSOR QUICK-START
+!= CURRENT VEXLIFE-PROD PRODUCT ENTRY
+~~~
+
+The source-local routes below remain usable predecessor routes and recovery/evidence surfaces until
+their exact successors are accepted in VexLife-Prod. Do not infer from their continued existence that
+VexLife-Prod should be layered on this repository or that still-current bounded bridges should be
+discarded.
+
+
 ## What Vex Home means
 
 Vex Home is the person's durable local custody boundary: identity, companion/runtime state, recovery
