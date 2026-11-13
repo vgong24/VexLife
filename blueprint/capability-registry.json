@@ -1,7 +1,7 @@
 {
   "schemaVersion": "vexlife.capability-registry/v0",
   "registryRef": "registry.vexlife.capabilities.001",
-  "registryVersion": 5,
+  "registryVersion": 6,
   "stages": [
     "DISCOVERABLE",
     "EXPLAINABLE",
@@ -101,6 +101,32 @@
       ]
     },
     {
+      "capabilityRef": "capability.vexlife.global-announcement-poll",
+      "purpose": "Request one bounded Global Announcement Poll read through current Home admission while service reachability, provider execution, Announcement semantic State, notification and delivery remain separate.",
+      "actionRefs": [],
+      "permissionRef": "permission.none",
+      "effectClass": "GLOBAL_ANNOUNCEMENT_POLL_REQUEST",
+      "defaultStage": "REQUESTABLE",
+      "roleRefs": [
+        "role.vex.companion",
+        "role.vex.guide",
+        "role.vex.operations"
+      ],
+      "platformRefs": [
+        "platform.browser",
+        "platform.android",
+        "platform.ios",
+        "platform.windows",
+        "platform.macos"
+      ],
+      "resourceClass": "CPU_LIGHT",
+      "notes": [
+        "C1 registers the capability vocabulary needed by Home admission but does not make the capability independently executable",
+        "Home admission remains distinct from NetworkConnectivity, ServiceConnectivity, provider execution and Announcement Family State",
+        "The accepted portable Poll contract remains the request meaning owner; this registry entry grants no provider, Home-write, notification, Android, VexLife-Prod or publication effect"
+      ]
+    },
+    {
       "capabilityRef": "capability.vexlife.file.read",
       "purpose": "Read every assigned file type through project-root and role filters.",
       "actionRefs": [
@@ -158,7 +184,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v5",
+        "sourceVersionRef": "capability-registry.v6",
         "compatibility": "COMPATIBLE"
       },
       "competenceState": "BOUNDED_COMPETENT",
@@ -419,7 +445,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v5",
+        "sourceVersionRef": "capability-registry.v6",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXPLAINABLE",
@@ -451,7 +477,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v5",
+        "sourceVersionRef": "capability-registry.v6",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",
@@ -501,7 +527,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v5",
+        "sourceVersionRef": "capability-registry.v6",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",
@@ -551,7 +577,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v5",
+        "sourceVersionRef": "capability-registry.v6",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",
@@ -601,7 +627,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v5",
+        "sourceVersionRef": "capability-registry.v6",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",
@@ -658,7 +684,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v5",
+        "sourceVersionRef": "capability-registry.v6",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",
@@ -721,7 +747,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v5",
+        "sourceVersionRef": "capability-registry.v6",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",
@@ -783,7 +809,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v5",
+        "sourceVersionRef": "capability-registry.v6",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",
@@ -844,7 +870,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v5",
+        "sourceVersionRef": "capability-registry.v6",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",
@@ -906,7 +932,7 @@
       "currentness": {
         "state": "CURRENT",
         "sourceRef": "source.blueprint.capability-registry",
-        "sourceVersionRef": "capability-registry.v5",
+        "sourceVersionRef": "capability-registry.v6",
         "compatibility": "COMPATIBLE"
       },
       "defaultStage": "EXECUTABLE",

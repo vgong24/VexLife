@@ -9,7 +9,8 @@ import {
 import {
   HOME_BRIDGE_SESSION_ASSERTION_SCHEMA,
   HomeBridgeSessionAuthorityError,
-  createHomeBridgeSessionAuthorityResolver
+  createHomeBridgeSessionAuthorityResolver,
+  validateHomeBridgeSessionAuthorityProjection
 } from '../src/core/home-bridge-session-authority.mjs';
 
 const T0 = '2026-09-16T08:00:00.000Z';
@@ -252,6 +253,47 @@ test('HBSA-08: separately approved device principal remains the speaker; approve
   assert.equal(result.principalRef, 'principal.bri');
   assert.equal(result.membership.approvedBy, 'principal.victor-owner');
   assert.notEqual(result.principalRef, result.membership.approvedBy);
+});
+
+test('HBSA-09: downstream consumers can validate the exported authority projection without acquiring feature or clock authority', async () => {
+  const authority = pairedAuthority();
+  const projection = await resolver(authority).resolve({ sessionRef: 'opaque-session-handle' });
+  const validated = validateHomeBridgeSessionAuthorityProjection(projection);
+
+  assert.deepEqual(validated, projection);
+  assert.ok(Object.isFrozen(validated));
+  assert.ok(Object.isFrozen(validated.membership));
+  assert.ok(Object.isFrozen(validated.lease));
+
+  const effectful = structuredClone(projection);
+  effectful.effects.networkMutation = true;
+  assert.throws(
+    () => validateHomeBridgeSessionAuthorityProjection(effectful),
+    (error) => (
+      error instanceof HomeBridgeSessionAuthorityError
+      && error.code === 'HOME_BRIDGE_SESSION_AUTHORITY_EFFECTFUL'
+    )
+  );
+
+  const incomplete = structuredClone(projection);
+  delete incomplete.currentnessRefs;
+  assert.throws(
+    () => validateHomeBridgeSessionAuthorityProjection(incomplete),
+    (error) => (
+      error instanceof HomeBridgeSessionAuthorityError
+      && error.code === 'HOME_BRIDGE_SESSION_AUTHORITY_INVALID'
+    )
+  );
+
+  const forgedMembership = structuredClone(projection);
+  forgedMembership.membership.principalRef = 'principal.forged';
+  assert.throws(
+    () => validateHomeBridgeSessionAuthorityProjection(forgedMembership),
+    (error) => (
+      error instanceof HomeBridgeSessionAuthorityError
+      && error.code === 'HOME_BRIDGE_SESSION_MEMBERSHIP_REQUIRED'
+    )
+  );
 });
 
 // [VXG RealForever]
