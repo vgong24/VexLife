@@ -23,8 +23,8 @@
     {
       "path": "src/core/lived-companion-connection.mjs",
       "mode": "100644",
-      "bytes": 13122,
-      "sha256": "11e1cb0015d11e4d521f8b47c4887b84a021148e630a5fda03a666747e2fe840"
+      "bytes": 13571,
+      "sha256": "cbfa67716d3acc3befea4699a497773417a001c04b52ab0e5e04cea382279a07"
     },
     {
       "path": "src/core/typed-command-runtime.mjs",
