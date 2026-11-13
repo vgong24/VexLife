@@ -1,5 +1,11 @@
 # Repository orientation
 
+## Current repository role
+
+Current whole-product work starts in `VexGPT/VexLife-Prod`. This repository remains exact source for
+work here and for any bounded predecessor bridge named by current Prod foundation source. Do not infer
+whole-product authority from the retained quick-start, and do not erase a still-current bridge.
+
 Run `npm run orient` before broad reading. Then read every `requiredSources`
 returned by that orientation receipt before review, lifecycle approval, or any
 commit-producing effect. Treat the receipt's `heldBoundaries` as mandatory

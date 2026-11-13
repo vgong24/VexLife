@@ -3,6 +3,18 @@
 
 VexLife is a local-first, lifelong AI companion. It runs on your own computer, and its Home, conversation state, model binding, and recovery receipts stay local unless a separate capability explicitly says otherwise.
 
+## Current repository role
+
+Current VexLife New Beginnings product work starts in **`VexGPT/VexLife-Prod`**. This repository
+remains predecessor/lineage source and an exact bounded owner where current Prod foundation source
+names a bridge here.
+
+For whole-product work, enter Prod first. For work on this repository or a named predecessor bridge,
+run `npm run orient` here and descend to the exact current owner.
+
+The retained setup/browser routes below remain usable predecessor, recovery and evidence routes; they
+are not the current VexLife-Prod product entry.
+
 ## What Vex Home means
 
 Vex Home is the person's durable local custody boundary: identity, companion/runtime state, recovery
@@ -30,14 +42,14 @@ See [docs/VEXHOME-HOSTED-CAPABILITIES.md](docs/VEXHOME-HOSTED-CAPABILITIES.md).
 
 ## Before you start
 
-The current source-local product routes are deliberately narrow:
+This predecessor repository's retained source-local routes are deliberately narrow:
 
 - **Windows 10/11 x64 + compatible NVIDIA GPU/driver** (`nvidia-smi` available), with at least 12 GiB system memory and 6 GiB free disk space, continues to use the legacy release-qualified Qwen3.5-4B / llama.cpp compatibility route.
 - **macOS arm64 on Apple M4 Pro**, with at least 12 GiB system memory, now uses the accepted Heretic 27B MLX product route for a fresh Home. Existing Homes keep their persisted model binding until a separate explicit replacement/upgrade route is admitted.
 
-Both normal setup routes require Node.js 20 or newer and an internet connection for first model/runtime acquisition. The Mac Heretic route verifies the exact 11-member source-managed model set, establishes exact Python 3.14.7 plus `mlx-lm` 0.32.0, and reuses verified local artifacts/environment on later runs. The current Heretic source route requires an exact Python 3.14.7 bootstrap interpreter to be present before model/runtime acquisition; if it is absent, setup holds without starting the large download rather than substituting another Python.
+Both retained setup routes require Node.js 20 or newer and an internet connection for first model/runtime acquisition. The Mac Heretic route verifies the exact 11-member source-managed model set, establishes exact Python 3.14.7 plus `mlx-lm` 0.32.0, and reuses verified local artifacts/environment on later runs. The current Heretic source route requires an exact Python 3.14.7 bootstrap interpreter to be present before model/runtime acquisition; if it is absent, setup holds without starting the large download rather than substituting another Python.
 
-These are source-local product routes. They are **not a signed/public `OFFICIAL_VERIFIED_BUILD`**, packaged public release, all-Mac installer, all-GPU installer, or P11 fresh-human release proof. Linux bootstrap/development surfaces remain available but do not inherit either admitted route.
+These are retained predecessor source-local routes. They are **not a signed/public `OFFICIAL_VERIFIED_BUILD`**, packaged public release, all-Mac installer, all-GPU installer, or P11 fresh-human release proof. Linux bootstrap/development surfaces remain available but do not inherit either admitted route.
 
 ## Quick start — Mac M4 Pro
 
@@ -48,7 +60,7 @@ rm -f /tmp/setup-vexlife.command
 curl -fsSL https://raw.githubusercontent.com/vgong24/VexLife/main/setup-vexlife.command -o /tmp/setup-vexlife.command && bash /tmp/setup-vexlife.command
 ```
 
-This is the stable Mac front door. The first line removes any older temporary bootstrap; the `&&` means VexLife runs only if GitHub returned the new bootstrap successfully. A failed download therefore cannot silently fall through to a stale `/tmp/setup-vexlife.command`.
+This is the stable predecessor Mac source-local front door; it is not the current VexLife-Prod product entry. The first line removes any older temporary bootstrap; the `&&` means VexLife runs only if GitHub returned the new bootstrap successfully. A failed download therefore cannot silently fall through to a stale `/tmp/setup-vexlife.command`.
 
 The command intentionally follows the latest accepted `main`: each run fetches the current bootstrap, resolves `main` to one exact immutable 40-character source commit, and downloads those exact repository bytes. The long source SHA is expected to change as accepted source advances; it is an internal reproducibility/evidence identity, not something an ordinary user has to keep current manually.
 
@@ -96,7 +108,7 @@ powershell -ExecutionPolicy Bypass -File .\install\vexlife-setup.ps1
 
 *Minimal start alternative:* once Node.js is available and setup is complete, `start-vexlife.cmd` consumes the same bootstrap/initializer/browser contract rather than a separate model path.
 
-> The Windows source-local window and Mac source bootstrap are source-local setup routes. They are **not a signed/public `OFFICIAL_VERIFIED_BUILD`**. Signing, packaged-build provenance, repository visibility, and public release remain separate Distribution Trust / lifecycle decisions.
+> The Windows source-local window and Mac source bootstrap are predecessor source-local setup routes. They are **not a signed/public `OFFICIAL_VERIFIED_BUILD`**. Signing, packaged-build provenance, repository visibility, and public release remain separate Distribution Trust / lifecycle decisions.
 
 ## What setup does
 
@@ -122,7 +134,7 @@ If Vex already has a Home, bootstrap preserves it rather than deleting, moving, 
 
 The human-facing front doors do not duplicate those effects. They collect the visible Home/permission choices and delegate to the repository-owned platform setup/lifecycle logic.
 
-## What is real today
+## What is real in this predecessor source today
 
 - The Windows x64 NVIDIA compatibility route remains `RELEASE_QUALIFIED` on llama.cpp `b10107` plus the exact Qwen3.5-4B Q4_K_M model/projector artifacts.
 - The ordinary fresh Apple M4 Pro route selects the `RELEASE_QUALIFIED` Heretic 27B product bundle: 11 immutable Artifact Delivery members, exact aggregate content seal, Python 3.14.7 and `mlx-lm` 0.32.0.
@@ -141,7 +153,7 @@ For the underlying model/runtime boundaries, advanced custom-model path, and rec
 
 Linux and other hardware/platform combinations do not inherit the Windows or Apple M4 Pro profile's release qualification. Do not treat “same repository,” “same model family,” or a nearby chip/GPU name as proof of platform/runtime qualification.
 
-The source-local setup front doors also do not choose the future full Windows or Mac native application technology. Native Home Node/application-shell adoption remains a separate platform/distribution wave.
+These predecessor source-local setup front doors also do not choose the future full Windows or Mac native application technology. Native Home Node/application-shell adoption remains a separate platform/distribution wave.
 
 ## Where everything lives
 
