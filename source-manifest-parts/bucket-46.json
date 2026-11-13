@@ -31,6 +31,12 @@
       "mode": "100644",
       "bytes": 2279,
       "sha256": "c27e665653a4c325c6cdce53d9529a15dd748610c270adaf10b4ed9f166c44d4"
+    },
+    {
+      "path": "test/server-home-maps-request-context.test.mjs",
+      "mode": "100644",
+      "bytes": 7580,
+      "sha256": "c886f8d467346fefc5de0d55f8a76d13d45fb5400d9efdfe80ed8595cb5f4979"
     }
   ]
 }

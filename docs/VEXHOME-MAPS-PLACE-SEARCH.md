@@ -341,6 +341,49 @@ response exceeds bounded projection size
 Unknown upstream fields are not promoted merely because Photon returned them.
 
 
+## VMC-01B trusted server request context
+
+The accepted C1 seam deliberately treats role/project/resource capability scopes as trusted
+server-composition inputs rather than remote request fields. Transport must not synthesize them.
+
+The source owner is:
+
+~~~text
+src/core/server-home-maps-request-context.mjs
+~~~
+
+Focused proof is:
+
+~~~text
+test/server-home-maps-request-context.test.mjs
+~~~
+
+The resolver receives only the authenticated `sessionRef`. It resolves the accepted
+`HomeBridgeSessionAuthority`, then asks four distinct server-owned currentness producers for:
+
+~~~text
+role capability scope
+project capability scope
+resource capability scope
+raw-model-endpoint exposure truth
+~~~
+
+Each returned owner envelope must be `CURRENT`, carry non-empty source/currentness evidence, and
+be bound to the same stable session binding. Scope arrays may lawfully be empty; an empty current
+scope is evidence that C1 should deny Maps, not malformed context.
+
+The resolver does not receive the Maps query or semantic intent. It does not equate these scope
+dimensions with membership/lease or with one broader capability array.
+
+Permanent:
+
+~~~text
+SERVER_REQUEST_CONTEXT != REMOTE_REQUEST
+CURRENT_EMPTY_SCOPE != INVALID_SCOPE_EVIDENCE
+SCOPE_CURRENTNESS != CAPABILITY_ADMISSION
+SESSION_AUTHORITY != ROLE_SCOPE != PROJECT_SCOPE != RESOURCE_SCOPE
+~~~
+
 ## VMC-01B first effectful server realization — Home Maps serving capability
 
 VMC-01B consumes C1 and Photon Stage A without reopening Connected Services or moving transport into the product contract.
@@ -497,6 +540,12 @@ Home remote admission
 
 current server session authority
     src/core/home-bridge-session-authority.mjs
+
+trusted Maps server request context
+    src/core/server-home-maps-request-context.mjs
+
+trusted Maps server request-context proof
+    test/server-home-maps-request-context.test.mjs
 
 C1 composition
     src/core/home-maps-place-search.mjs
