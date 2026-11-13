@@ -447,11 +447,21 @@ This source slice admits the product-owned provider-execution composition. It do
 
 ## Current held successors
 
+The finite SDK gateway route is now accepted/current at:
+
+~~~text
+vgong24/Vextreme-SDK
+merge 91c3589e529175b2b44abb385157f384b07be660
+POST /v1/home/maps/place-search
+handler = mapsPlaceSearch
+sessionRequired = true
+~~~
+
+That accepted carrier does not bind this product capability into SDK composition. Composition binding remains a later effect after this producer is accepted/current.
+
 Still held after the VMC-01B Home Maps serving source slice:
 
 ~~~text
-module-registry integration while current PR #987 owns blueprint/module-registry/core.json
-generated Source Manifest closure derived from the exact candidate after shared custody releases
 live Photon endpoint / deployment / process binding
 live provider execution and provider logging/retention evidence
 Photon installation
@@ -460,7 +470,6 @@ provider dataset download/import/update
 Photon /status health manager
 Photon /update
 location bias / GPS access / location retention
-private Home gateway Maps route
 SDK private-gateway composition binding
 Android Home-search transport adapter
 lived VMC-01B device search proof
@@ -472,7 +481,7 @@ generic hosted-service framework
 cloud/VPS deployment
 ~~~
 
-The shared module-registry path is not seized by the VMC-01B source claim while PR #987 owns it. Generated Source Manifest consequences are not guessed in advance. When shared custody releases, re-ground current main, register the accepted server capability in the current module registry, and recompose generated closure from current co-bucket truth plus the exact candidate.
+The Source Manifest closure for this exact slice is deterministic and carried in the same candidate through buckets 14, 73 and 84. No module-registry mutation is required by this serving-capability slice.
 
 ## Source ownership
 
