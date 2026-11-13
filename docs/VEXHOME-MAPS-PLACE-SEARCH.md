@@ -340,32 +340,139 @@ response exceeds bounded projection size
 
 Unknown upstream fields are not promoted merely because Photon returned them.
 
-## Current held successors
 
-Still held after VCS-03 Stage A:
+## VMC-01B first effectful server realization — Home Maps serving capability
+
+VMC-01B consumes C1 and Photon Stage A without reopening Connected Services or moving transport into the product contract.
+
+The first effectful server-side composition is deliberately narrow:
 
 ~~~text
-module-registry integration while Interaction Control PR #896 owns the shared registry path
-live Photon network request
-Photon endpoint / deployment binding
-provider credentials
-provider query/result logging and retention proof
+semantic Maps intent
+    requestRef + query + limit
+
++ current HomeBridgeSessionAuthority
++ current role/project/resource capability scope
+
+-> existing C1 admission
+
+-> existing Photon Stage-A prepared descriptor
+
+-> injected executePhotonRequest(...)
+   endpoint/deployment/process binding stays outside product source
+   AbortSignal is propagated
+   session/Home authority is not forwarded to the provider executor
+
+-> existing Photon response projector
+
+-> Home Maps result
+   resultRef
+   name
+   optional subtitle
+   coordinate
+   required OpenStreetMap attribution
+~~~
+
+The source owner is:
+
+~~~text
+src/core/server-home-maps-place-search-capability.mjs
+~~~
+
+Focused proof is:
+
+~~~text
+test/server-home-maps-place-search-capability.test.mjs
+~~~
+
+The capability does not expose Photon engine identity, OSM element identity, Home membership/session/lease material or the private query in its returned client projection. Each returned candidate receives one opaque Home place reference while preserving the provider-observed name/subtitle/coordinate facts Android already accepts.
+
+The first provider executor is Photon-specific by construction. This does **not** create a generic provider framework:
+
+~~~text
+SERVER_HOME_MAPS_CAPABILITY
+!=
+PRIVATE_GATEWAY
+
+SERVER_HOME_MAPS_CAPABILITY
+!=
+CONNECTED_SERVICES_TRANSPORT
+
+INJECTED_PHOTON_EXECUTOR
+!=
+GENERIC_PROVIDER_REGISTRY
+
+SESSION_AUTHORITY
+!=
+PROVIDER_EXECUTION
+
+C1_ADMISSION
+!=
+PROVIDER_EXECUTION
+
+PROVIDER_SUCCESS
+!=
+FEATURE_RESULT_CURRENTNESS
+~~~
+
+The executor receives only the already-prepared Photon request descriptor plus cancellation. Endpoint selection, process/container/host placement, service lifetime and any network route remain construction-time realization below the Home Maps semantic capability.
+
+The returned Home projection preserves:
+
+~~~text
+queryEchoed = false
+queryPersistedByCapability = false
+providerResultPersistedByCapability = false
+providerIdentityExposedToClient = false
+deviceLocationReadOrRetained = false
+destinationSelected = false
+routePrepared = false
+navigationStarted = false
+featureResultCurrentnessOwner = FEATURE_CLIENT
+~~~
+
+VexLife-Android therefore keeps the accepted consumer shape:
+
+~~~text
+Home candidate.resultRef -> VexMapsPlaceSearchResult.placeRef
+Home candidate.name      -> name
+Home candidate.subtitle  -> subtitle
+Home coordinate          -> VexMapCoordinate
+
+VexMapsDestinationSearchSession
+    remains the visible request/result currentness owner
+~~~
+
+This source slice admits the product-owned provider-execution composition. It does not itself prove a live Photon deployment, gateway route, Android carriage or lived search result.
+
+## Current held successors
+
+Still held after the VMC-01B Home Maps serving source slice:
+
+~~~text
+module-registry integration while current PR #987 owns blueprint/module-registry/core.json
+generated Source Manifest closure derived from the exact candidate after shared custody releases
+live Photon endpoint / deployment / process binding
+live provider execution and provider logging/retention evidence
 Photon installation
 Java/OpenSearch installation
 provider dataset download/import/update
 Photon /status health manager
 Photon /update
 location bias / GPS access / location retention
+private Home gateway Maps route
+SDK private-gateway composition binding
+Android Home-search transport adapter
+lived VMC-01B device search proof
 destination selection
 route planning
 active navigation
 Home/Memory write
-Android Home-search transport adapter
 generic hosted-service framework
 cloud/VPS deployment
 ~~~
 
-The shared module-registry path and Source Manifest bucket `8b` must be integrated only after PR #896 releases or converges that custody. Current co-bucket truth must be freshly recomposed; stale bucket bytes are never replayed.
+The shared module-registry path is not seized by the VMC-01B source claim while PR #987 owns it. Generated Source Manifest consequences are not guessed in advance. When shared custody releases, re-ground current main, register the accepted server capability in the current module registry, and recompose generated closure from current co-bucket truth plus the exact candidate.
 
 ## Source ownership
 
@@ -393,6 +500,12 @@ VCS-03 Stage-A Photon protocol adapter
 
 VCS-03 Stage-A focused proof
     test/home-maps-photon-place-search.test.mjs
+
+VMC-01B effectful Home Maps serving capability
+    src/core/server-home-maps-place-search-capability.mjs
+
+VMC-01B focused proof
+    test/server-home-maps-place-search-capability.test.mjs
 ~~~
 
-<!-- [VXG RealForever][VEXHOME][MAPS-PLACE-SEARCH][C1][VCS-03-PHOTON-STAGE-A] -->
+<!-- [VXG RealForever][VEXHOME][MAPS-PLACE-SEARCH][C1][VCS-03-PHOTON-STAGE-A][VMC-01B-SERVER] -->
