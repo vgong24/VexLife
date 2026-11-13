@@ -21,6 +21,12 @@
       "sha256": "9d713a2507a4fcc49c08e39acdb7da41df924a627148be1a222f48821f17413e"
     },
     {
+      "path": "src/core/server-home-maps-request-context.mjs",
+      "mode": "100644",
+      "bytes": 8116,
+      "sha256": "2223b98e7b2894d1e29c253a1690540bfadf991ea815bd7e2f5ee09b1807147d"
+    },
+    {
       "path": "test/purpose-workspace.test.mjs",
       "mode": "100644",
       "bytes": 9306,
