@@ -130,7 +130,7 @@ function validateReasoningMode(value) {
   return value;
 }
 
-async function readStreamingCompletion(response, endpointProfile, responseDeltaObserver, reasoningDeltaObserver) {
+async function readStreamingCompletion(response, endpointProfile, responseDeltaObserver, reasoningDeltaObserver, onProviderActivity = null) {
   if (!response.body || typeof response.body[Symbol.asyncIterator] !== 'function') {
     fail('ENDPOINT_RESPONSE_INVALID', 'streaming endpoint response did not expose a readable body');
   }
@@ -145,6 +145,7 @@ async function readStreamingCompletion(response, endpointProfile, responseDeltaO
     if (data === '[DONE]') { done = true; return; }
     let event;
     try { event = JSON.parse(data); } catch { fail('ENDPOINT_RESPONSE_INVALID', 'streaming endpoint emitted invalid SSE JSON'); }
+    if (onProviderActivity) onProviderActivity();
     if (event?.model !== undefined && event?.model !== null) {
       if (!nonempty(event.model)) fail('ENDPOINT_RESPONSE_INVALID', 'streaming endpoint model provenance must be one non-empty string');
       observedModel = event.model;
@@ -260,7 +261,12 @@ export async function invokeLivedCompanionEndpoint({
   };
   const requestBody = JSON.stringify(requestPayload);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let timeout = null;
+  const armTimeout = () => {
+    if (timeout !== null) clearTimeout(timeout);
+    timeout = setTimeout(() => controller.abort(), timeoutMs);
+  };
+  armTimeout();
   try {
     const headers = { 'content-type': 'application/json' };
     if (inMemoryAuthorization) headers.authorization = inMemoryAuthorization;
@@ -268,8 +274,16 @@ export async function invokeLivedCompanionEndpoint({
     if (response.status >= 300 && response.status < 400) fail('ENDPOINT_NOT_LOOPBACK_OR_EXPLICITLY_ALLOWED', 'G01 rejects endpoint redirects because the redirected destination is not part of the admitted loopback effect', { status: response.status });
     if (!response.ok) fail('ENDPOINT_HTTP_ERROR', `endpoint returned HTTP ${response.status}`, { status: response.status });
     let body;
-    if (streaming) body = await readStreamingCompletion(response, endpointProfile, responseDeltaObserver, reasoningDeltaObserver);
-    else {
+    if (streaming) {
+      armTimeout();
+      body = await readStreamingCompletion(
+        response,
+        endpointProfile,
+        responseDeltaObserver,
+        reasoningDeltaObserver,
+        armTimeout
+      );
+    } else {
       try { body = await response.json(); } catch { fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response was not valid JSON'); }
     }
     if (body?.model !== undefined && body?.model !== null && !nonempty(body.model)) fail('ENDPOINT_RESPONSE_INVALID', 'endpoint response model provenance must be one non-empty string');
@@ -291,9 +305,18 @@ export async function invokeLivedCompanionEndpoint({
     return Object.freeze({ content: normalized.content, model: normalized.model, runtimeObservation: normalized.runtimeObservation, invocationEvidence });
   } catch (error) {
     if (error instanceof LivedCompanionConnectionError) throw error;
-    if (error?.name === 'AbortError') fail('ENDPOINT_TIMEOUT', 'endpoint request timed out');
+    if (error?.name === 'AbortError') {
+      fail(
+        'ENDPOINT_TIMEOUT',
+        streaming
+          ? 'streaming endpoint became inactive beyond the admitted timeout'
+          : 'endpoint request timed out'
+      );
+    }
     fail('ENDPOINT_UNREACHABLE', 'endpoint could not be reached', { cause: error.message });
-  } finally { clearTimeout(timeout); }
+  } finally {
+    if (timeout !== null) clearTimeout(timeout);
+  }
 }
 
 // [VXG RealForever]
