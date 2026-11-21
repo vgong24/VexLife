@@ -68,7 +68,7 @@ test('companion physical-navigation vocabulary is requestable and non-executable
 
 test('VexHome Maps place-search vocabulary is requestable and non-executable at C0', () => {
   const bundle = loadBlueprint();
-  assert.equal(bundle.capabilities.registryVersion, 5);
+  assert.equal(bundle.capabilities.registryVersion, 6);
 
   const mapsSearch = bundle.capabilities.capabilities.find(
     (item) => item.capabilityRef === 'capability.vexlife.maps-place-search'
@@ -90,6 +90,38 @@ test('VexHome Maps place-search vocabulary is requestable and non-executable at 
         (item) => item.capabilityRef === 'capability.vexlife.maps-place-search'
       );
       assert.ok(entry, `${roleRef}/${platformRef} omitted Maps place search`);
+      assert.equal(entry.stage, 'REQUESTABLE');
+      assert.equal(entry.executable, false);
+      assert.deepEqual(entry.actionRefs, []);
+      assert.equal(requireExecutable(frame, entry.capabilityRef).state, 'BLOCKED_CAPABILITY_STAGE');
+    }
+  }
+});
+
+test('Global Announcement Poll vocabulary is requestable and non-executable at C1', () => {
+  const bundle = loadBlueprint();
+  assert.equal(bundle.capabilities.registryVersion, 6);
+
+  const announcementPoll = bundle.capabilities.capabilities.find(
+    (item) => item.capabilityRef === 'capability.vexlife.global-announcement-poll'
+  );
+  assert.ok(announcementPoll);
+  assert.equal(announcementPoll.defaultStage, 'REQUESTABLE');
+  assert.equal(announcementPoll.effectClass, 'GLOBAL_ANNOUNCEMENT_POLL_REQUEST');
+  assert.equal(announcementPoll.permissionRef, 'permission.none');
+  assert.deepEqual(announcementPoll.actionRefs, []);
+  assert.equal(announcementPoll.toolContract, undefined);
+  assert.match(announcementPoll.purpose, /Global Announcement Poll/u);
+  assert.ok(announcementPoll.notes.some((note) => /Home admission.*distinct.*NetworkConnectivity/u.test(note)));
+  assert.ok(announcementPoll.notes.some((note) => /portable Poll contract.*meaning owner/u.test(note)));
+
+  for (const roleRef of announcementPoll.roleRefs) {
+    for (const platformRef of announcementPoll.platformRefs) {
+      const frame = compileCapabilityFrame(bundle.capabilities, { roleRef, platformRef });
+      const entry = frame.entries.find(
+        (item) => item.capabilityRef === 'capability.vexlife.global-announcement-poll'
+      );
+      assert.ok(entry, `${roleRef}/${platformRef} omitted Global Announcement Poll`);
       assert.equal(entry.stage, 'REQUESTABLE');
       assert.equal(entry.executable, false);
       assert.deepEqual(entry.actionRefs, []);

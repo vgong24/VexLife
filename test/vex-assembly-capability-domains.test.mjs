@@ -93,7 +93,7 @@ function capabilityRegistry() {
 
 test('VA-I04 keeps the canonical five-tool root and adds one non-executable parent with four exact-current read-only children', () => {
   const registry = capabilityRegistry();
-  assert.equal(registry.registryVersion, 5);
+  assert.equal(registry.registryVersion, 6);
   assert.deepEqual(registry.rootCapabilityKernel, ROOT_CAPABILITY_KERNEL);
   assert.deepEqual(registry.rootCapabilityKernel, [
     'capability.search',
@@ -119,12 +119,12 @@ test('VA-I04 keeps the canonical five-tool root and adds one non-executable pare
     assert.equal(child.resourceClass, 'IO_BOUNDED');
     assert.equal(child.currentness.state, 'CURRENT');
     assert.equal(child.currentness.compatibility, 'COMPATIBLE');
-    assert.equal(child.currentness.sourceVersionRef, 'capability-registry.v5');
+    assert.equal(child.currentness.sourceVersionRef, 'capability-registry.v6');
     assert.equal(child.toolContract.externalEffectsExecuted, false);
   }
   for (const capabilityRef of ROOT_CAPABILITY_KERNEL) {
     const root = registry.capabilities.find((item) => item.capabilityRef === capabilityRef);
-    assert.equal(root.currentness.sourceVersionRef, 'capability-registry.v5');
+    assert.equal(root.currentness.sourceVersionRef, 'capability-registry.v6');
   }
 });
 
@@ -267,7 +267,7 @@ test('LOCAL and ONLINE are bounded observations with no mutation, credentials, o
   const local = await support.executors[VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.LOCAL]({});
   assert.equal(local.payload.state, 'CURRENT_BOUNDED_LOCAL_OBSERVATION');
   assert.equal(local.currentness.sourceRef, 'source.blueprint.capability-registry');
-  assert.equal(local.currentness.sourceVersionRef, 'capability-registry.v5');
+  assert.equal(local.currentness.sourceVersionRef, 'capability-registry.v6');
   assert.equal(local.payload.effects.networkPerformed, false);
   assert.equal(local.payload.effects.filesystemMutationPerformed, false);
   assert.equal(local.payload.source.manifestRef, 'source-manifest.vexlife.universal-blueprint.001');
@@ -275,7 +275,7 @@ test('LOCAL and ONLINE are bounded observations with no mutation, credentials, o
 
   const online = await support.executors[VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.ONLINE]({});
   assert.equal(online.payload.state, VEX_ASSEMBLY_ONLINE_HELD_STATE);
-  assert.equal(online.currentness.sourceVersionRef, 'capability-registry.v5');
+  assert.equal(online.currentness.sourceVersionRef, 'capability-registry.v6');
   assert.equal(online.payload.providerRef, null);
   assert.equal(online.payload.networkPerformed, false);
   assert.equal(online.payload.credentialsUsed, false);
@@ -287,7 +287,7 @@ test('VEXHOME returns only canonical Home identity plus qualified runtime/recove
   const support = createVexAssemblyCapabilityDomainSupport({ sourceRoot: ROOT, home });
   const observed = await support.executors[VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.VEXHOME]({});
   assert.equal(observed.payload.state, 'CURRENT_VEXHOME_RUNTIME_SUMMARY');
-  assert.equal(observed.currentness.sourceVersionRef, 'capability-registry.v5');
+  assert.equal(observed.currentness.sourceVersionRef, 'capability-registry.v6');
   assert.deepEqual(observed.payload.homeIdentity, {
     homeRef: 'vex-home.va-i04-test',
     deviceRef: 'device.vexlife.va-i04-test',
@@ -324,7 +324,7 @@ test('CODE reads only manifest-addressed regular UTF-8 source and returns exact 
   const support = createVexAssemblyCapabilityDomainSupport({ sourceRoot: ROOT, home: '/unused' });
   const observed = await support.executors[VEX_ASSEMBLY_CAPABILITY_DOMAIN_REFS.CODE]({ path: 'docs/CULTURE.md' });
   assert.equal(observed.payload.state, 'CURRENT_CODE_SOURCE');
-  assert.equal(observed.currentness.sourceVersionRef, 'capability-registry.v5');
+  assert.equal(observed.currentness.sourceVersionRef, 'capability-registry.v6');
   assert.equal(observed.payload.requestedPath, 'docs/CULTURE.md');
   assert.match(observed.payload.sourceIdentity.sha256, /^[0-9a-f]{64}$/u);
   assert.equal(observed.payload.sourceIdentity.manifestRef, 'source-manifest.vexlife.universal-blueprint.001');

@@ -1570,6 +1570,28 @@
     ]
   },
   {
+    "moduleRef": "module.vexlife.core.home-global-announcement-poll",
+    "path": "src/core/home-global-announcement-poll.mjs",
+    "role": "Deterministic Home-routed Global Announcement Poll admission over the accepted portable Poll contract, current Home Bridge session authority, and exact runtime capability scope; performs no provider request, network effect, Home write, Family State mutation or notification decision.",
+    "platformScope": "UNIVERSAL",
+    "reads": [
+      "module.vexlife.core.global-announcement-contract",
+      "module.vexlife.core.home-bridge",
+      "src/core/home-bridge-session-authority.mjs",
+      "capability.vexlife.global-announcement-poll"
+    ],
+    "writes": [],
+    "loadedBy": [],
+    "tests": [
+      "test/home-global-announcement-poll.test.mjs"
+    ],
+    "changeMap": [
+      "blueprint/fragments/actions.json",
+      "blueprint/capability-registry.json",
+      "docs/VEXLIFE-GLOBAL-ANNOUNCEMENT-CONTRACT.md"
+    ]
+  },
+  {
     "moduleRef": "module.vexlife.core.home-maps-place-search",
     "path": "src/core/home-maps-place-search.mjs",
     "role": "Deterministic provider-neutral Home-routed Maps place-search admission over current Home Bridge session authority and exact runtime capability scope; performs no provider request or Home write.",

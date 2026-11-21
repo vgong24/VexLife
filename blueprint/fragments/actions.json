@@ -1019,6 +1019,15 @@
     "outputStateRefs": []
   },
   {
+    "actionRef": "action.global-announcement.home-routed-poll",
+    "permissionRef": "permission.none",
+    "inputSchema": {
+      "requestRef": "ref"
+    },
+    "effectClass": "PRIVATE_HOME_ROUTED_READ_ADMIT_GLOBAL_ANNOUNCEMENT_POLL",
+    "outputStateRefs": []
+  },
+  {
     "actionRef": "action.theme-mode.select",
     "permissionRef": "permission.theme-mode.select",
     "inputSchema": {
