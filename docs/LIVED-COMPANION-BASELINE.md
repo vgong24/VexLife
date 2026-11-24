@@ -183,8 +183,37 @@ canonical Vex Home, and then replays the same `homeRef`, `deviceRef`,
 
 G01 accepts numeric loopback endpoint literals only (`127.0.0.1` or `::1`). A
 caller-provided profile, hostname alias, redirect, or boolean cannot widen that
-boundary. G01 rejects every HTTP redirect before following it; non-loopback or personal
-endpoint use requires a separately admitted future adapter outside this baseline.
+boundary. G01 rejects every HTTP redirect before following it. **G01 remains loopback-only.**
+Non-loopback provider execution requires a separately admitted adapter outside this
+baseline; response-event provenance does not grant that adapter network, credential,
+model-use, or capability authority.
+
+Canonical Conversation now distinguishes that external-adapter provenance without
+rewriting historical Local events:
+
+```text
+vexlife.lived-companion-event/v1
+vexlife.lived-companion-event/v2
+  RESPONSE provenance = numeric loopback origin only
+
+vexlife.lived-companion-event/v3
+  RESPONSE only
+  semanticRelay required
+  providerRef required
+  endpointProfileRef required
+  sanitizedEndpointOrigin = exact normalized HTTPS origin
+  origin must be non-loopback
+  modelNameOrBoundedTestProfileRef required
+```
+
+A v2 request may therefore be followed by a v3 response in the same content-addressed
+Conversation chain. v3 does not create a new request vocabulary and does not change the
+event/head/context hash relationships. Its durable field set is exact: credential refs,
+authorization material, request headers, provider conversation IDs, arbitrary extra
+metadata, and raw provider responses are not v3 Conversation provenance. The external
+adapter remains responsible for proving its own source-owned provider/model/credential
+currentness before it forms this normalized response provenance.
+
 Credentials may be consumed only from an in-memory binding. G01 derives the
 known raw credential material represented by that binding—not only the complete
 Authorization value. The complete value and its scheme credential payload are
