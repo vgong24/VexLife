@@ -2032,6 +2032,204 @@ function durableRelay(messageRef, originatorRef, recipientRef, overrides = {}) {
   return composed.relay;
 }
 
+function rebindCompletedResponseEvent(home, completed, mutateResponse) {
+  const eventsDirectory = path.join(
+    home.home,
+    'conversations',
+    home.companionLineageRef,
+    completed.responseEvent.threadRef,
+    'events'
+  );
+  const priorResponsePath = path.join(
+    eventsDirectory,
+    `${String(completed.responseEvent.sequence).padStart(8, '0')}-${completed.responseEvent.eventHash}.json`
+  );
+  const response = JSON.parse(fs.readFileSync(priorResponsePath, 'utf8'));
+  mutateResponse(response);
+  const { eventHash: ignoredResponseHash, ...responseCore } = response;
+  response.eventHash = semanticHash(responseCore);
+  fs.unlinkSync(priorResponsePath);
+  fs.writeFileSync(
+    path.join(eventsDirectory, `${String(response.sequence).padStart(8, '0')}-${response.eventHash}.json`),
+    `${JSON.stringify(response, null, 2)}\n`,
+    'utf8'
+  );
+
+  const contextPath = path.resolve(home.home, ...completed.head.contextPath.split('/'));
+  const context = JSON.parse(fs.readFileSync(contextPath, 'utf8'));
+  context.responseEventHash = response.eventHash;
+  const { serializedContextSha256: ignoredContextHash, ...contextCore } = context;
+  context.serializedContextSha256 = semanticHash(contextCore);
+  fs.writeFileSync(contextPath, `${JSON.stringify(context, null, 2)}\n`, 'utf8');
+
+  const head = JSON.parse(fs.readFileSync(completed.headPath, 'utf8'));
+  head.eventHash = response.eventHash;
+  head.contextSha256 = context.serializedContextSha256;
+  const { conversationHeadSha256: ignoredHeadHash, ...headCore } = head;
+  head.conversationHeadSha256 = semanticHash(headCore);
+  fs.writeFileSync(completed.headPath, `${JSON.stringify(head, null, 2)}\n`, 'utf8');
+
+  const immutableHeadPath = path.join(
+    home.home,
+    'conversations',
+    home.companionLineageRef,
+    head.threadRef,
+    'heads',
+    `${head.conversationHeadSha256}.json`
+  );
+  fs.writeFileSync(immutableHeadPath, `${JSON.stringify(head, null, 2)}\n`, 'utf8');
+
+  return { response, context, head };
+}
+
+function externalizeResponseV3(response, overrides = {}) {
+  response.schemaVersion = 'vexlife.lived-companion-event/v3';
+  response.providerRef = overrides.providerRef ?? 'provider.openai.api';
+  response.endpointProfileRef =
+    overrides.endpointProfileRef ?? 'profile.vexlife.partner.openai.gpt-6.2-sol.v1';
+  response.sanitizedEndpointOrigin =
+    overrides.sanitizedEndpointOrigin ?? 'https://api.openai.com';
+  response.modelNameOrBoundedTestProfileRef =
+    overrides.modelNameOrBoundedTestProfileRef ?? 'gpt-6.2-sol';
+  return response;
+}
+
+test('durable v2 request may pair with response v3 external provider provenance and resume exactly', async () => {
+  const service = await server();
+  const home = makeHome('external-provider-v3-resume');
+  const requestMessageRef = ref('message.request.external-v3');
+  const responseMessageRef = ref('message.response.external-v3');
+  const input = turn(home, service.endpoint(), {
+    requestMessageRef,
+    responseMessageRef,
+    requestSemanticRelay: durableRelay(requestMessageRef, 'person.test', 'role.vex.companion'),
+    responseSemanticRelay: durableRelay(responseMessageRef, 'role.vex.companion', 'person.test', { originatorKind: 'AI' })
+  });
+  try {
+    const completed = await performLivedCompanionTurn(input);
+    assert.equal(completed.requestEvent.schemaVersion, 'vexlife.lived-companion-event/v2');
+    assert.equal(completed.responseEvent.schemaVersion, 'vexlife.lived-companion-event/v2');
+
+    const rebound = rebindCompletedResponseEvent(home, completed, (response) => {
+      externalizeResponseV3(response);
+    });
+    assert.equal(rebound.response.schemaVersion, 'vexlife.lived-companion-event/v3');
+    assert.equal(rebound.response.providerRef, 'provider.openai.api');
+    assert.equal(rebound.response.sanitizedEndpointOrigin, 'https://api.openai.com');
+
+    const shutdown = writeLivedCompanionShutdownReceipt({
+      ...home,
+      instanceRef: input.instanceRef,
+      threadRef: input.threadRef,
+      expectedConversationHeadSha256: rebound.head.conversationHeadSha256
+    });
+    const resumed = resumeLivedCompanionConversation({
+      ...home,
+      priorInstanceRef: input.instanceRef,
+      instanceRef: ref('instance.external-v3.resume'),
+      threadRef: input.threadRef,
+      expectedConversationHeadSha256: rebound.head.conversationHeadSha256,
+      expectedShutdownReceiptSha256: shutdown.receipt.shutdownReceiptSha256
+    });
+
+    assert.deepEqual(resumed.chain.map((event) => event.schemaVersion), [
+      'vexlife.lived-companion-event/v2',
+      'vexlife.lived-companion-event/v3'
+    ]);
+    assert.equal(resumed.chain[1].providerRef, 'provider.openai.api');
+    assert.equal(resumed.chain[1].endpointProfileRef, 'profile.vexlife.partner.openai.gpt-6.2-sol.v1');
+    assert.equal(resumed.chain[1].modelNameOrBoundedTestProfileRef, 'gpt-6.2-sol');
+    assert.equal(resumed.chain[1].semanticRelay.sourceMessageRef, responseMessageRef);
+  } finally {
+    await service.close();
+  }
+});
+
+test('external response v3 rejects ambiguous, local, secret-bearing, or malformed provenance', async () => {
+  const service = await server();
+  const variants = [
+    ['loopback origin', (response) => { response.sanitizedEndpointOrigin = 'https://127.0.0.1'; }],
+    ['non-HTTPS origin', (response) => { response.sanitizedEndpointOrigin = 'http://api.openai.com'; }],
+    ['userinfo origin', (response) => { response.sanitizedEndpointOrigin = 'https://user@api.openai.com'; }],
+    ['path-bearing origin', (response) => { response.sanitizedEndpointOrigin = 'https://api.openai.com/v1'; }],
+    ['query-bearing origin', (response) => { response.sanitizedEndpointOrigin = 'https://api.openai.com?x=1'; }],
+    ['missing provider ref', (response) => { delete response.providerRef; }],
+    ['non-canonical provider ref', (response) => { response.providerRef = 'OpenAI'; }],
+    ['extra credential metadata', (response) => { response.credentialRef = 'credential.vexlife.partner.must-not-persist'; }],
+    ['malformed semantic relay', (response) => { response.semanticRelay = { ...response.semanticRelay, rawText: 'must not persist' }; }]
+  ];
+
+  try {
+    for (const [label, mutate] of variants) {
+      const home = makeHome(`external-provider-v3-invalid-${label.replaceAll(' ', '-')}`);
+      const requestMessageRef = ref('message.request.external-v3-invalid');
+      const responseMessageRef = ref('message.response.external-v3-invalid');
+      const input = turn(home, service.endpoint(), {
+        requestMessageRef,
+        responseMessageRef,
+        requestSemanticRelay: durableRelay(requestMessageRef, 'person.test', 'role.vex.companion'),
+        responseSemanticRelay: durableRelay(responseMessageRef, 'role.vex.companion', 'person.test', { originatorKind: 'AI' })
+      });
+      const completed = await performLivedCompanionTurn(input);
+      const rebound = rebindCompletedResponseEvent(home, completed, (response) => {
+        externalizeResponseV3(response);
+        mutate(response);
+      });
+
+      await rejectsCode(
+        async () => writeLivedCompanionShutdownReceipt({
+          ...home,
+          instanceRef: input.instanceRef,
+          threadRef: input.threadRef,
+          expectedConversationHeadSha256: rebound.head.conversationHeadSha256
+        }),
+        'EVENT_CHAIN_CORRUPT'
+      );
+    }
+  } finally {
+    await service.close();
+  }
+});
+
+test('historical v1 and relay v2 response schemas remain loopback-only', async () => {
+  const service = await server();
+  try {
+    for (const schema of ['v1', 'v2']) {
+      const home = makeHome(`legacy-${schema}-external-reject`);
+      const requestMessageRef = ref(`message.request.${schema}.external-reject`);
+      const responseMessageRef = ref(`message.response.${schema}.external-reject`);
+      const relay = schema === 'v2';
+      const input = turn(home, service.endpoint(), {
+        requestMessageRef,
+        responseMessageRef,
+        ...(relay
+          ? {
+              requestSemanticRelay: durableRelay(requestMessageRef, 'person.test', 'role.vex.companion'),
+              responseSemanticRelay: durableRelay(responseMessageRef, 'role.vex.companion', 'person.test', { originatorKind: 'AI' })
+            }
+          : {})
+      });
+      const completed = await performLivedCompanionTurn(input);
+      assert.equal(completed.responseEvent.schemaVersion, `vexlife.lived-companion-event/${schema}`);
+      const rebound = rebindCompletedResponseEvent(home, completed, (response) => {
+        response.sanitizedEndpointOrigin = 'https://api.openai.com';
+      });
+
+      await rejectsCode(
+        async () => writeLivedCompanionShutdownReceipt({
+          ...home,
+          instanceRef: input.instanceRef,
+          threadRef: input.threadRef,
+          expectedConversationHeadSha256: rebound.head.conversationHeadSha256
+        }),
+        'EVENT_CHAIN_CORRUPT'
+      );
+    }
+  } finally {
+    await service.close();
+  }
+});
+
 test('durable v2 lived events carry reference-only semantic relay while raw content remains canonical at the event root', async () => {
   const service = await server();
   const home = makeHome('semantic-relay-v2');
