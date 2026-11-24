@@ -2340,6 +2340,85 @@ function isNonEmptyString(value) {
   return typeof value === 'string' && value.length > 0;
 }
 
+const EXTERNAL_PROVIDER_RESPONSE_EVENT_SCHEMA = 'vexlife.lived-companion-event/v3';
+const EXTERNAL_PROVIDER_RESPONSE_EVENT_FIELDS = Object.freeze([
+  'channelRef',
+  'companionLineageRef',
+  'content',
+  'contentHash',
+  'deviceRef',
+  'endpointProfileRef',
+  'eventHash',
+  'eventKind',
+  'eventRef',
+  'formedAt',
+  'homeRef',
+  'instanceRef',
+  'messageRef',
+  'modelNameOrBoundedTestProfileRef',
+  'priorEventHash',
+  'privacyClass',
+  'providerRef',
+  'recipientRefs',
+  'sanitizedEndpointOrigin',
+  'schemaVersion',
+  'semanticRelay',
+  'sequence',
+  'speakerRef',
+  'threadRef',
+  'turnRef'
+].sort());
+
+function exactObjectKeys(value, expected) {
+  const observed = Object.keys(value).sort();
+  return observed.length === expected.length
+    && observed.every((key, index) => key === expected[index]);
+}
+
+function isExternalProviderOrigin(value) {
+  if (!isNonEmptyString(value)) return false;
+  try {
+    const parsed = new URL(value);
+    const hostname = parsed.hostname.toLowerCase();
+    return parsed.protocol === 'https:'
+      && parsed.origin === value
+      && parsed.username === ''
+      && parsed.password === ''
+      && parsed.pathname === '/'
+      && parsed.search === ''
+      && parsed.hash === ''
+      && hostname !== 'localhost'
+      && !hostname.endsWith('.localhost')
+      && !isLivedCompanionLoopbackHost(hostname);
+  } catch {
+    return false;
+  }
+}
+
+function assertExternalProviderResponseProvenance(event) {
+  let providerRef;
+  let endpointProfileRef;
+  try {
+    providerRef = ensureSafeRef(event.providerRef, 'event.providerRef', 'EVENT_CHAIN_CORRUPT');
+    endpointProfileRef = ensureSafeRef(event.endpointProfileRef, 'event.endpointProfileRef', 'EVENT_CHAIN_CORRUPT');
+  } catch (error) {
+    if (error instanceof LivedCompanionError) throw error;
+    fail('EVENT_CHAIN_CORRUPT', 'external provider response provenance reference is invalid');
+  }
+
+  if (
+    !providerRef.startsWith('provider.') ||
+    endpointProfileRef !== event.endpointProfileRef ||
+    !isNonEmptyString(event.modelNameOrBoundedTestProfileRef) ||
+    !isExternalProviderOrigin(event.sanitizedEndpointOrigin) ||
+    !exactObjectKeys(event, EXTERNAL_PROVIDER_RESPONSE_EVENT_FIELDS)
+  ) {
+    fail('EVENT_CHAIN_CORRUPT', 'external provider response provenance is invalid', {
+      eventHash: event.eventHash ?? null
+    });
+  }
+}
+
 function assertEventRecord(event, expected = null, fileName = null) {
   if (!event || typeof event !== 'object' || Array.isArray(event)) {
     fail('EVENT_CHAIN_CORRUPT', 'conversation event is invalid');
@@ -2370,12 +2449,15 @@ function assertEventRecord(event, expected = null, fileName = null) {
       : null;
   const isHistoricalV1 = event.schemaVersion === 'vexlife.lived-companion-event/v1';
   const isRelayV2 = event.schemaVersion === 'vexlife.lived-companion-event/v2';
-  const relayValidation = isRelayV2
+  const isExternalProviderResponseV3 =
+    event.schemaVersion === EXTERNAL_PROVIDER_RESPONSE_EVENT_SCHEMA
+    && event.eventKind === 'RESPONSE';
+  const relayValidation = isRelayV2 || isExternalProviderResponseV3
     ? validateSemanticRelay(event.semanticRelay, { sourceMessageRef: event.messageRef, recipientRefs: event.recipientRefs })
     : { ok: !Object.hasOwn(event, 'semanticRelay'), errors: [] };
 
   if (
-    (!isHistoricalV1 && !isRelayV2) ||
+    (!isHistoricalV1 && !isRelayV2 && !isExternalProviderResponseV3) ||
     !relayValidation.ok ||
     safeInstanceRef !== event.instanceRef ||
     safeTurnRef !== event.turnRef ||
@@ -2401,6 +2483,12 @@ function assertEventRecord(event, expected = null, fileName = null) {
     });
   }
 
+  if (!isExternalProviderResponseV3 && Object.hasOwn(event, 'providerRef')) {
+    fail('EVENT_CHAIN_CORRUPT', 'legacy lived event may not carry external provider provenance', {
+      eventHash: event.eventHash ?? null
+    });
+  }
+
   if (expected && (
     event.homeRef !== expected.homeRef ||
     event.deviceRef !== expected.deviceRef ||
@@ -2415,20 +2503,24 @@ function assertEventRecord(event, expected = null, fileName = null) {
   }
 
   if (event.eventKind === 'RESPONSE') {
-    let endpointOrigin = null;
-    try {
-      endpointOrigin = new URL(event.sanitizedEndpointOrigin);
-    } catch {}
-    if (
-      !isNonEmptyString(event.endpointProfileRef) ||
-      !isNonEmptyString(event.modelNameOrBoundedTestProfileRef) ||
-      !endpointOrigin ||
-      endpointOrigin.origin !== event.sanitizedEndpointOrigin ||
-      !isLivedCompanionLoopbackHost(endpointOrigin.hostname)
-    ) {
-      fail('EVENT_CHAIN_CORRUPT', 'response event provenance is invalid', {
-        eventHash: event.eventHash
-      });
+    if (isExternalProviderResponseV3) {
+      assertExternalProviderResponseProvenance(event);
+    } else {
+      let endpointOrigin = null;
+      try {
+        endpointOrigin = new URL(event.sanitizedEndpointOrigin);
+      } catch {}
+      if (
+        !isNonEmptyString(event.endpointProfileRef) ||
+        !isNonEmptyString(event.modelNameOrBoundedTestProfileRef) ||
+        !endpointOrigin ||
+        endpointOrigin.origin !== event.sanitizedEndpointOrigin ||
+        !isLivedCompanionLoopbackHost(endpointOrigin.hostname)
+      ) {
+        fail('EVENT_CHAIN_CORRUPT', 'response event provenance is invalid', {
+          eventHash: event.eventHash
+        });
+      }
     }
   }
 
